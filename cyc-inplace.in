@@ -1,0 +1,18 @@
+#!/bin/sh
+# @configure_input@
+
+# Call cyc in build directory
+srcdir=@srcdir@
+builddir=`dirname $0`
+
+case "$srcdir" in
+  /* ) ;;
+  * ) srcdir=$builddir/$srcdir
+esac
+
+: ${CURRY_PATH=$builddir}
+: ${CURRY_IMPORTS=$CURRY_PATH/curry}
+export CURRY_PATH CURRY_IMPORTS
+
+exec $builddir/cyc -I$builddir/runtime -I$srcdir/runtime "$@"
+

@@ -1,0 +1,18 @@
+#!/bin/sh
+# @configure_input@
+
+# Call cymk in build directory
+srcdir=@srcdir@
+builddir=`dirname $0`
+
+case "$srcdir" in
+  /* ) ;;
+  * ) srcdir=$builddir/$srcdir
+esac
+
+: ${CYC=$builddir/cyc-inplace}
+: ${CURRY_PATH=$builddir}
+: ${CURRY_IMPORTS=$CURRY_PATH/curry}
+export CYC CURRY_PATH CURRY_IMPORTS
+
+exec $builddir/cymake "$@"

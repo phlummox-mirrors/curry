@@ -1,0 +1,671 @@
+% -*- noweb-code-mode: c-mode -*-
+% $Id: search.nw 1744 2005-08-23 16:17:12Z wlux $
+%
+% Copyright (c) 2002-2005, Wolfgang Lux
+% See ../LICENSE for the full license.
+%
+\subsection{Encapsulated Search}
+The implementation of encapsulated search is mostly private to this
+module. The external entry points into this module are the external
+function [[try]], which starts a new encapsulated search, and the
+function [[suspend_search]], which suspends the current encapsulated
+search.
+
+<<search.h>>=
+extern Label suspend_search(Label, Node *, enum suspend_reason);
+
+@ 
+<<search.c>>=
+#include "curry.h"
+#include "search.h"
+#include "vars.h"
+#include "stats.h"
+
+static void push_search_context(void);
+static void pop_search_context(void);
+
+DECLARE_LABEL(solved_goal_code);
+DECLARE_LABEL(solved_goal_code_eval);
+DECLARE_LABEL(search_cont_code);
+DECLARE_LABEL(search_cont_code_eval);
+DECLARE_LABEL(search_goal_proceed);
+DECLARE_LABEL(resume_search);
+DECLARE_LABEL(choices_search);
+DECLARE_LABEL(deadlock_search);
+DECLARE_LABEL(fail_search);
+
+static const struct nondet_handlers search_handlers = {
+    choices_search, deadlock_search, fail_search
+};
+
+struct context {
+    SearchSpace			 *spc;
+    const struct nondet_handlers *handlers;
+};
+
+@
+Search contexts are allocated on the stack in order to save the
+machine state before an encapsulated search starts and to restore the
+machine state after the encapsulated search is left again. Note that
+the argument on the top of the stack is passed to the local search and
+not saved by the context.
+
+<<search.c>>=
+static void
+push_search_context()
+{
+    Choicepoint	   *oldBp = bp;
+    struct context *ctxt;
+
+    CHECK_STACK(wordsof(Choicepoint) + wordsof(struct context));
+    sp   -= wordsof(Choicepoint) + wordsof(struct context);
+    sp[0] = sp[wordsof(Choicepoint) + wordsof(struct context)];
+
+    /* allocate a new search context on the stack */
+    bp		   = (Choicepoint *)(sp + 1);
+    bp->btAlts	   = 0;		/* btAlts == 0 identifies search context */
+    bp->btCid	   = cid;
+    bp->btDsBase   = ds_base;
+    bp->btBp	   = oldBp;
+    bp->btRq	   = rq;
+    bp->btTp	   = tp;
+    bp->btDict	   = names_tail;
+    bp->btHp	   = hp;
+
+    /* save the current search context */
+    ctxt	   = (struct context *)(bp + 1);
+    ctxt->spc	   = ss;
+    ctxt->handlers = nondet_handlers;
+
+    /* change the current handler vector */
+    nondet_handlers = &search_handlers;
+
+    /* initialize the machine state for the new context */
+    cid	    = 0;
+    ds_base = sp;
+    rq	    = 0;
+    hlim    = hp;
+}
+
+static void
+pop_search_context()
+{
+    Choicepoint	   *oldBp = bp;
+    struct context *ctxt;
+
+    ASSERT(oldBp->btAlts == 0);
+
+    /* restore the old search context */
+    ctxt	    = (struct context *)(bp + 1);
+    nondet_handlers = ctxt->handlers;
+    ss		    = ctxt->spc;
+
+    /* restore the machine state from the current search context */
+    cid	    = oldBp->btCid;
+    ds_base = oldBp->btDsBase;
+    bp	    = oldBp->btBp;
+    rq	    = oldBp->btRq;
+    tp	    = oldBp->btTp;
+    hlim    = bp ? bp->btHp : heap_base;
+    sp	    = (Node **)(oldBp + 1) + wordsof(struct context);
+}
+
+@ 
+The [[try]] function starts an encapsulated search. After pushing a
+new search context onto the stack and creating a new search space,
+[[try]] starts the evaluation of the search goal by applying it to a
+fresh variable. In addition, a queue-me node is created that allows
+checking for successful termination of the goal's evaluation. %'
+
+When [[try]] is applied to an already solved search goal (as returned
+from a previous encapsulated search), this search goal is returned
+immediately. In addition, when [[try]] is applied to a partially
+solved search goal, the goal variable and queue-me node of that goal
+are shared instead of allocating fresh nodes.
+
+<<search.c>>=
+DECLARE_ENTRYPOINT(__try);
+
+FUNCTION(__try)
+{
+    Node *susp, *list, *sc, *var;
+
+    EXPORT_LABEL(__try)
+ ENTRY_LABEL(__try)
+    EVAL_RIGID(__try);
+
+    ASSERT(is_papp_node(sp[0]) &&
+	   closure_argc(sp[0]) + 1 == sp[0]->info->arity);
+
+    /* return immediately when applied to a solved search goal */
+    if ( sp[0]->info->entry == solved_goal_code )
+    {
+	CHECK_HEAP(cons_node_size);
+	list		= (Node *)hp;
+	list->info	= &cons_info;
+	list->c.args[0] = *sp++;
+	list->c.args[1] = nil;
+	hp	       += cons_node_size;
+	RETURN(list);
+    }
+
+    /* create a new search context */
+    TRACE(("starting encapsulated search\n"));
+    push_search_context();
+
+    /* when applied to a partially solved goal continue its evaluation */
+    if ( sp[0]->info->entry == search_cont_code )
+    {
+	sc    = sp[0]->c.args[0];
+	sp[0] = sc;   
+	new_search_space(sc->sc.spc);
+
+	CHECK_STACK1();
+	sp   -= 1;
+	sc    = sp[1];
+	sp[0] = sc->sc.susp;
+	sp[1] = sc->sc.var;
+	GOTO(resume_continuation(sc->sc.code, sc->sc.rq));
+    }
+
+    /* create a new search space */
+    new_search_space(0);
+
+    /* allocate new goal variable and suspension */
+    CHECK_HEAP(variable_node_size + queueMe_node_size);
+    var		 = (Node *)hp;
+    var->info	 = variable_info_table;
+    var->v.spc	 = ss;
+    var->v.wq	 = 0;
+    var->v.cstrs = 0;
+    hp		+= variable_node_size;
+
+    susp	= (Node *)hp;
+    susp->info	= queueMe_info_table;
+    susp->q.spc	= ss;
+    susp->q.wq	= 0;
+    hp	       += queueMe_node_size;
+
+    /* start the initial thread and evaluate the goal */
+    CHECK_STACK(6);
+    sp	 -= 6;
+    sp[0] = sp[6];
+    sp[1] = var;
+    sp[2] = (Node *)update;
+    sp[3] = susp;
+    sp[4] = 0;
+    sp[5] = susp;
+    sp[6] = var;
+    start_thread(5);
+    GOTO(___64_);
+}
+
+@ 
+A solved search goal is represented by a (partial) application of
+function [[solved_goal_code]] to a search continuation saving the
+state of the solved goal. When such a closure is applied to an
+argument, that argument is unified with a copy of the goal's %'
+solution. Copying ensures that multiple applications of a (partially)
+solved search goal to different arguments succeed, if the (partial)
+solution contains free variables. For instance, the expression
+\begin{verbatim}
+  let [g] = try (\x -> success) in g 0 & g 1
+\end{verbatim}
+succeeds because \verb|try (\x -> success)| is equivalent to
+\verb|[\x -> success]|.
+
+<<search.c>>=
+static
+FUNCTION(solved_goal_code_eval)
+{
+    Node *clos;
+ ENTRY_LABEL(solved_goal_code_eval)
+    CHECK_STACK1();
+    clos  = sp[0];
+    sp	 -= 1;
+    sp[0] = clos->c.args[0];
+    sp[1] = clos->c.args[1];
+    GOTO(solved_goal_code);
+}
+
+static
+FUNCTION(solved_goal_code)
+{
+    Node  *cont, *res, *arg;
+    Label ret_ip;
+
+ ENTRY_LABEL(solved_goal_code)
+    cont = sp[0];
+    res	 = copy_graph(cont->sc.var, cont->sc.spc);
+
+    arg = sp[1];
+    while ( is_boxed(arg) && arg->info->tag == INDIR_TAG )
+	arg = arg->n.node;
+    if ( is_boxed(arg) && is_variable_node(arg) && is_local_space(arg->v.spc) )
+    {
+	sp    += 2;
+	ret_ip = (Label)sp[0];
+	sp[0]  = Success;
+	GOTO(bind_var(arg, res, ret_ip));
+    }
+
+    sp[0] = arg;
+    sp[1] = res;
+    GOTO(___61__58__61_);
+}
+
+@ 
+A partially solved search goal is returned from an encapsulated search
+when a non-deterministic computation step has to be performed. In that
+case, the current state of the computation is saved in a list of search
+continuation nodes. For each alternative continuation, a (partial)
+application of function [[search_cont_code]] to the corresponding
+search continuation node is created. When one of these closures is
+applied to an argument, the saved state is restored and a unification
+between the argument and the partial solution computed so far for the
+search goal is performed. Recall that [[try]] already performs the --
+trivial -- unification when it is applied to a partially solved search
+goal by sharing the goal variable and resuming the search goal
+directly. The unification is started before resuming the evaluation of
+the search goal in order to allow an effective implementation of
+pruning search strategies.
+
+If the current search space is a root space, i.e., if no
+non-deterministic choice was performed for the current goal, the
+current space will be adopted as a child by the search space of the
+resumed search goal. Otherwise, the saved state must be copied into
+the current search space. This policy ensures that -- except for some
+unusual cases, e.g., continuing a partially solved goal in a global
+context -- expensive copying is avoided.
+
+<<search.c>>=
+static
+FUNCTION(search_cont_code_eval)
+{
+    Node *clos;
+ ENTRY_LABEL(search_cont_code_eval)
+    CHECK_STACK1();
+    clos  = sp[0];
+    sp	 -= 1;
+    sp[0] = clos->c.args[0];
+    sp[1] = clos->c.args[1];
+    GOTO(search_cont_code);
+}
+
+static
+FUNCTION(search_cont_code)
+{
+    Node *arg, *cont;
+
+ ENTRY_LABEL(search_cont_code)
+
+    cont = sp[0];
+    if ( !inject_search_space(cont->sc.spc) )
+	sp[0] = cont = copy_graph(cont, cont->sc.spc);
+    restore_continuation(cont->sc.code, cont->sc.rq);
+
+    /* NB reload cont -- restore_continuation might invoke gc */
+    cont = sp[0];
+    arg  = sp[1];
+    while ( is_boxed(arg) && arg->info->tag == INDIR_TAG )
+	arg = arg->n.node;
+    if ( is_boxed(arg) && is_variable_node(arg) && is_local_space(arg->v.spc) )
+    {
+	sp[0] = Success;
+	sp[1] = cont->sc.susp;
+	GOTO(bind_var(arg, cont->sc.var, search_goal_proceed));
+    }
+
+    CHECK_STACK(2);
+    sp   -= 2;
+    sp[0] = arg;
+    sp[1] = cont->sc.var;
+    sp[2] = (Node *)search_goal_proceed;
+    sp[3] = cont->sc.susp;
+    GOTO(___61__58__61_);
+}
+
+static
+FUNCTION(search_goal_proceed)
+{
+    Node *susp;
+
+ ENTRY_LABEL(search_goal_proceed)
+    sp	+= 1;
+    susp = sp[0];
+    ASSERT(is_boxed(susp));
+    GOTO(susp->info->eval);
+}
+
+@ 
+When no thread can be run in an encapsulated search, the evaluation of
+the search goal either did succeed or a deadlock has occurred. Both
+cases can be distinguished by examining the queue-me node allocated by
+[[try]] for that purpose. If the search was successful, the queue-me
+node has been overwritten with (an indirection to) [[Success]]. Thus,
+if this node is not bound to [[Success]], the evaluation has stopped
+due to a deadlock. In that case, the calling thread cannot be
+continued, too, and is terminated instantly.
+
+\ToDo{Instead of waiting for the deadlock to propagate up to the
+  global context, report an error when a deadlock occurs.}
+
+<<search.c>>=
+static
+FUNCTION(deadlock_search)
+{
+    Node *goal, *sc, *clos, *list;
+    static NodeInfo solved_goal_info_table[] = {
+	PAPPINFO("<solved goal>", 1, solved_goal_code, 2)
+	FUNINFO("<solved goal>",     solved_goal_code, 2)
+    };
+
+ ENTRY_LABEL(deadlock_search)
+
+    /* check for successful computation or deadlock */
+    ASSERT(sp == (Node **)bp - 2);
+    for ( goal = sp[0]; ; )
+    {
+	switch ( goal->info->tag )
+	{
+	case INDIR_TAG:
+	    goal = goal->n.node;
+	    continue;
+	case SUSPEND_TAG:
+	    curry_panic("search goal not locked\n");
+	case QUEUEME_TAG:
+	case VARIABLE_TAG:
+	    TRACE(("deadlock in encapsulated search\n"));
+	    discard_search_space();
+	    pop_search_context();
+	    GOTO(stop_thread);
+	default:
+	    break;
+	}
+	break;
+    }
+    TRACE(("leaving encapsulated search with solved search goal\n"));
+
+    /* dereference the goal variable in order to avoid some garbage */
+    while ( is_boxed(sp[1]) && sp[1]->info->tag == INDIR_TAG )
+	sp[1] = sp[1]->n.node;
+
+    /* allocate the singleton list for the search continuation */
+    CHECK_HEAP(search_cont_node_size + closure_node_size(1) + cons_node_size);
+    sc		= (Node *)hp;
+    sc->info	= &search_cont_info;
+    sc->sc.spc	= ss;
+    sc->sc.susp	= 0;
+    sc->sc.var	= sp[1];
+    sc->sc.code	= 0;
+    sc->sc.rq	= 0;
+    hp	       += search_cont_node_size;
+
+    clos	    = (Node *)hp;
+    clos->info	    = solved_goal_info_table;
+    clos->c.args[0] = sc;
+    hp		   += closure_node_size(1);
+
+    list	    = (Node *)hp;
+    list->info	    = &cons_info;
+    list->c.args[0] = clos;
+    list->c.args[1] = nil;
+    hp		   += cons_node_size;
+
+    /* leave the local space */
+    BEGIN_LOCAL_ROOTS1(list)
+    save_search_space();
+    pop_search_context();
+    END_LOCAL_ROOTS
+
+    /* return the list */
+    RETURN(list);
+}
+
+@ 
+When a thread must evaluate a non-local shared application, the
+current search is suspended until the application is evaluated to head
+normal form. Similarly, if a thread detects a non-local variable
+during pattern matching, the current search is suspended until that
+variable is instantiated. After saving the current state, the calling
+thread starts evaluating the application or suspends until the
+variable is instantiated, and then resumes the search.
+
+<<search.c>>=
+Label
+suspend_search(Label retIp, Node *node, enum suspend_reason reason)
+{
+    Node *sc;
+
+    TRACE(("suspending encapsulated search\n"));
+    if ( bp == 0 || !is_search_context(bp) )
+	curry_panic("local variable escaped its search space\n");
+
+    /* save the current state */
+    BEGIN_LOCAL_ROOTS1(node)
+    save_continuation();
+
+    /* dereference the goal nodes in order to avoid some garbage */
+    ASSERT(sp == (Node **)bp - 2);
+    while ( is_boxed(sp[0]) && sp[0]->info->tag == INDIR_TAG )
+	sp[0] = sp[0]->n.node;
+    while ( is_boxed(sp[1]) && sp[1]->info->tag == INDIR_TAG )
+	sp[1] = sp[1]->n.node;
+
+    /* allocate a search continuation */
+    CHECK_HEAP(search_cont_node_size);
+    sc		= (Node *)hp;
+    sc->info	= &search_cont_info;
+    sc->sc.spc  = ss;
+    sc->sc.susp = sp[0];
+    sc->sc.var  = sp[1];
+    sc->sc.code = retIp;
+    sc->sc.rq   = rq;
+    hp	       += search_cont_node_size;
+
+    /* leave the local space */
+    BEGIN_LOCAL_ROOTS1(sc)
+    save_search_space();
+    pop_search_context();
+    END_LOCAL_ROOTS
+    END_LOCAL_ROOTS
+
+    /* save the search continuation and the node causing the suspension */
+    CHECK_STACK(3);
+    sp   -= 2;
+    sp[0] = node;
+    sp[1] = sc;
+
+    /* either evaluate the node on the top of the stack or delay the thread */
+    switch ( reason )
+    {
+    case Eval:
+	sp   -= 1;
+	sp[0] = node;
+	sp[1] = (Node *)resume_search;
+    	return node->info->eval;
+    case Delay:
+	return delay_thread(resume_search, node);
+    default:
+	fprintf(stderr, "suspend_search: unexpected reason %d\n", reason);
+	exit(1);
+    }
+}
+
+@ 
+When a suspended search is resumed, we try to reuse its saved search
+space. However, this is possible only if no other reference to that
+search space exists. A sufficient condition to check for is the saved
+search continuation node not being protected by a choice point or
+search context.
+
+<<search.c>>=
+static
+FUNCTION(resume_search)
+{
+    boolean do_resume;
+    Node    *sc;
+
+ ENTRY_LABEL(resume_search)
+    sp += 1;
+    sc	= sp[0];
+    ASSERT(is_boxed(sc) && is_search_cont_node(sc));
+    do_resume = (word *)sc >= hlim;
+
+    push_search_context();
+    if ( do_resume )
+	resume_search_space(sc->sc.spc);
+    else
+	new_search_space(sc->sc.spc);
+
+    /* NB reload sc -- new_search_space might invoke gc */
+    CHECK_STACK1();
+    sc	  = sp[0];
+    sp	 -= 1;
+    sp[0] = sc->sc.susp;
+    sp[1] = sc->sc.var;
+
+    TRACE(("resuming encapsulated search\n"));
+    GOTO(resume_continuation(sc->sc.code, sc->sc.rq));
+}
+
+@ 
+If a non-deterministic computation step must be performed in a local
+search space, the runtime system creates a search continuation node
+for each alternative continuation address in array [[choice_conts]],
+and returns those nodes as a list to the enclosing context.
+
+<<search.c>>=
+static
+FUNCTION(choices_search)
+{
+    unsigned int n_conts;
+    Node	 *list, *cons, *clos, *sc;
+    const Label	 *conts;
+    static NodeInfo search_cont_info_table[] = {
+	PAPPINFO("<search goal>", 1, search_cont_code, 2)
+	FUNINFO("<search goal>",     search_cont_code, 2)
+    };
+
+ ENTRY_LABEL(choices_search)
+
+    ASSERT(bp && is_search_context(bp));
+
+    /* compute the number of alternative solutions */
+    n_conts = 0;
+    for ( conts = choice_conts; *conts; conts++ )
+	n_conts++;
+    ASSERT(n_conts > 1);
+    TRACE(("leaving encapsulated search with %u continuations\n", n_conts));
+
+    /* save the current state */
+    save_continuation();
+
+    /* dereference the goal nodes in order to avoid some garbage */
+    ASSERT(sp == (Node **)bp - 2);
+    while ( is_boxed(sp[0]) && sp[0]->info->tag == INDIR_TAG )
+	sp[0] = sp[0]->n.node;
+    while ( is_boxed(sp[1]) && sp[1]->info->tag == INDIR_TAG )
+	sp[1] = sp[1]->n.node;
+
+    /* allocate the list of search continuations */
+    CHECK_HEAP(n_conts * (search_cont_node_size + closure_node_size(1)
+			  + cons_node_size));
+    list = nil;
+    while ( n_conts-- > 0 )
+    {
+	sc	    = (Node *)hp;
+	sc->info    = &search_cont_info;
+	sc->sc.spc  = ss;
+	sc->sc.susp = sp[0];
+	sc->sc.var  = sp[1];
+	sc->sc.code = *--conts;
+	sc->sc.rq   = rq;
+	hp	   += search_cont_node_size;
+
+	clos		= (Node *)hp;
+	clos->info	= search_cont_info_table;
+	clos->c.args[0] = sc;
+	hp	       += closure_node_size(1);
+
+	cons		= (Node *)hp;
+	cons->info	= &cons_info;
+	cons->c.args[0] = clos;
+	cons->c.args[1] = list;
+	hp	       += cons_node_size;
+	list		= cons;
+    }
+    ASSERT(conts == choice_conts);
+
+    /* leave the local space */
+    BEGIN_LOCAL_ROOTS1(list)
+    save_search_space();
+    pop_search_context();
+    END_LOCAL_ROOTS
+
+    /* return the list */
+    RETURN(list);
+}
+
+@ 
+When a computation fails inside an encapsulated search, the current
+search space is discarded and an empty list is returned to the
+enclosing context.
+
+<<search.c>>=
+static
+FUNCTION(fail_search)
+{
+ ENTRY_LABEL(fail_search)
+
+    ASSERT(is_search_context(bp));
+
+    /* discard the current search space and context */
+    discard_search_space();
+    pop_search_context();
+
+    /* return an empty list to the caller */
+    TRACE(("leaving encapsulated search with no solution\n"));
+    RETURN(nil);
+}
+
+@ 
+The (unsafe) function [[unshare]] creates a copy of its argument such
+that the result does not share its (local) lazy applications with the
+input argument. However, sharing within the argument is preserved. For
+instance, with
+\begin{verbatim}
+  coin = 0
+  coin = 1
+\end{verbatim}
+the expression
+\verb|let { x = coin; y = unshare (x+x) } in y `seq` (x+x) + y|             %'
+has results \verb|0|, \verb|2|, and \verb|4|, but never an odd number.
+Note that it is essential that \verb|y| is evaluated before \verb|x|.
+Otherwise, the result of \verb|coin|'s evaluation would be copied and
+therefore only the results \verb|0| and \verb|4| were possible.
+
+This is used in order to implement the function [[getSearchTree]],
+which provides an alternative approach to encapsulated search and was
+proposed in~\cite{BrasselHanusHuch04:Encapsulating}. In contrast to
+the [[try]] primitive, [[getSearchTree]] allows encapsulating
+\emph{all} non-determinism during the evaluation of its argument,
+which is achieved by creating a copy of that argument using [[unshare]].
+
+<<search.c>>=
+DECLARE_ENTRYPOINT(__unshare);
+
+FUNCTION(__unshare)
+{
+    Node *r;
+    EXPORT_LABEL(__unshare)
+ ENTRY_LABEL(__unshare)
+    r = copy_graph(sp[0], 0);
+    if ( !is_unboxed(r) )
+    {
+	sp[0] = r;
+	GOTO(r->info->eval);
+    }
+    sp += 1;
+    RETURN(r);
+}
