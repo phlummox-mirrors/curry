@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: DTransform.lhs 1750 2005-08-29 15:26:26Z wlux $
 %
 % 2002/04/10 19:00:00 Added emptyNode as constructor in type cTree
 \nwfilename{DTransform.lhs}
@@ -18,6 +18,7 @@ the computation.
 
 > module DTransform(module DTransform) where
 > import Ident
+> import Maybe
 > import List
 > import IL
 
@@ -471,7 +472,7 @@ the transformation.
 > transformType n  fType = transformType'  fType
 
 > transformType' ::  Type -> Type
-> transformType'  t@(TypeArrow type1 type2) = transformType (typeArity t)  t
+> transformType'  t@(TypeArrow type1 type2) = transformType 1  t
 > transformType'  (TypeConstructor ident lTypes) = 
 >    TypeConstructor ident (map transformType'  lTypes)
 > transformType'  (TypeVariable v) = TypeVariable v
@@ -518,9 +519,9 @@ is a module function.
 >
 > typesDatum (DataDecl qId n l) env  = foldr (typesConst qId n)  env l
 > typesDatum (NewtypeDecl newtypeId n (ConstrDecl qId lType)) env =
->       (qId,(IsNewConstructor, 1, cType)):env
+>       (qId,(IsNewConstructor, 1, normalizeType cType)):env
 >       where
->       vars = map TypeVariable [1..n]
+>       vars = map TypeVariable [0..n-1]
 >       cType = TypeArrow lType (TypeConstructor newtypeId vars)
 >
 > typesForeign (ForeignDecl qId cc s ftype) env  = 
@@ -528,10 +529,23 @@ is a module function.
 
 > typesConst:: QualIdent -> Int -> ConstrDecl [Type] -> DebugTypeList -> DebugTypeList
 > typesConst dataId n (ConstrDecl qId lTypes) env  = 
->       (qId,(IsConstructor, length lTypes, cType)):env
+>       (qId,(IsConstructor, length lTypes, normalizeType cType)):env
 >       where
->       vars  = map TypeVariable [1..n]
+>       vars  = map TypeVariable [0..n-1]
 >       cType = foldr TypeArrow (TypeConstructor dataId vars)  lTypes
+
+
+> normalizeType :: Type -> Type
+> normalizeType ty = rename (nub (tvars ty)) ty
+>   where rename tvs (TypeConstructor c tys) =
+>           TypeConstructor c (map (rename tvs) tys)
+>         rename tvs (TypeVariable tv) =
+>           TypeVariable (fromJust (elemIndex tv tvs))
+>         rename tvs (TypeArrow ty1 ty2) =
+>           TypeArrow (rename tvs ty1) (rename tvs ty2)
+>         tvars (TypeConstructor _ tys) = concatMap tvars tys
+>         tvars (TypeVariable tv) = [tv]
+>         tvars (TypeArrow ty1 ty2) = tvars ty1 ++ tvars ty2
 
 \end{verbatim}
 

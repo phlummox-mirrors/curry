@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILLift.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: ILLift.lhs 1750 2005-08-29 15:26:26Z wlux $
 %
 % Copyright (c) 2000-2003, Wolfgang Lux
 % See LICENSE for the full license.
@@ -21,13 +21,14 @@ partial applications of data constructors.
 > import Ident
 > import Combined
 > import List
+> import Maybe
 > import Monad
 > import Utils
 
 > type LiftState a = St [QualIdent] a
 
 > liftProg :: Module -> Module
-> liftProg (Module m is ds) = 
+> liftProg (Module m is ds) =
 >   Module m is (concat (runSt (mapM lift ds) nameSupply))
 >   where nameSupply =
 >           [qualifyWith m (mkIdent ("_app#" ++ (show i))) | i <- [1..]]
@@ -49,14 +50,14 @@ partial applications of data constructors.
 
 > liftConstr :: Type -> ConstrDecl [Type] -> Decl
 > liftConstr ty (ConstrDecl c tys) =
->   FunctionDecl c vs (foldr TypeArrow ty tys)
+>   FunctionDecl c vs (normalize (foldr TypeArrow ty tys))
 >                (foldl Apply (Constructor c arity) (map Variable vs))
 >   where arity = length tys
 >         vs = [mkIdent ("_" ++ show i) | i <- [1..arity]]
 
 > liftNewtype :: QualIdent -> Int -> ConstrDecl Type -> Decl
 > liftNewtype tc n (ConstrDecl c ty) =
->   FunctionDecl c [v] (TypeArrow ty (typeConstr tc n)) (Variable v)
+>   FunctionDecl c [v] (normalize (TypeArrow ty (typeConstr tc n))) (Variable v)
 >   where v = mkIdent "_1"
 
 > liftExpr :: Expression -> LiftState (Expression,[Decl])
@@ -158,5 +159,19 @@ compute the type of any expression in the module.}
 > fv (Letrec bs e) =
 >   filter (`notElem` bvs) ([v | Binding _ e <- bs, v <- fv e] ++ fv e)
 >   where bvs = [v | Binding v _ <- bs]
+
+> normalize :: Type -> Type
+> normalize ty = rename (nub (tv ty)) ty
+>   where rename tvs (TypeConstructor c tys) =
+>           TypeConstructor c (map (rename tvs) tys)
+>         rename tvs (TypeVariable tv) =
+>           TypeVariable (fromJust (elemIndex tv tvs))
+>         rename tvs (TypeArrow ty1 ty2) =
+>           TypeArrow (rename tvs ty1) (rename tvs ty2)
+
+> tv :: Type -> [Int]
+> tv (TypeConstructor _ tys) = concatMap tv tys
+> tv (TypeVariable tv) = [tv]
+> tv (TypeArrow ty1 ty2) = tv ty1 ++ tv ty2
 
 \end{verbatim}

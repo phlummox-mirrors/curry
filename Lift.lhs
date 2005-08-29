@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Lift.lhs 1750 2005-08-29 15:26:26Z wlux $
 %
 % Copyright (c) 2001-2004, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,13 +19,17 @@ lifted to the top-level.
 
 > module Lift(lift) where
 > import Base
+> import Types
+> import TypeSubst
 > import Env
 > import TopEnv
-> import Set
+> import Combined
 > import List
 > import Monad
-> import Combined
 > import SCC
+> import Set
+> import Subst
+> import Utils
 
 > lift :: ValueEnv -> EvalEnv -> Module -> (Module,ValueEnv,EvalEnv)
 > lift tyEnv evEnv (Module m es ds) =
@@ -165,8 +169,12 @@ in the type environment.
 >   where tys = map (varType tyEnv) fvs
 >         abstractFunType f tyEnv =
 >           qualBindFun m (liftIdent pre f)
->                         (foldr TypeArrow (varType tyEnv f) tys)
+>                         (genType (foldr TypeArrow (varType tyEnv f) tys))
 >                         (unbindFun f tyEnv)
+>         genType ty =
+>           ForAll (length tvs) (subst (foldr2 bindSubst idSubst tvs tvs') ty)
+>           where tvs = nub (typeVars ty)
+>                 tvs' = map TypeVariable [0..]
 
 > abstractFunAnnots :: ModuleIdent -> String -> [Ident] -> EvalEnv -> EvalEnv
 > abstractFunAnnots m pre fs evEnv = foldr abstractFunAnnot evEnv fs
@@ -291,8 +299,8 @@ to the top-level.
 > apply :: Expression -> [Expression] -> Expression
 > apply = foldl Apply
 
-> qualBindFun :: ModuleIdent -> Ident -> Type -> ValueEnv -> ValueEnv
-> qualBindFun m f ty = qualBindTopEnv f' (Value f' (polyType ty))
+> qualBindFun :: ModuleIdent -> Ident -> TypeScheme -> ValueEnv -> ValueEnv
+> qualBindFun m f ty = qualBindTopEnv f' (Value f' ty)
 >   where f' = qualifyWith m f
 
 > unbindFun :: Ident -> ValueEnv -> ValueEnv
