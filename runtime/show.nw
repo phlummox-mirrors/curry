@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: show.nw 1748 2005-08-29 09:33:31Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -415,7 +415,6 @@ static
 FUNCTION(showArgs)
 {
     Node *arglist, *susp, *susp2, *cons, *tail, *prec, *show;
-
  ENTRY_LABEL(showArgs)
     TRACE(("%I enter showArgs%V\n", 4, sp));
     CHECK_HEAP(2 * suspend_node_size(4) + cons_node_size);
@@ -487,7 +486,6 @@ FUNCTION(showInfix)
     long prec;
     Node *node, *tail, *show, *cons, *susp;
  ENTRY_LABEL(showInfix)
-
     CHECK_HEAP(2 * cons_node_size + suspend_node_size(4));
     node = sp[0];
     prec = long_val(sp[1]);
@@ -527,7 +525,6 @@ FUNCTION(showInfix)
     node = sp[0];
     tail = sp[2];
     show = sp[3];
-    sp	+= 4;
 
     cons	    = (Node *)hp;
     cons->info	    = &cons_info;
@@ -535,27 +532,30 @@ FUNCTION(showInfix)
     cons->c.args[1] = tail;
     hp		   += cons_node_size;
 
-    susp	    = (Node *)hp;
-    susp->info	    = showp_lazy_info_table;
-    susp->s.spc	    = ss;
-    susp->s.args[0] = node;
-    susp->s.args[1] = one;
-    susp->s.args[2] = cons;
-    susp->s.args[3] = show;
-    hp		   += suspend_node_size(4);
-
     if ( prec > 0 )
     {
+	susp		= (Node *)hp;
+	susp->info	= showp_lazy_info_table;
+	susp->s.spc	= ss;
+	susp->s.args[0] = node;
+	susp->s.args[1] = one;
+	susp->s.args[2] = cons;
+	susp->s.args[3] = show;
+	hp	       += suspend_node_size(4);
+
 	cons		= (Node *)hp;
 	cons->info	= &cons_info;
 	cons->c.args[0] = lparen;
 	cons->c.args[1] = susp;
 	hp	       += cons_node_size;
-    }
-    else
-	cons = susp;
 
-    RETURN(cons);
+	sp += 4;
+	RETURN(cons);
+    }
+
+    sp[1] = one;
+    sp[2] = cons;
+    GOTO(showp);
 }
 
 @
