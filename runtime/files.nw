@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: files.nw 1749 2005-08-29 09:40:13Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -657,6 +657,10 @@ FUNCTION(__hGetLine)
        sp[1]: pointer to last line segment
        sp[2]: file handle
        sp[3]: head of line
+       NB the file handle in sp[2] is not used in the loop below;
+          nevertheless, it must be kept on the stack so that the
+	  file is not closed by the garbage collector while we are
+	  reading from it.
      */
     do
     {
@@ -702,6 +706,13 @@ is constructed on demand with the help of the [[lazyRead]] function.
 The function [[readFile]] is just a wrapper function that combines
 [[openFile]] and [[hGetContents]]. We define it here so that the type
 [[IOMode]] need not be defined in the prelude.
+
+An alert reader might be surprised that [[hGetContents]] returns a
+suspended application node. However, recall that this node should be
+considered the first component of a pair composed of a result and the
+state of the world. From these, only the result is really returned
+because the representation of the world would be a simple constant
+(cf. p.~\pageref{eq:monadic-io} in Sect.~\ref{sec:io-monad}).
 
 <<files.c>>=
 DECLARE_ENTRYPOINT(__readFile);
