@@ -1,5 +1,5 @@
 # Specific rules for building with ghc
-# $Id: ghc.mk 1744 2005-08-23 16:17:12Z wlux $
+# $Id: ghc.mk 1746 2005-08-29 08:58:06Z wlux $
 #
 # Copyright (c) 2002-2004, Wolfgang Lux
 # See LICENSE for the full license.
@@ -36,7 +36,10 @@ mostlyclean-dir::
 # compute the dependencies
 # NB: ./ prefixes stripped from dependencies for proper operation with BSD make
 depend-dir: $(mach_SRCS) $(cycc_SRCS) $(cymk_SRCS) $(newer_SRCS)
-	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.ghc \
-		$(mach_SRCS) $(cycc_SRCS) $(cymk_SRCS) $(newer_SRCS)
-	sed 's,\./,,' .depend.ghc > .depend
-	@rm -f -- .depend.ghc .depend.ghc.bak
+	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.mach $(mach_SRCS)
+	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.cycc $(cycc_SRCS)
+	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.cymk $(cymk_SRCS)
+	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.newer $(newer_SRCS)
+	sed 's,\./,,' .depend.mach .depend.cycc .depend.cymk .depend.newer > .depend
+	@rm -f -- .depend.mach .depend.cycc .depend.cymk .depend.newer
+	@rm -f -- .depend.mach.bak .depend.cycc.bak .depend.cymk.bak .depend.newer.bak
