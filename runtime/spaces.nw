@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: spaces.nw 1747 2005-08-29 09:26:33Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -254,7 +254,7 @@ set_active_space(SearchSpace *space, Choicepoint *cp)
     /* find the heap segment containing the root space */
     root = space->root;
     lim	 = hp;
-    while ( cp && (SearchSpace *)cp->btHp >= root )
+    while ( cp && root < (SearchSpace *)cp->btHp )
     {
 	lim = cp->btHp;
 	cp  = cp->btBp;
