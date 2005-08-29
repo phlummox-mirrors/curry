@@ -3,11 +3,15 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1744 2005-08-23 16:17:12Z wlux $
+# $Id: cyi.in 1751 2005-08-29 17:04:09Z wlux $
 #
 # Copyright (c) 2002-2005, Wolfgang Lux
 # See LICENSE for the full license.
 #
+
+if test -n "${ZSH_VERSION+set}"; then
+  emulate ksh
+fi
 
 # Configuration parameters
 cyi=`basename $0`
@@ -272,8 +276,39 @@ while test $# -gt 0; do
 done
 
 load "$1"
-echo $echo_n "$prompt$echo_c"
-while read $read_r line; do
+
+if tty -s; then
+  if test -n "${BASH_VERSION+set}"; then
+    do_read ( ) {
+      history -n ~/.cyi
+      read -e -p "$prompt" -r $1 || return $?
+      eval echo \"\$$1\" >> ~/.cyi
+    }
+  elif test -n "${ZSH_VERSION+set}"; then
+    zmodload zsh/zle
+    do_read (  ) {
+      eval $1=
+      vared -p"$prompt" $1
+    }
+  elif set -o emacs >/dev/null 2>&1; then
+    # assume Korn Shell
+    HISTFILE=~/.cyi
+    do_read ( ) {
+      read -s -r $1?"$prompt"
+    }
+  else
+    do_read ( ) {
+      echo $echo_n "$prompt$echo_c"
+      read $read_r $1
+    }
+  fi
+else
+  do_read ( ) {
+    read $read_r $1
+  }
+fi
+
+while do_read line; do
   set -- $line
   case $1 in
     "" ) ;;
@@ -297,7 +332,6 @@ while read $read_r line; do
     :* ) echo "unknown command, use :h for help";;
     * ) evaluate "$line";;
   esac
-  echo $echo_n "$prompt$echo_c"
 done
 
 echo "[Leaving $cyi]"
