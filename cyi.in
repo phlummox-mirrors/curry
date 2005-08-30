@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1751 2005-08-29 17:04:09Z wlux $
+# $Id: cyi.in 1752 2005-08-30 06:53:23Z wlux $
 #
 # Copyright (c) 2002-2005, Wolfgang Lux
 # See LICENSE for the full license.
@@ -252,8 +252,7 @@ chdir ( ) {
   set -- $line
   case $# in
     0 ) pwd;;
-    1 ) cd "$1";;
-    * ) echo "too many directories";;
+    * ) eval cd $line;;
   esac
 }
 
