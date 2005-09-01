@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1754 2005-09-01 12:51:24Z wlux $
+% $Id: TypeCheck.lhs 1755 2005-09-01 16:21:14Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -65,10 +65,9 @@ type declarations in a goal.
 
 > typeCheckGoal :: TCEnv -> ValueEnv -> Goal -> ValueEnv
 > typeCheckGoal tcEnv tyEnv (Goal p e ds) =
->    run (tcRhs m0 tcEnv tyEnv (SimpleRhs p e ds) >>
+>    run (tcRhs emptyMIdent tcEnv (SimpleRhs p e ds) >>
 >         liftSt fetchSt >>= \theta -> fetchSt >>= \tyEnv' ->
 >         return (subst theta tyEnv')) tyEnv
->   where m0 = mkMIdent []
 
 \end{verbatim}
 The type checker makes use of nested state monads in order to
@@ -79,7 +78,7 @@ which is used for generating fresh type variables.
 > type TcState a = StateT ValueEnv (StateT TypeSubst (StateT Int Id)) a
 
 > run :: TcState a -> ValueEnv -> a
-> run m tyEnv = runSt (callSt (callSt m tyEnv) idSubst) 0
+> run m tyEnv = runSt (callSt (callSt m tyEnv) idSubst) 1
 
 \end{verbatim}
 \paragraph{Defining Types}
@@ -255,7 +254,7 @@ by the user match the inferred types.
 >   do
 >     tyEnv0 <- fetchSt
 >     tys <- mapM (tcDeclLhs m tcEnv sigs) ds
->     zipWithM_ (tcDeclRhs m tcEnv tyEnv0) tys ds
+>     zipWithM_ (tcDeclRhs m tcEnv) tys ds
 >     theta <- liftSt fetchSt
 >     let lvs = fvEnv (subst theta tyEnv0)
 >     zipWithM_ (genDecl m tcEnv sigs . gen lvs . subst theta) tys ds
@@ -264,15 +263,13 @@ by the user match the inferred types.
 > tcDeclLhs m tcEnv sigs (FunctionDecl p f _) = tcVariable m tcEnv sigs True p f
 > tcDeclLhs m tcEnv sigs (PatternDecl p t _) = tcConstrTerm m tcEnv sigs p t
 
-> tcDeclRhs :: ModuleIdent -> TCEnv -> ValueEnv -> Type -> Decl -> TcState ()
-> tcDeclRhs m tcEnv tyEnv0 ty (FunctionDecl _ f eqs) =
->   mapM_ (tcEqn m tcEnv tyEnv0 ty) eqs
->   where tcEqn m tcEnv tyEnv0 ty eq@(Equation p _ _) =
->           tcEquation m tcEnv tyEnv0 eq >>=
+> tcDeclRhs :: ModuleIdent -> TCEnv -> Type -> Decl -> TcState ()
+> tcDeclRhs m tcEnv ty (FunctionDecl _ f eqs) = mapM_ (tcEqn m tcEnv ty) eqs
+>   where tcEqn m tcEnv ty eq@(Equation p _ _) =
+>           tcEquation m tcEnv eq >>=
 >           unify p "function declaration" (ppEquation eq) m ty
-> tcDeclRhs m tcEnv tyEnv0 ty (PatternDecl p t rhs) =
->   tcRhs m tcEnv tyEnv0 rhs >>=
->   unify p "pattern binding" (ppConstrTerm 0 t) m ty
+> tcDeclRhs m tcEnv ty (PatternDecl p t rhs) =
+>   tcRhs m tcEnv rhs >>= unify p "pattern binding" (ppConstrTerm 0 t) m ty
 
 \end{verbatim}
 Argument and result types of foreign functions using the
@@ -371,12 +368,13 @@ is checked in \texttt{tcVariable} below.
 >   where what = text "Function:" <+> ppIdent f
 > genDecl _ _ _ _ (PatternDecl _ _ _) = return ()
 
-> tcEquation :: ModuleIdent -> TCEnv -> ValueEnv -> Equation -> TcState Type
-> tcEquation m tcEnv tyEnv0 (Equation p lhs rhs) =
+> tcEquation :: ModuleIdent -> TCEnv -> Equation -> TcState Type
+> tcEquation m tcEnv (Equation p lhs rhs) =
 >   do
+>     tyEnv0 <- fetchSt
 >     tys <- mapM (tcConstrTerm m tcEnv noSigs p) ts
->     ty <- tcRhs m tcEnv tyEnv0 rhs
->     checkSkolems p m (text "Function: " <+> ppIdent f) tyEnv0
+>     ty <- tcRhs m tcEnv rhs
+>     checkSkolems p m (text "Function:" <+> ppIdent f) tyEnv0
 >                  (foldr TypeArrow ty tys)
 >   where (f,ts) = flatLhs lhs
 
@@ -453,31 +451,27 @@ is checked in \texttt{tcVariable} below.
 >   tcConstrTerm m tcEnv sigs p t >>=
 >   unify p "pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t) m ty
 
-> tcRhs :: ModuleIdent -> TCEnv -> ValueEnv -> Rhs -> TcState Type
-> tcRhs m tcEnv tyEnv0 (SimpleRhs p e ds) =
+> tcRhs :: ModuleIdent -> TCEnv -> Rhs -> TcState Type
+> tcRhs m tcEnv (SimpleRhs p e ds) =
 >   do
 >     tcDecls m tcEnv ds
->     ty <- tcExpr m tcEnv p e
->     checkSkolems p m (text "Expression:" <+> ppExpr 0 e) tyEnv0 ty
-> tcRhs m tcEnv tyEnv0 (GuardedRhs es ds) =
+>     tcExpr m tcEnv p e
+> tcRhs m tcEnv (GuardedRhs es ds) =
 >   do
 >     tcDecls m tcEnv ds
 >     gty <- guardType es
 >     ty <- freshTypeVar
->     mapM_ (tcCondExpr m tcEnv tyEnv0 gty ty) es
+>     mapM_ (tcCondExpr m tcEnv gty ty) es
 >     return ty
 >   where guardType es
 >           | length es > 1 = return boolType
->           | otherwise =freshConstrained [successType,boolType]
+>           | otherwise = freshConstrained [successType,boolType]
 
-> tcCondExpr :: ModuleIdent -> TCEnv -> ValueEnv -> Type -> Type -> CondExpr
->            -> TcState ()
-> tcCondExpr m tcEnv tyEnv0 gty ty (CondExpr p g e) =
+> tcCondExpr :: ModuleIdent -> TCEnv -> Type -> Type -> CondExpr -> TcState ()
+> tcCondExpr m tcEnv gty ty (CondExpr p g e) =
 >   do
 >     tcExpr m tcEnv p g >>= unify p "guard" (ppExpr 0 g) m gty
->     tcExpr m tcEnv p e >>=
->       checkSkolems p m (text "Expression:" <+> ppExpr 0 e) tyEnv0 >>=
->       unify p "guarded expression" (ppExpr 0 e) m ty
+>     tcExpr m tcEnv p e >>= unify p "guarded expression" (ppExpr 0 e) m ty
 
 > tcExpr :: ModuleIdent -> TCEnv -> Position -> Expression -> TcState Type
 > tcExpr m _ _ (Literal l) = tcLiteral m l
@@ -511,10 +505,8 @@ is checked in \texttt{tcVariable} below.
 >           unify p "expression" (doc $-$ text "Term:" <+> ppExpr 0 e) m ty
 > tcExpr m tcEnv p (ListCompr e qs) =
 >   do
->     tyEnv0 <- fetchSt
 >     mapM_ (tcQual m tcEnv p) qs
->     ty <- tcExpr m tcEnv p e
->     checkSkolems p m (text "Expression:" <+> ppExpr 0 e) tyEnv0 (listType ty)
+>     liftM listType (tcExpr m tcEnv p e)
 > tcExpr m tcEnv p e@(EnumFrom e1) =
 >   do
 >     tcExpr m tcEnv p e1 >>=
@@ -606,26 +598,19 @@ is checked in \texttt{tcVariable} below.
 >     return (TypeArrow alpha gamma)
 > tcExpr m tcEnv p (Lambda ts e) =
 >   do
->     tyEnv0 <- fetchSt
 >     tys <- mapM (tcConstrTerm m tcEnv noSigs p) ts
 >     ty <- tcExpr m tcEnv p e
->     checkSkolems p m (text "Expression:" <+> ppExpr 0 (Lambda ts e)) tyEnv0
->                  (foldr TypeArrow ty tys)
+>     return (foldr TypeArrow ty tys)
 > tcExpr m tcEnv p (Let ds e) =
 >   do
->     tyEnv0 <- fetchSt
->     theta <- liftSt fetchSt
 >     tcDecls m tcEnv ds
->     ty <- tcExpr m tcEnv p e
->     checkSkolems p m (text "Expression:" <+> ppExpr 0 e) tyEnv0 ty
+>     tcExpr m tcEnv p e
 > tcExpr m tcEnv p (Do sts e) =
 >   do
->     tyEnv0 <- fetchSt
 >     mapM_ (tcStmt m tcEnv p) sts
->     alpha <- freshTypeVar
->     tcExpr m tcEnv p e >>=
->       unify p "statement" (ppExpr 0 e) m (ioType alpha)
->     checkSkolems p m (text "Expression:" <+> ppExpr 0 e) tyEnv0 (ioType alpha)
+>     ty <- liftM ioType freshTypeVar
+>     tcExpr m tcEnv p e >>= unify p "statement" (ppExpr 0 e) m ty
+>     return ty
 > tcExpr m tcEnv p e@(IfThenElse e1 e2 e3) =
 >   do
 >     tcExpr m tcEnv p e1 >>=
@@ -638,19 +623,18 @@ is checked in \texttt{tcVariable} below.
 >     return ty
 > tcExpr m tcEnv p (Case e alts) =
 >   do
->     tyEnv0 <- fetchSt
->     ty <- tcExpr m tcEnv p e
->     alpha <- freshTypeVar
->     mapM_ (tcAlt m tcEnv tyEnv0 ty alpha) alts
->     return alpha
+>     tyLhs <- tcExpr m tcEnv p e
+>     tyRhs <- freshTypeVar
+>     mapM_ (tcAlt m tcEnv tyLhs tyRhs) alts
+>     return tyRhs
 
-> tcAlt :: ModuleIdent -> TCEnv -> ValueEnv -> Type -> Type -> Alt -> TcState ()
-> tcAlt m tcEnv tyEnv0 tyLhs tyRhs a@(Alt p t rhs) =
+> tcAlt :: ModuleIdent -> TCEnv -> Type -> Type -> Alt -> TcState ()
+> tcAlt m tcEnv tyLhs tyRhs a@(Alt p t rhs) =
 >   do
 >     tcConstrTerm m tcEnv noSigs p t >>=
 >       unify p "case pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t)
 >             m tyLhs
->     tcRhs m tcEnv tyEnv0 rhs >>= unify p "case branch" doc m tyRhs
+>     tcRhs m tcEnv rhs >>= unify p "case branch" doc m tyRhs
 >   where doc = ppAlt a
 
 > tcQual :: ModuleIdent -> TCEnv -> Position -> Statement -> TcState ()
@@ -773,8 +757,10 @@ of~\cite{PeytonJones87:Book}).
 >                  (unifyTypes m (subst theta ty1) (subst theta ty2))
 
 \end{verbatim}
-For each declaration group, the type checker has to ensure that no
-skolem type escapes its scope.
+For each function declaration, the type checker ensures that no skolem
+type escapes its scope. This is slightly more general than the
+algorithm in~\cite{LauferOdersky94:AbstractTypes}, which checks for
+escaping skolems at every let binding, but is still sound.
 \begin{verbatim}
 
 > checkSkolems :: Position -> ModuleIdent -> Doc -> ValueEnv -> Type
@@ -797,7 +783,7 @@ We use negative offsets for fresh type variables.
 > fresh f = liftM f (liftSt (liftSt (updateSt (1 +))))
 
 > freshVar :: (Int -> a) -> TcState a
-> freshVar f = fresh (\n -> f (- n - 1))
+> freshVar f = fresh (\n -> f (- n))
 
 > freshTypeVar :: TcState Type
 > freshTypeVar = freshVar TypeVariable
