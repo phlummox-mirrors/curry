@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Exports.lhs 1756 2005-09-01 17:47:22Z wlux $
 %
-% Copyright (c) 2000-2004, Wolfgang Lux
+% Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Exports.lhs}
@@ -187,12 +187,12 @@ exported function.
 > typeDecl m tcEnv (ExportTypeWith tc cs) ds =
 >   case qualLookupTC tc tcEnv of
 >     [DataType tc n cs'] ->
->       iTypeDecl IDataDecl m tc n
->          (constrDecls m (drop n nameSupply) cs cs') : ds
+>       iTypeDecl IDataDecl m tc n (constrs (drop n nameSupply)) : ds
+>       where constrs tvs = if null cs then [] else constrDecls m tvs cs cs'
 >     [RenamingType tc n (Data c n' ty)]
->       | c `elem` cs ->
+>       | null cs -> iTypeDecl IDataDecl m tc n [] : ds
+>       | otherwise ->
 >           iTypeDecl INewtypeDecl m tc n (NewConstrDecl noPos tvs c ty') : ds
->       | otherwise -> iTypeDecl IDataDecl m tc n [] : ds
 >       where tvs = take n' (drop n nameSupply)
 >             ty' = fromQualType m ty
 >     [AliasType tc n ty] ->
@@ -205,9 +205,8 @@ exported function.
 
 > constrDecls :: ModuleIdent -> [Ident] -> [Ident] -> [Maybe (Data [Type])]
 >             -> [Maybe ConstrDecl]
-> constrDecls m tvs cs = clean . map (>>= constrDecl m tvs)
->   where clean = reverse . dropWhile isNothing . reverse
->         constrDecl m tvs (Data c n tys)
+> constrDecls m tvs cs = map (>>= constrDecl m tvs)
+>   where constrDecl m tvs (Data c n tys)
 >           | c `elem` cs =
 >               Just (iConstrDecl (take n tvs) c (map (fromQualType m) tys))
 >           | otherwise = Nothing

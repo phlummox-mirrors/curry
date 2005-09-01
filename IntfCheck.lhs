@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: IntfCheck.lhs 1756 2005-09-01 17:47:22Z wlux $
 %
-% Copyright (c) 2000-2003, Wolfgang Lux
+% Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{IntfCheck.lhs}
@@ -12,6 +12,20 @@ disambiguate nullary type constructors and type variables. In
 addition, the compiler checks that the definitions of the imported
 entities are compatible with their original definitions and that all
 type constructor applications are saturated.
+
+At this point, an alert reader might ask why the compiler includes
+definitions in interface files that are imported from other modules.
+After all, the compiler loads all of those interfaces anyway. The
+answer is twofold. First, this policy ensures that an interface is
+updated when the definition of an imported entity is changed, which is
+exported from the module. Therefore, it is sufficient to check the
+time stamps of the interface files imported directly into a module in
+order to check whether the module is out of date and must be
+recompiled. The second reason is that by including those definitions
+in the interface, the compiler could in principle avoid loading the
+imported interfaces themselves, which would save processing time and
+allow building abstract packages from a set of modules. However, this
+has not been implemented yet.
 \begin{verbatim}
 
 > module IntfCheck(intfCheck,fixInterface,intfEquiv) where
@@ -161,7 +175,8 @@ imported definitions actually match their original definition.
 >       case qualLookupTC tc tcEnv of
 >         [] -> errorAt p (notExported "data type" m tc')
 >         [DataType tc'' n cs']
->           | tc == tc'' && length tvs == n && length cs <= length cs' ->
+>           | tc == tc'' && length tvs == n &&
+>             (null cs || length cs == length cs') ->
 >               IDataDecl p tc tvs
 >                 (zipWith (fmap . checkConstrImport m tc' tvs tyEnv) cs' cs)
 >         [RenamingType tc'' n _]

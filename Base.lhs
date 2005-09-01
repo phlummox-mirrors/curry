@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Base.lhs 1756 2005-09-01 17:47:22Z wlux $
 %
-% Copyright (c) 1999-2004, Wolfgang Lux
+% Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Base.lhs}
@@ -158,10 +158,7 @@ of abstract data types. An abstract type is always represented as a
 data type without constructors in the interface regardless of whether
 it is defined as a data type or as a renaming type. When only some
 constructors of a data type are hidden, those constructors are
-replaced by underscores in the interface. Furthermore, if the
-right-most constructors of a data type are hidden, they are not
-exported at all in order to make the interface more stable against
-changes that are private to the module.
+replaced by underscores in the interface.
 \begin{verbatim}
 
 > data TypeInfo = DataType QualIdent Int [Maybe (Data [Type])]
@@ -177,9 +174,10 @@ changes that are private to the module.
 >   origName (AliasType tc _ _) = tc
 >   merge (DataType tc n cs) (DataType tc' _ cs')
 >     | tc == tc' = Just (DataType tc n (mergeData cs cs'))
->     where mergeData ds [] = ds
->           mergeData [] ds = ds
->           mergeData (d:ds) (d':ds') = d `mplus` d' : mergeData ds ds'
+>     where mergeData cs cs'
+>             | null cs = cs'
+>             | null cs' = cs
+>             | otherwise = zipWith mplus cs cs'
 >   merge (DataType tc n _) (RenamingType tc' _ nc)
 >     | tc == tc' = Just (RenamingType tc n nc)
 >   merge (RenamingType tc n nc) (DataType tc' _ _)
@@ -386,8 +384,7 @@ constructor is available in the environment \texttt{initPEnv}.
 
 > initTCEnv :: TCEnv
 > initTCEnv = foldr (uncurry predefTC) emptyTopEnv predefTypes
->   where a = typeVar 0
->         predefTC (TypeConstructor tc tys) cs =
+>   where predefTC (TypeConstructor tc tys) cs =
 >           predefTopEnv tc (DataType tc (length tys) (map Just cs))
 
 > initDCEnv :: ValueEnv
