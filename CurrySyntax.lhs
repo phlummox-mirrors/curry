@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CurrySyntax.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
-% Copyright (c) 1999-2004, Wolfgang Lux
+% Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurrySyntax.lhs}
@@ -18,7 +18,9 @@ parsed representation of a Curry program.
 \paragraph{Modules}
 \begin{verbatim}
 
-> data Module = Module ModuleIdent (Maybe ExportSpec) [Decl] deriving (Eq,Show)
+> data Module =
+>   Module ModuleIdent (Maybe ExportSpec) [ImportDecl] [Decl]
+>   deriving (Eq,Show)
 
 > data ExportSpec = Exporting Position [Export] deriving (Eq,Show)
 > data Export =
@@ -28,10 +30,10 @@ parsed representation of a Curry program.
 >   | ExportModule   ModuleIdent
 >   deriving (Eq,Show)
 
-\end{verbatim}
-\paragraph{Module declarations}
-\begin{verbatim}
-
+> data ImportDecl =
+>   ImportDecl Position ModuleIdent Qualified (Maybe ModuleIdent)
+>              (Maybe ImportSpec)
+>   deriving (Eq,Show)
 > data ImportSpec =
 >     Importing Position [Import]
 >   | Hiding Position [Import]
@@ -42,10 +44,12 @@ parsed representation of a Curry program.
 >   | ImportTypeAll  Ident            -- T(..)
 >   deriving (Eq,Show)
 
+\end{verbatim}
+\paragraph{Module declarations}
+\begin{verbatim}
+
 > data Decl =
->     ImportDecl Position ModuleIdent Qualified (Maybe ModuleIdent)
->                (Maybe ImportSpec)
->   | InfixDecl Position Infix Int [Ident]
+>     InfixDecl Position Infix Int [Ident]
 >   | DataDecl Position Ident [Ident] [ConstrDecl]
 >   | NewtypeDecl Position Ident [Ident] NewConstrDecl
 >   | TypeDecl Position Ident [Ident] TypeExpr
@@ -75,11 +79,14 @@ parsed representation of a Curry program.
 Interface declarations are restricted to type declarations and signatures.
 \begin{verbatim}
 
-> data Interface = Interface ModuleIdent [IDecl] deriving (Eq,Show)
+> data Interface =
+>   Interface ModuleIdent [IImportDecl] [IDecl]
+>   deriving (Eq,Show)
+
+> data IImportDecl = IImportDecl Position ModuleIdent deriving (Eq,Show)
 
 > data IDecl =
->     IImportDecl Position ModuleIdent
->   | IInfixDecl Position Infix Int QualIdent
+>     IInfixDecl Position Infix Int QualIdent
 >   | HidingDataDecl Position Ident [Ident] 
 >   | IDataDecl Position QualIdent [Ident] [Maybe ConstrDecl]
 >   | INewtypeDecl Position QualIdent [Ident] NewConstrDecl

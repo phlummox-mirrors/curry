@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Desugar.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -80,7 +80,7 @@ as it allows value declarations at the top-level of a module.
 \begin{verbatim}
 
 > desugar :: ValueEnv -> Module -> (Module,ValueEnv)
-> desugar tyEnv (Module m es ds) = (Module m es ds',tyEnv')
+> desugar tyEnv (Module m es is ds) = (Module m es is ds',tyEnv')
 >   where (ds',tyEnv') = run (desugarModule m ds) tyEnv
 
 > desugarModule :: ModuleIdent -> [Decl] -> DesugarState ([Decl],ValueEnv)
@@ -138,7 +138,7 @@ hack is no longer needed.}
 >               -> Expression -> Type -> (Maybe [Ident],Module,ValueEnv)
 > desugarGoalIO tyEnv p m g e ty =
 >   (Nothing,
->    Module m Nothing [goalDecl p g [] e'],
+>    Module m Nothing [] [goalDecl p g [] e'],
 >    bindFun m g (polyType ty) tyEnv')
 >   where (e',tyEnv') = run (desugarGoalExpr m e) tyEnv
 
@@ -146,7 +146,7 @@ hack is no longer needed.}
 >              -> Expression -> Type -> (Maybe [Ident],Module,ValueEnv)
 > desugarGoal' tyEnv p m g vs e ty =
 >   (Just vs',
->    Module m Nothing [goalDecl p g (v0:vs') (apply prelUnif [mkVar v0,e'])],
+>    Module m Nothing [] [goalDecl p g (v0:vs') (apply prelUnif [mkVar v0,e'])],
 >    bindFun m v0 (monoType ty) (bindFun m g (polyType ty') tyEnv'))
 >   where (e',tyEnv') = run (desugarGoalExpr m e) tyEnv
 >         v0 = anonId

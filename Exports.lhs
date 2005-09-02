@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1756 2005-09-01 17:47:22Z wlux $
+% $Id: Exports.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -26,20 +26,20 @@ functions, combining multiple exports for the same entity. The
 expanded export specifications refer to the original names of all
 entities. The function \texttt{exportInterface} uses the expanded
 specifications and the corresponding environments in order to compute
-to the interface of the module.
+the interface of the module.
 \begin{verbatim}
 
 > expandInterface :: Module -> TCEnv -> ValueEnv -> Module
-> expandInterface (Module m es ds) tcEnv tyEnv =
+> expandInterface (Module m es is ds) tcEnv tyEnv =
 >   case linear [unqualify tc | ExportTypeWith tc _ <- es'] of
 >     Linear ->
 >       case linear ([c | ExportTypeWith _ cs <- es', c <- cs] ++
 >                    [unqualify f | Export f <- es']) of
->         Linear -> Module m (Just (Exporting noPos es')) ds
+>         Linear -> Module m (Just (Exporting noPos es')) is ds
 >         NonLinear v -> error (ambiguousExportValue v)
 >     NonLinear tc -> error (ambiguousExportType tc)
->   where ms = fromListSet [fromMaybe m asM | ImportDecl _ m _ asM _ <- ds]
->         es' = joinExports $                                              -- $
+>   where ms = fromListSet [fromMaybe m asM | ImportDecl _ m _ asM _ <- is]
+>         es' = nubExports $                                               -- $
 >               maybe (expandLocalModule tcEnv tyEnv)
 >                     (expandSpecs ms m tcEnv tyEnv)
 >                     es
@@ -128,45 +128,41 @@ export a type constructor \texttt{x} \emph{and} a global function
 
 \end{verbatim}
 The expanded list of exported entities may contain duplicates. These
-are removed by the function \texttt{joinExports}.
+are removed by the function \texttt{nubExports}.
 \begin{verbatim}
 
-> joinExports :: [Export] -> [Export]
-> joinExports es =
->   [ExportTypeWith tc cs | (tc,cs) <- toListFM (foldr joinType zeroFM es)] ++
->   [Export f | f <- toListSet (foldr joinFun zeroSet es)]
+> nubExports :: [Export] -> [Export]
+> nubExports es =
+>   [ExportTypeWith tc cs | (tc,cs) <- toListFM (foldr addType zeroFM es)] ++
+>   [Export f | f <- toListSet (foldr addFun zeroSet es)]
 
-> joinType :: Export -> FM QualIdent [Ident] -> FM QualIdent [Ident]
-> joinType (Export _) tcs = tcs
-> joinType (ExportTypeWith tc cs) tcs =
+> addType :: Export -> FM QualIdent [Ident] -> FM QualIdent [Ident]
+> addType (Export _) tcs = tcs
+> addType (ExportTypeWith tc cs) tcs =
 >   addToFM tc (cs `union` fromMaybe [] (lookupFM tc tcs)) tcs
 
-> joinFun :: Export -> Set QualIdent -> Set QualIdent
-> joinFun (Export f) fs = f `addToSet` fs
-> joinFun (ExportTypeWith _ _) fs = fs
+> addFun :: Export -> Set QualIdent -> Set QualIdent
+> addFun (Export f) fs = f `addToSet` fs
+> addFun (ExportTypeWith _ _) fs = fs
 
 \end{verbatim}
 After checking that the interface is not ambiguous, the compiler
-generates the interface's declarations from the list of exported
-functions and values. In order to make the interface more stable
-against private changes in the module, we remove the hidden data
-constructors of a data type in the interface when they occur
-right-most in the declaration. In addition, newtypes whose constructor
-is not exported are transformed into (abstract) data types.
-
-If a type is imported from another module, its name is qualified with
-the name of the module where it is defined. The same applies to an
-exported function.
+generates the interface's declarations from the list of exported types
+and values. If an entity is imported from another module, its name is
+qualified with the name of the module containing its definition.
+Furthermore, newtypes whose constructor is not exported are
+transformed into (abstract) data types.
 \begin{verbatim}
 
 > exportInterface :: Module -> PEnv -> TCEnv -> ValueEnv -> Interface
-> exportInterface (Module m (Just (Exporting _ es)) _) pEnv tcEnv tyEnv =
->   Interface m (imports ++ precs ++ hidden ++ ds)
+> exportInterface (Module m (Just (Exporting _ es)) _ _) pEnv tcEnv tyEnv =
+>   Interface m imports (precs ++ hidden ++ ds)
 >   where imports = map (IImportDecl noPos) (usedModules ds)
 >         precs = foldr (infixDecl m pEnv) [] es
 >         hidden = map (hiddenTypeDecl m tcEnv) (hiddenTypes ds)
 >         ds = foldr (typeDecl m tcEnv) (foldr (funDecl m tyEnv) [] es) es
-> exportInterface (Module _ Nothing _) _ _ _ = internalError "exportInterface"
+> exportInterface (Module _ Nothing _ _) _ _ _ =
+>   internalError "exportInterface"
 
 > infixDecl :: ModuleIdent -> PEnv -> Export -> [IDecl] -> [IDecl]
 > infixDecl m pEnv (Export f) ds = iInfixDecl m pEnv f ds

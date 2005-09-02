@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CurryPP.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
-% Copyright (c) 1999-2004, Wolfgang Lux
+% Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryPP.lhs}
@@ -21,7 +21,8 @@ Pretty print a module
 \begin{verbatim}
 
 > ppModule :: Module -> Doc
-> ppModule (Module m es ds) = ppModuleHeader m es $$ ppBlock ds
+> ppModule (Module m es is ds) =
+>   ppModuleHeader m es $$ vcat (map ppImportDecl is ++ map ppDecl ds)
 
 \end{verbatim}
 Module header
@@ -40,6 +41,22 @@ Module header
 > ppExport (ExportTypeAll tc) = ppQIdent tc <> text "(..)"
 > ppExport (ExportModule m) = text "module" <+> ppMIdent m
 
+> ppImportDecl :: ImportDecl -> Doc
+> ppImportDecl (ImportDecl _ m q asM is) =
+>   text "import" <+> ppQualified q <+> ppMIdent m <+> maybePP ppAs asM
+>                 <+> maybePP ppImportSpec is
+>   where ppQualified q = if q then text "qualified" else empty
+>         ppAs m = text "as" <+> ppMIdent m
+
+> ppImportSpec :: ImportSpec -> Doc
+> ppImportSpec (Importing _ is) = parenList (map ppImport is)
+> ppImportSpec (Hiding _ is) = text "hiding" <+> parenList (map ppImport is)
+
+> ppImport :: Import -> Doc
+> ppImport (Import x) = ppIdent x
+> ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
+> ppImport (ImportTypeAll tc) = ppIdent tc <> text "(..)"
+
 \end{verbatim}
 Declarations
 \begin{verbatim}
@@ -48,11 +65,6 @@ Declarations
 > ppBlock = vcat . map ppDecl
 
 > ppDecl :: Decl -> Doc
-> ppDecl (ImportDecl _ m q asM is) =
->   text "import" <+> ppQualified q <+> ppMIdent m <+> maybePP ppAs asM
->                 <+> maybePP ppImportSpec is
->   where ppQualified q = if q then text "qualified" else empty
->         ppAs m = text "as" <+> ppMIdent m
 > ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
 > ppDecl (DataDecl _ tc tvs cs) =
 >   sep (ppTypeDeclLhs "data" tc tvs :
@@ -75,15 +87,6 @@ Declarations
 >         ppCallConv CallConvCCall = text "ccall"
 > ppDecl (PatternDecl _ t rhs) = ppRule (ppConstrTerm 0 t) equals rhs
 > ppDecl (ExtraVariables _ vs) = list (map ppIdent vs) <+> text "free"
-
-> ppImportSpec :: ImportSpec -> Doc
-> ppImportSpec (Importing _ is) = parenList (map ppImport is)
-> ppImportSpec (Hiding _ is) = text "hiding" <+> parenList (map ppImport is)
-
-> ppImport :: Import -> Doc
-> ppImport (Import x) = ppIdent x
-> ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
-> ppImport (ImportTypeAll tc) = ppIdent tc <> text "(..)"
 
 > ppPrec :: Infix -> Int -> Doc
 > ppPrec fix p = ppAssoc fix <+> ppPrio p
@@ -135,12 +138,15 @@ Interfaces
 \begin{verbatim}
 
 > ppInterface :: Interface -> Doc
-> ppInterface (Interface m ds) =
->   text "interface" <+> ppMIdent m <+> text "where" <+> lbrace
->     $$ vcat (punctuate semi (map ppIDecl ds)) $$ rbrace
+> ppInterface (Interface m is ds) =
+>   text "interface" <+> ppMIdent m <+> text "where" <+> lbrace $$
+>   vcat (punctuate semi (map ppIImportDecl is ++ map ppIDecl ds)) $$
+>   rbrace
+
+> ppIImportDecl :: IImportDecl -> Doc
+> ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
 > ppIDecl :: IDecl -> Doc
-> ppIDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 > ppIDecl (IInfixDecl _ fix p op) = ppPrec fix p <+> ppQInfixOp op
 > ppIDecl (HidingDataDecl _ tc tvs) =
 >   text "hiding" <+> ppITypeDeclLhs "data" (qualify tc) tvs

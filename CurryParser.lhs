@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CurryParser.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
-% Copyright (c) 1999-2004, Wolfgang Lux
+% Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryParser.lhs}
@@ -32,13 +32,14 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 > parseHeader :: FilePath -> String -> Error Module
 > parseHeader = prefixParser (moduleHeader <*->
 >                             (leftBrace `opt` undefined) <*>
->                             many (importDecl <*-> many semicolon))
+>                             many (importDecl <*-> many semicolon) <*>
+>                             succeed [])
 >                            lexer
 
 > parseModule :: Parser Token Module a
-> parseModule = moduleHeader <*> decls
+> parseModule = uncurry <$> moduleHeader <*> layout moduleDecls
 
-> moduleHeader :: Parser Token ([Decl] -> Module) a
+> moduleHeader :: Parser Token ([ImportDecl] -> [Decl] -> Module) a
 > moduleHeader = Module <$-> token KW_module
 >                       <*> (mIdent <?> "module name expected")
 >                       <*> (Just <$> exportSpec `opt` Nothing)
@@ -55,18 +56,51 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >   where spec = ExportTypeAll <$-> token DotDot
 >            <|> flip ExportTypeWith <$> con `sepBy` comma
 
+> moduleDecls :: Parser Token ([ImportDecl],[Decl]) a
+> moduleDecls = impDecl <$> importDecl
+>                       <*> (semicolon <-*> moduleDecls `opt` ([],[]))
+>           <|> (,) [] <$> topDecl `sepBy` semicolon
+>   where impDecl i (is,ds) = (i:is,ds)
+
+> importDecl :: Parser Token ImportDecl a
+> importDecl =
+>   flip . ImportDecl <$> position <*-> token KW_import 
+>                     <*> (True <$-> token Id_qualified `opt` False)
+>                     <*> mIdent
+>                     <*> (Just <$-> token Id_as <*> mIdent `opt` Nothing)
+>                     <*> (Just <$> importSpec `opt` Nothing)
+
+> importSpec :: Parser Token ImportSpec a
+> importSpec = position <**> (Hiding <$-> token Id_hiding `opt` Importing)
+>                       <*> parens (spec `sepBy` comma)
+>   where spec = tycon <**> (parens constrs `opt` Import)
+>            <|> Import <$> fun <\> tycon
+>         constrs = ImportTypeAll <$-> token DotDot
+>               <|> flip ImportTypeWith <$> con `sepBy` comma
+
 \end{verbatim}
 \paragraph{Interfaces}
 \begin{verbatim}
 
 > parseInterface :: FilePath -> String -> Error Interface
-> parseInterface fn s = applyParser parseIface lexer fn s
+> parseInterface fn s = applyParser parseIntf lexer fn s
 
-> parseIface :: Parser Token Interface a
-> parseIface = Interface <$-> token Id_interface
+> parseIntf :: Parser Token Interface a
+> parseIntf = uncurry <$> intfHeader <*> braces intfDecls
+
+> intfHeader :: Parser Token ([IImportDecl] -> [IDecl] -> Interface) a
+> intfHeader = Interface <$-> token Id_interface
 >                        <*> (mIdent <?> "module name expected")
 >                        <*-> (token KW_where <?> "where expected")
->                        <*> braces intfDecls
+
+> intfDecls :: Parser Token ([IImportDecl],[IDecl]) a
+> intfDecls = impDecl <$> iImportDecl
+>                     <*> (semicolon <-*> intfDecls `opt` ([],[]))
+>         <|> (,) [] <$> intfDecl `sepBy` semicolon
+>   where impDecl i (is,ds) = (i:is,ds)
+
+> iImportDecl :: Parser Token IImportDecl a
+> iImportDecl = IImportDecl <$> position <*-> token KW_import <*> mIdent
 
 \end{verbatim}
 \paragraph{Goals}
@@ -82,13 +116,6 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 \paragraph{Declarations}
 \begin{verbatim}
 
-> decls :: Parser Token [Decl] a
-> decls = layout globalDecls
-
-> globalDecls :: Parser Token [Decl] a
-> globalDecls = (:) <$> importDecl <*> (semicolon <-*> globalDecls `opt` [])
->           <|> topDecl `sepBy` semicolon
-
 > topDecl :: Parser Token Decl a
 > topDecl = infixDecl
 >       <|> dataDecl <|> newtypeDecl <|> typeDecl
@@ -100,22 +127,6 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > valueDecls :: Parser Token [Decl] a
 > valueDecls = (infixDecl <|> valueDecl <|> foreignDecl) `sepBy` semicolon
-
-> importDecl :: Parser Token Decl a
-> importDecl =
->   flip . ImportDecl <$> position <*-> token KW_import 
->                     <*> (True <$-> token Id_qualified `opt` False)
->                     <*> mIdent
->                     <*> (Just <$-> token Id_as <*> mIdent `opt` Nothing)
->                     <*> (Just <$> importSpec `opt` Nothing)
-
-> importSpec :: Parser Token ImportSpec a
-> importSpec = position <**> (Hiding <$-> token Id_hiding `opt` Importing)
->                       <*> parens (spec `sepBy` comma)
->   where spec = tycon <**> (parens constrs `opt` Import)
->            <|> Import <$> fun <\> tycon
->         constrs = ImportTypeAll <$-> token DotDot
->               <|> flip ImportTypeWith <$> con `sepBy` comma
 
 > infixDecl :: Parser Token Decl a
 > infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
@@ -244,17 +255,10 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 \paragraph{Interface declarations}
 \begin{verbatim}
 
-> intfDecls :: Parser Token [IDecl] a
-> intfDecls = (:) <$> iImportDecl <*> (semicolon <-*> intfDecls `opt` [])
->         <|> intfDecl `sepBy` semicolon
-
 > intfDecl :: Parser Token IDecl a
 > intfDecl = iInfixDecl
 >        <|> iHidingDecl <|> iDataDecl <|> iNewtypeDecl <|> iTypeDecl
 >        <|> iFunctionDecl <\> token Id_hiding
-
-> iImportDecl :: Parser Token IDecl a
-> iImportDecl = IImportDecl <$> position <*-> token KW_import <*> mIdent
 
 > iInfixDecl :: Parser Token IDecl a
 > iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop

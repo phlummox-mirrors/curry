@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Imports.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
-% Copyright (c) 2000-2003, Wolfgang Lux
+% Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Imports.lhs}
-\section{Importing interfaces}
+\section{Importing Interfaces}
 This module provides a few functions which can be used to import
 interfaces into the current module.
 \begin{verbatim}
@@ -42,9 +42,9 @@ import.
 \begin{verbatim}
 
 > importInterface :: Position -> ModuleIdent -> Bool -> Maybe ImportSpec
->                 -> Interface -> PEnv -> TCEnv -> ValueEnv
+>                 -> (PEnv,TCEnv,ValueEnv) -> Interface
 >                 -> (PEnv,TCEnv,ValueEnv)
-> importInterface p m q is i pEnv tcEnv tyEnv =
+> importInterface p m q is (pEnv,tcEnv,tyEnv) i =
 >   (importEntities m q vs id mPEnv pEnv,
 >    importEntities m q ts (importData vs) mTCEnv tcEnv,
 >    importEntities m q vs id mTyEnv tyEnv)
@@ -82,18 +82,22 @@ import.
 \end{verbatim}
 Importing an interface into another interface is somewhat simpler
 because all entities are imported into the environment. In addition,
-only a qualified import is necessary. Note that the hidden data types
-are imported as well because they may be used in type expressions in
-an interface.
+only a qualified import is necessary. Note that hidden data types are
+imported as well because they may be used in type expressions in an
+interface.
 \begin{verbatim}
 
-> importInterfaceIntf :: Interface -> PEnv -> TCEnv -> ValueEnv
+> importInterfaceIntf :: (PEnv,TCEnv,ValueEnv) -> Interface
 >                     -> (PEnv,TCEnv,ValueEnv)
-> importInterfaceIntf i pEnv tcEnv tyEnv =
->   (importEntities m True (const True) id (intfEnv bindPrec i) pEnv,
->    importEntities m True (const True) id (intfEnv bindTCHidden i) tcEnv,
->    importEntities m True (const True) id (intfEnv bindTy i) tyEnv)
->   where Interface m _ = i
+> importInterfaceIntf (pEnv,tcEnv,tyEnv) i@(Interface m _ _) =
+>   (importEntitiesIntf m (intfEnv bindPrec i) pEnv,
+>    importEntitiesIntf m (intfEnv bindTCHidden i) tcEnv,
+>    importEntitiesIntf m (intfEnv bindTy i) tyEnv)
+
+> importEntitiesIntf :: Entity a => ModuleIdent -> Env Ident a
+>                    -> TopEnv a -> TopEnv a
+> importEntitiesIntf m mEnv env =
+>   foldr (uncurry (qualImportTopEnv m)) env (envToList mEnv)
 
 \end{verbatim}
 In a first step, the three export environments are initialized from
@@ -104,7 +108,7 @@ module name.
 
 > intfEnv :: (ModuleIdent -> IDecl -> Env Ident a -> Env Ident a)
 >         -> Interface -> Env Ident a
-> intfEnv bind (Interface m ds) = foldr (bind m) emptyEnv ds
+> intfEnv bind (Interface m _ ds) = foldr (bind m) emptyEnv ds
 
 > bindPrec :: ModuleIdent -> IDecl -> ExpPEnv -> ExpPEnv
 > bindPrec m (IInfixDecl _ fix p op) =

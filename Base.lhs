@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1756 2005-09-01 17:47:22Z wlux $
+% $Id: Base.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -126,12 +126,12 @@ The compiler maintains a global environment holding all (directly or
 indirectly) imported interfaces.
 \begin{verbatim}
 
-> type ModuleEnv = Env ModuleIdent [IDecl]
+> type ModuleEnv = Env ModuleIdent Interface
 
 > bindModule :: Interface -> ModuleEnv -> ModuleEnv
-> bindModule (Interface m ds) = bindEnv m ds
+> bindModule (Interface m is ds) = bindEnv m (Interface m is ds)
 
-> lookupModule :: ModuleIdent -> ModuleEnv -> Maybe [IDecl]
+> lookupModule :: ModuleIdent -> ModuleEnv -> Maybe Interface
 > lookupModule = lookupEnv
 
 \end{verbatim}
@@ -561,10 +561,8 @@ Here is a list of predicates identifying various kinds of
 declarations.
 \begin{verbatim}
 
-> isImportDecl, isInfixDecl, isTypeDecl :: Decl -> Bool
-> isTypeSig, isEvalAnnot, isExtraVariables, isValueDecl :: Decl -> Bool
-> isImportDecl (ImportDecl _ _ _ _ _) = True
-> isImportDecl _ = False
+> isInfixDecl, isTypeDecl, isTypeSig, isEvalAnnot :: Decl -> Bool
+> isExtraVariables, isValueDecl :: Decl -> Bool
 > isInfixDecl (InfixDecl _ _ _ _) = True
 > isInfixDecl _ = False
 > isTypeDecl (DataDecl _ _ _ _) = True
@@ -583,10 +581,6 @@ declarations.
 > isValueDecl (PatternDecl _ _ _) = True
 > isValueDecl (ExtraVariables _ _) = True
 > isValueDecl _ = False
-
-> isIImportDecl :: IDecl -> Bool
-> isIImportDecl (IImportDecl _ _) = True
-> isIImportDecl _ = False
 
 \end{verbatim}
 The function \texttt{infixOp} converts an infix operator into an

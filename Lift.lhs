@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1750 2005-08-29 15:26:26Z wlux $
+% $Id: Lift.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
 % Copyright (c) 2001-2004, Wolfgang Lux
 % See LICENSE for the full license.
@@ -32,8 +32,8 @@ lifted to the top-level.
 > import Utils
 
 > lift :: ValueEnv -> EvalEnv -> Module -> (Module,ValueEnv,EvalEnv)
-> lift tyEnv evEnv (Module m es ds) =
->   (Module m es (concatMap liftFunDecl ds'),tyEnv',evEnv')
+> lift tyEnv evEnv (Module m es is ds) =
+>   (Module m es is (concatMap liftFunDecl ds'),tyEnv',evEnv')
 >   where (ds',tyEnv',evEnv') =
 >           runSt (callSt (abstractModule m ds) tyEnv) evEnv
 

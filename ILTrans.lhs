@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: ILTrans.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -37,7 +37,7 @@ alias types.
 \begin{verbatim}
 
 > ilTrans :: ValueEnv -> EvalEnv -> Module -> IL.Module
-> ilTrans tyEnv evEnv (Module m _ ds) = IL.Module m (imports m ds') ds'
+> ilTrans tyEnv evEnv (Module m _ _ ds) = IL.Module m (imports m ds') ds'
 >   where ds' = concatMap (translGlobalDecl m tyEnv evEnv) ds
 
 > translGlobalDecl :: ModuleIdent -> ValueEnv -> EvalEnv -> Decl -> [IL.Decl]
@@ -93,7 +93,7 @@ which are imported into the interface from some other module.
 \begin{verbatim}
 
 > ilTransIntf :: Interface -> [IL.Decl]
-> ilTransIntf (Interface m ds) = foldr (translIntfDecl m) [] ds
+> ilTransIntf (Interface m _ ds) = foldr (translIntfDecl m) [] ds
 
 > translIntfDecl :: ModuleIdent -> IDecl -> [IL.Decl] -> [IL.Decl]
 > translIntfDecl m (IDataDecl _ tc tvs cs) ds

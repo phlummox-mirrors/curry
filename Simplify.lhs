@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Simplify.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
 % Copyright (c) 2003, Wolfgang Lux
 % See LICENSE for the full license.
@@ -38,11 +38,11 @@ Currently, the following optimizations are implemented:
 >   runSt (callRt (callSt (simplifyModule m) tyEnv) evEnv) 1
 
 > simplifyModule :: Module -> SimplifyState (Module,ValueEnv)
-> simplifyModule (Module m es ds) =
+> simplifyModule (Module m es is ds) =
 >   do
 >     ds' <- mapM (simplifyDecl m emptyEnv) ds
 >     tyEnv <- fetchSt
->     return (Module m es ds',tyEnv)
+>     return (Module m es is ds',tyEnv)
 
 > simplifyDecl :: ModuleIdent -> InlineEnv -> Decl -> SimplifyState Decl
 > simplifyDecl m env (FunctionDecl p f eqs) =

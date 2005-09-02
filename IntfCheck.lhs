@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1756 2005-09-01 17:47:22Z wlux $
+% $Id: IntfCheck.lhs 1757 2005-09-02 13:22:53Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -34,14 +34,16 @@ has not been implemented yet.
 > import List(deleteFirstsBy)
 > import Set
 
+> infix 4 =~=, `eqvList`, `eqvSet`
+
 \end{verbatim}
-The function \texttt{intfCheck} is the main entry-point into this 
+The function \texttt{intfCheck} is the main entry point into this 
 module.
 \begin{verbatim}
 
 > intfCheck :: PEnv -> TCEnv -> ValueEnv -> Interface -> Interface
-> intfCheck pEnv tcEnv tyEnv (Interface m ds) =
->   Interface m (map (checkImport pEnv tcEnv tyEnv . checkIDecl tcEnv') ds)
+> intfCheck pEnv tcEnv tyEnv (Interface m is ds) =
+>   Interface m is (map (checkImport pEnv tcEnv tyEnv . checkIDecl tcEnv') ds)
 >   where tcEnv' = foldr (bindArity m) tcEnv ds
 
 \end{verbatim}
@@ -69,7 +71,7 @@ The latter must not occur in type expressions in the interface.
 
 \end{verbatim}
 The checks applied to the interface are similar to those in the
-kind-checker. However, there are no nested declarations. In addition,
+kind checker. However, there are no nested declarations. In addition,
 synonym types must not occur in type expressions.
 \begin{verbatim}
 
@@ -157,7 +159,6 @@ imported definitions actually match their original definition.
 \begin{verbatim}
 
 > checkImport :: PEnv -> TCEnv -> ValueEnv -> IDecl -> IDecl
-> checkImport _ _ _ (IImportDecl p m) = IImportDecl p m
 > checkImport pEnv _ _ (IInfixDecl p fix pr op) =
 >   case splitQualIdent op of
 >     (Just m,op') ->
@@ -266,96 +267,112 @@ If a module is recompiled, the compiler has to check whether the
 interface file must be updated. This must be done if any exported
 entity has been changed, or an export was removed or added. The
 function \texttt{intfEquiv} checks whether two interfaces are
-equivalent, i.e., whether they define the same entities. The order
-of declarations is ignored.
+equivalent, i.e., whether they define the same entities.
 
-If we check for a change in the interface we do not need to check the
-interface declarations, but must still disambiguate (nullary) type
-constructors and type variables in type expressions. This is handled
-by the function \texttt{fixInterface}.
-
-\textbf{Note:} When comparing two data type declarations we must check
-that the number of constructor declarations is the same in both
-declarations.  Recall that the export code will remove the
-declarations for the right most data constructors if they are hidden.
-Using \texttt{zipWith iconstrEquiv} is not sufficient as it succeeds
-for list of different lengths if they are equal up to the length of
-the shorter list.
+\textbf{Note:} There is deliberately no list instance for
+\texttt{IntfEquiv} because the order of interface declarations is
+irrelevant, whereas it is decisive for the constructor declarations
+of a data type. By not providing a list instance, we cannot
+inadvertently mix up these cases.
 \begin{verbatim}
 
 > intfEquiv :: Interface -> Interface -> Bool
-> Interface m1 ds1 `intfEquiv` Interface m2 ds2 =
->   m1 == m2 && not (disjointBy declEquiv ds1 ds2)
+> intfEquiv = (=~=)
 
-> declEquiv :: IDecl -> IDecl -> Bool
-> declEquiv (IImportDecl _ m1) (IImportDecl _ m2) = m1 == m2
-> declEquiv (IInfixDecl _ fix1 p1 op1) (IInfixDecl _ fix2 p2 op2) =
->   fix1 == fix2 && p1 == p2 && op1 == op2
-> declEquiv (HidingDataDecl _ tc1 tvs1) (HidingDataDecl _ tc2 tvs2) =
->   tc1 == tc2 && tvs1 == tvs2
-> declEquiv (IDataDecl _ tc1 tvs1 cs1) (IDataDecl _ tc2 tvs2 cs2) =
->   tc1 == tc2 && tvs1 == tvs2 && length cs1 == length cs2 &&
->   and (zipWith iconstrEquiv cs1 cs2)
->   where iconstrEquiv = maybe isNothing (maybe False . constrEquiv)
-> declEquiv (INewtypeDecl _ tc1 tvs1 nc1) (INewtypeDecl _ tc2 tvs2 nc2) =
->   tc1 == tc2 && tvs1 == tvs2 && newConstrEquiv nc1 nc2
-> declEquiv (ITypeDecl _ tc1 tvs1 ty1) (ITypeDecl _ tc2 tvs2 ty2) = 
->   tc1 == tc2 && tvs1 == tvs2 && ty1 == ty2
-> declEquiv (IFunctionDecl _ f1 ty1) (IFunctionDecl _ f2 ty2) =
->   f1 == f2 && ty1 == ty2
-> declEquiv _ _ = False
+> class IntfEquiv a where
+>   (=~=) :: a -> a -> Bool
 
-> constrEquiv :: ConstrDecl -> ConstrDecl -> Bool
-> constrEquiv (ConstrDecl _ evs1 c1 tys1) (ConstrDecl _ evs2 c2 tys2) =
->   c1 == c2 && evs1 == evs2 && tys1 == tys2
-> constrEquiv (ConOpDecl _ evs1 ty11 op1 ty12)
->             (ConOpDecl _ evs2 ty21 op2 ty22) =
->   op1 == op2 && evs1 == evs2 && ty11 == ty21 && ty12 == ty22
-> constrEquiv _ _ = False
+> eqvList, eqvSet :: IntfEquiv a => [a] -> [a] -> Bool
+> xs `eqvList` ys = length xs == length ys && and (zipWith (=~=) xs ys)
+> xs `eqvSet` ys =
+>   null (deleteFirstsBy (=~=) xs ys ++ deleteFirstsBy (=~=) ys xs)
 
-> newConstrEquiv :: NewConstrDecl -> NewConstrDecl -> Bool
-> newConstrEquiv (NewConstrDecl _ evs1 c1 ty1) (NewConstrDecl _ evs2 c2 ty2) =
->   c1 == c2 && evs1 == evs2 && ty1 == ty2
+> instance IntfEquiv a => IntfEquiv (Maybe a) where
+>   Nothing =~= Nothing = True
+>   Nothing =~= Just _  = False
+>   Just _  =~= Nothing = False
+>   Just x  =~= Just y  = x =~= y
 
-> disjointBy :: (a -> a -> Bool) -> [a] -> [a] -> Bool
-> disjointBy eq xs ys =
->   not (null (deleteFirstsBy eq xs ys ++ deleteFirstsBy eq ys xs))
+> instance IntfEquiv Interface where
+>   Interface m1 is1 ds1 =~= Interface m2 is2 ds2 =
+>     m1 == m2 && is1 `eqvSet` is2 && ds1 `eqvSet` ds2
+
+> instance IntfEquiv IImportDecl where
+>   IImportDecl _ m1 =~= IImportDecl _ m2 = m1 == m2
+
+> instance IntfEquiv IDecl where
+>   IInfixDecl _ fix1 p1 op1 =~= IInfixDecl _ fix2 p2 op2 =
+>     fix1 == fix2 && p1 == p2 && op1 == op2
+>   HidingDataDecl _ tc1 tvs1 =~= HidingDataDecl _ tc2 tvs2 =
+>     tc1 == tc2 && tvs1 == tvs2
+>   IDataDecl _ tc1 tvs1 cs1 =~= IDataDecl _ tc2 tvs2 cs2 =
+>     tc1 == tc2 && tvs1 == tvs2 && cs1 `eqvList` cs2
+>   INewtypeDecl _ tc1 tvs1 nc1 =~= INewtypeDecl _ tc2 tvs2 nc2 =
+>     tc1 == tc2 && tvs1 == tvs2 && nc1 =~= nc2
+>   ITypeDecl _ tc1 tvs1 ty1 =~= ITypeDecl _ tc2 tvs2 ty2 = 
+>     tc1 == tc2 && tvs1 == tvs2 && ty1 == ty2
+>   IFunctionDecl _ f1 ty1 =~= IFunctionDecl _ f2 ty2 = f1 == f2 && ty1 == ty2
+>   _ =~= _ = False
+
+> instance IntfEquiv ConstrDecl where
+>   ConstrDecl _ evs1 c1 tys1 =~= ConstrDecl _ evs2 c2 tys2 =
+>     c1 == c2 && evs1 == evs2 && tys1 == tys2
+>   ConOpDecl _ evs1 ty11 op1 ty12 =~= ConOpDecl _ evs2 ty21 op2 ty22 =
+>     op1 == op2 && evs1 == evs2 && ty11 == ty21 && ty12 == ty22
+>   _ =~= _ = False
+
+> instance IntfEquiv NewConstrDecl where
+>   NewConstrDecl _ evs1 c1 ty1 =~= NewConstrDecl _ evs2 c2 ty2 =
+>     c1 == c2 && evs1 == evs2 && ty1 == ty2
+
+\end{verbatim}
+If we check for a change in the interface, we do not need to check the
+interface declarations, but still must disambiguate (nullary) type
+constructors and type variables in type expressions. This is handled
+by the function \texttt{fixInterface} and the associated type class
+\texttt{FixInterface}.
+\begin{verbatim}
 
 > fixInterface :: Interface -> Interface
-> fixInterface (Interface m ds) =
->   Interface m (map (fixIDecl (fromListSet (typeConstructors ds))) ds)
+> fixInterface (Interface m is ds) =
+>   Interface m is (fix (fromListSet (typeConstructors ds)) ds)
 
-> fixIDecl :: Set Ident -> IDecl -> IDecl
-> fixIDecl tcs (IDataDecl p tc tvs cs) =
->   IDataDecl p tc tvs (map (fmap (fixConstrDecl tcs)) cs)
-> fixIDecl tcs (INewtypeDecl p tc tvs nc) =
->   INewtypeDecl p tc tvs (fixNewConstrDecl tcs nc)
-> fixIDecl tcs (ITypeDecl p tc tvs ty) = ITypeDecl p tc tvs (fixType tcs ty)
-> fixIDecl tcs (IFunctionDecl p f ty) = IFunctionDecl p f (fixType tcs ty)
-> fixIDecl tcs decl = decl
+> class FixInterface a where
+>   fix :: Set Ident -> a -> a
 
-> fixConstrDecl :: Set Ident -> ConstrDecl -> ConstrDecl
-> fixConstrDecl tcs (ConstrDecl p evs c tys) =
->   ConstrDecl p evs c (map (fixType tcs) tys)
-> fixConstrDecl tcs (ConOpDecl p evs ty1 op ty2) =
->   ConOpDecl p evs (fixType tcs ty1) op (fixType tcs ty2)
+> instance FixInterface a => FixInterface (Maybe a) where
+>   fix tcs = fmap (fix tcs)
 
-> fixNewConstrDecl :: Set Ident -> NewConstrDecl -> NewConstrDecl
-> fixNewConstrDecl tcs (NewConstrDecl p evs c ty) =
->   NewConstrDecl p evs c (fixType tcs ty)
+> instance FixInterface a => FixInterface [a] where
+>   fix tcs = map (fix tcs)
 
-> fixType :: Set Ident -> TypeExpr -> TypeExpr
-> fixType tcs (ConstructorType tc [])
->   | not (isQualified tc) && tc' `notElemSet` tcs = VariableType tc'
->   where tc' = unqualify tc
-> fixType tcs (ConstructorType tc tys) =
->   ConstructorType tc (map (fixType tcs) tys)
-> fixType tcs (VariableType tv)
->   | tv `elemSet` tcs = ConstructorType (qualify tv) []
->   | otherwise = VariableType tv
-> fixType tcs (TupleType tys) = TupleType (map (fixType tcs) tys)
-> fixType tcs (ListType ty) = ListType (fixType tcs ty)
-> fixType tcs (ArrowType ty ty') = ArrowType (fixType tcs ty) (fixType tcs ty')
+> instance FixInterface IDecl where
+>   fix tcs (IDataDecl p tc tvs cs) = IDataDecl p tc tvs (fix tcs cs)
+>   fix tcs (INewtypeDecl p tc tvs nc) = INewtypeDecl p tc tvs (fix tcs nc)
+>   fix tcs (ITypeDecl p tc tvs ty) = ITypeDecl p tc tvs (fix tcs ty)
+>   fix tcs (IFunctionDecl p f ty) = IFunctionDecl p f (fix tcs ty)
+>   fix _ d = d
+
+> instance FixInterface ConstrDecl where
+>   fix tcs (ConstrDecl p evs c tys) = ConstrDecl p evs c (fix tcs tys)
+>   fix tcs (ConOpDecl p evs ty1 op ty2) =
+>     ConOpDecl p evs (fix tcs ty1) op (fix tcs ty2)
+
+> instance FixInterface NewConstrDecl where
+>   fix tcs (NewConstrDecl p evs c ty) = NewConstrDecl p evs c (fix tcs ty)
+
+> instance FixInterface TypeExpr where
+>   fix tcs (ConstructorType tc tys)
+>     | not (isQualified tc) && tc' `notElemSet` tcs && null tys =
+>         VariableType tc'
+>     | otherwise = ConstructorType tc (fix tcs tys)
+>     where tc' = unqualify tc
+>   fix tcs (VariableType tv)
+>     | tv `elemSet` tcs = ConstructorType (qualify tv) []
+>     | otherwise = VariableType tv
+>   fix tcs (TupleType tys) = TupleType (fix tcs tys)
+>   fix tcs (ListType ty) = ListType (fix tcs ty)
+>   fix tcs (ArrowType ty1 ty2) = ArrowType (fix tcs ty1) (fix tcs ty2)
 
 > typeConstructors :: [IDecl] -> [Ident]
 > typeConstructors = foldr tcs []
