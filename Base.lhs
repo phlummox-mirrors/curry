@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: Base.lhs 1759 2005-09-03 10:41:38Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -447,7 +447,7 @@ variable, but always refers to a global function from the prelude.
 >   bv (FunctionDecl _ f _) = [f]
 >   bv (ForeignDecl _ _ _ f _) = [f]
 >   bv (PatternDecl _ t _) = bv t
->   bv (ExtraVariables _ vs) = vs
+>   bv (FreeDecl _ vs) = vs
 >   bv _ = []
 
 > instance QualExpr Equation where
@@ -566,7 +566,7 @@ declarations.
 > isTypeDecl (BlockDecl _) = False
 
 > isInfixDecl, isTypeSig, isEvalAnnot :: Decl -> Bool
-> isExtraVariables, isValueDecl :: Decl -> Bool
+> isFreeDecl, isValueDecl :: Decl -> Bool
 > isInfixDecl (InfixDecl _ _ _ _) = True
 > isInfixDecl _ = False
 > isTypeSig (TypeSig _ _ _) = True
@@ -574,12 +574,12 @@ declarations.
 > isTypeSig _ = False
 > isEvalAnnot (EvalAnnot _ _ _) = True
 > isEvalAnnot _ = False
-> isExtraVariables (ExtraVariables _ _) = True
-> isExtraVariables _ = False
+> isFreeDecl (FreeDecl _ _) = True
+> isFreeDecl _ = False
 > isValueDecl (FunctionDecl _ _ _) = True
 > isValueDecl (ForeignDecl _ _ _ _ _) = True
 > isValueDecl (PatternDecl _ _ _) = True
-> isValueDecl (ExtraVariables _ _) = True
+> isValueDecl (FreeDecl _ _) = True
 > isValueDecl _ = False
 
 \end{verbatim}

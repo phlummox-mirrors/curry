@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: TypeCheck.lhs 1759 2005-09-03 10:41:38Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -250,7 +250,7 @@ by the user match the inferred types.
 > tcDeclGroup :: ModuleIdent -> TCEnv -> SigEnv -> [Decl] -> TcState ()
 > tcDeclGroup m tcEnv _ [ForeignDecl p cc ie f ty] =
 >   tcForeignFunct m tcEnv p cc ie f ty
-> tcDeclGroup m tcEnv sigs [ExtraVariables p vs] =
+> tcDeclGroup m tcEnv sigs [FreeDecl p vs] =
 >   mapM_ (tcVariable m tcEnv sigs False p) vs
 > tcDeclGroup m tcEnv sigs ds =
 >   do

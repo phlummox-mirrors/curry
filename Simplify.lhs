@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: Simplify.lhs 1759 2005-09-03 10:41:38Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -298,9 +298,9 @@ functions to access the pattern variables.
 > inlineVars _ _ env = env
 
 > mkLet :: ModuleIdent -> [Decl] -> Expression -> Expression
-> mkLet m [ExtraVariables p vs] e
+> mkLet m [FreeDecl p vs] e
 >   | null vs' = e
->   | otherwise = Let [ExtraVariables p vs'] e
+>   | otherwise = Let [FreeDecl p vs'] e
 >   where vs' = filter (`elem` qfv m e) vs
 > mkLet m [PatternDecl _ (VariablePattern v) (SimpleRhs _ e _)] (Variable v')
 >   | v' == qualify v && v `notElem` qfv m e = e

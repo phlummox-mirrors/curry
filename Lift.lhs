@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: Lift.lhs 1759 2005-09-03 10:41:38Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -250,7 +250,7 @@ to the top-level.
 > liftVarDecl :: Decl -> (Decl,[Decl])
 > liftVarDecl (PatternDecl p t rhs) = (PatternDecl p t rhs',ds')
 >   where (rhs',ds') = liftRhs rhs
-> liftVarDecl (ExtraVariables p vs) = (ExtraVariables p vs,[])
+> liftVarDecl (FreeDecl p vs) = (FreeDecl p vs,[])
 
 > liftEquation :: Equation -> (Equation,[Decl])
 > liftEquation (Equation p lhs rhs) = (Equation p lhs rhs',ds')

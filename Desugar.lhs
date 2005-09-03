@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: Desugar.lhs 1759 2005-09-03 10:41:38Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -167,9 +167,8 @@ hack is no longer needed.}
 >     return (e',tyEnv')
 
 > liftGoalVars :: Expression -> ([Ident],Expression)
-> liftGoalVars (Let ds e) =
->   (concat [vs | ExtraVariables _ vs <- vds],Let ds' e)
->   where (vds,ds') = partition isExtraVariables ds
+> liftGoalVars (Let ds e) = (concat [vs | FreeDecl _ vs <- vds],Let ds' e)
+>   where (vds,ds') = partition isFreeDecl ds
 > liftGoalVars e = ([],e)
 
 \end{verbatim}
@@ -233,7 +232,7 @@ imported function.
 >         ident _ = internalError "desugarImpEnt CallConvCCall"
 > desugarDeclRhs m (PatternDecl p t rhs) =
 >   liftM (PatternDecl p t) (desugarRhs m p rhs)
-> desugarDeclRhs _ (ExtraVariables p vs) = return (ExtraVariables p vs)
+> desugarDeclRhs _ (FreeDecl p vs) = return (FreeDecl p vs)
 
 > desugarEquation :: ModuleIdent -> [Type] -> Equation -> DesugarState Equation
 > desugarEquation m tys (Equation p lhs rhs) =

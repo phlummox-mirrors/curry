@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: SyntaxCheck.lhs 1759 2005-09-03 10:41:38Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -188,9 +188,8 @@ top-level.
 >   do
 >     t' <- checkConstrTerm k p env t
 >     return (PatternDecl p t' rhs)
-> checkDeclLhs k env (ExtraVariables p vs) =
->   return (ExtraVariables p
->             (map (checkVar "free variables declaration" k p env) vs))
+> checkDeclLhs k env (FreeDecl p vs) =
+>   return (FreeDecl p (map (checkVar "free variables declaration" k p env) vs))
 
 > checkEquationLhs :: Int -> RenameEnv -> Position -> [Equation]
 >                  -> RenameState Decl
@@ -568,7 +567,7 @@ Auxiliary definitions.
 > vars (FunctionDecl p f _) = [PIdent p f]
 > vars (ForeignDecl p _ _ f _) = [PIdent p f]
 > vars (PatternDecl p t _) = map (PIdent p) (bv t)
-> vars (ExtraVariables p vs) = map (PIdent p) vs
+> vars (FreeDecl p vs) = map (PIdent p) vs
 
 > renameLiteral :: Literal -> RenameState Literal
 > renameLiteral (Int v i) = liftM (flip Int i . renameIdent v) newId

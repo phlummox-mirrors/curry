@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: CurryParser.lhs 1759 2005-09-03 10:41:38Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -208,8 +208,8 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >         evalKW = [(Id_rigid,EvalRigid),(Id_choice,EvalChoice)]
 
 > valListDecl :: Parser Token ([Ident] -> Position -> Decl) a
-> valListDecl = funListDecl <|> extraVars <$-> token KW_free
->   where extraVars vs p = ExtraVariables p vs
+> valListDecl = funListDecl
+>           <|> flip FreeDecl <$-> token KW_free
 
 > funLhs :: Parser Token (Ident,Lhs) a
 > funLhs = funLhs <$> fun <*> many1 constrTerm2

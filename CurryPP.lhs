@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: CurryPP.lhs 1759 2005-09-03 10:41:38Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -89,7 +89,7 @@ Declarations
 >   where ppCallConv CallConvPrimitive = text "primitive"
 >         ppCallConv CallConvCCall = text "ccall"
 > ppDecl (PatternDecl _ t rhs) = ppRule (ppConstrTerm 0 t) equals rhs
-> ppDecl (ExtraVariables _ vs) = list (map ppIdent vs) <+> text "free"
+> ppDecl (FreeDecl _ vs) = list (map ppIdent vs) <+> text "free"
 
 > ppPrec :: Infix -> Int -> Doc
 > ppPrec fix p = ppAssoc fix <+> ppPrio p
