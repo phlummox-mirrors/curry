@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: CurrySyntax.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,7 +19,7 @@ parsed representation of a Curry program.
 \begin{verbatim}
 
 > data Module =
->   Module ModuleIdent (Maybe ExportSpec) [ImportDecl] [Decl]
+>   Module ModuleIdent (Maybe ExportSpec) [ImportDecl] [TopDecl]
 >   deriving (Eq,Show)
 
 > data ExportSpec = Exporting Position [Export] deriving (Eq,Show)
@@ -44,21 +44,17 @@ parsed representation of a Curry program.
 >   | ImportTypeAll  Ident            -- T(..)
 >   deriving (Eq,Show)
 
+> type Qualified = Bool
+
 \end{verbatim}
 \paragraph{Module declarations}
 \begin{verbatim}
 
-> data Decl =
->     InfixDecl Position Infix Int [Ident]
->   | DataDecl Position Ident [Ident] [ConstrDecl]
+> data TopDecl =
+>     DataDecl Position Ident [Ident] [ConstrDecl]
 >   | NewtypeDecl Position Ident [Ident] NewConstrDecl
 >   | TypeDecl Position Ident [Ident] TypeExpr
->   | TypeSig Position [Ident] TypeExpr
->   | EvalAnnot Position [Ident] EvalAnnotation
->   | FunctionDecl Position Ident [Equation]
->   | ForeignDecl Position CallConv (Maybe String) Ident TypeExpr
->   | PatternDecl Position ConstrTerm Rhs
->   | ExtraVariables Position [Ident]
+>   | BlockDecl Decl
 >   deriving (Eq,Show)
 
 > data ConstrDecl =
@@ -69,8 +65,17 @@ parsed representation of a Curry program.
 >   NewConstrDecl Position [Ident] Ident TypeExpr
 >   deriving (Eq,Show)
 
-> type Qualified = Bool
-> data Infix = InfixL | InfixR | Infix deriving (Eq,Show)
+> data Decl =
+>     InfixDecl Position Infix Int [Ident]
+>   | TypeSig Position [Ident] TypeExpr
+>   | EvalAnnot Position [Ident] EvalAnnotation
+>   | FunctionDecl Position Ident [Equation]
+>   | ForeignDecl Position CallConv (Maybe String) Ident TypeExpr
+>   | PatternDecl Position ConstrTerm Rhs
+>   | ExtraVariables Position [Ident]
+>   deriving (Eq,Show)
+
+> data Infix = Infix | InfixL | InfixR deriving (Eq,Show)
 > data EvalAnnotation = EvalRigid | EvalChoice deriving (Eq,Show)
 > data CallConv = CallConvPrimitive | CallConvCCall deriving (Eq,Show)
 

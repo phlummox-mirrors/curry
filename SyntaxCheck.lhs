@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: SyntaxCheck.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -37,7 +37,7 @@ declarations are checked within the resulting environment. In
 addition, all local variables are renamed.
 \begin{verbatim}
 
-> syntaxCheck :: ModuleIdent -> ValueEnv -> [Decl] -> [Decl]
+> syntaxCheck :: ModuleIdent -> ValueEnv -> [TopDecl] -> [TopDecl]
 > syntaxCheck m tyEnv ds =
 >   case linear cs of
 >     Linear -> tds ++ run (checkTopDecls m cs env vds)
@@ -86,10 +86,11 @@ further information is needed for global variables.
 > renameInfo (NewtypeConstructor _ _) = Constr 1
 > renameInfo _ = GlobalVar
 
-> bindConstrs :: ModuleIdent -> Decl -> RenameEnv -> RenameEnv
+> bindConstrs :: ModuleIdent -> TopDecl -> RenameEnv -> RenameEnv
 > bindConstrs m (DataDecl _ tc _ cs) env = foldr (bindConstr m) env cs
 > bindConstrs m (NewtypeDecl _ tc _ nc) env = bindNewConstr m nc env
-> bindConstrs _ _ env = env
+> bindConstrs _ (TypeDecl _ _ _ _) env = env
+> bindConstrs _ (BlockDecl _) env = env
 
 > bindConstr :: ModuleIdent -> ConstrDecl -> RenameEnv -> RenameEnv
 > bindConstr m (ConstrDecl _ _ c tys) = bindGlobal m c (Constr (length tys))
@@ -132,10 +133,11 @@ a goal. Note that all declarations in the goal must be considered as
 local declarations.
 \begin{verbatim}
 
-> checkTopDecls :: ModuleIdent -> [PIdent] -> RenameEnv -> [Decl]
->               -> RenameState [Decl]
+> checkTopDecls :: ModuleIdent -> [PIdent] -> RenameEnv -> [TopDecl]
+>               -> RenameState [TopDecl]
 > checkTopDecls m cs env ds =
->   liftM snd (checkDeclGroup (bindFunc m) globalKey cs env ds)
+>   liftM (map BlockDecl . snd)
+>         (checkDeclGroup (bindFunc m) globalKey cs env [d | BlockDecl d <- ds])
 
 > checkGoal :: RenameEnv -> Goal -> RenameState Goal
 > checkGoal env (Goal p e ds) =
@@ -189,7 +191,6 @@ top-level.
 > checkDeclLhs k env (ExtraVariables p vs) =
 >   return (ExtraVariables p
 >             (map (checkVar "free variables declaration" k p env) vs))
-> checkDeclLhs _ _ d = return d
 
 > checkEquationLhs :: Int -> RenameEnv -> Position -> [Equation]
 >                  -> RenameState Decl
@@ -552,12 +553,13 @@ callbacks into Curry are not yet supported by the runtime system.
 Auxiliary definitions.
 \begin{verbatim}
 
-> constrs :: Decl -> [PIdent]
+> constrs :: TopDecl -> [PIdent]
 > constrs (DataDecl _ _ _ cs) = map constr cs
 >   where constr (ConstrDecl p _ c _) = PIdent p c
 >         constr (ConOpDecl p _ _ op _) = PIdent p op
 > constrs (NewtypeDecl _ _ _ (NewConstrDecl p _ c _)) = [PIdent p c]
-> constrs _ = []
+> constrs (TypeDecl _ _ _ _) = []
+> constrs (BlockDecl _) = []
 
 > vars :: Decl -> [PIdent]
 > vars (InfixDecl p _ _ ops) = map (PIdent p) ops
@@ -567,7 +569,6 @@ Auxiliary definitions.
 > vars (ForeignDecl p _ _ f _) = [PIdent p f]
 > vars (PatternDecl p t _) = map (PIdent p) (bv t)
 > vars (ExtraVariables p vs) = map (PIdent p) vs
-> vars _ = []
 
 > renameLiteral :: Literal -> RenameState Literal
 > renameLiteral (Int v i) = liftM (flip Int i . renameIdent v) newId

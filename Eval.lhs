@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Eval.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Eval.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
-% Copyright (c) 2001-2004, Wolfgang Lux
+% Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Eval.lhs}
@@ -20,8 +20,8 @@ The function \texttt{evalEnv} collects all evaluation annotations of
 the module by traversing the syntax tree.
 \begin{verbatim}
 
-> evalEnv :: [Decl] -> EvalEnv
-> evalEnv = foldr collectAnnotsDecl emptyEnv
+> evalEnv :: [TopDecl] -> EvalEnv
+> evalEnv ds = foldr collectAnnotsDecl emptyEnv [d | BlockDecl d <- ds]
 
 > evalEnvGoal :: Goal -> EvalEnv
 > evalEnvGoal (Goal _ e ds) =

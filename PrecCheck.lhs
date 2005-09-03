@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PrecCheck.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: PrecCheck.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -39,11 +39,13 @@ the parse tree such that for nested infix applications the operator
 with the lowest precedence becomes the root and that two adjacent
 operators with the same precedence will not have conflicting
 associativities. The top-level precedence environment is returned
-because it is needed for constructing the module's interface.
+because it is used for constructing the module's interface.
 \begin{verbatim}
 
-> precCheck :: ModuleIdent -> PEnv -> [Decl] -> (PEnv,[Decl])
-> precCheck = checkDecls
+> precCheck :: ModuleIdent -> PEnv -> [TopDecl] -> (PEnv,[TopDecl])
+> precCheck m pEnv ds = (pEnv',ds')
+>   where pEnv' = bindPrecs m [d | BlockDecl d <- ds] pEnv
+>         ds' = map (checkTopDecl m pEnv') ds
 
 > precCheckGoal :: PEnv -> Goal -> Goal
 > precCheckGoal pEnv (Goal p e ds) = Goal p (checkExpr m p pEnv' e) ds'
@@ -54,6 +56,10 @@ because it is needed for constructing the module's interface.
 > checkDecls m pEnv ds = pEnv' `seq` (pEnv',ds')
 >   where pEnv' = bindPrecs m ds pEnv
 >         ds' = map (checkDecl m pEnv') ds
+
+> checkTopDecl :: ModuleIdent -> PEnv -> TopDecl -> TopDecl
+> checkTopDecl m pEnv (BlockDecl d) = BlockDecl (checkDecl m pEnv d)
+> checkTopDecl _ _ d = d
 
 > checkDecl :: ModuleIdent -> PEnv -> Decl -> Decl
 > checkDecl m pEnv (FunctionDecl p f eqs) =

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: Simplify.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
-% Copyright (c) 2003, Wolfgang Lux
+% Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Simplify.lhs}
@@ -40,9 +40,14 @@ Currently, the following optimizations are implemented:
 > simplifyModule :: Module -> SimplifyState (Module,ValueEnv)
 > simplifyModule (Module m es is ds) =
 >   do
->     ds' <- mapM (simplifyDecl m emptyEnv) ds
+>     ds' <- mapM (simplifyTopDecl m) ds
 >     tyEnv <- fetchSt
 >     return (Module m es is ds',tyEnv)
+
+> simplifyTopDecl :: ModuleIdent -> TopDecl -> SimplifyState TopDecl
+> simplifyTopDecl m (BlockDecl d) =
+>   liftM BlockDecl (simplifyDecl m emptyEnv d)
+> simplifyTopDecl _ d = return d
 
 > simplifyDecl :: ModuleIdent -> InlineEnv -> Decl -> SimplifyState Decl
 > simplifyDecl m env (FunctionDecl p f eqs) =

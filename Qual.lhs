@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Qual.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Qual.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
-% Copyright (c) 2001-2004, Wolfgang Lux
+% Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Qual.lhs}
@@ -19,12 +19,16 @@ declarations groups as well as function arguments remain unchanged.
 > import Base
 > import TopEnv
 
-> qual :: ValueEnv -> [Decl] -> [Decl]
-> qual tyEnv ds = map (qualDecl tyEnv) ds
+> qual :: ValueEnv -> [TopDecl] -> [TopDecl]
+> qual tyEnv ds = map (qualTopDecl tyEnv) ds
 
 > qualGoal :: ValueEnv -> Goal -> Goal
 > qualGoal tyEnv (Goal p e ds) =
 >   Goal p (qualExpr tyEnv e) (map (qualDecl tyEnv) ds)
+
+> qualTopDecl :: ValueEnv -> TopDecl -> TopDecl
+> qualTopDecl tyEnv (BlockDecl d) = BlockDecl (qualDecl tyEnv d)
+> qualTopDecl _ d = d
 
 > qualDecl :: ValueEnv -> Decl -> Decl
 > qualDecl tyEnv (FunctionDecl p f eqs) =

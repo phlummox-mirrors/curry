@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: Lift.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
-% Copyright (c) 2001-2004, Wolfgang Lux
+% Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Lift.lhs}
@@ -33,7 +33,7 @@ lifted to the top-level.
 
 > lift :: ValueEnv -> EvalEnv -> Module -> (Module,ValueEnv,EvalEnv)
 > lift tyEnv evEnv (Module m es is ds) =
->   (Module m es is (concatMap liftFunDecl ds'),tyEnv',evEnv')
+>   (Module m es is (concatMap liftTopDecl ds'),tyEnv',evEnv')
 >   where (ds',tyEnv',evEnv') =
 >           runSt (callSt (abstractModule m ds) tyEnv) evEnv
 
@@ -51,14 +51,19 @@ i.e. the function applied to its free variables.
 > type AbstractState a = StateT ValueEnv (StateT EvalEnv Id) a
 > type AbstractEnv = Env Ident Expression
 
-> abstractModule :: ModuleIdent -> [Decl]
->                -> AbstractState ([Decl],ValueEnv,EvalEnv)
+> abstractModule :: ModuleIdent -> [TopDecl]
+>                -> AbstractState ([TopDecl],ValueEnv,EvalEnv)
 > abstractModule m ds =
 >   do
->     ds' <- mapM (abstractDecl m "" [] emptyEnv) ds
+>     ds' <- mapM (abstractTopDecl m) ds
 >     tyEnv' <- fetchSt
 >     evEnv' <- liftSt fetchSt
 >     return (ds',tyEnv',evEnv')
+
+> abstractTopDecl :: ModuleIdent -> TopDecl -> AbstractState TopDecl
+> abstractTopDecl m (BlockDecl d) =
+>   liftM BlockDecl (abstractDecl m "" [] emptyEnv d)
+> abstractTopDecl _ d = return d
 
 > abstractDecl :: ModuleIdent -> String -> [Ident] -> AbstractEnv -> Decl
 >              -> AbstractState Decl
@@ -232,6 +237,10 @@ in the type environment.
 After the abstraction pass, all local function declarations are lifted
 to the top-level.
 \begin{verbatim}
+
+> liftTopDecl :: TopDecl -> [TopDecl]
+> liftTopDecl (BlockDecl d) = map BlockDecl (liftFunDecl d)
+> liftTopDecl d = [d]
 
 > liftFunDecl :: Decl -> [Decl]
 > liftFunDecl (FunctionDecl p f eqs) = (FunctionDecl p f eqs' : concat dss')

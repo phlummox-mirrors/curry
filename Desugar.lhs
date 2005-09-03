@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: Desugar.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -75,20 +75,22 @@ declarations of the module. As type declarations are not desugared and
 cannot occur in local declaration groups they are filtered out
 separately.
 
-Actually, the transformation is slightly more general than necessary
-as it allows value declarations at the top-level of a module.
+Actually, the transformation is slightly more general than necessary,
+as it allows pattern and free variable declarations at the top-level
+of a module.
 \begin{verbatim}
 
 > desugar :: ValueEnv -> Module -> (Module,ValueEnv)
 > desugar tyEnv (Module m es is ds) = (Module m es is ds',tyEnv')
 >   where (ds',tyEnv') = run (desugarModule m ds) tyEnv
 
-> desugarModule :: ModuleIdent -> [Decl] -> DesugarState ([Decl],ValueEnv)
+> desugarModule :: ModuleIdent -> [TopDecl] -> DesugarState ([TopDecl],ValueEnv)
 > desugarModule m ds =
 >   do
->     ds' <- desugarDeclGroup m ds
+>     vds' <- desugarDeclGroup m [d | BlockDecl d <- vds]
 >     tyEnv' <- fetchSt
->     return (filter isTypeDecl ds ++ ds',tyEnv')
+>     return (tds ++ map BlockDecl vds',tyEnv')
+>   where (tds,vds) = partition isTypeDecl ds
 
 \end{verbatim}
 While a goal of type \texttt{IO \_} is executed directly by the
@@ -153,8 +155,8 @@ hack is no longer needed.}
 >         vs' = filter (`elem` qfv m e') vs
 >         ty' = TypeArrow ty (foldr (TypeArrow . typeOf tyEnv) successType vs')
 
-> goalDecl :: Position -> Ident -> [Ident] -> Expression -> Decl
-> goalDecl p g vs e = funDecl p g (map VariablePattern vs) e
+> goalDecl :: Position -> Ident -> [Ident] -> Expression -> TopDecl
+> goalDecl p g vs e = BlockDecl (funDecl p g (map VariablePattern vs) e)
 
 > desugarGoalExpr :: ModuleIdent -> Expression
 >                 -> DesugarState (Expression,ValueEnv)
@@ -171,10 +173,11 @@ hack is no longer needed.}
 > liftGoalVars e = ([],e)
 
 \end{verbatim}
-Within a declaration group, all type signatures and evaluation
-annotations are discarded. First, the patterns occurring in the left
-hand sides are desugared. Due to lazy patterns this may add further
-declarations to the group that must be desugared as well.
+Within a declaration group, all fixity declarations, type signatures
+and evaluation annotations are discarded. First, the patterns
+occurring in the left hand sides are desugared. Due to lazy patterns
+this may add further declarations to the group that must be desugared
+as well.
 \begin{verbatim}
 
 > desugarDeclGroup :: ModuleIdent -> [Decl] -> DesugarState [Decl]

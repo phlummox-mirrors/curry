@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: KindCheck.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
-% Copyright (c) 1999-2004, Wolfgang Lux
+% Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{KindCheck.lhs}
@@ -36,10 +36,10 @@ defined type constructors are inserted into the environment, and,
 finally, the declarations are checked within this environment.
 \begin{verbatim}
 
-> kindCheck :: ModuleIdent -> TCEnv -> [Decl] -> [Decl]
+> kindCheck :: ModuleIdent -> TCEnv -> [TopDecl] -> [TopDecl]
 > kindCheck m tcEnv ds =
 >   case linear (map tconstr ds') of
->     Linear -> map (checkDecl kEnv) ds
+>     Linear -> map (checkTopDecl kEnv) ds
 >     NonLinear (PIdent p tc) -> errorAt p (duplicateType tc)
 >   where ds' = filter isTypeDecl ds
 >         kEnv = foldr (bindArity m) (fmap tcArity tcEnv) ds'
@@ -55,11 +55,11 @@ The kind environment only needs to record the arity of each type constructor.
 
 > type KindEnv = TopEnv Int
 
-> bindArity :: ModuleIdent -> Decl -> KindEnv -> KindEnv
+> bindArity :: ModuleIdent -> TopDecl -> KindEnv -> KindEnv
 > bindArity m (DataDecl p tc tvs _) = bindArity' m p tc tvs
 > bindArity m (NewtypeDecl p tc tvs _) = bindArity' m p tc tvs
 > bindArity m (TypeDecl p tc tvs _) = bindArity' m p tc tvs
-> bindArity _ _ = id
+> bindArity _ (BlockDecl _) = id
 
 > bindArity' :: ModuleIdent -> Position -> Ident -> [Ident]
 >            -> KindEnv -> KindEnv
@@ -79,16 +79,19 @@ the right hand side. Function and pattern declarations must be
 traversed because they can contain local type signatures.
 \begin{verbatim}
 
-> checkDecl :: KindEnv -> Decl -> Decl
-> checkDecl kEnv (DataDecl p tc tvs cs) =
+> checkTopDecl :: KindEnv -> TopDecl -> TopDecl
+> checkTopDecl kEnv (DataDecl p tc tvs cs) =
 >   DataDecl p tc tvs' (map (checkConstrDecl kEnv tvs') cs)
 >   where tvs' = checkTypeLhs kEnv p tvs
-> checkDecl kEnv (NewtypeDecl p tc tvs nc) =
+> checkTopDecl kEnv (NewtypeDecl p tc tvs nc) =
 >   NewtypeDecl p tc tvs' (checkNewConstrDecl kEnv tvs' nc)
 >   where tvs' = checkTypeLhs kEnv p tvs
-> checkDecl kEnv (TypeDecl p tc tvs ty) =
+> checkTopDecl kEnv (TypeDecl p tc tvs ty) =
 >   TypeDecl p tc tvs' (checkClosedType kEnv p tvs' ty)
 >   where tvs' = checkTypeLhs kEnv p tvs
+> checkTopDecl kEnv (BlockDecl d) = BlockDecl (checkDecl kEnv d)
+
+> checkDecl :: KindEnv -> Decl -> Decl
 > checkDecl kEnv (TypeSig p vs ty) =
 >   TypeSig p vs (checkType kEnv p ty)
 > checkDecl kEnv (FunctionDecl p f eqs) =
@@ -237,11 +240,11 @@ interpret the identifier as such.
 Auxiliary definitions
 \begin{verbatim}
 
-> tconstr :: Decl -> PIdent
+> tconstr :: TopDecl -> PIdent
 > tconstr (DataDecl p tc _ _) = PIdent p tc
 > tconstr (NewtypeDecl p tc _ _) = PIdent p tc
 > tconstr (TypeDecl p tc _ _) = PIdent p tc
-> tconstr _ = internalError "tconstr"
+> tconstr (BlockDecl _) = internalError "tconstr"
 
 \end{verbatim}
 Error messages:

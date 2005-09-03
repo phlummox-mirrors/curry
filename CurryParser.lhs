@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: CurryParser.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -39,7 +39,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 > parseModule :: Parser Token Module a
 > parseModule = uncurry <$> moduleHeader <*> layout moduleDecls
 
-> moduleHeader :: Parser Token ([ImportDecl] -> [Decl] -> Module) a
+> moduleHeader :: Parser Token ([ImportDecl] -> [TopDecl] -> Module) a
 > moduleHeader = Module <$-> token KW_module
 >                       <*> (mIdent <?> "module name expected")
 >                       <*> (Just <$> exportSpec `opt` Nothing)
@@ -56,7 +56,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >   where spec = ExportTypeAll <$-> token DotDot
 >            <|> flip ExportTypeWith <$> con `sepBy` comma
 
-> moduleDecls :: Parser Token ([ImportDecl],[Decl]) a
+> moduleDecls :: Parser Token ([ImportDecl],[TopDecl]) a
 > moduleDecls = impDecl <$> importDecl
 >                       <*> (semicolon <-*> moduleDecls `opt` ([],[]))
 >           <|> (,) [] <$> topDecl `sepBy` semicolon
@@ -116,10 +116,9 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 \paragraph{Declarations}
 \begin{verbatim}
 
-> topDecl :: Parser Token Decl a
-> topDecl = infixDecl
->       <|> dataDecl <|> newtypeDecl <|> typeDecl
->       <|> functionDecl <|> foreignDecl
+> topDecl :: Parser Token TopDecl a
+> topDecl = dataDecl <|> newtypeDecl <|> typeDecl
+>       <|> BlockDecl <$> (infixDecl <|> functionDecl <|> foreignDecl)
 
 > localDefs :: Parser Token [Decl] a
 > localDefs = token KW_where <-*> layout valueDecls
@@ -128,23 +127,16 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 > valueDecls :: Parser Token [Decl] a
 > valueDecls = (infixDecl <|> valueDecl <|> foreignDecl) `sepBy` semicolon
 
-> infixDecl :: Parser Token Decl a
-> infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
-
-> infixDeclLhs :: (Position -> Infix -> Int -> a) -> Parser Token a b
-> infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> int
->   where infixKW = [(KW_infix,Infix),(KW_infixl,InfixL),(KW_infixr,InfixR)]
-
-> dataDecl :: Parser Token Decl a
+> dataDecl :: Parser Token TopDecl a
 > dataDecl = typeDeclLhs DataDecl KW_data <*> constrs
 >   where constrs = equals <-*> constrDecl `sepBy1` bar
 >             `opt` []
 
-> newtypeDecl :: Parser Token Decl a
+> newtypeDecl :: Parser Token TopDecl a
 > newtypeDecl =
 >   typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
 
-> typeDecl :: Parser Token Decl a
+> typeDecl :: Parser Token TopDecl a
 > typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> type0
 
 > typeDeclLhs :: (Position -> Ident -> [Ident] -> a) -> Category
@@ -171,6 +163,13 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 > existVars :: Parser Token [Ident] a
 > {- existVars = token Id_forall <-*> many1 tyvar <*-> dot `opt` [] -}
 > existVars = succeed []
+
+> infixDecl :: Parser Token Decl a
+> infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
+
+> infixDeclLhs :: (Position -> Infix -> Int -> a) -> Parser Token a b
+> infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> int
+>   where infixKW = [(KW_infix,Infix),(KW_infixl,InfixL),(KW_infixr,InfixR)]
 
 > functionDecl :: Parser Token Decl a
 > functionDecl = position <**> decl

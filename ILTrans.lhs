@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: ILTrans.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -38,18 +38,22 @@ alias types.
 
 > ilTrans :: ValueEnv -> EvalEnv -> Module -> IL.Module
 > ilTrans tyEnv evEnv (Module m _ _ ds) = IL.Module m (imports m ds') ds'
->   where ds' = concatMap (translGlobalDecl m tyEnv evEnv) ds
+>   where ds' = concatMap (translTopDecl m tyEnv evEnv) ds
 
-> translGlobalDecl :: ModuleIdent -> ValueEnv -> EvalEnv -> Decl -> [IL.Decl]
-> translGlobalDecl m tyEnv _ (DataDecl _ tc tvs cs) =
+> translTopDecl :: ModuleIdent -> ValueEnv -> EvalEnv -> TopDecl -> [IL.Decl]
+> translTopDecl m tyEnv _ (DataDecl _ tc tvs cs) =
 >   [translData m tyEnv tc tvs cs]
-> translGlobalDecl m tyEnv _ (NewtypeDecl _ tc tvs nc) =
+> translTopDecl m tyEnv _ (NewtypeDecl _ tc tvs nc) =
 >   [translNewtype m tyEnv tc tvs nc]
-> translGlobalDecl m tyEnv evEnv (FunctionDecl _ f eqs) =
+> translTopDecl _ _ _ (TypeDecl _ _ _ _) = []
+> translTopDecl m tyEnv evEnv (BlockDecl d) = translDecl m tyEnv evEnv d
+
+> translDecl :: ModuleIdent -> ValueEnv -> EvalEnv -> Decl -> [IL.Decl]
+> translDecl m tyEnv evEnv (FunctionDecl _ f eqs) =
 >   [translFunction m tyEnv evEnv f eqs]
-> translGlobalDecl m tyEnv _ (ForeignDecl _ cc ie f _) =
+> translDecl m tyEnv _ (ForeignDecl _ cc ie f _) =
 >   [translForeign m tyEnv f cc (fromJust ie)]
-> translGlobalDecl _ _ _ _ = []
+> translDecl _ _ _ _ = []
 
 > translData :: ModuleIdent -> ValueEnv -> Ident -> [Ident] -> [ConstrDecl]
 >            -> IL.Decl

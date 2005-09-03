@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: CurryPP.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -22,7 +22,7 @@ Pretty print a module
 
 > ppModule :: Module -> Doc
 > ppModule (Module m es is ds) =
->   ppModuleHeader m es $$ vcat (map ppImportDecl is ++ map ppDecl ds)
+>   vcat (ppModuleHeader m es : map ppImportDecl is ++ map ppTopDecl ds)
 
 \end{verbatim}
 Module header
@@ -61,18 +61,21 @@ Module header
 Declarations
 \begin{verbatim}
 
+> ppTopDecl :: TopDecl -> Doc
+> ppTopDecl (DataDecl _ tc tvs cs) =
+>   sep (ppTypeDeclLhs "data" tc tvs :
+>        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)))
+> ppTopDecl (NewtypeDecl _ tc tvs nc) =
+>   sep [ppTypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
+> ppTopDecl (TypeDecl _ tc tvs ty) =
+>   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
+> ppTopDecl (BlockDecl d) = ppDecl d
+
 > ppBlock :: [Decl] -> Doc
 > ppBlock = vcat . map ppDecl
 
 > ppDecl :: Decl -> Doc
 > ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
-> ppDecl (DataDecl _ tc tvs cs) =
->   sep (ppTypeDeclLhs "data" tc tvs :
->        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)))
-> ppDecl (NewtypeDecl _ tc tvs nc) =
->   sep [ppTypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
-> ppDecl (TypeDecl _ tc tvs ty) =
->   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 > ppDecl (TypeSig _ fs ty) =
 >   list (map ppIdent fs) <+> text "::" <+> ppTypeExpr 0 ty
 > ppDecl (EvalAnnot _ fs ev) =

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: Base.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -444,8 +444,6 @@ variable, but always refers to a global function from the prelude.
 >   qfv _ _ = []
 
 > instance QuantExpr Decl where
->   bv (TypeSig _ vs _) = vs
->   bv (EvalAnnot _ fs _) = fs
 >   bv (FunctionDecl _ f _) = [f]
 >   bv (ForeignDecl _ _ _ f _) = [f]
 >   bv (PatternDecl _ t _) = bv t
@@ -561,14 +559,16 @@ Here is a list of predicates identifying various kinds of
 declarations.
 \begin{verbatim}
 
-> isInfixDecl, isTypeDecl, isTypeSig, isEvalAnnot :: Decl -> Bool
-> isExtraVariables, isValueDecl :: Decl -> Bool
-> isInfixDecl (InfixDecl _ _ _ _) = True
-> isInfixDecl _ = False
+> isTypeDecl :: TopDecl -> Bool
 > isTypeDecl (DataDecl _ _ _ _) = True
 > isTypeDecl (NewtypeDecl _ _ _ _) = True
 > isTypeDecl (TypeDecl _ _ _ _) = True
-> isTypeDecl _ = False
+> isTypeDecl (BlockDecl _) = False
+
+> isInfixDecl, isTypeSig, isEvalAnnot :: Decl -> Bool
+> isExtraVariables, isValueDecl :: Decl -> Bool
+> isInfixDecl (InfixDecl _ _ _ _) = True
+> isInfixDecl _ = False
 > isTypeSig (TypeSig _ _ _) = True
 > isTypeSig (ForeignDecl _ _ _ _ _) = True
 > isTypeSig _ = False

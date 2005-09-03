@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1755 2005-09-01 16:21:14Z wlux $
+% $Id: TypeCheck.lhs 1758 2005-09-03 10:06:41Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -48,9 +48,9 @@ definitions is performed. The type checker returns the resulting type
 constructor and type environments.
 \begin{verbatim}
 
-> typeCheck :: ModuleIdent -> TCEnv -> ValueEnv -> [Decl] -> (TCEnv,ValueEnv)
+> typeCheck :: ModuleIdent -> TCEnv -> ValueEnv -> [TopDecl] -> (TCEnv,ValueEnv)
 > typeCheck m tcEnv tyEnv ds =
->   run (tcDecls m tcEnv' vds >>
+>   run (tcDecls m tcEnv' [d | BlockDecl d <- vds] >>
 >        liftSt fetchSt >>= \theta -> fetchSt >>= \tyEnv' ->
 >        return (tcEnv',subst theta tyEnv'))
 >       (bindConstrs m tcEnv' tyEnv)
@@ -106,11 +106,11 @@ side by \texttt{anonId} before passing them to \texttt{expandMonoType}
 and \texttt{expandMonoTypes}, respectively.
 \begin{verbatim}
 
-> bindTypes :: ModuleIdent -> [Decl] -> TCEnv -> TCEnv
+> bindTypes :: ModuleIdent -> [TopDecl] -> TCEnv -> TCEnv
 > bindTypes m ds tcEnv = tcEnv'
 >   where tcEnv' = foldr (bindTC m tcEnv') tcEnv (sortTypeDecls m ds)
 
-> bindTC :: ModuleIdent -> TCEnv -> Decl -> TCEnv -> TCEnv
+> bindTC :: ModuleIdent -> TCEnv -> TopDecl -> TCEnv -> TCEnv
 > bindTC m tcEnv (DataDecl _ tc tvs cs) =
 >   bindTypeInfo DataType m tc tvs (map (Just . mkData) cs)
 >   where mkData (ConstrDecl _ evs c tys) = Data c (length evs) tys'
@@ -122,21 +122,23 @@ and \texttt{expandMonoTypes}, respectively.
 >   where ty' = expandMonoType tcEnv (cleanTVars tvs evs) ty
 > bindTC m tcEnv (TypeDecl _ tc tvs ty) =
 >   bindTypeInfo AliasType m tc tvs (expandMonoType tcEnv tvs ty)
-> bindTC _ _ _ = id
+> bindTC _ _ (BlockDecl _) = id
 
 > cleanTVars :: [Ident] -> [Ident] -> [Ident]
 > cleanTVars tvs evs = [if tv `elem` evs then anonId else tv | tv <- tvs]
 
-> sortTypeDecls :: ModuleIdent -> [Decl] -> [Decl]
+> sortTypeDecls :: ModuleIdent -> [TopDecl] -> [TopDecl]
 > sortTypeDecls m = map (typeDecl m) . scc bound free
 >   where bound (DataDecl _ tc _ _) = [tc]
 >         bound (NewtypeDecl _ tc _ _) = [tc]
 >         bound (TypeDecl _ tc _ _) = [tc]
+>         bound (BlockDecl _) = []
 >         free (DataDecl _ _ _ _) = []
 >         free (NewtypeDecl _ _ _ _) = []
 >         free (TypeDecl _ _ _ ty) = ft m ty []
+>         free (BlockDecl _) = []
 
-> typeDecl :: ModuleIdent -> [Decl] -> Decl
+> typeDecl :: ModuleIdent -> [TopDecl] -> TopDecl
 > typeDecl _ [] = internalError "typeDecl"
 > typeDecl _ [d@(DataDecl _ _ _ _)] = d
 > typeDecl _ [d@(NewtypeDecl _ _ _ _)] = d
