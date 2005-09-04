@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: Modules.lhs 1760 2005-09-04 15:43:03Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -15,6 +15,7 @@ This module controls the compilation of modules.
 > import CurryParser(parseSource,parseInterface,parseGoal)
 > import KindCheck(kindCheck,kindCheckGoal)
 > import SyntaxCheck(syntaxCheck,syntaxCheckGoal)
+> import Renaming(rename,renameGoal)
 > import PrecCheck(precCheck,precCheckGoal)
 > import TypeCheck(typeCheck,typeCheckGoal)
 > import IntfCheck(intfCheck,fixInterface,intfEquiv)
@@ -91,7 +92,7 @@ declaration to the module.
 > checkModule mEnv (Module m es is ds) =
 >   (tyEnv'',modul,exportInterface modul pEnv'' tcEnv'' tyEnv'')
 >   where (pEnv,tcEnv,tyEnv) = importModules mEnv is
->         (pEnv',ds') = precCheck m pEnv $ syntaxCheck m tyEnv
+>         (pEnv',ds') = precCheck m pEnv $ rename $ syntaxCheck m tyEnv
 >                                        $ kindCheck m tcEnv ds
 >         (tcEnv',tyEnv') = typeCheck m tcEnv tyEnv ds'
 >         ds'' = qual tyEnv' ds'
@@ -202,7 +203,7 @@ compilation of a goal is similar to that of a module.
 > checkGoal :: ModuleEnv -> [ImportDecl] -> Goal -> (ValueEnv,Goal)
 > checkGoal mEnv is g = (tyEnv'',qualGoal tyEnv' g')
 >   where (pEnv,tcEnv,tyEnv) = importModules mEnv is
->         g' = precCheckGoal pEnv $ syntaxCheckGoal tyEnv
+>         g' = precCheckGoal pEnv $ renameGoal $ syntaxCheckGoal tyEnv
 >                                 $ kindCheckGoal tcEnv g
 >         tyEnv' = typeCheckGoal tcEnv tyEnv g'
 >         (_,_,tyEnv'') = qualifyEnv mEnv pEnv tcEnv tyEnv'
