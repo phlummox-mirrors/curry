@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1762 2005-09-06 15:02:17Z wlux $
+% $Id: Exports.lhs 1763 2005-09-06 15:49:42Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -16,7 +16,6 @@ types.
 
 > module Exports(exportInterface) where
 > import Base
-> import Maybe
 > import Set
 
 > exportInterface :: ModuleIdent -> ExportSpec -> PEnv -> TCEnv -> ValueEnv
@@ -104,31 +103,40 @@ not module \texttt{B}.
 \begin{verbatim}
 
 > usedModules :: [IDecl] -> [ModuleIdent]
-> usedModules ds = nub (catMaybes (map modul (foldr identsDecl [] ds)))
+> usedModules ds = nub (modules ds [])
 >   where nub = toListSet . fromListSet
->         modul = fst . splitQualIdent
 
-> identsDecl :: IDecl -> [QualIdent] -> [QualIdent]
-> identsDecl (IDataDecl _ tc _ cs) xs =
->   tc : foldr identsConstrDecl xs (catMaybes cs)
-> identsDecl (INewtypeDecl _ tc _ nc) xs = tc : identsNewConstrDecl nc xs
-> identsDecl (ITypeDecl _ tc _ ty) xs = tc : identsType ty xs
-> identsDecl (IFunctionDecl _ f ty) xs = f : identsType ty xs
+> class HasModule a where
+>   modules :: a -> [ModuleIdent] -> [ModuleIdent]
 
-> identsConstrDecl :: ConstrDecl -> [QualIdent] -> [QualIdent]
-> identsConstrDecl (ConstrDecl _ _ _ tys) xs = foldr identsType xs tys
-> identsConstrDecl (ConOpDecl _ _ ty1 _ ty2) xs =
->   identsType ty1 (identsType ty2 xs)
+> instance HasModule a => HasModule (Maybe a) where
+>   modules = maybe id modules
 
-> identsNewConstrDecl :: NewConstrDecl -> [QualIdent] -> [QualIdent]
-> identsNewConstrDecl (NewConstrDecl _ _ _ ty) xs = identsType ty xs
+> instance HasModule a => HasModule [a] where
+>   modules xs ms = foldr modules ms xs
 
-> identsType :: TypeExpr -> [QualIdent] -> [QualIdent]
-> identsType (ConstructorType tc tys) xs = tc : foldr identsType xs tys
-> identsType (VariableType _) xs = xs
-> identsType (TupleType tys) xs = foldr identsType xs tys
-> identsType (ListType ty) xs = identsType ty xs
-> identsType (ArrowType ty1 ty2) xs = identsType ty1 (identsType ty2 xs)
+> instance HasModule IDecl where
+>   modules (IDataDecl _ tc _ cs) = modules tc . modules cs
+>   modules (INewtypeDecl _ tc _ nc) = modules tc . modules nc
+>   modules (ITypeDecl _ tc _ ty) = modules tc . modules ty
+>   modules (IFunctionDecl _ f ty) = modules f . modules ty
+
+> instance HasModule ConstrDecl where
+>   modules (ConstrDecl _ _ _ tys) = modules tys
+>   modules (ConOpDecl _ _ ty1 _ ty2) = modules ty1 . modules ty2
+
+> instance HasModule NewConstrDecl where
+>   modules (NewConstrDecl _ _ _ ty) = modules ty
+
+> instance HasModule TypeExpr where
+>   modules (ConstructorType tc tys) = modules tc . modules tys
+>   modules (VariableType _) = id
+>   modules (TupleType tys) = modules tys
+>   modules (ListType ty) = modules ty
+>   modules (ArrowType ty1 ty2) = modules ty1 . modules ty2
+
+> instance HasModule QualIdent where
+>   modules = maybe id (:) . fst . splitQualIdent
 
 \end{verbatim}
 After the interface declarations have been computed, the compiler
@@ -138,54 +146,53 @@ from the current module, so that these type constructors can always be
 distinguished from type variables.
 \begin{verbatim}
 
-> hiddenTypeDecl :: ModuleIdent -> TCEnv -> QualIdent -> IDecl
+> hiddenTypeDecl :: ModuleIdent -> TCEnv -> Ident -> IDecl
 > hiddenTypeDecl m tcEnv tc =
->   case qualLookupTC (qualQualify m tc) tcEnv of
+>   case qualLookupTC (qualifyWith m tc) tcEnv of
 >     [DataType _ n _] -> hidingDataDecl tc n
 >     [RenamingType _ n _] -> hidingDataDecl tc n
 >     _ ->  internalError "hiddenTypeDecl"
->   where hidingDataDecl tc n =
->           HidingDataDecl noPos (unqualify tc) (take n nameSupply)
+>   where hidingDataDecl tc n = HidingDataDecl noPos tc (take n nameSupply)
 
-> hiddenTypes :: [IDecl] -> [QualIdent]
-> hiddenTypes ds = [tc | tc <- toListSet tcs, not (isQualified tc)]
->   where tcs = foldr deleteFromSet (fromListSet (usedTypes ds))
->                     (definedTypes ds)
-
-> usedTypes :: [IDecl] -> [QualIdent]
-> usedTypes ds = foldr usedTypesDecl [] ds
-
-> usedTypesDecl :: IDecl -> [QualIdent] -> [QualIdent]
-> usedTypesDecl (IDataDecl _ _ _ cs) tcs =
->   foldr usedTypesConstrDecl tcs (catMaybes cs)
-> usedTypesDecl (INewtypeDecl _ _ _ nc) tcs = usedTypesNewConstrDecl nc tcs
-> usedTypesDecl (ITypeDecl _ _ _ ty) tcs = usedTypesType ty tcs
-> usedTypesDecl (IFunctionDecl _ _ ty) tcs = usedTypesType ty tcs
-
-> usedTypesConstrDecl :: ConstrDecl -> [QualIdent] -> [QualIdent]
-> usedTypesConstrDecl (ConstrDecl _ _ _ tys) tcs = foldr usedTypesType tcs tys
-> usedTypesConstrDecl (ConOpDecl _ _ ty1 _ ty2) tcs =
->   usedTypesType ty1 (usedTypesType ty2 tcs)
-
-> usedTypesNewConstrDecl :: NewConstrDecl -> [QualIdent] -> [QualIdent]
-> usedTypesNewConstrDecl (NewConstrDecl _ _ _ ty) tcs = usedTypesType ty tcs
-
-> usedTypesType :: TypeExpr -> [QualIdent] -> [QualIdent]
-> usedTypesType (ConstructorType tc tys) tcs = tc : foldr usedTypesType tcs tys
-> usedTypesType (VariableType _) tcs = tcs
-> usedTypesType (TupleType tys) tcs = foldr usedTypesType tcs tys
-> usedTypesType (ListType ty) tcs = usedTypesType ty tcs
-> usedTypesType (ArrowType ty1 ty2) tcs =
->   usedTypesType ty1 (usedTypesType ty2 tcs)
-
-> definedTypes :: [IDecl] -> [QualIdent]
-> definedTypes ds = foldr definedType [] ds
+> hiddenTypes :: [IDecl] -> [Ident]
+> hiddenTypes ds = map unqualify (takeWhile (not . isQualified) (toListSet tcs))
+>   where tcs = foldr deleteFromSet (fromListSet (usedTypes ds []))
+>                     (foldr definedType [] ds)
 
 > definedType :: IDecl -> [QualIdent] -> [QualIdent]
 > definedType (IDataDecl _ tc _ _) tcs = tc : tcs
 > definedType (INewtypeDecl _ tc _ _) tcs = tc : tcs
 > definedType (ITypeDecl _ tc _ _) tcs = tc : tcs
 > definedType (IFunctionDecl _ _ _)  tcs = tcs
+
+> class HasType a where
+>   usedTypes :: a -> [QualIdent] -> [QualIdent]
+
+> instance HasType a => HasType (Maybe a) where
+>   usedTypes = maybe id usedTypes
+
+> instance HasType a => HasType [a] where
+>   usedTypes xs tcs = foldr usedTypes tcs xs
+
+> instance HasType IDecl where
+>   usedTypes (IDataDecl _ _ _ cs) = usedTypes cs
+>   usedTypes (INewtypeDecl _ _ _ nc) = usedTypes nc
+>   usedTypes (ITypeDecl _ _ _ ty) = usedTypes ty
+>   usedTypes (IFunctionDecl _ _ ty) = usedTypes ty
+
+> instance HasType ConstrDecl where
+>   usedTypes (ConstrDecl _ _ _ tys) = usedTypes tys
+>   usedTypes (ConOpDecl _ _ ty1 _ ty2) = usedTypes ty1 . usedTypes ty2
+
+> instance HasType NewConstrDecl where
+>   usedTypes (NewConstrDecl _ _ _ ty) = usedTypes ty
+
+> instance HasType TypeExpr where
+>   usedTypes (ConstructorType tc tys) = (tc :) . usedTypes tys
+>   usedTypes (VariableType _) = id
+>   usedTypes (TupleType tys) = usedTypes tys
+>   usedTypes (ListType ty) = usedTypes ty
+>   usedTypes (ArrowType ty1 ty2) = usedTypes ty1 . usedTypes ty2
 
 \end{verbatim}
 Auxiliary definitions
