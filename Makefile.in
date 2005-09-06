@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 1761 2005-09-06 13:58:54Z wlux $
+# $Id: Makefile.in 1762 2005-09-06 15:02:17Z wlux $
 #
 # Copyright (c) 2000-2005 Wolfgang Lux
 # See LICENSE for the full license.
@@ -58,14 +58,14 @@ compat_SRCS = $(ghc_compat_SRCS) $(hbc_compat_SRCS) $(nhc_compat_SRCS)
 cycc_SRCS = cycc.hs Ident.lhs Types.lhs CurrySyntax.lhs CurryPP.lhs \
 	    CurryLexer.lhs CurryParser.lhs Base.lhs TypeSyntaxCheck.lhs \
 	    SyntaxCheck.lhs Renaming.lhs PrecCheck.lhs TypeCheck.lhs \
-	    IntfCheck.lhs Imports.lhs Exports.lhs TypeSubst.lhs Typing.lhs \
-	    Eval.lhs Qual.lhs Desugar.lhs Simplify.lhs Lift.lhs \
-	    IL.lhs ILPP.lhs ILTrans.lhs ILLift.lhs DTransform.lhs \
-            Cam.lhs CamPP.lhs ILCompile.lhs CCode.lhs CPretty.lhs \
-	    CElim.lhs CPS.lhs CGen.lhs Modules.lhs Options.lhs Unlit.lhs \
-	    LexComb.lhs LLParseComb.lhs Pretty.lhs Error.lhs Combined.lhs \
-	    SCC.lhs NestEnv.lhs TopEnv.lhs Env.lhs Subst.lhs Map.lhs \
-	    Set.lhs Position.lhs GetOpt.hs PathUtils.lhs Utils.lhs \
+	    ExportSyntaxCheck.lhs IntfCheck.lhs Imports.lhs Exports.lhs \
+	    TypeSubst.lhs Typing.lhs Eval.lhs Qual.lhs Desugar.lhs \
+	    Simplify.lhs Lift.lhs IL.lhs ILPP.lhs ILTrans.lhs ILLift.lhs \
+	    DTransform.lhs Cam.lhs CamPP.lhs ILCompile.lhs CCode.lhs \
+	    CPretty.lhs CElim.lhs CPS.lhs CGen.lhs Modules.lhs Options.lhs \
+	    Unlit.lhs LexComb.lhs LLParseComb.lhs Pretty.lhs Error.lhs \
+	    Combined.lhs SCC.lhs NestEnv.lhs TopEnv.lhs Env.lhs Subst.lhs \
+	    Map.lhs Set.lhs Position.lhs GetOpt.hs PathUtils.lhs Utils.lhs \
 	    $(@hc@_compat_SRCS)
 cycc_XXX  = $(cycc_SRCS:.hs=.hi)
 cycc_INTF = $(cycc_XXX:.lhs=.hi)

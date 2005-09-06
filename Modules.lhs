@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1761 2005-09-06 13:58:54Z wlux $
+% $Id: Modules.lhs 1762 2005-09-06 15:02:17Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -18,9 +18,10 @@ This module controls the compilation of modules.
 > import Renaming(rename,renameGoal)
 > import PrecCheck(precCheck,precCheckGoal)
 > import TypeCheck(typeCheck,typeCheckGoal)
+> import ExportSyntaxCheck(checkExports)
 > import IntfCheck(intfCheck,fixInterface,intfEquiv)
 > import Imports(importInterface,importInterfaceIntf,importUnifyData)
-> import Exports(expandInterface,exportInterface)
+> import Exports(exportInterface)
 > import Eval(evalEnv,evalEnvGoal)
 > import Qual(qual,qualGoal)
 > import Desugar(desugar,desugarGoal)
@@ -90,13 +91,14 @@ declaration to the module.
 
 > checkModule :: ModuleEnv -> Module -> (ValueEnv,Module,Interface)
 > checkModule mEnv (Module m es is ds) =
->   (tyEnv'',modul,exportInterface modul pEnv'' tcEnv'' tyEnv'')
+>   (tyEnv'',
+>    Module m (Just es') is (qual tyEnv' ds'),
+>    exportInterface m es' pEnv'' tcEnv'' tyEnv'')
 >   where (pEnv,tcEnv,tyEnv) = importModules mEnv is
 >         (pEnv',ds') = precCheck m pEnv $ rename $ syntaxCheck m tyEnv
 >                                        $ typeSyntaxCheck m tcEnv ds
 >         (tcEnv',tyEnv') = typeCheck m tcEnv tyEnv ds'
->         ds'' = qual tyEnv' ds'
->         modul = expandInterface (Module m es is ds'') tcEnv' tyEnv'
+>         es' = checkExports m is tcEnv' tyEnv' es
 >         (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv pEnv' tcEnv' tyEnv'
 
 > transModule :: Bool -> Bool -> Bool -> ModuleEnv -> ValueEnv -> Module
