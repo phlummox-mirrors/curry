@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1763 2005-09-06 15:49:42Z wlux $
+% $Id: Exports.lhs 1764 2005-09-12 10:37:22Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -30,8 +30,7 @@ types.
 > infixDecl :: ModuleIdent -> PEnv -> Export -> [IDecl] -> [IDecl]
 > infixDecl m pEnv (Export f) ds = iInfixDecl m pEnv f ds
 > infixDecl m pEnv (ExportTypeWith tc cs) ds =
->   foldr (iInfixDecl m pEnv . qualifyLike (fst (splitQualIdent tc))) ds cs
->   where qualifyLike = maybe qualify qualifyWith
+>   foldr (iInfixDecl m pEnv . qualifyLike tc) ds cs
 
 > iInfixDecl :: ModuleIdent -> PEnv -> QualIdent -> [IDecl] -> [IDecl]
 > iInfixDecl m pEnv op ds =

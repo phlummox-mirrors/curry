@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Ident.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Ident.lhs 1764 2005-09-12 10:37:22Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -28,7 +28,7 @@ unqualified identifier.}
 > module Ident(Ident,QualIdent,ModuleIdent,
 >              mkIdent,name,qualName,uniqueId,renameIdent,unRenameIdent,
 >              mkMIdent,moduleName,moduleQualifiers,isInfixOp,isQInfixOp,
->              qualify,qualifyWith,qualQualify,isQualified,
+>              qualify,qualifyWith,qualifyLike,qualQualify,isQualified,
 >              unqualify,qualUnqualify,localIdent,splitQualIdent,
 >              emptyMIdent,mainMIdent,preludeMIdent,debugPreludeMIdent,
 >              ptrMIdent,stablePtrMIdent,
@@ -108,6 +108,10 @@ given module prefix, respectively).
 
 > qualifyWith :: ModuleIdent -> Ident -> QualIdent
 > qualifyWith = QualIdent
+
+> qualifyLike :: QualIdent -> Ident -> QualIdent
+> qualifyLike (UnqualIdent _) x = UnqualIdent x
+> qualifyLike (QualIdent m _) x = QualIdent m x
 
 > qualQualify :: ModuleIdent -> QualIdent -> QualIdent
 > qualQualify m (UnqualIdent x) = QualIdent m x

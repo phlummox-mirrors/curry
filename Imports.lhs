@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: Imports.lhs 1764 2005-09-12 10:37:22Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -168,7 +168,6 @@ module name.
 >           -> ExpValueEnv -> ExpValueEnv
 > bindValue f m tc tvs c evs ty = bindEnv c (f (qualifyLike tc c) sigma)
 >   where sigma = ForAllExist (length tvs) (length evs) (toQualType m tvs ty)
->         qualifyLike x = maybe qualify qualifyWith (fst (splitQualIdent x))
 
 \end{verbatim}
 After the environments have been initialized, the optional import
