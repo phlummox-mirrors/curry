@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1759 2005-09-03 10:41:38Z wlux $
+% $Id: Base.lhs 1765 2005-09-12 13:42:51Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -146,11 +146,6 @@ to manage the import and export of types, the names of the original
 definitions are also recorded. On import, two types are considered
 equal if their original names match.
 
-The information about a data constructor comprises the number of
-existentially quantified type variables and the list of the argument
-types. Note that renaming type constructors have only one type
-argument.
-
 Importing and exporting algebraic data types and renaming types is
 complicated by the fact that the constructors of the type may be
 (partially) hidden in the interface. This facilitates the definition
@@ -161,12 +156,10 @@ constructors of a data type are hidden, those constructors are
 replaced by underscores in the interface.
 \begin{verbatim}
 
-> data TypeInfo = DataType QualIdent Int [Maybe (Data [Type])]
->               | RenamingType QualIdent Int (Data Type)
+> data TypeInfo = DataType QualIdent Int [Maybe Ident]
+>               | RenamingType QualIdent Int Ident
 >               | AliasType QualIdent Int Type
 >               deriving Show
-
-> data Data a = Data Ident Int a deriving Show
 
 > instance Entity TypeInfo where
 >   origName (DataType tc _ _) = tc
@@ -221,13 +214,9 @@ impossible to insert them into the environment in advance.
 >   | otherwise = []
 
 > tupleTCs :: [TypeInfo]
-> tupleTCs = map typeInfo tupleData
->   where typeInfo (Data c n tys) =
->           DataType (qualify c) (length tys) [Just (Data c n tys)]
-
-> tupleData :: [Data [Type]]
-> tupleData = [Data (tupleId n) 0 (take n tvs) | n <- [2..]]
->   where tvs = map typeVar [0..]
+> tupleTCs = map typeInfo [2..]
+>   where typeInfo n = DataType (qualify c) n [Just c]
+>           where c = tupleId n
 
 \end{verbatim}
 \paragraph{Function and constructor types}
@@ -292,11 +281,11 @@ constructors.
 >   | otherwise = []
 
 > tupleDCs :: [ValueInfo]
-> tupleDCs = map dataInfo tupleData
->   where dataInfo (Data c _ tys) =
->           DataConstructor (qualify c)
->                           (ForAllExist (length tys) 0
->                                        (foldr TypeArrow (tupleType tys) tys))
+> tupleDCs = map dataInfo tupleTCs
+>   where tvs = map typeVar [0..]
+>         dataInfo (DataType c n _) =
+>           DataConstructor c (ForAllExist n 0 (tupleConstrType (take n tvs)))
+>         tupleConstrType tys = foldr TypeArrow (tupleType tys) tys
 
 \end{verbatim}
 \paragraph{Operator precedences}
@@ -385,23 +374,24 @@ constructor is available in the environment \texttt{initPEnv}.
 > initTCEnv :: TCEnv
 > initTCEnv = foldr (uncurry predefTC) emptyTopEnv predefTypes
 >   where predefTC (TypeConstructor tc tys) cs =
->           predefTopEnv tc (DataType tc (length tys) (map Just cs))
+>           predefTopEnv tc (DataType tc (length tys) (map (Just . fst) cs))
 
 > initDCEnv :: ValueEnv
 > initDCEnv =
->   foldr (uncurry predefDC) emptyTopEnv
->         [(c,constrType (polyType ty) n' tys)
->         | (ty,cs) <- predefTypes, Data c n' tys <- cs]
->   where predefDC c ty = predefTopEnv c' (DataConstructor c' ty)
+>   foldr (uncurry predefDC) emptyTopEnv (concatMap snd predefTypes)
+>   where predefDC c ty =
+>           predefTopEnv c' (DataConstructor c' (constrType (polyType ty)))
 >           where c' = qualify c
->         constrType (ForAll n ty) n' = ForAllExist n n' . foldr TypeArrow ty
+>         constrType (ForAll n ty) = ForAllExist n 0 ty
 
-> predefTypes :: [(Type,[Data [Type]])]
+> predefTypes :: [(Type,[(Ident,Type)])]
 > predefTypes =
 >   let a = typeVar 0 in [
->     (unitType,   [Data unitId 0 []]),
->     (listType a, [Data nilId 0 [],Data consId 0 [a,listType a]])
+>     (unitType,   [(unitId,unitType)]),
+>     (listType a, [(nilId,nilType a), (consId,consType a)])
 >   ]
+>   where nilType a = listType a
+>         consType a = TypeArrow a (TypeArrow (listType a) (listType a))
 
 \end{verbatim}
 \paragraph{Free and bound variables}

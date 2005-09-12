@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1762 2005-09-06 15:02:17Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1765 2005-09-12 13:42:51Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -151,8 +151,8 @@ Auxiliary definitions.
 > isDataType (AliasType _ _ _) = False
 
 > constrs :: TypeInfo -> [Ident]
-> constrs (DataType _ _ cs) = [c | Just (Data c _ _) <- cs]
-> constrs (RenamingType _ _ (Data c _ _)) = [c]
+> constrs (DataType _ _ cs) = catMaybes cs
+> constrs (RenamingType _ _ c) = [c]
 > constrs (AliasType _ _ _) = []
 
 \end{verbatim}

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1759 2005-09-03 10:41:38Z wlux $
+% $Id: ILTrans.lhs 1765 2005-09-12 13:42:51Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -63,10 +63,10 @@ alias types.
 
 > translNewtype :: ModuleIdent -> ValueEnv -> Ident -> [Ident] -> NewConstrDecl
 >               -> IL.Decl
-> translNewtype m tyEnv tc tvs (NewConstrDecl _ _ c _) =
+> translNewtype m tyEnv tc tvs nc =
 >   IL.NewtypeDecl (qualifyWith m tc) (length tvs)
 >                  (IL.ConstrDecl c' (translType ty))
->   where c' = qualifyWith m c
+>   where c' = qualifyWith m (nconstr nc)
 >         TypeArrow ty _ = constrType tyEnv c'
 
 > translConstrDecl :: ModuleIdent -> ValueEnv -> ConstrDecl
@@ -74,8 +74,6 @@ alias types.
 > translConstrDecl m tyEnv d =
 >   IL.ConstrDecl c' (map translType (arrowArgs (constrType tyEnv c')))
 >   where c' = qualifyWith m (constr d)
->         constr (ConstrDecl _ _ c _) = c
->         constr (ConOpDecl _ _ _ op _) = op
 
 > translForeign :: ModuleIdent -> ValueEnv -> Ident -> CallConv -> String
 >               -> IL.Decl

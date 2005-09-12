@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1764 2005-09-12 10:37:22Z wlux $
+% $Id: Imports.lhs 1765 2005-09-12 13:42:51Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -72,11 +72,11 @@ import.
 >   DataType tc n (map (>>= importConstr isVisible) cs)
 > importData isVisible (RenamingType tc n nc) =
 >   maybe (DataType tc n []) (RenamingType tc n) (importConstr isVisible nc)
-> importData isVisible (AliasType tc  n ty) = AliasType tc n ty
+> importData isVisible (AliasType tc n ty) = AliasType tc n ty
 
-> importConstr :: (Ident -> Bool) -> Data a -> Maybe (Data a)
-> importConstr isVisible (Data c n tys)
->   | isVisible c = Just (Data c n tys)
+> importConstr :: (Ident -> Bool) -> Ident -> Maybe Ident
+> importConstr isVisible c
+>   | isVisible c = Just c
 >   | otherwise = Nothing
 
 \end{verbatim}
@@ -117,13 +117,9 @@ module name.
 
 > bindTC :: ModuleIdent -> IDecl -> ExpTCEnv -> ExpTCEnv
 > bindTC m (IDataDecl _ tc tvs cs) =
->   bindType DataType m tc tvs (map (fmap mkData) cs)
->   where mkData (ConstrDecl _ evs c tys) =
->           Data c (length evs) (toQualTypes m tvs tys)
->         mkData (ConOpDecl _ evs ty1 c ty2) =
->           Data c (length evs) (toQualTypes m tvs [ty1,ty2])
-> bindTC m (INewtypeDecl _ tc tvs (NewConstrDecl _ evs c ty)) =
->   bindType RenamingType m tc tvs (Data c (length evs) (toQualType m tvs ty))
+>   bindType DataType m tc tvs (map (fmap constr) cs)
+> bindTC m (INewtypeDecl _ tc tvs nc) =
+>   bindType RenamingType m tc tvs (nconstr nc)
 > bindTC m (ITypeDecl _ tc tvs ty) =
 >   bindType AliasType m tc tvs (toQualType m tvs ty)
 > bindTC m _ = id
@@ -261,9 +257,8 @@ data constructors are added.
 > expandTypeWith p m tcEnv tc cs =
 >   case lookupEnv tc tcEnv of
 >     Just (DataType _ _ cs') ->
->       ImportTypeWith tc (map (checkConstr [c | Just (Data c _ _) <- cs']) cs)
->     Just (RenamingType _ _ (Data c _ _)) ->
->       ImportTypeWith tc (map (checkConstr [c]) cs)
+>       ImportTypeWith tc (map (checkConstr (catMaybes cs')) cs)
+>     Just (RenamingType _ _ c) -> ImportTypeWith tc (map (checkConstr [c]) cs)
 >     Just _ -> errorAt p (nonDataType m tc)
 >     Nothing -> errorAt p (undefinedEntity m tc)
 >   where checkConstr cs c
@@ -273,8 +268,8 @@ data constructors are added.
 > expandTypeAll :: Position -> ModuleIdent -> ExpTCEnv -> Ident -> Import
 > expandTypeAll p m tcEnv tc =
 >   case lookupEnv tc tcEnv of
->     Just (DataType _ _ cs) -> ImportTypeWith tc [c | Just (Data c _ _) <- cs]
->     Just (RenamingType _ _ (Data c _ _)) -> ImportTypeWith tc [c]
+>     Just (DataType _ _ cs) -> ImportTypeWith tc (catMaybes cs)
+>     Just (RenamingType _ _ c) -> ImportTypeWith tc [c]
 >     Just _ -> errorAt p (nonDataType m tc)
 >     Nothing -> errorAt p (undefinedEntity m tc)
 

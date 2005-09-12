@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1764 2005-09-12 10:37:22Z wlux $
+% $Id: Exports.lhs 1765 2005-09-12 13:42:51Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -25,7 +25,7 @@ types.
 >   where imports = map (IImportDecl noPos) (usedModules ds)
 >         precs = foldr (infixDecl m pEnv) [] es
 >         hidden = map (hiddenTypeDecl m tcEnv) (hiddenTypes ds)
->         ds = foldr (typeDecl m tcEnv) (foldr (funDecl m tyEnv) [] es) es
+>         ds = foldr (typeDecl m tcEnv tyEnv) (foldr (funDecl m tyEnv) [] es) es
 
 > infixDecl :: ModuleIdent -> PEnv -> Export -> [IDecl] -> [IDecl]
 > infixDecl m pEnv (Export f) ds = iInfixDecl m pEnv f ds
@@ -40,39 +40,52 @@ types.
 >       IInfixDecl noPos fix pr (qualUnqualify m op) : ds
 >     _ -> internalError "infixDecl"
 
-> typeDecl :: ModuleIdent -> TCEnv -> Export -> [IDecl] -> [IDecl]
-> typeDecl _ _ (Export _) ds = ds
-> typeDecl m tcEnv (ExportTypeWith tc cs) ds =
+> typeDecl :: ModuleIdent -> TCEnv -> ValueEnv -> Export -> [IDecl] -> [IDecl]
+> typeDecl _ _ _ (Export _) ds = ds
+> typeDecl m tcEnv tyEnv (ExportTypeWith tc cs) ds =
 >   case qualLookupTC tc tcEnv of
->     [DataType tc n cs'] ->
->       iTypeDecl IDataDecl m tc n (constrs (drop n nameSupply)) : ds
->       where constrs tvs = if null cs then [] else constrDecls m tvs cs cs'
->     [RenamingType tc n (Data c n' ty)]
->       | null cs -> iTypeDecl IDataDecl m tc n [] : ds
->       | otherwise ->
->           iTypeDecl INewtypeDecl m tc n (NewConstrDecl noPos tvs c ty') : ds
->       where tvs = take n' (drop n nameSupply)
->             ty' = fromQualType m ty
+>     [DataType tc n cs'] -> iTypeDecl IDataDecl m tc n constrs : ds
+>       where constrs tvs
+>               | null cs = []
+>               | otherwise =
+>                   map (>>= fmap (constrDecl m tyEnv tc tvs) . hide cs) cs'
+>             hide cs c
+>               | c `elem` cs = Just c
+>               | otherwise = Nothing
+>     [RenamingType tc n c]
+>       | null cs -> iTypeDecl IDataDecl m tc n (const []) : ds
+>       | otherwise -> iTypeDecl INewtypeDecl m tc n newConstr : ds
+>       where newConstr tvs = newConstrDecl m tyEnv tc tvs c
 >     [AliasType tc n ty] ->
->       iTypeDecl ITypeDecl m tc n (fromQualType m ty) : ds
+>       iTypeDecl ITypeDecl m tc n (const (fromQualType m ty)) : ds
 >     _ -> internalError "typeDecl"
 
 > iTypeDecl :: (Position -> QualIdent -> [Ident] -> a -> IDecl)
->            -> ModuleIdent -> QualIdent -> Int -> a -> IDecl
-> iTypeDecl f m tc n = f noPos (qualUnqualify m tc) (take n nameSupply)
+>           -> ModuleIdent -> QualIdent -> Int -> ([Ident] -> a) -> IDecl
+> iTypeDecl f m tc n g = f noPos (qualUnqualify m tc) tvs (g tvs')
+>   where (tvs,tvs') = splitAt n nameSupply
 
-> constrDecls :: ModuleIdent -> [Ident] -> [Ident] -> [Maybe (Data [Type])]
->             -> [Maybe ConstrDecl]
-> constrDecls m tvs cs = map (>>= constrDecl m tvs)
->   where constrDecl m tvs (Data c n tys)
->           | c `elem` cs =
->               Just (iConstrDecl (take n tvs) c (map (fromQualType m) tys))
->           | otherwise = Nothing
+> constrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident] -> Ident
+>            -> ConstrDecl
+> constrDecl m tyEnv tc tvs c =
+>   case qualLookupValue (qualifyLike tc c) tyEnv of
+>     [DataConstructor _ (ForAllExist _ n ty)] ->
+>       iConstrDecl (take n tvs) c (map (fromQualType m) (arrowArgs ty))
+>     _ -> internalError "constrDecl"
 
 > iConstrDecl :: [Ident] -> Ident -> [TypeExpr] -> ConstrDecl
 > iConstrDecl tvs op [ty1,ty2]
 >   | isInfixOp op = ConOpDecl noPos tvs ty1 op ty2
 > iConstrDecl tvs c tys = ConstrDecl noPos tvs c tys
+
+> newConstrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident] -> Ident
+>               -> NewConstrDecl
+> newConstrDecl m tyEnv tc tvs c =
+>   case qualLookupValue (qualifyLike tc c) tyEnv of
+>     [NewtypeConstructor _ (ForAllExist _ n ty)] ->
+>       NewConstrDecl noPos (take n tvs) c
+>                     (fromQualType m (head (arrowArgs ty)))
+>     _ -> internalError "newConstrDecl"
 
 > funDecl :: ModuleIdent -> ValueEnv -> Export -> [IDecl] -> [IDecl]
 > funDecl m tyEnv (Export f) ds =
@@ -194,7 +207,7 @@ distinguished from type variables.
 >   usedTypes (ArrowType ty1 ty2) = usedTypes ty1 . usedTypes ty2
 
 \end{verbatim}
-Auxiliary definitions
+Auxiliary definitions.
 \begin{verbatim}
 
 > noPos :: Position

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: IntfCheck.lhs 1765 2005-09-12 13:42:51Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -70,9 +70,10 @@ The latter must not occur in type expressions in the interface.
 >   where (m',tc') = splitQualIdent tc
 
 \end{verbatim}
-The checks applied to the interface are similar to those in the
-kind checker. However, there are no nested declarations. In addition,
-synonym types must not occur in type expressions.
+The checks applied to the interface are similar to those performed
+during syntax checking of type expressions. However, there are no
+nested declarations. In addition, synonym types must not occur in type
+expressions.
 \begin{verbatim}
 
 > checkIDecl :: TCEnv -> IDecl -> IDecl
@@ -175,13 +176,17 @@ imported definitions actually match their original definition.
 >     (Just m,tc') ->
 >       case qualLookupTC tc tcEnv of
 >         [] -> errorAt p (notExported "data type" m tc')
->         [DataType tc'' n cs']
->           | tc == tc'' && length tvs == n &&
->             (null cs || length cs == length cs') ->
+>         [DataType tc'' n' cs']
+>           | tc == tc'' && length tvs == n' &&
+>             (null cs || length cs == length cs') &&
+>             and (zipWith isVisible cs cs') ->
 >               IDataDecl p tc tvs
->                 (zipWith (fmap . checkConstrImport m tc' tvs tyEnv) cs' cs)
->         [RenamingType tc'' n _]
->           | tc == tc'' && length tvs == n && null cs -> IDataDecl p tc tvs []
+>                         (map (fmap (checkConstrImport m tyEnv tvs)) cs)
+>           where isVisible (Just c) (Just c') = constr c == c'
+>                 isVisible (Just _) Nothing = False
+>                 isVisible Nothing _ = True
+>         [RenamingType tc'' n' _]
+>           | tc == tc'' && length tvs == n' && null cs -> IDataDecl p tc tvs []
 >         [_] -> errorAt p (importConflict "data type" m tc')
 >         _ -> internalError "checkImport (IDataDecl)"
 >     (Nothing,_) -> IDataDecl p tc tvs cs
@@ -190,10 +195,9 @@ imported definitions actually match their original definition.
 >     (Just m,tc') ->
 >       case qualLookupTC tc tcEnv of
 >         [] -> errorAt p (notExported "newtype" m tc')
->         [RenamingType tc'' n nc']
->           | tc == tc'' && length tvs == n ->
->               INewtypeDecl p tc tvs
->                 (checkNewConstrImport m tc' tvs tyEnv nc' nc)
+>         [RenamingType tc'' n' nc']
+>           | tc == tc'' && length tvs == n' && nconstr nc == nc' ->
+>               INewtypeDecl p tc tvs (checkNewConstrImport m tyEnv tvs nc)
 >         [_] -> errorAt p (importConflict "newtype" m tc')
 >         _ -> internalError "checkImport (INewtypeDecl)"
 >     (Nothing,_) -> INewtypeDecl p tc tvs nc
@@ -202,8 +206,8 @@ imported definitions actually match their original definition.
 >     (Just m,tc') -> 
 >       case qualLookupTC tc tcEnv of
 >         [] -> errorAt p (notExported "synonym type" m tc')
->         [AliasType tc'' n ty']
->           | tc == tc'' && length tvs == n && toQualType m tvs ty == ty' ->
+>         [AliasType tc'' n' ty']
+>           | tc == tc'' && length tvs == n' && toQualType m tvs ty == ty' ->
 >               ITypeDecl p tc tvs ty
 >         [_] -> errorAt p (importConflict "synonym type" m tc')
 >         _ -> internalError "checkImport (ITypeDecl)"
@@ -219,47 +223,37 @@ imported definitions actually match their original definition.
 >         _ -> internalError "checkImport (IFunctionDecl)"
 >     (Nothing,_) -> IFunctionDecl p f ty
 
-> checkConstrImport :: ModuleIdent -> Ident -> [Ident] -> ValueEnv
->                   -> Maybe (Data [Type]) -> ConstrDecl -> ConstrDecl
-> checkConstrImport m tc tvs tyEnv (Just (Data c n tys))
->                                  (ConstrDecl p evs c' tys')
->   | c == c' && n == length evs && tys == toQualTypes m tvs tys' =
->       case qualLookupValue qc tyEnv of
->         [] -> errorAt p (notExported "data constructor" m c)
->         [DataConstructor c'' _]
->           | qc == c'' -> ConstrDecl p evs c' tys'
->         [_] -> errorAt p (importConflict "data constructor" m c)
->         _ -> internalError "checkConstrImport"
->   | otherwise = errorAt p (importConflict "data type" m tc)
+> checkConstrImport :: ModuleIdent -> ValueEnv -> [Ident] -> ConstrDecl
+>                   -> ConstrDecl
+> checkConstrImport m tyEnv tvs (ConstrDecl p evs c tys) =
+>   case qualLookupValue qc tyEnv of
+>     [DataConstructor c' (ForAllExist _ n' ty')]
+>       | qc == c' && length evs == n' &&
+>         toQualTypes m tvs tys == arrowArgs ty' ->
+>           ConstrDecl p evs c tys
+>       | otherwise -> errorAt p (importConflict "data constructor" m c)
+>     _ -> internalError "checkConstrImport"
 >   where qc = qualifyWith m c
-> checkConstrImport m tc tvs tyEnv (Just (Data c n tys))
->                                  (ConOpDecl p evs ty1 op ty2)
->   | c == op && n == length evs && tys == toQualTypes m tvs [ty1,ty2] =
->       case qualLookupValue qc tyEnv of
->         [] -> errorAt p (notExported "data constructor" m c)
->         [DataConstructor c' _]
->           | qc == c' -> ConOpDecl p evs ty1 op ty2
->         [_] -> errorAt p (importConflict "data constructor" m c)
->         _ -> internalError "checkConstrImport"
->   | otherwise = errorAt p (importConflict "data type" m tc)
->   where qc = qualifyWith m c
-> checkConstrImport m tc _ _ Nothing d =
->   errorAt (pos d) (importConflict "data type" m tc)
->   where pos (ConstrDecl p _ _ _) = p
->         pos (ConOpDecl p _ _ _ _) = p
+> checkConstrImport m tyEnv tvs (ConOpDecl p evs ty1 op ty2) =
+>   case qualLookupValue qc tyEnv of
+>     [DataConstructor c' (ForAllExist _ n' ty')]
+>       | qc == c' && length evs == n' &&
+>         toQualTypes m tvs [ty1,ty2] == arrowArgs ty' ->
+>           ConOpDecl p evs ty1 op ty2
+>       | otherwise -> errorAt p (importConflict "data constructor" m op)
+>     _ -> internalError "checkConstrImport"
+>   where qc = qualifyWith m op
 
-> checkNewConstrImport :: ModuleIdent -> Ident -> [Ident] -> ValueEnv
->                      -> Data Type -> NewConstrDecl -> NewConstrDecl
-> checkNewConstrImport m tc tvs tyEnv (Data c n ty)
->                                     (NewConstrDecl p evs c' ty')
->   | c == c' && n == length evs && ty == toQualType m tvs ty' =
->       case qualLookupValue qc tyEnv of
->         [] -> errorAt p (notExported "newtype constructor" m c)
->         [NewtypeConstructor c'' _]
->           | qc == c'' -> NewConstrDecl p evs c' ty'
->         [_] -> errorAt p (importConflict "newtype constructor" m c)
->         _ -> internalError "checkNewConstrImport"
->   | otherwise = errorAt p (importConflict "newtype" m tc)
+> checkNewConstrImport :: ModuleIdent -> ValueEnv -> [Ident] -> NewConstrDecl
+>                      -> NewConstrDecl
+> checkNewConstrImport m tyEnv tvs (NewConstrDecl p evs c ty) =
+>   case qualLookupValue qc tyEnv of
+>     [NewtypeConstructor c' (ForAllExist _ n' ty')]
+>       | qc == c' && length evs == n' &&
+>         toQualType m tvs ty == head (arrowArgs ty') ->
+>           NewConstrDecl p evs c ty
+>       | otherwise -> errorAt p (importConflict "newtype constructor" m c)
+>     _ -> internalError "checkNewConstrImport"
 >   where qc = qualifyWith m c
 
 \end{verbatim}
@@ -385,7 +379,7 @@ by the function \texttt{fixInterface} and the associated type class
 >           where (m',tc') = splitQualIdent tc
 
 \end{verbatim}
-Error functions:
+Error messages.
 \begin{verbatim}
 
 > undefinedType :: QualIdent -> String

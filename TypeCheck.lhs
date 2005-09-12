@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1759 2005-09-03 10:41:38Z wlux $
+% $Id: TypeCheck.lhs 1765 2005-09-12 13:42:51Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -53,7 +53,7 @@ constructor and type environments.
 >   run (tcDecls m tcEnv' [d | BlockDecl d <- vds] >>
 >        liftSt fetchSt >>= \theta -> fetchSt >>= \tyEnv' ->
 >        return (tcEnv',subst theta tyEnv'))
->       (bindConstrs m tcEnv' tyEnv)
+>       (foldr (bindConstrs m tcEnv') tyEnv tds)
 >   where (tds,vds) = partition isTypeDecl ds
 >         tcEnv' = bindTypes m tds tcEnv
 
@@ -87,23 +87,12 @@ have to be entered into the type constructor environment. All type
 synonyms occurring in the definitions are fully expanded and all type
 constructors are qualified with the name of the module in which they
 are defined. This is possible because Curry does not allow (mutually)
-recursive type synonyms. In order to simplify the expansion of type
-synonyms, the compiler first performs a dependency analysis on the
-type definitions. This also makes it easy to identify (mutually)
-recursive synonyms.
+recursive type synonyms.
 
 Note that \texttt{bindTC} is passed the \emph{final} type constructor
 environment in order to handle the expansion of type synonyms. This
-does not lead to a termination problem because \texttt{sortTypeDecls}
-already has checked that there are no recursive type synonyms.
-
-We have to be careful with existentially quantified type variables for
-data constructors. An existentially quantified type variable may
-shadow a universally quantified variable from the left hand side of
-the type declaration. In order to avoid wrong indices being assigned
-to these variables, we replace all shadowed variables in the left hand
-side by \texttt{anonId} before passing them to \texttt{expandMonoType}
-and \texttt{expandMonoTypes}, respectively.
+does not lead to termination problems because \texttt{sortTypeDecls}
+checks that there are no recursive type synonyms.
 \begin{verbatim}
 
 > bindTypes :: ModuleIdent -> [TopDecl] -> TCEnv -> TCEnv
@@ -112,20 +101,12 @@ and \texttt{expandMonoTypes}, respectively.
 
 > bindTC :: ModuleIdent -> TCEnv -> TopDecl -> TCEnv -> TCEnv
 > bindTC m tcEnv (DataDecl _ tc tvs cs) =
->   bindTypeInfo DataType m tc tvs (map (Just . mkData) cs)
->   where mkData (ConstrDecl _ evs c tys) = Data c (length evs) tys'
->           where tys' = expandMonoTypes tcEnv (cleanTVars tvs evs) tys
->         mkData (ConOpDecl _ evs ty1 op ty2) = Data op (length evs) tys'
->           where tys' = expandMonoTypes tcEnv (cleanTVars tvs evs) [ty1,ty2]
-> bindTC m tcEnv (NewtypeDecl _ tc tvs (NewConstrDecl _ evs c ty)) =
->   bindTypeInfo RenamingType m tc tvs (Data c (length evs) ty')
->   where ty' = expandMonoType tcEnv (cleanTVars tvs evs) ty
+>   bindTypeInfo DataType m tc tvs (map (Just . constr) cs)
+> bindTC m tcEnv (NewtypeDecl _ tc tvs (NewConstrDecl _ _ c _)) =
+>   bindTypeInfo RenamingType m tc tvs c
 > bindTC m tcEnv (TypeDecl _ tc tvs ty) =
 >   bindTypeInfo AliasType m tc tvs (expandMonoType tcEnv tvs ty)
 > bindTC _ _ (BlockDecl _) = id
-
-> cleanTVars :: [Ident] -> [Ident] -> [Ident]
-> cleanTVars tvs evs = [if tv `elem` evs then anonId else tv | tv <- tvs]
 
 > sortTypeDecls :: ModuleIdent -> [TopDecl] -> [TopDecl]
 > sortTypeDecls m = map (typeDecl m) . scc bound free
@@ -158,26 +139,47 @@ and \texttt{expandMonoTypes}, respectively.
 
 \end{verbatim}
 \paragraph{Defining Data Constructors}
-In the next step, the types of all data constructors are entered into
-the type environment using the information just entered into the type
-constructor environment. Thus, we can be sure that all type variables
-have been properly renamed and all type synonyms are already expanded.
+In the next step, the types of all data and newtype constructors are
+entered into the type environment. All type synonyms occurring in
+their types are expanded as well.
+
+We have to be careful with existentially quantified type variables for
+data and newtype constructors. An existentially quantified type
+variable may shadow a universally quantified variable from the left
+hand side of the type declaration. In order to avoid wrong indices
+being assigned to these variables, we replace all shadowed variables
+in the left hand side by \texttt{anonId} before passing them to
+\texttt{expandMonoTypes}.
 \begin{verbatim}
 
-> bindConstrs :: ModuleIdent -> TCEnv -> ValueEnv -> ValueEnv
-> bindConstrs m tcEnv tyEnv =
->   foldr (bindData . snd) tyEnv (localBindings tcEnv)
->   where bindData (DataType tc n cs) tyEnv =
->           foldr (bindConstr m n (constrType tc n)) tyEnv (catMaybes cs)
->         bindData (RenamingType tc n (Data c n' ty)) tyEnv =
->           bindGlobalInfo NewtypeConstructor m c
->                          (ForAllExist n n' (TypeArrow ty (constrType tc n)))
->                          tyEnv
->         bindData (AliasType _ _ _) tyEnv = tyEnv
->         bindConstr m n ty (Data c n' tys) =
->           bindGlobalInfo DataConstructor m c
->                          (ForAllExist n n' (foldr TypeArrow ty tys))
->         constrType tc n = TypeConstructor tc (map TypeVariable [0..n-1])
+> bindConstrs :: ModuleIdent -> TCEnv -> TopDecl -> ValueEnv -> ValueEnv
+> bindConstrs m tcEnv (DataDecl _ tc tvs cs) tyEnv = foldr bind tyEnv cs
+>   where ty0 = constrType m tc tvs
+>         bind (ConstrDecl _ evs c tys) =
+>           bindConstr DataConstructor m tcEnv tvs evs c tys ty0
+>         bind (ConOpDecl _ evs ty1 op ty2) =
+>           bindConstr DataConstructor m tcEnv tvs evs op [ty1,ty2] ty0
+> bindConstrs m tcEnv (NewtypeDecl _ tc tvs nc) tyEnv = bind nc tyEnv
+>   where ty0 = constrType m tc tvs
+>         bind (NewConstrDecl _ evs c ty) =
+>           bindConstr NewtypeConstructor m tcEnv tvs evs c [ty] ty0
+> bindConstrs _ _ (TypeDecl _ _ _ _) tyEnv = tyEnv
+> bindConstrs _ _ (BlockDecl _) tyEnv = tyEnv
+
+> bindConstr :: (QualIdent -> ExistTypeScheme -> ValueInfo) -> ModuleIdent
+>            -> TCEnv -> [Ident] -> [Ident] -> Ident -> [TypeExpr] -> Type
+>            -> ValueEnv -> ValueEnv
+> bindConstr f m tcEnv tvs evs c tys ty0 =
+>   bindGlobalInfo f m c
+>     (ForAllExist (length tvs) (length evs) (foldr TypeArrow ty0 tys'))
+>   where tys' = expandMonoTypes tcEnv (cleanTVars tvs evs) tys
+
+> constrType :: ModuleIdent -> Ident -> [Ident] -> Type
+> constrType m tc tvs =
+>   TypeConstructor (qualifyWith m tc) (map TypeVariable [0..length tvs-1])
+
+> cleanTVars :: [Ident] -> [Ident] -> [Ident]
+> cleanTVars tvs evs = [if tv `elem` evs then anonId else tv | tv <- tvs]
 
 \end{verbatim}
 \paragraph{Type Signatures}
@@ -415,14 +417,14 @@ is checked in \texttt{tcVariable} below.
 > tcConstrTerm m tcEnv sigs p t@(ConstructorPattern c ts) =
 >   do
 >     tyEnv <- fetchSt
->     ty <- skol (constrType c tyEnv)
+>     ty <- skol (conType c tyEnv)
 >     zipWithM_ (tcConstrArg m tcEnv sigs p (ppConstrTerm 0 t))
 >               ts (arrowArgs ty)
 >     return (arrowBase ty)
 > tcConstrTerm m tcEnv sigs p t@(InfixPattern t1 op t2) =
 >   do
 >     tyEnv <- fetchSt
->     ty <- skol (constrType op tyEnv)
+>     ty <- skol (conType op tyEnv)
 >     zipWithM_ (tcConstrArg m tcEnv sigs p (ppConstrTerm 0 t))
 >               [t1,t2] (arrowArgs ty)
 >     return (arrowBase ty)
@@ -478,7 +480,7 @@ is checked in \texttt{tcVariable} below.
 > tcExpr :: ModuleIdent -> TCEnv -> Position -> Expression -> TcState Type
 > tcExpr m _ _ (Literal l) = tcLiteral m l
 > tcExpr m tcEnv p (Variable v) = fetchSt >>= inst . funType v
-> tcExpr m tcEnv p (Constructor c) = fetchSt >>= instExist . constrType c
+> tcExpr m tcEnv p (Constructor c) = fetchSt >>= instExist . conType c
 > tcExpr m tcEnv p (Typed e sig) =
 >   do
 >     tyEnv0 <- fetchSt
@@ -572,11 +574,11 @@ is checked in \texttt{tcVariable} below.
 >       tcBinary p "infix application"
 >                (ppExpr 0 e $-$ text "Operator:" <+> ppOp op) m
 >     tcExpr m tcEnv p e1 >>=
->       unify p "infix application" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1)
->             m alpha
+>       unify p "infix application"
+>             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1) m alpha
 >     tcExpr m tcEnv p e2 >>=
->       unify p "infix application" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e2)
->             m beta
+>       unify p "infix application"
+>             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e2) m beta
 >     return gamma
 > tcExpr m tcEnv p e@(LeftSection e1 op) =
 >   do
@@ -826,12 +828,11 @@ We use negative offsets for fresh type variables.
 
 \end{verbatim}
 \paragraph{Auxiliary Functions}
-The functions \texttt{constrType}, \texttt{varType}, and
-\texttt{funType} are used to retrieve the type of constructors,
-pattern variables, and variables in expressions, respectively, from
-the type environment. Because the syntactical correctness has already
-been verified by the syntax checker, none of these functions should
-fail.
+The functions \texttt{conType}, \texttt{varType}, and \texttt{funType}
+are used to retrieve the type of constructors, pattern variables, and
+variables in expressions, respectively, from the type environment.
+Because the syntactical correctness has already been verified by the
+syntax checker, none of these functions should fail.
 
 Note that \texttt{varType} can handle ambiguous identifiers and
 returns the first available type. This function is used for looking up
@@ -839,12 +840,12 @@ the type of an identifier on the left hand side of a rule where it
 unambiguously refers to the local definition.
 \begin{verbatim}
 
-> constrType :: QualIdent -> ValueEnv -> ExistTypeScheme
-> constrType c tyEnv =
+> conType :: QualIdent -> ValueEnv -> ExistTypeScheme
+> conType c tyEnv =
 >   case qualLookupValue c tyEnv of
 >     [DataConstructor _ sigma] -> sigma
 >     [NewtypeConstructor _ sigma] -> sigma
->     _ -> internalError ("constrType " ++ show c)
+>     _ -> internalError ("conType " ++ show c)
 
 > varType :: Ident -> ValueEnv -> TypeScheme
 > varType v tyEnv =

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 1759 2005-09-03 10:41:38Z wlux $
+% $Id: CurrySyntax.lhs 1765 2005-09-12 13:42:51Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -78,6 +78,13 @@ parsed representation of a Curry program.
 > data Infix = Infix | InfixL | InfixR deriving (Eq,Show)
 > data EvalAnnotation = EvalRigid | EvalChoice deriving (Eq,Show)
 > data CallConv = CallConvPrimitive | CallConvCCall deriving (Eq,Show)
+
+> constr :: ConstrDecl -> Ident
+> constr (ConstrDecl _ _ c _) = c
+> constr (ConOpDecl _ _ _ op _) = op
+
+> nconstr :: NewConstrDecl -> Ident
+> nconstr (NewConstrDecl _ _ c _) = c
 
 \end{verbatim}
 \paragraph{Module interfaces}
