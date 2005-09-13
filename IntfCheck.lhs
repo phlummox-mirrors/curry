@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1765 2005-09-12 13:42:51Z wlux $
+% $Id: IntfCheck.lhs 1767 2005-09-13 18:39:29Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -30,9 +30,10 @@ has not been implemented yet.
 
 > module IntfCheck(intfCheck,fixInterface,intfEquiv) where
 > import Base
+> import List
 > import Maybe
-> import List(deleteFirstsBy)
 > import Set
+> import TopEnv
 
 > infix 4 =~=, `eqvList`, `eqvSet`
 
@@ -43,8 +44,8 @@ module.
 
 > intfCheck :: PEnv -> TCEnv -> ValueEnv -> Interface -> Interface
 > intfCheck pEnv tcEnv tyEnv (Interface m is ds) =
->   Interface m is (map (checkImport pEnv tcEnv tyEnv . checkIDecl tcEnv') ds)
->   where tcEnv' = foldr (bindArity m) tcEnv ds
+>   Interface m is (map (checkImport pEnv tcEnv tyEnv . checkIDecl env) ds)
+>   where env = foldr (bindType m) (fmap typeKind tcEnv) ds
 
 \end{verbatim}
 The compiler requires information about the arity of each defined type
@@ -53,21 +54,22 @@ denotes an algebraic data type, a renaming type, or a type synonym.
 The latter must not occur in type expressions in the interface.
 \begin{verbatim}
 
-> bindArity :: ModuleIdent -> IDecl -> TCEnv -> TCEnv
-> bindArity m (HidingDataDecl _ tc tvs) = bindTypeInfo DataType m tc tvs []
-> bindArity m (IDataDecl _ tc tvs _) = bindLocalInfo DataType m tc tvs []
-> bindArity m (INewtypeDecl _ tc tvs _) =
->   bindLocalInfo RenamingType m tc tvs undefined
-> bindArity m (ITypeDecl _ tc tvs ty) =
->   bindLocalInfo AliasType m tc tvs undefined
-> bindArity _ _ = id
+> bindType :: ModuleIdent -> IDecl -> TypeEnv -> TypeEnv
+> bindType m (HidingDataDecl _ tc tvs) =
+>   bindTop m tc (Data (qualifyWith m tc) (length tvs) [])
+> bindType m (IDataDecl _ tc tvs _) =
+>   bindTopLocal m tc (Data tc (length tvs) [])
+> bindType m (INewtypeDecl _ tc tvs _) =
+>   bindTopLocal m tc (Data tc (length tvs) [])
+> bindType m (ITypeDecl _ tc tvs ty) =
+>   bindTopLocal m tc (Alias tc (length tvs))
+> bindType _ _ = id
 
-> bindLocalInfo :: (QualIdent -> Int -> a -> TypeInfo) -> ModuleIdent
->               -> QualIdent -> [Ident] -> a -> TCEnv -> TCEnv
-> bindLocalInfo f m tc tvs x
->   | isJust m' = id
->   | otherwise = bindTypeInfo f m tc' tvs x
->   where (m',tc') = splitQualIdent tc
+> bindTopLocal :: ModuleIdent -> QualIdent -> TypeKind -> TypeEnv -> TypeEnv
+> bindTopLocal m tc x =
+>   case splitQualIdent tc of
+>     (Just _,_) -> id
+>     (Nothing,tc') -> bindTop m tc' x
 
 \end{verbatim}
 The checks applied to the interface are similar to those performed
@@ -76,70 +78,68 @@ nested declarations. In addition, synonym types must not occur in type
 expressions.
 \begin{verbatim}
 
-> checkIDecl :: TCEnv -> IDecl -> IDecl
-> checkIDecl tcEnv (HidingDataDecl p tc tvs) =
->   HidingDataDecl p tc (checkTypeLhs tcEnv p tvs)
-> checkIDecl tcEnv (IDataDecl p tc tvs cs) =
->   IDataDecl p tc tvs' (map (fmap (checkConstrDecl tcEnv tvs')) cs)
->   where tvs' = checkTypeLhs tcEnv p tvs
-> checkIDecl tcEnv (INewtypeDecl p tc tvs nc) =
->   INewtypeDecl p tc tvs' (checkNewConstrDecl tcEnv tvs' nc)
->   where tvs' = checkTypeLhs tcEnv p tvs
-> checkIDecl tcEnv (ITypeDecl p tc tvs ty) =
->   ITypeDecl p tc tvs' (checkClosedType tcEnv p tvs' ty)
->   where tvs' = checkTypeLhs tcEnv p tvs
-> checkIDecl tcEnv (IFunctionDecl p f ty) =
->   IFunctionDecl p f (checkType tcEnv p ty)
-> checkIDecl tcEnv decl = decl
+> checkIDecl :: TypeEnv -> IDecl -> IDecl
+> checkIDecl env (HidingDataDecl p tc tvs) =
+>   HidingDataDecl p tc (checkTypeLhs env p tvs)
+> checkIDecl env (IDataDecl p tc tvs cs) =
+>   IDataDecl p tc tvs' (map (fmap (checkConstrDecl env tvs')) cs)
+>   where tvs' = checkTypeLhs env p tvs
+> checkIDecl env (INewtypeDecl p tc tvs nc) =
+>   INewtypeDecl p tc tvs' (checkNewConstrDecl env tvs' nc)
+>   where tvs' = checkTypeLhs env p tvs
+> checkIDecl env (ITypeDecl p tc tvs ty) =
+>   ITypeDecl p tc tvs' (checkClosedType env p tvs' ty)
+>   where tvs' = checkTypeLhs env p tvs
+> checkIDecl env (IFunctionDecl p f ty) =
+>   IFunctionDecl p f (checkType env p ty)
+> checkIDecl _ d = d
 
-> checkTypeLhs :: TCEnv -> Position -> [Ident] -> [Ident]
-> checkTypeLhs tcEnv p (tv:tvs)
+> checkTypeLhs :: TypeEnv -> Position -> [Ident] -> [Ident]
+> checkTypeLhs env p (tv:tvs)
 >   | isTypeConstr tv = errorAt p (noVariable tv)
 >   | tv `elem` tvs = errorAt p  (nonLinear tv)
->   | otherwise = tv : checkTypeLhs tcEnv p tvs
->   where isTypeConstr tv = not (null (lookupTC tv tcEnv))
-> checkTypeLhs tcEnv p [] = []
+>   | otherwise = tv : checkTypeLhs env p tvs
+>   where isTypeConstr tv = not (null (lookupType tv env))
+> checkTypeLhs env p [] = []
 
-> checkConstrDecl :: TCEnv -> [Ident] -> ConstrDecl -> ConstrDecl
-> checkConstrDecl tcEnv tvs (ConstrDecl p evs c tys) =
->   ConstrDecl p evs' c (map (checkClosedType tcEnv p tvs') tys)
->   where evs' = checkTypeLhs tcEnv p evs
+> checkConstrDecl :: TypeEnv -> [Ident] -> ConstrDecl -> ConstrDecl
+> checkConstrDecl env tvs (ConstrDecl p evs c tys) =
+>   ConstrDecl p evs' c (map (checkClosedType env p tvs') tys)
+>   where evs' = checkTypeLhs env p evs
 >         tvs' = evs' ++ tvs
-> checkConstrDecl tcEnv tvs (ConOpDecl p evs ty1 op ty2) =
->   ConOpDecl p evs' (checkClosedType tcEnv p tvs' ty1) op
->             (checkClosedType tcEnv p tvs' ty2)
->   where evs' = checkTypeLhs tcEnv p evs
->         tvs' = evs' ++ tvs
-
-> checkNewConstrDecl :: TCEnv -> [Ident] -> NewConstrDecl -> NewConstrDecl
-> checkNewConstrDecl tcEnv tvs (NewConstrDecl p evs c ty) =
->   NewConstrDecl p evs' c (checkClosedType tcEnv p tvs' ty)
->   where evs' = checkTypeLhs tcEnv p evs
+> checkConstrDecl env tvs (ConOpDecl p evs ty1 op ty2) =
+>   ConOpDecl p evs' (checkClosedType env p tvs' ty1) op
+>             (checkClosedType env p tvs' ty2)
+>   where evs' = checkTypeLhs env p evs
 >         tvs' = evs' ++ tvs
 
-> checkClosedType :: TCEnv -> Position -> [Ident] -> TypeExpr -> TypeExpr
-> checkClosedType tcEnv p tvs ty = checkClosed p tvs (checkType tcEnv p ty)
+> checkNewConstrDecl :: TypeEnv -> [Ident] -> NewConstrDecl -> NewConstrDecl
+> checkNewConstrDecl env tvs (NewConstrDecl p evs c ty) =
+>   NewConstrDecl p evs' c (checkClosedType env p tvs' ty)
+>   where evs' = checkTypeLhs env p evs
+>         tvs' = evs' ++ tvs
 
-> checkType :: TCEnv -> Position -> TypeExpr -> TypeExpr
-> checkType tcEnv p (ConstructorType tc tys) =
->   case qualLookupTC tc tcEnv of
+> checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr -> TypeExpr
+> checkClosedType env p tvs ty = checkClosed p tvs (checkType env p ty)
+
+> checkType :: TypeEnv -> Position -> TypeExpr -> TypeExpr
+> checkType env p (ConstructorType tc tys) =
+>   case qualLookupType tc env of
 >     []
 >       | not (isQualified tc) && null tys -> VariableType (unqualify tc)
 >       | otherwise -> errorAt p (undefinedType tc)
->     [DataType tc n _] -> constrType tc n
->     [RenamingType tc n _] -> constrType tc n
->     [AliasType tc n ty] -> errorAt p (badTypeSynonym tc)
+>     [Data tc' n _]
+>       | n == n' -> ConstructorType tc' (map (checkType env p) tys)
+>       | otherwise -> errorAt p (wrongArity tc n n')
+>       where n' = length tys
+>     [Alias _ _] -> errorAt p (badTypeSynonym tc)
 >     _ -> internalError "checkType"
->   where constrType tc n
->           | n == n' = ConstructorType tc (map (checkType tcEnv p) tys)
->           | otherwise = errorAt p (wrongArity tc n n')
->           where n' = length tys
-> checkType tcEnv p (VariableType tv) =
->   checkType tcEnv p (ConstructorType (qualify tv) [])
-> checkType tcEnv p (TupleType tys) = TupleType (map (checkType tcEnv p) tys)
-> checkType tcEnv p (ListType ty) = ListType (checkType tcEnv p ty)
-> checkType tcEnv p (ArrowType ty1 ty2) =
->   ArrowType (checkType tcEnv p ty1) (checkType tcEnv p ty2)
+> checkType env p (VariableType tv) =
+>   checkType env p (ConstructorType (qualify tv) [])
+> checkType env p (TupleType tys) = TupleType (map (checkType env p) tys)
+> checkType env p (ListType ty) = ListType (checkType env p ty)
+> checkType env p (ArrowType ty1 ty2) =
+>   ArrowType (checkType env p ty1) (checkType env p ty2)
 
 > checkClosed :: Position -> [Ident] -> TypeExpr -> TypeExpr
 > checkClosed p tvs (ConstructorType tc tys) =
@@ -155,8 +155,12 @@ expressions.
 >   ArrowType (checkClosed p tvs ty1) (checkClosed p tvs ty2)
 
 \end{verbatim}
-After checking the declarations, the compiler also asserts that all
-imported definitions actually match their original definition.
+\ToDo{Define the above code in module \texttt{TypeSyntaxCheck} in
+  order to share as much code as possible.}
+
+After checking the declarations, the compiler asserts that all
+imported definitions actually match their original definition. This is
+necessary in order to detect inconsistent interfaces.
 \begin{verbatim}
 
 > checkImport :: PEnv -> TCEnv -> ValueEnv -> IDecl -> IDecl
