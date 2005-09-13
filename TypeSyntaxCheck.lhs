@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 1761 2005-09-06 13:58:54Z wlux $
+% $Id: TypeSyntaxCheck.lhs 1766 2005-09-13 15:26:29Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -36,40 +36,29 @@ defined type constructors are inserted into the environment, and,
 finally, the declarations are checked within this environment.
 \begin{verbatim}
 
-> typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl] -> [TopDecl]
+> typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl] -> (TypeEnv,[TopDecl])
 > typeSyntaxCheck m tcEnv ds =
 >   case linear (map tconstr ds') of
->     Linear -> map (checkTopDecl env) ds
+>     Linear -> (env,map (checkTopDecl env) ds)
 >     NonLinear (PIdent p tc) -> errorAt p (duplicateType tc)
 >   where ds' = filter isTypeDecl ds
->         env = foldr (bindType m) (fmap tcArity tcEnv) ds'
+>         env = foldr (bindType m) (fmap typeKind tcEnv) ds'
 
 > typeSyntaxCheckGoal :: TCEnv -> Goal -> Goal
 > typeSyntaxCheckGoal tcEnv (Goal p e ds) =
 >   Goal p (checkExpr env p e) (map (checkDecl env) ds)
->   where env = fmap tcArity tcEnv
-
-\end{verbatim}
-The type environment only needs to record the arity of each type constructor.
-\begin{verbatim}
-
-> type TypeEnv = TopEnv Int
+>   where env = fmap typeKind tcEnv
 
 > bindType :: ModuleIdent -> TopDecl -> TypeEnv -> TypeEnv
-> bindType m (DataDecl p tc tvs _) = bindArity m p tc tvs
-> bindType m (NewtypeDecl p tc tvs _) = bindArity m p tc tvs
-> bindType m (TypeDecl p tc tvs _) = bindArity m p tc tvs
+> bindType m (DataDecl _ tc tvs cs) =
+>   bindTop m tc (typeCon Data m tc tvs (map constr cs))
+> bindType m (NewtypeDecl _ tc tvs nc) =
+>   bindTop m tc (typeCon Data m tc tvs [nconstr nc])
+> bindType m (TypeDecl _ tc tvs _) = bindTop m tc (typeCon Alias m tc tvs)
 > bindType _ (BlockDecl _) = id
 
-> bindArity :: ModuleIdent -> Position -> Ident -> [Ident] -> TypeEnv -> TypeEnv
-> bindArity m p tc tvs = bindTopEnv tc n . qualBindTopEnv (qualifyWith m tc) n
->   where n = length tvs
-
-> lookupType :: Ident -> TypeEnv -> [Int]
-> lookupType = lookupTopEnv
-
-> qualLookupType :: QualIdent -> TypeEnv -> [Int]
-> qualLookupType = qualLookupTopEnv
+> typeCon :: (QualIdent -> Int -> a) -> ModuleIdent -> Ident -> [Ident] -> a
+> typeCon f m tc tvs = f (qualifyWith m tc) (length tvs)
 
 \end{verbatim}
 The compiler allows anonymous type variables on the left hand side of
@@ -207,10 +196,11 @@ interpret the identifier as such.
 >     []
 >       | not (isQualified tc) && null tys -> VariableType (unqualify tc)
 >       | otherwise -> errorAt p (undefinedType tc)
->     [n]
+>     [t]
 >       | n == n' -> ConstructorType tc (map (checkType env p) tys)
 >       | otherwise -> errorAt p (wrongArity tc n n')
->       where n' = length tys
+>       where n = arity t
+>             n' = length tys
 >     _ -> errorAt p (ambiguousType tc)
 > checkType env p (VariableType tv)
 >   | tv == anonId = VariableType tv
@@ -244,6 +234,10 @@ Auxiliary definitions.
 > tconstr (NewtypeDecl p tc _ _) = PIdent p tc
 > tconstr (TypeDecl p tc _ _) = PIdent p tc
 > tconstr (BlockDecl _) = internalError "tconstr"
+
+> arity :: TypeKind -> Int
+> arity (Data _ n _) = n
+> arity (Alias _ n) = n
 
 \end{verbatim}
 Error messages:

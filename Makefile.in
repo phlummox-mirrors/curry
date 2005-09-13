@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 1762 2005-09-06 15:02:17Z wlux $
+# $Id: Makefile.in 1766 2005-09-13 15:26:29Z wlux $
 #
 # Copyright (c) 2000-2005 Wolfgang Lux
 # See LICENSE for the full license.
@@ -57,8 +57,8 @@ compat_SRCS = $(ghc_compat_SRCS) $(hbc_compat_SRCS) $(nhc_compat_SRCS)
 
 cycc_SRCS = cycc.hs Ident.lhs Types.lhs CurrySyntax.lhs CurryPP.lhs \
 	    CurryLexer.lhs CurryParser.lhs Base.lhs TypeSyntaxCheck.lhs \
-	    SyntaxCheck.lhs Renaming.lhs PrecCheck.lhs TypeCheck.lhs \
-	    ExportSyntaxCheck.lhs IntfCheck.lhs Imports.lhs Exports.lhs \
+	    SyntaxCheck.lhs ExportSyntaxCheck.lhs Renaming.lhs PrecCheck.lhs \
+	    TypeCheck.lhs IntfCheck.lhs Imports.lhs Exports.lhs \
 	    TypeSubst.lhs Typing.lhs Eval.lhs Qual.lhs Desugar.lhs \
 	    Simplify.lhs Lift.lhs IL.lhs ILPP.lhs ILTrans.lhs ILLift.lhs \
 	    DTransform.lhs Cam.lhs CamPP.lhs ILCompile.lhs CCode.lhs \

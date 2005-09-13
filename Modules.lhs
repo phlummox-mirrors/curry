@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1762 2005-09-06 15:02:17Z wlux $
+% $Id: Modules.lhs 1766 2005-09-13 15:26:29Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -15,10 +15,10 @@ This module controls the compilation of modules.
 > import CurryParser(parseSource,parseInterface,parseGoal)
 > import TypeSyntaxCheck(typeSyntaxCheck,typeSyntaxCheckGoal)
 > import SyntaxCheck(syntaxCheck,syntaxCheckGoal)
+> import ExportSyntaxCheck(checkExports)
 > import Renaming(rename,renameGoal)
 > import PrecCheck(precCheck,precCheckGoal)
 > import TypeCheck(typeCheck,typeCheckGoal)
-> import ExportSyntaxCheck(checkExports)
 > import IntfCheck(intfCheck,fixInterface,intfEquiv)
 > import Imports(importInterface,importInterfaceIntf,importUnifyData)
 > import Exports(exportInterface)
@@ -92,13 +92,14 @@ declaration to the module.
 > checkModule :: ModuleEnv -> Module -> (ValueEnv,Module,Interface)
 > checkModule mEnv (Module m es is ds) =
 >   (tyEnv'',
->    Module m (Just es') is (qual tyEnv' ds'),
+>    Module m (Just es') is (qual tyEnv' ds'''),
 >    exportInterface m es' pEnv'' tcEnv'' tyEnv'')
 >   where (pEnv,tcEnv,tyEnv) = importModules mEnv is
->         (pEnv',ds') = precCheck m pEnv $ rename $ syntaxCheck m tyEnv
->                                        $ typeSyntaxCheck m tcEnv ds
->         (tcEnv',tyEnv') = typeCheck m tcEnv tyEnv ds'
->         es' = checkExports m is tcEnv' tyEnv' es
+>         (tEnv,ds') = typeSyntaxCheck m tcEnv ds
+>         (vEnv,ds'') = syntaxCheck m tyEnv ds'
+>         es' = checkExports m is tEnv vEnv es
+>         (pEnv',ds''') = precCheck m pEnv $ rename ds''
+>         (tcEnv',tyEnv') = typeCheck m tcEnv tyEnv ds'''
 >         (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv pEnv' tcEnv' tyEnv'
 
 > transModule :: Bool -> Bool -> Bool -> ModuleEnv -> ValueEnv -> Module

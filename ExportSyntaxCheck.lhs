@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1765 2005-09-12 13:42:51Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1766 2005-09-13 15:26:29Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -21,11 +21,11 @@ entities.
 > import Set
 > import TopEnv
 
-> checkExports :: ModuleIdent -> [ImportDecl] -> TCEnv -> ValueEnv
+> checkExports :: ModuleIdent -> [ImportDecl] -> TypeEnv -> FunEnv
 >              -> Maybe ExportSpec -> ExportSpec
-> checkExports m is tcEnv tyEnv es = Exporting noPos $
->   maybe (expandLocalModule tcEnv tyEnv)
->         (checkInterface . nubExports . expandSpecs ms m tcEnv tyEnv)
+> checkExports m is tEnv fEnv es = Exporting noPos $
+>   maybe (expandLocalModule tEnv fEnv)
+>         (checkInterface . nubExports . expandSpecs ms m tEnv fEnv)
 >         es
 >   where ms = fromListSet [fromMaybe m asM | ImportDecl _ m _ asM _ <- is]
 >         noPos = undefined
@@ -54,73 +54,72 @@ export a type constructor \texttt{x} \emph{and} a global function
 \texttt{x} at the same time.
 \begin{verbatim}
 
-> expandSpecs :: Set ModuleIdent -> ModuleIdent -> TCEnv -> ValueEnv
+> expandSpecs :: Set ModuleIdent -> ModuleIdent -> TypeEnv -> FunEnv
 >             -> ExportSpec -> [Export]
-> expandSpecs ms m tcEnv tyEnv (Exporting p es) =
->   concat (map (expandExport p ms m tcEnv tyEnv) es)
+> expandSpecs ms m tEnv fEnv (Exporting p es) =
+>   concat (map (expandExport p ms m tEnv fEnv) es)
 
-> expandExport :: Position -> Set ModuleIdent -> ModuleIdent -> TCEnv
->              -> ValueEnv -> Export -> [Export]
-> expandExport p _ _ tcEnv tyEnv (Export x) = expandThing p tcEnv tyEnv x
-> expandExport p _ _ tcEnv _ (ExportTypeWith tc cs) =
->   [expandTypeWith p tcEnv tc cs]
-> expandExport p _ _ tcEnv _ (ExportTypeAll tc) = [expandTypeAll p tcEnv tc]
-> expandExport p ms m tcEnv tyEnv (ExportModule m')
->   | m == m' = (if m `elemSet` ms then expandModule tcEnv tyEnv m else [])
->               ++ expandLocalModule tcEnv tyEnv
->   | m' `elemSet` ms = expandModule tcEnv tyEnv m'
+> expandExport :: Position -> Set ModuleIdent -> ModuleIdent -> TypeEnv
+>              -> FunEnv -> Export -> [Export]
+> expandExport p _ _ tEnv fEnv (Export x) = expandThing p tEnv fEnv x
+> expandExport p _ _ tEnv _ (ExportTypeWith tc cs) =
+>   [expandTypeWith p tEnv tc cs]
+> expandExport p _ _ tEnv _ (ExportTypeAll tc) = [expandTypeAll p tEnv tc]
+> expandExport p ms m tEnv fEnv (ExportModule m')
+>   | m == m' = (if m `elemSet` ms then expandModule tEnv fEnv m else [])
+>               ++ expandLocalModule tEnv fEnv
+>   | m' `elemSet` ms = expandModule tEnv fEnv m'
 >   | otherwise = errorAt p (moduleNotImported m')
 
-> expandThing :: Position -> TCEnv -> ValueEnv -> QualIdent -> [Export]
-> expandThing p tcEnv tyEnv tc =
->   case qualLookupTC tc tcEnv of
->     [] -> expandThing' p tyEnv tc Nothing
->     [t] -> expandThing' p tyEnv tc (Just [ExportTypeWith (origName t) []])
+> expandThing :: Position -> TypeEnv -> FunEnv -> QualIdent -> [Export]
+> expandThing p tEnv fEnv tc =
+>   case qualLookupType tc tEnv of
+>     [] -> expandThing' p fEnv tc Nothing
+>     [t] -> expandThing' p fEnv tc (Just [exportType (abstract t)])
+>       where abstract (Data tc n _) = Data tc n []
+>             abstract (Alias tc n) = Alias tc n
 >     _ -> errorAt p (ambiguousType tc)
 
-> expandThing' :: Position -> ValueEnv -> QualIdent -> Maybe [Export]
->              -> [Export]
-> expandThing' p tyEnv f tcExport =
->   case qualLookupValue f tyEnv of
+> expandThing' :: Position -> FunEnv -> QualIdent -> Maybe [Export] -> [Export]
+> expandThing' p fEnv f tcExport =
+>   case qualLookupFun f fEnv of
 >     [] -> fromMaybe (errorAt p (undefinedEntity f)) tcExport
->     [Value f' _] -> Export f' : fromMaybe [] tcExport
->     [_] -> fromMaybe (errorAt p (exportDataConstr f)) tcExport
+>     [Var f'] -> Export f' : fromMaybe [] tcExport
+>     [Constr _ _] -> fromMaybe (errorAt p (exportDataConstr f)) tcExport
 >     _ -> errorAt p (ambiguousName f)
 
-> expandTypeWith :: Position -> TCEnv -> QualIdent -> [Ident] -> Export
-> expandTypeWith p tcEnv tc cs =
->   case qualLookupTC tc tcEnv of
+> expandTypeWith :: Position -> TypeEnv -> QualIdent -> [Ident] -> Export
+> expandTypeWith p tEnv tc cs =
+>   case qualLookupType tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
->     [t]
->       | isDataType t -> ExportTypeWith (origName t)
->                           (map (checkConstr (constrs t)) (nub cs))
->       | otherwise -> errorAt p (nonDataType tc)
+>     [Data tc' _ cs'] -> ExportTypeWith tc' (map (checkConstr cs') (nub cs))
+>     [Alias _ _] -> errorAt p (nonDataType tc)
 >     _ -> errorAt p (ambiguousType tc)
 >   where checkConstr cs c
 >           | c `elem` cs = c
 >           | otherwise = errorAt p (undefinedDataConstr tc c)
 
-> expandTypeAll :: Position -> TCEnv -> QualIdent -> Export
-> expandTypeAll p tcEnv tc =
->   case qualLookupTC tc tcEnv of
+> expandTypeAll :: Position -> TypeEnv -> QualIdent -> Export
+> expandTypeAll p tEnv tc =
+>   case qualLookupType tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
->     [t]
->       | isDataType t -> exportType t 
->       | otherwise -> errorAt p (nonDataType tc)
+>     [Data tc' _ cs'] -> ExportTypeWith tc' cs'
+>     [Alias _ _] -> errorAt p (nonDataType tc)
 >     _ -> errorAt p (ambiguousType tc)
 
-> expandLocalModule :: TCEnv -> ValueEnv -> [Export]
-> expandLocalModule tcEnv tyEnv =
->   [exportType t | (_,t) <- localBindings tcEnv] ++
->   [Export f' | (f,Value f' _) <- localBindings tyEnv, f == unRenameIdent f]
+> expandLocalModule :: TypeEnv -> FunEnv -> [Export]
+> expandLocalModule tEnv fEnv =
+>   [exportType t | (_,t) <- localBindings tEnv] ++
+>   [Export f' | (f,Var f') <- localBindings fEnv, f == unRenameIdent f]
 
-> expandModule :: TCEnv -> ValueEnv -> ModuleIdent -> [Export]
-> expandModule tcEnv tyEnv m =
->   [exportType t | (_,t) <- moduleImports m tcEnv] ++
->   [Export f | (_,Value f _) <- moduleImports m tyEnv]
+> expandModule :: TypeEnv -> FunEnv -> ModuleIdent -> [Export]
+> expandModule tEnv fEnv m =
+>   [exportType t | (_,t) <- moduleImports m tEnv] ++
+>   [Export f | (_,Var f) <- moduleImports m fEnv]
 
-> exportType :: TypeInfo -> Export
-> exportType t = ExportTypeWith (origName t) (constrs t)
+> exportType :: TypeKind -> Export
+> exportType (Data tc _ cs) = ExportTypeWith tc cs
+> exportType (Alias tc _) = ExportTypeWith tc []
 
 \end{verbatim}
 The expanded list of exported entities may contain duplicates. These
@@ -140,20 +139,6 @@ are removed by the function \texttt{nubExports}.
 > addFun :: Export -> Set QualIdent -> Set QualIdent
 > addFun (Export f) fs = f `addToSet` fs
 > addFun (ExportTypeWith _ _) fs = fs
-
-\end{verbatim}
-Auxiliary definitions.
-\begin{verbatim}
-
-> isDataType :: TypeInfo -> Bool
-> isDataType (DataType _ _ _) = True
-> isDataType (RenamingType _ _ _) = True
-> isDataType (AliasType _ _ _) = False
-
-> constrs :: TypeInfo -> [Ident]
-> constrs (DataType _ _ cs) = catMaybes cs
-> constrs (RenamingType _ _ c) = [c]
-> constrs (AliasType _ _ _) = []
 
 \end{verbatim}
 Error messages:

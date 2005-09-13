@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1765 2005-09-12 13:42:51Z wlux $
+% $Id: Base.lhs 1766 2005-09-13 15:26:29Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,9 +19,10 @@ in various phases of the compiler.
 > import CurryPP
 > import Pretty
 > import Env
-> import TopEnv
+> import NestEnv
 > import List
 > import Map
+> import Maybe
 > import Monad
 > import Set
 > import Utils
@@ -181,11 +182,6 @@ replaced by underscores in the interface.
 >     | tc == tc' = Just (AliasType tc n ty)
 >   merge _ _ = Nothing
 
-> tcArity :: TypeInfo -> Int
-> tcArity (DataType _ n _) = n
-> tcArity (RenamingType _ n _) = n
-> tcArity (AliasType _ n _) = n
-
 \end{verbatim}
 Types can only be defined at the top-level; no nested environments are
 needed for them. Tuple types must be handled as a special case because
@@ -209,14 +205,40 @@ impossible to insert them into the environment in advance.
 >   qualLookupTopEnv tc tcEnv ++! lookupTupleTC (unqualify tc)
 
 > lookupTupleTC :: Ident -> [TypeInfo]
-> lookupTupleTC tc
->   | isTupleId tc = [tupleTCs !! (tupleArity tc - 2)]
->   | otherwise = []
+> lookupTupleTC tc = [tupleTCs !! (tupleArity tc - 2) | isTupleId tc]
 
 > tupleTCs :: [TypeInfo]
 > tupleTCs = map typeInfo [2..]
 >   where typeInfo n = DataType (qualify c) n [Just c]
 >           where c = tupleId n
+
+\end{verbatim}
+A simpler environment is used for checking the syntax of type
+expressions, where only the arity of each type constructor is needed.
+We only distinguish data and renaming types on one side and synonym
+types on the other side because they are treated differently in module
+export lists.
+\begin{verbatim}
+
+> type TypeEnv = TopEnv TypeKind
+> data TypeKind =
+>     Data QualIdent Int [Ident]
+>   | Alias QualIdent Int
+>   deriving (Eq,Show)
+
+> typeKind :: TypeInfo -> TypeKind
+> typeKind (DataType tc n cs) = Data tc n (catMaybes cs)
+> typeKind (RenamingType tc n c) = Data tc n [c]
+> typeKind (AliasType tc n _) = Alias tc n
+
+> bindTop :: ModuleIdent -> Ident -> TypeKind -> TypeEnv -> TypeEnv
+> bindTop m tc t = bindTopEnv tc t . qualBindTopEnv (qualifyWith m tc) t
+
+> lookupType :: Ident -> TypeEnv -> [TypeKind]
+> lookupType = lookupTopEnv
+
+> qualLookupType :: QualIdent -> TypeEnv -> [TypeKind]
+> qualLookupType = qualLookupTopEnv
 
 \end{verbatim}
 \paragraph{Function and constructor types}
@@ -276,9 +298,7 @@ constructors.
 >   qualLookupTopEnv x tyEnv ++! lookupTuple (unqualify x)
 
 > lookupTuple :: Ident -> [ValueInfo]
-> lookupTuple c
->   | isTupleId c = [tupleDCs !! (tupleArity c - 2)]
->   | otherwise = []
+> lookupTuple c = [tupleDCs !! (tupleArity c - 2) | isTupleId c]
 
 > tupleDCs :: [ValueInfo]
 > tupleDCs = map dataInfo tupleTCs
@@ -286,6 +306,46 @@ constructors.
 >         dataInfo (DataType c n _) =
 >           DataConstructor c (ForAllExist n 0 (tupleConstrType (take n tvs)))
 >         tupleConstrType tys = foldr TypeArrow (tupleType tys) tys
+
+\end{verbatim}
+A simpler kind of environment is used for syntax checking of
+expressions. We only distinguish constructors and variables here. A
+nested environment is used for syntax checking because it is applied
+before renaming. However, only the top-level of this environment is
+used in order to check the export list of a module.
+\begin{verbatim}
+
+> type FunEnv = TopEnv ValueKind
+> type VarEnv = NestEnv ValueKind
+> data ValueKind = Constr QualIdent Int | Var QualIdent deriving (Eq,Show)
+
+> valueKind :: ValueInfo -> ValueKind
+> valueKind (DataConstructor c (ForAllExist _ _ ty)) = Constr c (arrowArity ty)
+> valueKind (NewtypeConstructor c _) = Constr c 1
+> valueKind (Value v _) = Var v
+
+> bindGlobal :: ModuleIdent -> Ident -> ValueKind -> VarEnv -> VarEnv
+> bindGlobal m c v = bindNestEnv c v . qualBindNestEnv (qualifyWith m c) v
+
+> bindLocal :: Ident -> ValueKind -> VarEnv -> VarEnv
+> bindLocal = bindNestEnv
+
+> lookupVar :: Ident -> VarEnv -> [ValueKind]
+> lookupVar v env = lookupNestEnv v env ++! lookupTupleConstr v
+
+> qualLookupVar :: QualIdent -> VarEnv -> [ValueKind]
+> qualLookupVar v env =
+>   qualLookupNestEnv v env ++! lookupTupleConstr (unqualify v)
+
+> qualLookupFun :: QualIdent -> FunEnv -> [ValueKind]
+> qualLookupFun f env =
+>   qualLookupTopEnv f env ++! lookupTupleConstr (unqualify f)
+
+> lookupTupleConstr :: Ident -> [ValueKind]
+> lookupTupleConstr c = [tupleConstrs !! (tupleArity c - 2) | isTupleId c]
+
+> tupleConstrs :: [ValueKind]
+> tupleConstrs = map valueKind tupleDCs
 
 \end{verbatim}
 \paragraph{Operator precedences}

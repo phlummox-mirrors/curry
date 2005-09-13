@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1760 2005-09-04 15:43:03Z wlux $
+% $Id: SyntaxCheck.lhs 1766 2005-09-13 15:26:29Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -32,84 +32,53 @@ the current module are entered into this environment. Finally, all
 declarations are checked within the resulting environment.
 \begin{verbatim}
 
-> syntaxCheck :: ModuleIdent -> ValueEnv -> [TopDecl] -> [TopDecl]
+> syntaxCheck :: ModuleIdent -> ValueEnv -> [TopDecl] -> (FunEnv,[TopDecl])
 > syntaxCheck m tyEnv ds =
 >   case linear cs of
->     Linear -> tds ++ checkTopDecls m cs env vds
+>     Linear -> (toplevelEnv env',tds ++ map BlockDecl vds')
 >     NonLinear (PIdent p c) -> errorAt p (duplicateData c)
 >   where (tds,vds) = partition isTypeDecl ds
->         env = foldr (bindConstrs m) (globalEnv (fmap identInfo tyEnv)) tds
+>         (env',vds') = checkTopDecls m cs env [d | BlockDecl d <- vds]
+>         env = foldr (bindConstrs m) (globalEnv (fmap valueKind tyEnv)) tds
 >         cs = concatMap constrs tds
 
 > syntaxCheckGoal :: ValueEnv -> Goal -> Goal
-> syntaxCheckGoal tyEnv g = checkGoal (globalEnv (fmap identInfo tyEnv)) g
+> syntaxCheckGoal tyEnv g = checkGoal (globalEnv (fmap valueKind tyEnv)) g
 
-\end{verbatim}
-In order to check for undefined and ambiguous identifiers, we use a
-nested environment that records whether an identifier denotes a
-constructor or a variable.
-
-\emph{Note: We have to use a \texttt{NestEnv} here because the current
-\texttt{TopEnv} implementation raises an error if a local binding is
-added for an identifier that is already bound in the environment.}
-\begin{verbatim}
-
-> type IdentEnv = NestEnv IdentInfo
-> data IdentInfo = Constr Int | Var deriving (Eq,Show)
-
-> identInfo :: ValueInfo -> IdentInfo
-> identInfo (DataConstructor _ (ForAllExist _ _ ty)) = Constr (arrowArity ty)
-> identInfo (NewtypeConstructor _ _) = Constr 1
-> identInfo (Value _ _) = Var
-
-> bindConstrs :: ModuleIdent -> TopDecl -> IdentEnv -> IdentEnv
+> bindConstrs :: ModuleIdent -> TopDecl -> VarEnv -> VarEnv
 > bindConstrs m (DataDecl _ tc _ cs) env = foldr (bindConstr m) env cs
 > bindConstrs m (NewtypeDecl _ tc _ nc) env = bindNewConstr m nc env
 > bindConstrs _ (TypeDecl _ _ _ _) env = env
 > bindConstrs _ (BlockDecl _) env = env
 
-> bindConstr :: ModuleIdent -> ConstrDecl -> IdentEnv -> IdentEnv
-> bindConstr m (ConstrDecl _ _ c tys) = bindGlobal m c (Constr (length tys))
-> bindConstr m (ConOpDecl _ _ _ op _) = bindGlobal m op (Constr 2)
+> bindConstr :: ModuleIdent -> ConstrDecl -> VarEnv -> VarEnv
+> bindConstr m (ConstrDecl _ _ c tys) =
+>   bindGlobal m c (Constr (qualifyWith m c) (length tys))
+> bindConstr m (ConOpDecl _ _ _ op _) =
+>   bindGlobal m op (Constr (qualifyWith m op) 2)
 
-> bindNewConstr :: ModuleIdent -> NewConstrDecl -> IdentEnv -> IdentEnv
-> bindNewConstr m (NewConstrDecl _ _ c _) = bindGlobal m c (Constr 1)
+> bindNewConstr :: ModuleIdent -> NewConstrDecl -> VarEnv -> VarEnv
+> bindNewConstr m (NewConstrDecl _ _ c _) =
+>   bindGlobal m c (Constr (qualifyWith m c) 1)
 
-> bindFunc :: ModuleIdent -> PIdent -> IdentEnv -> IdentEnv
-> bindFunc m (PIdent _ f) = bindGlobal m f Var
+> bindFunc :: ModuleIdent -> PIdent -> VarEnv -> VarEnv
+> bindFunc m (PIdent _ f) = bindGlobal m f (Var (qualifyWith m f))
 
-> bindVar :: PIdent -> IdentEnv -> IdentEnv
-> bindVar (PIdent _ v) = bindLocal v Var
-
-> bindGlobal :: ModuleIdent -> Ident -> IdentInfo -> IdentEnv -> IdentEnv
-> bindGlobal m c r = bindNestEnv c r . qualBindNestEnv (qualifyWith m c) r
-
-> bindLocal :: Ident -> IdentInfo -> IdentEnv -> IdentEnv
-> bindLocal f r = bindNestEnv f r
-
-> lookupVar :: Ident -> IdentEnv -> [IdentInfo]
-> lookupVar v env = lookupNestEnv v env ++! lookupTupleConstr v
-
-> qualLookupVar :: QualIdent -> IdentEnv -> [IdentInfo]
-> qualLookupVar v env =
->   qualLookupNestEnv v env ++! lookupTupleConstr (unqualify v)
-
-> lookupTupleConstr :: Ident -> [IdentInfo]
-> lookupTupleConstr v = [Constr (tupleArity v) | isTupleId v]
+> bindVar :: PIdent -> VarEnv -> VarEnv
+> bindVar (PIdent _ v) = bindLocal v (Var (qualify v))
 
 \end{verbatim}
-When a module is checked, the global declaration group is checked. The
-resulting renaming environment can be discarded. The same is true for
-a goal. Note that all declarations in the goal must be considered as
-local declarations.
+When a module is checked, the global declaration group is checked. A
+goal is checked similar to the right hand side of an equation. Thus,
+all of its declarations are considered as local declarations. The
+final environment can be discarded.
 \begin{verbatim}
 
-> checkTopDecls :: ModuleIdent -> [PIdent] -> IdentEnv -> [TopDecl] -> [TopDecl]
-> checkTopDecls m cs env ds =
->   map BlockDecl $ snd $
->   checkDeclGroup True (bindFunc m) cs env [d | BlockDecl d <- ds]
+> checkTopDecls :: ModuleIdent -> [PIdent] -> VarEnv -> [Decl]
+>               -> (VarEnv,[Decl])
+> checkTopDecls m cs env ds = checkDeclGroup True (bindFunc m) cs env ds
 
-> checkGoal :: IdentEnv -> Goal -> Goal
+> checkGoal :: VarEnv -> Goal -> Goal
 > checkGoal env (Goal p e ds) = env' `seq` Goal p e' ds'
 >   where (env',ds') = checkLocalDecls env ds
 >         e' = checkExpr p env' e
@@ -131,16 +100,16 @@ functions. Note that pattern declarations are not allowed on the
 top-level.
 \begin{verbatim}
 
-> checkLocalDecls :: IdentEnv -> [Decl] -> (IdentEnv,[Decl])
+> checkLocalDecls :: VarEnv -> [Decl] -> (VarEnv,[Decl])
 > checkLocalDecls env ds = checkDeclGroup False bindVar [] (nestEnv env) ds
 
-> checkDeclGroup :: Bool -> (PIdent -> IdentEnv -> IdentEnv) -> [PIdent]
->                -> IdentEnv -> [Decl] -> (IdentEnv,[Decl])
+> checkDeclGroup :: Bool -> (PIdent -> VarEnv -> VarEnv) -> [PIdent]
+>                -> VarEnv -> [Decl] -> (VarEnv,[Decl])
 > checkDeclGroup top bindVar cs env ds = (env',map (checkDeclRhs env') ds')
 >   where ds' = joinEquations (map (checkDeclLhs top env) ds)
 >         env' = checkDeclVars bindVar cs env ds'
 
-> checkDeclLhs :: Bool -> IdentEnv -> Decl -> Decl
+> checkDeclLhs :: Bool -> VarEnv -> Decl -> Decl
 > checkDeclLhs _ _ (InfixDecl p fix pr ops) = InfixDecl p fix pr ops
 > checkDeclLhs _ env (TypeSig p vs ty) =
 >   TypeSig p (checkVars "type signature" p env vs) ty
@@ -157,7 +126,7 @@ top-level.
 >   | top = internalError "checkDeclLhs"
 >   | otherwise = FreeDecl p (checkVars "free variables declaration" p env vs)
 
-> checkEquationLhs :: Bool -> IdentEnv -> Position -> [Equation] -> Decl
+> checkEquationLhs :: Bool -> VarEnv -> Position -> [Equation] -> Decl
 > checkEquationLhs top env p [Equation p' lhs rhs] =
 >   either funDecl (checkDeclLhs top env . patDecl) (checkEqLhs env p' lhs)
 >   where funDecl (f,lhs) = FunctionDecl p f [Equation p' lhs rhs]
@@ -166,7 +135,7 @@ top-level.
 >           | otherwise = PatternDecl p' t rhs
 > checkEquationLhs _ _ _ _ = internalError "checkEquationLhs"
 
-> checkEqLhs :: IdentEnv -> Position -> Lhs -> Either (Ident,Lhs) ConstrTerm
+> checkEqLhs :: VarEnv -> Position -> Lhs -> Either (Ident,Lhs) ConstrTerm
 > checkEqLhs env _ (FunLhs f ts)
 >   | isDataConstr env f = Right (ConstructorPattern (qualify f) ts)
 >   | otherwise = Left (f,FunLhs f ts)
@@ -182,7 +151,7 @@ top-level.
 >     Right _ -> errorAt p $ nonVariable "curried definition" f
 >   where (f,_) = flatLhs lhs
 
-> checkOpLhs :: IdentEnv -> (ConstrTerm -> ConstrTerm) -> ConstrTerm
+> checkOpLhs :: VarEnv -> (ConstrTerm -> ConstrTerm) -> ConstrTerm
 >            -> Either (Ident,Lhs) ConstrTerm
 > checkOpLhs env f (InfixPattern t1 op t2)
 >   | isJust m || isDataConstr env op' =
@@ -191,14 +160,14 @@ top-level.
 >   where (m,op') = splitQualIdent op
 > checkOpLhs _ f t = Right (f t)
 
-> checkVars :: String -> Position -> IdentEnv -> [Ident] -> [Ident]
+> checkVars :: String -> Position -> VarEnv -> [Ident] -> [Ident]
 > checkVars what p env vs =
 >   case filter (isDataConstr env) vs of
 >     [] -> vs
 >     v:_ -> errorAt p (nonVariable what v)
 
-> checkDeclVars :: (PIdent -> IdentEnv -> IdentEnv) -> [PIdent] -> IdentEnv
->               -> [Decl] -> IdentEnv
+> checkDeclVars :: (PIdent -> VarEnv -> VarEnv) -> [PIdent] -> VarEnv
+>               -> [Decl] -> VarEnv
 > checkDeclVars bindVar cs env ds =
 >   case linear ops of
 >     Linear ->
@@ -221,7 +190,7 @@ top-level.
 >         evs = concatMap vars (filter isEvalAnnot ds)
 >         ops = concatMap vars (filter isInfixDecl ds)
 
-> checkDeclRhs :: IdentEnv -> Decl -> Decl
+> checkDeclRhs :: VarEnv -> Decl -> Decl
 > checkDeclRhs env (FunctionDecl p f eqs) =
 >   FunctionDecl p f (map (checkEquation env) eqs)
 > checkDeclRhs env (PatternDecl p t rhs) =
@@ -241,7 +210,7 @@ top-level.
 >   where arity (Equation _ lhs _) = length $ snd $ flatLhs lhs
 > joinEquations (d : ds) = d : joinEquations ds
 
-> checkEquation :: IdentEnv -> Equation -> Equation
+> checkEquation :: VarEnv -> Equation -> Equation
 > checkEquation env (Equation p lhs rhs) = env' `seq` Equation p lhs' rhs'
 >   where (env',lhs') = checkLhs p env lhs
 >         rhs' = checkRhs env' rhs
@@ -294,33 +263,33 @@ callbacks into Curry are not yet supported by the runtime system.
 >         isLetNum c = isLetter c || isDigit c
 >         isHeaderChar c = isLetNum c || c `elem` "!#$%*+./<=>?@\\^|-~"
 
-> checkLhs :: Position -> IdentEnv -> Lhs -> (IdentEnv,Lhs)
+> checkLhs :: Position -> VarEnv -> Lhs -> (VarEnv,Lhs)
 > checkLhs p env lhs = (checkBoundVars p env lhs',lhs')
 >   where lhs' = checkLhsTerm p env lhs
 
-> checkLhsTerm :: Position -> IdentEnv -> Lhs -> Lhs
+> checkLhsTerm :: Position -> VarEnv -> Lhs -> Lhs
 > checkLhsTerm p env (FunLhs f ts) = FunLhs f (map (checkConstrTerm p env) ts)
 > checkLhsTerm p env (OpLhs t1 op t2) =
 >   OpLhs (checkConstrTerm p env t1) op (checkConstrTerm p env t2)
 > checkLhsTerm p env (ApLhs lhs ts) =
 >   ApLhs (checkLhsTerm p env lhs) (map (checkConstrTerm p env) ts)
 
-> checkArg :: Position -> IdentEnv -> ConstrTerm -> (IdentEnv,ConstrTerm)
+> checkArg :: Position -> VarEnv -> ConstrTerm -> (VarEnv,ConstrTerm)
 > checkArg p env t = (checkBoundVars p env t',t')
 >   where t' = checkConstrTerm p env t
 
-> checkArgs :: Position -> IdentEnv -> [ConstrTerm] -> (IdentEnv,[ConstrTerm])
+> checkArgs :: Position -> VarEnv -> [ConstrTerm] -> (VarEnv,[ConstrTerm])
 > checkArgs p env ts = (checkBoundVars p env ts',ts')
 >   where ts' = map (checkConstrTerm p env) ts
 
-> checkBoundVars :: QuantExpr t => Position -> IdentEnv -> t -> IdentEnv
+> checkBoundVars :: QuantExpr t => Position -> VarEnv -> t -> VarEnv
 > checkBoundVars p env ts =
 >   case linear bvs of
 >     Linear -> foldr (bindVar . PIdent p) (nestEnv env) bvs
 >     NonLinear v -> errorAt p (duplicateVariable v)
 >   where bvs = filter (anonId /=) (bv ts)
 
-> checkConstrTerm :: Position -> IdentEnv -> ConstrTerm -> ConstrTerm
+> checkConstrTerm :: Position -> VarEnv -> ConstrTerm -> ConstrTerm
 > checkConstrTerm _ _ (LiteralPattern l) = LiteralPattern l
 > checkConstrTerm _ _ (NegativePattern op l) = NegativePattern op l
 > checkConstrTerm p env (VariablePattern v)
@@ -328,7 +297,7 @@ callbacks into Curry are not yet supported by the runtime system.
 >   | otherwise = checkConstrTerm p env (ConstructorPattern (qualify v) [])
 > checkConstrTerm p env (ConstructorPattern c ts) =
 >   case qualLookupVar c env of
->     [Constr n]
+>     [Constr _ n]
 >       | n == n' -> ConstructorPattern c (map (checkConstrTerm p env) ts)
 >       | otherwise -> errorAt p (wrongArity c n n')
 >       where n' = length ts
@@ -338,7 +307,7 @@ callbacks into Curry are not yet supported by the runtime system.
 >       | otherwise -> errorAt p (undefinedData c)
 > checkConstrTerm p env (InfixPattern t1 op t2) =
 >   case qualLookupVar op env of
->     [Constr n]
+>     [Constr _ n]
 >       | n == 2 -> InfixPattern (checkConstrTerm p env t1) op
 >                                (checkConstrTerm p env t2)
 >       | otherwise -> errorAt p (wrongArity op n 2)
@@ -356,7 +325,7 @@ callbacks into Curry are not yet supported by the runtime system.
 > checkConstrTerm p env (LazyPattern t) =
 >   LazyPattern (checkConstrTerm p env t)
 
-> checkRhs :: IdentEnv -> Rhs -> Rhs
+> checkRhs :: VarEnv -> Rhs -> Rhs
 > checkRhs env (SimpleRhs p e ds) = env' `seq` SimpleRhs p e' ds'
 >   where (env',ds') = checkLocalDecls env ds
 >         e' = checkExpr p env' e
@@ -364,17 +333,17 @@ callbacks into Curry are not yet supported by the runtime system.
 >   where (env',ds') = checkLocalDecls env ds
 >         es' = map (checkCondExpr env') es
 
-> checkCondExpr :: IdentEnv -> CondExpr -> CondExpr
+> checkCondExpr :: VarEnv -> CondExpr -> CondExpr
 > checkCondExpr env (CondExpr p g e) =
 >   CondExpr p (checkExpr p env g) (checkExpr p env e)
 
-> checkExpr :: Position -> IdentEnv -> Expression -> Expression
+> checkExpr :: Position -> VarEnv -> Expression -> Expression
 > checkExpr _ _ (Literal l) = Literal l
 > checkExpr p env (Variable v) =
 >   case qualLookupVar v env of
 >     [] -> errorAt p (undefinedVariable v)
->     [Constr _] -> Constructor v
->     [Var] -> Variable v
+>     [Constr _ _] -> Constructor v
+>     [Var _] -> Variable v
 >     rs -> errorAt p (ambiguousIdent rs v)
 > checkExpr p env (Constructor c) = checkExpr p env (Variable c)
 > checkExpr p env (Paren e) = Paren (checkExpr p env e)
@@ -416,7 +385,7 @@ callbacks into Curry are not yet supported by the runtime system.
 > checkExpr p env (Case e alts) =
 >   Case (checkExpr p env e) (map (checkAlt env) alts)
 
-> checkStatement :: Position -> IdentEnv -> Statement -> (IdentEnv,Statement)
+> checkStatement :: Position -> VarEnv -> Statement -> (VarEnv,Statement)
 > checkStatement p env (StmtExpr e) = (env,StmtExpr (checkExpr p env e))
 > checkStatement p env (StmtBind t e) =
 >   env' `seq` (env',StmtBind t' (checkExpr p env e))
@@ -424,17 +393,17 @@ callbacks into Curry are not yet supported by the runtime system.
 > checkStatement p env (StmtDecl ds) = env' `seq` (env',StmtDecl ds')
 >   where (env',ds') = checkLocalDecls env ds
 
-> checkAlt :: IdentEnv -> Alt -> Alt
+> checkAlt :: VarEnv -> Alt -> Alt
 > checkAlt env (Alt p t rhs) = env' `seq` Alt p t' rhs'
 >   where (env',t') = checkArg p env t
 >         rhs' = checkRhs env' rhs
 
-> checkOp :: Position -> IdentEnv -> InfixOp -> InfixOp
+> checkOp :: Position -> VarEnv -> InfixOp -> InfixOp
 > checkOp p env op =
 >   case qualLookupVar v env of
 >     [] -> errorAt p (undefinedVariable v)
->     [Constr _] -> InfixConstr v
->     [Var] -> InfixOp v
+>     [Constr _ _] -> InfixConstr v
+>     [Var _] -> InfixOp v
 >     rs -> errorAt p (ambiguousIdent rs v)
 >   where v = opName op
 
@@ -477,12 +446,12 @@ constructor can become possible by importing a function with the same
 name.
 \begin{verbatim}
 
-> isDataConstr :: IdentEnv -> Ident -> Bool
+> isDataConstr :: VarEnv -> Ident -> Bool
 > isDataConstr env v = any isConstr (lookupVar v (globalEnv (toplevelEnv env)))
 
-> isConstr :: IdentInfo -> Bool
-> isConstr (Constr _) = True
-> isConstr Var = False
+> isConstr :: ValueKind -> Bool
+> isConstr (Constr _ _) = True
+> isConstr (Var _) = False
 
 \end{verbatim}
 Error messages.
@@ -494,7 +463,7 @@ Error messages.
 > undefinedData :: QualIdent -> String
 > undefinedData c = "Undefined data constructor " ++ qualName c
 
-> ambiguousIdent :: [IdentInfo] -> QualIdent -> String
+> ambiguousIdent :: [ValueKind] -> QualIdent -> String
 > ambiguousIdent rs
 >   | any isConstr rs = ambiguousData
 >   | otherwise = ambiguousVariable
