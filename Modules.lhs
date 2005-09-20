@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1766 2005-09-13 15:26:29Z wlux $
+% $Id: Modules.lhs 1769 2005-09-20 14:19:15Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,7 +19,9 @@ This module controls the compilation of modules.
 > import Renaming(rename,renameGoal)
 > import PrecCheck(precCheck,precCheckGoal)
 > import TypeCheck(typeCheck,typeCheckGoal)
-> import IntfCheck(intfCheck,fixInterface,intfEquiv)
+> import IntfSyntaxCheck(intfSyntaxCheck)
+> import IntfCheck(intfCheck)
+> import IntfEquiv(fixInterface,intfEquiv)
 > import Imports(importInterface,importInterfaceIntf,importUnifyData)
 > import Exports(exportInterface)
 > import Eval(evalEnv,evalEnvGoal)
@@ -346,7 +348,7 @@ that are imported directly from that module.}
 
 > checkInterface :: ModuleEnv -> Interface -> Interface
 > checkInterface mEnv (Interface m is ds) =
->   intfCheck pEnv tcEnv tyEnv (Interface m is ds)
+>   Interface m is (intfCheck m pEnv tcEnv tyEnv (intfSyntaxCheck m tcEnv ds))
 >   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs is
 >         importModule envs (IImportDecl p m) =
 >           case lookupModule m mEnv of
