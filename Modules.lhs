@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1769 2005-09-20 14:19:15Z wlux $
+% $Id: Modules.lhs 1771 2005-09-21 14:18:10Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -13,6 +13,7 @@ This module controls the compilation of modules.
 > import Base
 > import Unlit(unlit)
 > import CurryParser(parseSource,parseInterface,parseGoal)
+> import ImportSyntaxCheck(checkImports)
 > import TypeSyntaxCheck(typeSyntaxCheck,typeSyntaxCheckGoal)
 > import SyntaxCheck(syntaxCheck,syntaxCheckGoal)
 > import ExportSyntaxCheck(checkExports)
@@ -266,9 +267,10 @@ imported modules into scope for the current module.
 > importModules :: ModuleEnv -> [ImportDecl] -> (PEnv,TCEnv,ValueEnv)
 > importModules mEnv ds = (pEnv,importUnifyData tcEnv,tyEnv)
 >   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs ds
->         importModule envs (ImportDecl p m q asM is) =
+>         importModule envs (ImportDecl _ m q asM is) =
 >           case lookupModule m mEnv of
->             Just i -> importInterface p (fromMaybe m asM) q is envs i
+>             Just i ->
+>               importInterface (fromMaybe m asM) q (checkImports i is) envs i
 >             Nothing -> internalError "importModules"
 
 > initEnvs :: (PEnv,TCEnv,ValueEnv)
