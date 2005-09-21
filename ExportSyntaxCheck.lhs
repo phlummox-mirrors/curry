@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1766 2005-09-13 15:26:29Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1772 2005-09-21 15:10:12Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ExportSyntaxCheck.lhs}
-\section{Checking Module Interfaces}
+\section{Checking Module Export Lists}
 The function \texttt{checkExports} checks the export specifications of
 the module and expands them into a list containing all exported types
 and functions, combining multiple exports for the same entity. The
@@ -23,22 +23,21 @@ entities.
 
 > checkExports :: ModuleIdent -> [ImportDecl] -> TypeEnv -> FunEnv
 >              -> Maybe ExportSpec -> ExportSpec
-> checkExports m is tEnv fEnv es = Exporting noPos $
->   maybe (expandLocalModule tEnv fEnv)
+> checkExports m is tEnv fEnv =
+>   maybe (Exporting noPos (expandLocalModule tEnv fEnv))
 >         (checkInterface . nubExports . expandSpecs ms m tEnv fEnv)
->         es
 >   where ms = fromListSet [fromMaybe m asM | ImportDecl _ m _ asM _ <- is]
 >         noPos = undefined
 
-> checkInterface :: [Export] -> [Export]
-> checkInterface es =
+> checkInterface :: ExportSpec -> ExportSpec
+> checkInterface (Exporting p es) =
 >   case linear [unqualify tc | ExportTypeWith tc _ <- es] of
 >     Linear ->
 >       case linear ([c | ExportTypeWith _ cs <- es, c <- cs] ++
 >                    [unqualify f | Export f <- es]) of
->         Linear -> es
->         NonLinear v -> error (ambiguousExportValue v)
->     NonLinear tc -> error (ambiguousExportType tc)
+>         Linear -> Exporting p es
+>         NonLinear v -> errorAt p (ambiguousExportValue v)
+>     NonLinear tc -> errorAt p (ambiguousExportType tc)
 
 \end{verbatim}
 While checking all export specifications, the compiler expands
@@ -55,9 +54,9 @@ export a type constructor \texttt{x} \emph{and} a global function
 \begin{verbatim}
 
 > expandSpecs :: Set ModuleIdent -> ModuleIdent -> TypeEnv -> FunEnv
->             -> ExportSpec -> [Export]
+>             -> ExportSpec -> ExportSpec
 > expandSpecs ms m tEnv fEnv (Exporting p es) =
->   concat (map (expandExport p ms m tEnv fEnv) es)
+>   Exporting p (concat (map (expandExport p ms m tEnv fEnv) es))
 
 > expandExport :: Position -> Set ModuleIdent -> ModuleIdent -> TypeEnv
 >              -> FunEnv -> Export -> [Export]
@@ -126,8 +125,8 @@ The expanded list of exported entities may contain duplicates. These
 are removed by the function \texttt{nubExports}.
 \begin{verbatim}
 
-> nubExports :: [Export] -> [Export]
-> nubExports es =
+> nubExports :: ExportSpec -> ExportSpec
+> nubExports (Exporting p es) = Exporting p $
 >   [ExportTypeWith tc cs | (tc,cs) <- toListFM (foldr addType zeroFM es)] ++
 >   [Export f | f <- toListSet (foldr addFun zeroSet es)]
 
@@ -141,7 +140,7 @@ are removed by the function \texttt{nubExports}.
 > addFun (ExportTypeWith _ _) fs = fs
 
 \end{verbatim}
-Error messages:
+Error messages.
 \begin{verbatim}
 
 > undefinedEntity :: QualIdent -> String
