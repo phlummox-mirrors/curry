@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1771 2005-09-21 14:18:10Z wlux $
+% $Id: Imports.lhs 1773 2005-09-22 10:23:22Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -100,7 +100,7 @@ following functions.
 > types :: Bool -> ModuleIdent -> IDecl -> [I TypeInfo] -> [I TypeInfo]
 > types exported m (HidingDataDecl _ tc tvs)
 >   | exported = id
->   | otherwise = unqual tc (typeCon DataType m (qualify tc) tvs [])
+>   | otherwise = qual tc (typeCon DataType m tc tvs [])
 > types _ m (IDataDecl _ tc tvs cs) =
 >   qual tc (typeCon DataType m tc tvs (map (fmap constr) cs))
 > types _ m (INewtypeDecl _ tc tvs nc) =
@@ -133,10 +133,7 @@ following functions.
 >   (c,con NewtypeConstructor m tc tvs evs c (ArrowType ty1 ty0))
 
 > qual :: QualIdent -> a -> [I a] -> [I a]
-> qual x = unqual (unqualify x)
-
-> unqual :: Ident -> a -> [I a] -> [I a]
-> unqual = curry (:)
+> qual x y = ((unqualify x,y) :)
 
 \end{verbatim}
 After all modules have been imported, the compiler has to ensure that

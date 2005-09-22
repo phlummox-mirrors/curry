@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1769 2005-09-20 14:19:15Z wlux $
+% $Id: IntfCheck.lhs 1773 2005-09-22 10:23:22Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -56,7 +56,14 @@ interface module only. However, this has not been implemented yet.
 >   checkPrecInfo checkPrec pEnv p op (IInfixDecl p fix pr op)
 >   where checkPrec (PrecInfo op' (OpPrec fix' pr')) =
 >           op == op' && fix == fix' && pr == pr'
-> checkImport _ _ _ _ (HidingDataDecl p tc tvs) = HidingDataDecl p tc tvs
+> checkImport _ _ tcEnv _ (HidingDataDecl p tc tvs) =
+>   checkTypeInfo "hidden data type" checkData tcEnv p tc
+>                 (const (HidingDataDecl p tc tvs)) undefined
+>   where checkData (DataType tc' n' _)
+>           | tc == tc' && length tvs == n' = Just id
+>         checkData (RenamingType tc' n' _)
+>           | tc == tc' && length tvs == n' = Just id
+>         checkData _ = Nothing
 > checkImport m _ tcEnv tyEnv (IDataDecl p tc tvs cs) =
 >   checkTypeInfo "data type" checkData tcEnv p tc (IDataDecl p tc tvs) cs
 >   where checkData (DataType tc' n' cs')

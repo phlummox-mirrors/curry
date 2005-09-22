@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfEquiv.lhs 1769 2005-09-20 14:19:15Z wlux $
+% $Id: IntfEquiv.lhs 1773 2005-09-22 10:23:22Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -128,7 +128,7 @@ by function \texttt{fixInterface} and the associated type class
 > typeConstructors ds =
 >   [tc | (Nothing,tc) <- map splitQualIdent (foldr tcs [] ds)]
 >   where tcs (IInfixDecl _ _ _ _) tcs = tcs
->         tcs (HidingDataDecl _ tc _) tcs = qualify tc : tcs
+>         tcs (HidingDataDecl _ tc _) tcs = tc : tcs
 >         tcs (IDataDecl _ tc _ _) tcs = tc : tcs
 >         tcs (INewtypeDecl _ tc _ _) tcs = tc : tcs
 >         tcs (ITypeDecl _ tc _ _) tcs = tc : tcs

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1765 2005-09-12 13:42:51Z wlux $
+% $Id: Exports.lhs 1773 2005-09-22 10:23:22Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -151,25 +151,26 @@ not module \texttt{B}.
 >   modules = maybe id (:) . fst . splitQualIdent
 
 \end{verbatim}
-After the interface declarations have been computed, the compiler
-eventually must add hidden (data) type declarations to the interface
-for all those types which were used in the interface but not exported
-from the current module, so that these type constructors can always be
-distinguished from type variables.
+After the interface declarations have been computed, the compiler adds
+hidden (data) type declarations to the interface for all types which
+were used in the interface but are not exported from it. This is
+necessary in order to distinguish type constructors and type
+variables. Furthermore, by including hidden types in interfaces the
+compiler can check them without loading the imported modules.
 \begin{verbatim}
 
-> hiddenTypeDecl :: ModuleIdent -> TCEnv -> Ident -> IDecl
+> hiddenTypeDecl :: ModuleIdent -> TCEnv -> QualIdent -> IDecl
 > hiddenTypeDecl m tcEnv tc =
->   case qualLookupTC (qualifyWith m tc) tcEnv of
+>   case qualLookupTC (qualQualify m tc) tcEnv of
 >     [DataType _ n _] -> hidingDataDecl tc n
 >     [RenamingType _ n _] -> hidingDataDecl tc n
 >     _ ->  internalError "hiddenTypeDecl"
 >   where hidingDataDecl tc n = HidingDataDecl noPos tc (take n nameSupply)
 
-> hiddenTypes :: [IDecl] -> [Ident]
-> hiddenTypes ds = map unqualify (takeWhile (not . isQualified) (toListSet tcs))
->   where tcs = foldr deleteFromSet (fromListSet (usedTypes ds []))
->                     (foldr definedType [] ds)
+> hiddenTypes :: [IDecl] -> [QualIdent]
+> hiddenTypes ds = toListSet (foldr deleteFromSet (fromListSet used) defd)
+>   where defd = foldr definedType [] ds
+>         used = usedTypes ds []
 
 > definedType :: IDecl -> [QualIdent] -> [QualIdent]
 > definedType (IDataDecl _ tc _ _) tcs = tc : tcs

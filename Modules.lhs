@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1771 2005-09-21 14:18:10Z wlux $
+% $Id: Modules.lhs 1773 2005-09-22 10:23:22Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -350,7 +350,7 @@ that are imported directly from that module.}
 
 > checkInterface :: ModuleEnv -> Interface -> Interface
 > checkInterface mEnv (Interface m is ds) =
->   Interface m is (intfCheck m pEnv tcEnv tyEnv (intfSyntaxCheck m tcEnv ds))
+>   Interface m is (intfCheck m pEnv tcEnv tyEnv (intfSyntaxCheck ds))
 >   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs is
 >         importModule envs (IImportDecl p m) =
 >           case lookupModule m mEnv of

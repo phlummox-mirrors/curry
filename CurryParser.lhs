@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1759 2005-09-03 10:41:38Z wlux $
+% $Id: CurryParser.lhs 1773 2005-09-22 10:23:22Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -264,7 +264,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > iHidingDecl :: Parser Token IDecl a
 > iHidingDecl = position <*-> token Id_hiding <**> (dataDecl <|> funcDecl)
->   where dataDecl = hiddenData <$-> token KW_data <*> tycon <*> many tyvar
+>   where dataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
 >         funcDecl = hidingFunc <$-> token DoubleColon <*> type0
 >         hiddenData tc tvs p = HidingDataDecl p tc tvs
 >         hidingFunc ty p = IFunctionDecl p hidingId ty

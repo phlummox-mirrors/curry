@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 1769 2005-09-20 14:19:15Z wlux $
+% $Id: IntfSyntaxCheck.lhs 1773 2005-09-22 10:23:22Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,22 +10,20 @@ Similar to Curry source files, some post-processing has to be applied
 to parsed interface files. In particular, the compiler must
 disambiguate nullary type constructors and type variables. In
 addition, the compiler also checks that all type constructor
-applications are saturated.
-
-\ToDo{Since interface files are closed -- i.e., they include
-  declarations of all entities, which are defined in another module --
-  the compiler should not use the (global) type constructor
-  environment. However, this is not possible without including hidden
-  type constructors from imported modules in interfaces.}
+applications are saturated. Since interface files are closed -- i.e.,
+they include declarations of all entities which are defined in other
+modules -- the compiler can perform this check without reference to
+the global environments.
 \begin{verbatim}
 
 > module IntfSyntaxCheck(intfSyntaxCheck) where
 > import Base
+> import Maybe
 > import TopEnv
 
-> intfSyntaxCheck :: ModuleIdent -> TCEnv -> [IDecl] -> [IDecl]
-> intfSyntaxCheck m tcEnv ds = map (checkIDecl env) ds
->   where env = foldr (bindType m) (fmap typeKind tcEnv) ds
+> intfSyntaxCheck :: [IDecl] -> [IDecl]
+> intfSyntaxCheck ds = map (checkIDecl env) ds
+>   where env = foldr bindType (fmap typeKind initTCEnv) ds
 
 \end{verbatim}
 The compiler requires information about the arity of each defined type
@@ -34,22 +32,18 @@ denotes an algebraic data type, a renaming type, or a type synonym.
 The latter must not occur in type expressions in interfaces.
 \begin{verbatim}
 
-> bindType :: ModuleIdent -> IDecl -> TypeEnv -> TypeEnv
-> bindType m (HidingDataDecl _ tc tvs) =
->   bindTop m tc (Data (qualifyWith m tc) (length tvs) [])
-> bindType m (IDataDecl _ tc tvs _) =
->   bindTopLocal m tc (Data tc (length tvs) [])
-> bindType m (INewtypeDecl _ tc tvs _) =
->   bindTopLocal m tc (Data tc (length tvs) [])
-> bindType m (ITypeDecl _ tc tvs ty) =
->   bindTopLocal m tc (Alias tc (length tvs))
-> bindType _ _ = id
+> bindType :: IDecl -> TypeEnv -> TypeEnv
+> bindType (HidingDataDecl _ tc tvs) =
+>   qualBindTopEnv tc (typeCon Data tc tvs [])
+> bindType (IDataDecl _ tc tvs cs) =
+>   qualBindTopEnv tc (typeCon Data tc tvs (map constr (catMaybes cs)))
+> bindType (INewtypeDecl _ tc tvs nc) =
+>   qualBindTopEnv tc (typeCon Data tc tvs [nconstr nc])
+> bindType (ITypeDecl _ tc tvs _) = qualBindTopEnv tc (typeCon Alias tc tvs)
+> bindType _ = id
 
-> bindTopLocal :: ModuleIdent -> QualIdent -> TypeKind -> TypeEnv -> TypeEnv
-> bindTopLocal m tc x =
->   case splitQualIdent tc of
->     (Just _,_) -> id
->     (Nothing,tc') -> bindTop m tc' x
+> typeCon :: (QualIdent -> Int -> a) -> QualIdent -> [Ident] -> a
+> typeCon f tc tvs = f tc (length tvs)
 
 \end{verbatim}
 The checks applied to the interface are similar to those performed
