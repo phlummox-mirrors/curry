@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 1766 2005-09-13 15:26:29Z wlux $
+% $Id: TypeSyntaxCheck.lhs 1774 2005-09-23 08:00:01Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -40,7 +40,7 @@ finally, the declarations are checked within this environment.
 > typeSyntaxCheck m tcEnv ds =
 >   case linear (map tconstr ds') of
 >     Linear -> (env,map (checkTopDecl env) ds)
->     NonLinear (PIdent p tc) -> errorAt p (duplicateType tc)
+>     NonLinear (P p tc) -> errorAt p (duplicateType tc)
 >   where ds' = filter isTypeDecl ds
 >         env = foldr (bindType m) (fmap typeKind tcEnv) ds'
 
@@ -229,10 +229,10 @@ interpret the identifier as such.
 Auxiliary definitions.
 \begin{verbatim}
 
-> tconstr :: TopDecl -> PIdent
-> tconstr (DataDecl p tc _ _) = PIdent p tc
-> tconstr (NewtypeDecl p tc _ _) = PIdent p tc
-> tconstr (TypeDecl p tc _ _) = PIdent p tc
+> tconstr :: TopDecl -> P Ident
+> tconstr (DataDecl p tc _ _) = P p tc
+> tconstr (NewtypeDecl p tc _ _) = P p tc
+> tconstr (TypeDecl p tc _ _) = P p tc
 > tconstr (BlockDecl _) = internalError "tconstr"
 
 > arity :: TypeKind -> Int

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1766 2005-09-13 15:26:29Z wlux $
+% $Id: SyntaxCheck.lhs 1774 2005-09-23 08:00:01Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -36,7 +36,7 @@ declarations are checked within the resulting environment.
 > syntaxCheck m tyEnv ds =
 >   case linear cs of
 >     Linear -> (toplevelEnv env',tds ++ map BlockDecl vds')
->     NonLinear (PIdent p c) -> errorAt p (duplicateData c)
+>     NonLinear (P p c) -> errorAt p (duplicateData c)
 >   where (tds,vds) = partition isTypeDecl ds
 >         (env',vds') = checkTopDecls m cs env [d | BlockDecl d <- vds]
 >         env = foldr (bindConstrs m) (globalEnv (fmap valueKind tyEnv)) tds
@@ -61,11 +61,11 @@ declarations are checked within the resulting environment.
 > bindNewConstr m (NewConstrDecl _ _ c _) =
 >   bindGlobal m c (Constr (qualifyWith m c) 1)
 
-> bindFunc :: ModuleIdent -> PIdent -> VarEnv -> VarEnv
-> bindFunc m (PIdent _ f) = bindGlobal m f (Var (qualifyWith m f))
+> bindFunc :: ModuleIdent -> P Ident -> VarEnv -> VarEnv
+> bindFunc m (P _ f) = bindGlobal m f (Var (qualifyWith m f))
 
-> bindVar :: PIdent -> VarEnv -> VarEnv
-> bindVar (PIdent _ v) = bindLocal v (Var (qualify v))
+> bindVar :: P Ident -> VarEnv -> VarEnv
+> bindVar (P _ v) = bindLocal v (Var (qualify v))
 
 \end{verbatim}
 When a module is checked, the global declaration group is checked. A
@@ -74,7 +74,7 @@ all of its declarations are considered as local declarations. The
 final environment can be discarded.
 \begin{verbatim}
 
-> checkTopDecls :: ModuleIdent -> [PIdent] -> VarEnv -> [Decl]
+> checkTopDecls :: ModuleIdent -> [P Ident] -> VarEnv -> [Decl]
 >               -> (VarEnv,[Decl])
 > checkTopDecls m cs env ds = checkDeclGroup True (bindFunc m) cs env ds
 
@@ -103,7 +103,7 @@ top-level.
 > checkLocalDecls :: VarEnv -> [Decl] -> (VarEnv,[Decl])
 > checkLocalDecls env ds = checkDeclGroup False bindVar [] (nestEnv env) ds
 
-> checkDeclGroup :: Bool -> (PIdent -> VarEnv -> VarEnv) -> [PIdent]
+> checkDeclGroup :: Bool -> (P Ident -> VarEnv -> VarEnv) -> [P Ident]
 >                -> VarEnv -> [Decl] -> (VarEnv,[Decl])
 > checkDeclGroup top bindVar cs env ds = (env',map (checkDeclRhs env') ds')
 >   where ds' = joinEquations (map (checkDeclLhs top env) ds)
@@ -166,7 +166,7 @@ top-level.
 >     [] -> vs
 >     v:_ -> errorAt p (nonVariable what v)
 
-> checkDeclVars :: (PIdent -> VarEnv -> VarEnv) -> [PIdent] -> VarEnv
+> checkDeclVars :: (P Ident -> VarEnv -> VarEnv) -> [P Ident] -> VarEnv
 >               -> [Decl] -> VarEnv
 > checkDeclVars bindVar cs env ds =
 >   case linear ops of
@@ -180,11 +180,11 @@ top-level.
 >                   case filter (`notElem` cs ++ bvs) ops ++
 >                        filter (`notElem` bvs) (tys ++ evs) of
 >                     [] -> foldr bindVar env bvs
->                     PIdent p v : _ -> errorAt p (noBody v)
->                 NonLinear (PIdent p v) -> errorAt p (duplicateEvalAnnot v)
->             NonLinear (PIdent p v) -> errorAt p (duplicateTypeSig v)
->         NonLinear (PIdent p v) -> errorAt p (duplicateDefinition v)
->     NonLinear (PIdent p op) -> errorAt p (duplicatePrecedence op)
+>                     P p v : _ -> errorAt p (noBody v)
+>                 NonLinear (P p v) -> errorAt p (duplicateEvalAnnot v)
+>             NonLinear (P p v) -> errorAt p (duplicateTypeSig v)
+>         NonLinear (P p v) -> errorAt p (duplicateDefinition v)
+>     NonLinear (P p op) -> errorAt p (duplicatePrecedence op)
 >   where bvs = concatMap vars (filter isValueDecl ds)
 >         tys = concatMap vars (filter isTypeSig ds)
 >         evs = concatMap vars (filter isEvalAnnot ds)
@@ -285,7 +285,7 @@ callbacks into Curry are not yet supported by the runtime system.
 > checkBoundVars :: QuantExpr t => Position -> VarEnv -> t -> VarEnv
 > checkBoundVars p env ts =
 >   case linear bvs of
->     Linear -> foldr (bindVar . PIdent p) (nestEnv env) bvs
+>     Linear -> foldr (bindVar . P p) (nestEnv env) bvs
 >     NonLinear v -> errorAt p (duplicateVariable v)
 >   where bvs = filter (anonId /=) (bv ts)
 
@@ -411,22 +411,22 @@ callbacks into Curry are not yet supported by the runtime system.
 Auxiliary definitions.
 \begin{verbatim}
 
-> constrs :: TopDecl -> [PIdent]
+> constrs :: TopDecl -> [P Ident]
 > constrs (DataDecl _ _ _ cs) = map constr cs
->   where constr (ConstrDecl p _ c _) = PIdent p c
->         constr (ConOpDecl p _ _ op _) = PIdent p op
-> constrs (NewtypeDecl _ _ _ (NewConstrDecl p _ c _)) = [PIdent p c]
+>   where constr (ConstrDecl p _ c _) = P p c
+>         constr (ConOpDecl p _ _ op _) = P p op
+> constrs (NewtypeDecl _ _ _ (NewConstrDecl p _ c _)) = [P p c]
 > constrs (TypeDecl _ _ _ _) = []
 > constrs (BlockDecl _) = []
 
-> vars :: Decl -> [PIdent]
-> vars (InfixDecl p _ _ ops) = map (PIdent p) ops
-> vars (TypeSig p fs _) = map (PIdent p) fs
-> vars (EvalAnnot p fs _) = map (PIdent p) fs
-> vars (FunctionDecl p f _) = [PIdent p f]
-> vars (ForeignDecl p _ _ f _) = [PIdent p f]
-> vars (PatternDecl p t _) = map (PIdent p) (filter (anonId /=) (bv t))
-> vars (FreeDecl p vs) = map (PIdent p) vs
+> vars :: Decl -> [P Ident]
+> vars (InfixDecl p _ _ ops) = map (P p) ops
+> vars (TypeSig p fs _) = map (P p) fs
+> vars (EvalAnnot p fs _) = map (P p) fs
+> vars (FunctionDecl p f _) = [P p f]
+> vars (ForeignDecl p _ _ f _) = [P p f]
+> vars (PatternDecl p t _) = map (P p) (filter (anonId /=) (bv t))
+> vars (FreeDecl p vs) = map (P p) vs
 
 \end{verbatim}
 Due to the lack of a capitalization convention in Curry, it is

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1766 2005-09-13 15:26:29Z wlux $
+% $Id: Base.lhs 1774 2005-09-23 08:00:01Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -656,15 +656,15 @@ non-linear, the first duplicate object is returned.
 > linear [] = Linear
 
 \end{verbatim}
-In order to present precise error messages for duplicate definitions
-of identifiers, the compiler pairs identifiers with their position in
-the source file when passing them to the function above. However, the
-position must be ignored when comparing two such pairs.
+The type \texttt{P} associates position information with another type
+without affecting its equality. At present, this is used in the
+compiler in order to pair identifiers with their position in the
+source file when checking for duplicate definitions.
 \begin{verbatim}
 
-> data PIdent = PIdent Position Ident
+> data P a = P Position a
 
-> instance Eq PIdent where
->   PIdent _ x == PIdent _ y = x == y
+> instance Eq a => Eq (P a) where
+>   P _ x == P _ y = x == y
 
 \end{verbatim}
