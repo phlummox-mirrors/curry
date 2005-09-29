@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1774 2005-09-23 08:00:01Z wlux $
+% $Id: SyntaxCheck.lhs 1775 2005-09-29 09:24:56Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -287,7 +287,7 @@ callbacks into Curry are not yet supported by the runtime system.
 >   case linear bvs of
 >     Linear -> foldr (bindVar . P p) (nestEnv env) bvs
 >     NonLinear v -> errorAt p (duplicateVariable v)
->   where bvs = filter (anonId /=) (bv ts)
+>   where bvs = bv ts
 
 > checkConstrTerm :: Position -> VarEnv -> ConstrTerm -> ConstrTerm
 > checkConstrTerm _ _ (LiteralPattern l) = LiteralPattern l
@@ -425,7 +425,7 @@ Auxiliary definitions.
 > vars (EvalAnnot p fs _) = map (P p) fs
 > vars (FunctionDecl p f _) = [P p f]
 > vars (ForeignDecl p _ _ f _) = [P p f]
-> vars (PatternDecl p t _) = map (P p) (filter (anonId /=) (bv t))
+> vars (PatternDecl p t _) = map (P p) (bv t)
 > vars (FreeDecl p vs) = map (P p) vs
 
 \end{verbatim}

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 1766 2005-09-13 15:26:29Z wlux $
+% $Id: Renaming.lhs 1775 2005-09-29 09:24:56Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -58,9 +58,7 @@ a simple state monad.
 
 \end{verbatim}
 New variable bindings are introduced at the level of declaration
-groups and argument lists. We do not care about entering anonymous
-identifiers into the environment, since \texttt{renameVar} does not
-look them up in the environment.
+groups and argument lists.
 \begin{verbatim}
 
 > bindVars :: QuantExpr e => RenameEnv -> e -> RenameState RenameEnv
