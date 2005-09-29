@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 1774 2005-09-23 08:00:01Z wlux $
+% $Id: TypeSyntaxCheck.lhs 1776 2005-09-29 10:17:40Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -188,7 +188,11 @@ interpret the identifier as such.
 \begin{verbatim}
 
 > checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr -> TypeExpr
-> checkClosedType env p tvs ty = checkClosed p tvs (checkType env p ty)
+> checkClosedType env p tvs ty =
+>   case filter (\tv -> tv == anonId || tv `notElem` tvs) (fv ty') of
+>     [] -> ty'
+>     tv:_ -> errorAt p (unboundVariable tv)
+>   where ty' = checkType env p ty
 
 > checkType :: TypeEnv -> Position -> TypeExpr -> TypeExpr
 > checkType env p (ConstructorType tc tys) =
@@ -211,19 +215,6 @@ interpret the identifier as such.
 >   ListType (checkType env p ty)
 > checkType env p (ArrowType ty1 ty2) =
 >   ArrowType (checkType env p ty1) (checkType env p ty2)
-
-> checkClosed :: Position -> [Ident] -> TypeExpr -> TypeExpr
-> checkClosed p tvs (ConstructorType tc tys) =
->   ConstructorType tc (map (checkClosed p tvs) tys)
-> checkClosed p tvs (VariableType tv)
->   | tv == anonId || tv `notElem` tvs = errorAt p (unboundVariable tv)
->   | otherwise = VariableType tv
-> checkClosed p tvs (TupleType tys) =
->   TupleType (map (checkClosed p tvs) tys)
-> checkClosed p tvs (ListType ty) =
->   ListType (checkClosed p tvs ty)
-> checkClosed p tvs (ArrowType ty1 ty2) =
->   ArrowType (checkClosed p tvs ty1) (checkClosed p tvs ty2)
 
 \end{verbatim}
 Auxiliary definitions.

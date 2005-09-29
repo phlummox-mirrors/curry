@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 1773 2005-09-22 10:23:22Z wlux $
+% $Id: IntfSyntaxCheck.lhs 1776 2005-09-29 10:17:40Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -92,7 +92,11 @@ during syntax checking of type expressions.
 >         tvs' = evs' ++ tvs
 
 > checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr -> TypeExpr
-> checkClosedType env p tvs ty = checkClosed p tvs (checkType env p ty)
+> checkClosedType env p tvs ty =
+>   case filter (`notElem` tvs) (fv ty') of
+>     [] -> ty'
+>     tv:_ -> errorAt p (unboundVariable tv)
+>   where ty' = checkType env p ty
 
 > checkType :: TypeEnv -> Position -> TypeExpr -> TypeExpr
 > checkType env p (ConstructorType tc tys) =
@@ -112,19 +116,6 @@ during syntax checking of type expressions.
 > checkType env p (ListType ty) = ListType (checkType env p ty)
 > checkType env p (ArrowType ty1 ty2) =
 >   ArrowType (checkType env p ty1) (checkType env p ty2)
-
-> checkClosed :: Position -> [Ident] -> TypeExpr -> TypeExpr
-> checkClosed p tvs (ConstructorType tc tys) =
->   ConstructorType tc (map (checkClosed p tvs) tys)
-> checkClosed p tvs (VariableType tv)
->   | tv `notElem` tvs = errorAt p (unboundVariable tv)
->   | otherwise = VariableType tv
-> checkClosed p tvs (TupleType tys) =
->   TupleType (map (checkClosed p tvs) tys)
-> checkClosed p tvs (ListType ty) =
->   ListType (checkClosed p tvs ty)
-> checkClosed p tvs (ArrowType ty1 ty2) =
->   ArrowType (checkClosed p tvs ty1) (checkClosed p tvs ty2)
 
 \end{verbatim}
 \ToDo{Much of the above code could be shared with module

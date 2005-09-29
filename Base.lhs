@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1775 2005-09-29 09:24:56Z wlux $
+% $Id: Base.lhs 1776 2005-09-29 10:17:40Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -571,9 +571,7 @@ variable, but always refers to a global function from the prelude.
 
 > instance Expr TypeExpr where
 >   fv (ConstructorType _ tys) = fv tys
->   fv (VariableType tv)
->     | tv == anonId = []
->     | otherwise = [tv]
+>   fv (VariableType tv) = [tv]
 >   fv (TupleType tys) = fv tys
 >   fv (ListType ty) = fv ty
 >   fv (ArrowType ty1 ty2) = fv ty1 ++ fv ty2
