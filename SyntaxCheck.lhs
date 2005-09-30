@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1775 2005-09-29 09:24:56Z wlux $
+% $Id: SyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -18,10 +18,12 @@ single definition.
 
 > module SyntaxCheck(syntaxCheck,syntaxCheckGoal) where
 > import Base
-> import NestEnv
 > import Char
+> import Error
 > import List
 > import Maybe
+> import Monad
+> import NestEnv
 > import Utils
 
 \end{verbatim}
@@ -32,17 +34,20 @@ the current module are entered into this environment. Finally, all
 declarations are checked within the resulting environment.
 \begin{verbatim}
 
-> syntaxCheck :: ModuleIdent -> ValueEnv -> [TopDecl] -> (FunEnv,[TopDecl])
+> syntaxCheck :: ModuleIdent -> ValueEnv -> [TopDecl]
+>             -> Error (FunEnv,[TopDecl])
 > syntaxCheck m tyEnv ds =
 >   case linear cs of
->     Linear -> (toplevelEnv env',tds ++ map BlockDecl vds')
+>     Linear ->
+>       do
+>         (env',vds') <- checkTopDecls m cs env [d | BlockDecl d <- vds]
+>         return (toplevelEnv env',tds ++ map BlockDecl vds')
 >     NonLinear (P p c) -> errorAt p (duplicateData c)
 >   where (tds,vds) = partition isTypeDecl ds
->         (env',vds') = checkTopDecls m cs env [d | BlockDecl d <- vds]
 >         env = foldr (bindConstrs m) (globalEnv (fmap valueKind tyEnv)) tds
 >         cs = concatMap constrs tds
 
-> syntaxCheckGoal :: ValueEnv -> Goal -> Goal
+> syntaxCheckGoal :: ValueEnv -> Goal -> Error Goal
 > syntaxCheckGoal tyEnv g = checkGoal (globalEnv (fmap valueKind tyEnv)) g
 
 > bindConstrs :: ModuleIdent -> TopDecl -> VarEnv -> VarEnv
@@ -75,13 +80,15 @@ final environment can be discarded.
 \begin{verbatim}
 
 > checkTopDecls :: ModuleIdent -> [P Ident] -> VarEnv -> [Decl]
->               -> (VarEnv,[Decl])
+>               -> Error (VarEnv,[Decl])
 > checkTopDecls m cs env ds = checkDeclGroup True (bindFunc m) cs env ds
 
-> checkGoal :: VarEnv -> Goal -> Goal
-> checkGoal env (Goal p e ds) = env' `seq` Goal p e' ds'
->   where (env',ds') = checkLocalDecls env ds
->         e' = checkExpr p env' e
+> checkGoal :: VarEnv -> Goal -> Error Goal
+> checkGoal env (Goal p e ds) =
+>   do
+>     (env',ds') <- checkLocalDecls env ds
+>     e' <- checkExpr p env' e
+>     return (Goal p e' ds')
 
 \end{verbatim}
 In each a declaration group, first the left hand sides of all
@@ -100,39 +107,53 @@ functions. Note that pattern declarations are not allowed on the
 top-level.
 \begin{verbatim}
 
-> checkLocalDecls :: VarEnv -> [Decl] -> (VarEnv,[Decl])
+> checkLocalDecls :: VarEnv -> [Decl] -> Error (VarEnv,[Decl])
 > checkLocalDecls env ds = checkDeclGroup False bindVar [] (nestEnv env) ds
 
 > checkDeclGroup :: Bool -> (P Ident -> VarEnv -> VarEnv) -> [P Ident]
->                -> VarEnv -> [Decl] -> (VarEnv,[Decl])
-> checkDeclGroup top bindVar cs env ds = (env',map (checkDeclRhs env') ds')
->   where ds' = joinEquations (map (checkDeclLhs top env) ds)
->         env' = checkDeclVars bindVar cs env ds'
+>                -> VarEnv -> [Decl] -> Error (VarEnv,[Decl])
+> checkDeclGroup top bindVar cs env ds =
+>   do
+>     ds' <- liftM joinEquations (mapM (checkDeclLhs top env) ds)
+>     env' <- checkDeclVars bindVar cs env ds'
+>     ds'' <- mapM (checkDeclRhs env') ds'
+>     return (env',ds'')
 
-> checkDeclLhs :: Bool -> VarEnv -> Decl -> Decl
-> checkDeclLhs _ _ (InfixDecl p fix pr ops) = InfixDecl p fix pr ops
+> checkDeclLhs :: Bool -> VarEnv -> Decl -> Error Decl
+> checkDeclLhs _ _ (InfixDecl p fix pr ops) = return (InfixDecl p fix pr ops)
 > checkDeclLhs _ env (TypeSig p vs ty) =
->   TypeSig p (checkVars "type signature" p env vs) ty
+>   do
+>     checkVars "type signature" p env vs
+>     return (TypeSig p vs ty)
 > checkDeclLhs _ env (EvalAnnot p fs ev) =
->   EvalAnnot p (checkVars "evaluation annotation" p env fs) ev
+>   do
+>     checkVars "evaluation annotation" p env fs
+>     return (EvalAnnot p fs ev)
 > checkDeclLhs top env (FunctionDecl p _ eqs) = checkEquationLhs top env p eqs
 > checkDeclLhs _ env (ForeignDecl p cc ie f ty) =
->   ForeignDecl p cc ie (head (checkVars "foreign declaration" p env [f])) ty
+>   do
+>     checkVars "foreign declaration" p env [f]
+>     return (ForeignDecl p cc ie f ty)
 > checkDeclLhs top env (PatternDecl p t rhs)
 >   | top = internalError "checkDeclLhs"
->   | otherwise = PatternDecl p t' rhs
->   where t' = checkConstrTerm p env t
+>   | otherwise = liftM (flip (PatternDecl p) rhs) (checkConstrTerm p env t)
 > checkDeclLhs top env (FreeDecl p vs)
 >   | top = internalError "checkDeclLhs"
->   | otherwise = FreeDecl p (checkVars "free variables declaration" p env vs)
+>   | otherwise =
+>       do
+>         checkVars "free variables declaration" p env vs
+>         return (FreeDecl p vs)
 
-> checkEquationLhs :: Bool -> VarEnv -> Position -> [Equation] -> Decl
+> checkEquationLhs :: Bool -> VarEnv -> Position -> [Equation] -> Error Decl
 > checkEquationLhs top env p [Equation p' lhs rhs] =
->   either funDecl (checkDeclLhs top env . patDecl) (checkEqLhs env p' lhs)
->   where funDecl (f,lhs) = FunctionDecl p f [Equation p' lhs rhs]
+>   either funDecl patDecl (checkEqLhs env p' lhs)
+>   where funDecl (f,lhs)
+>           | isDataConstr env f =
+>               errorAt p (nonVariable "curried definition" f)
+>           | otherwise = return (FunctionDecl p f [Equation p' lhs rhs])
 >         patDecl t
 >           | top = errorAt p noToplevelPattern
->           | otherwise = PatternDecl p' t rhs
+>           | otherwise = checkDeclLhs top env (PatternDecl p' t rhs)
 > checkEquationLhs _ _ _ _ = internalError "checkEquationLhs"
 
 > checkEqLhs :: VarEnv -> Position -> Lhs -> Either (Ident,Lhs) ConstrTerm
@@ -148,7 +169,7 @@ top-level.
 > checkEqLhs env p (ApLhs lhs ts) =
 >   case checkEqLhs env p lhs of
 >     Left (f',lhs') -> Left (f',ApLhs lhs' ts)
->     Right _ -> errorAt p $ nonVariable "curried definition" f
+>     Right _ -> Left (f,ApLhs lhs ts)
 >   where (f,_) = flatLhs lhs
 
 > checkOpLhs :: VarEnv -> (ConstrTerm -> ConstrTerm) -> ConstrTerm
@@ -160,14 +181,14 @@ top-level.
 >   where (m,op') = splitQualIdent op
 > checkOpLhs _ f t = Right (f t)
 
-> checkVars :: String -> Position -> VarEnv -> [Ident] -> [Ident]
+> checkVars :: String -> Position -> VarEnv -> [Ident] -> Error ()
 > checkVars what p env vs =
 >   case filter (isDataConstr env) vs of
->     [] -> vs
+>     [] -> return ()
 >     v:_ -> errorAt p (nonVariable what v)
 
 > checkDeclVars :: (P Ident -> VarEnv -> VarEnv) -> [P Ident] -> VarEnv
->               -> [Decl] -> VarEnv
+>               -> [Decl] -> Error VarEnv
 > checkDeclVars bindVar cs env ds =
 >   case linear ops of
 >     Linear ->
@@ -179,7 +200,7 @@ top-level.
 >                 Linear ->
 >                   case filter (`notElem` cs ++ bvs) ops ++
 >                        filter (`notElem` bvs) (tys ++ evs) of
->                     [] -> foldr bindVar env bvs
+>                     [] -> return (foldr bindVar env bvs)
 >                     P p v : _ -> errorAt p (noBody v)
 >                 NonLinear (P p v) -> errorAt p (duplicateEvalAnnot v)
 >             NonLinear (P p v) -> errorAt p (duplicateTypeSig v)
@@ -190,30 +211,38 @@ top-level.
 >         evs = concatMap vars (filter isEvalAnnot ds)
 >         ops = concatMap vars (filter isInfixDecl ds)
 
-> checkDeclRhs :: VarEnv -> Decl -> Decl
+> checkDeclRhs :: VarEnv -> Decl -> Error Decl
 > checkDeclRhs env (FunctionDecl p f eqs) =
->   FunctionDecl p f (map (checkEquation env) eqs)
+>   do
+>     checkArity f eqs
+>     liftM (FunctionDecl p f) (mapM (checkEquation env) eqs)
 > checkDeclRhs env (PatternDecl p t rhs) =
->   PatternDecl p t (checkRhs env rhs)
+>   liftM (PatternDecl p t) (checkRhs env rhs)
 > checkDeclRhs _ (ForeignDecl p cc ie f ty) =
->   ForeignDecl p cc (checkForeign p f cc ie) f ty
-> checkDeclRhs _ d = d
+>   do
+>     ie' <- checkForeign p f cc ie
+>     return (ForeignDecl p cc ie' f ty)
+> checkDeclRhs _ d = return d
+
+> checkArity :: Ident -> [Equation] -> Error ()
+> checkArity f eqs =
+>   case tail (nub [P p (arity lhs) | Equation p lhs _ <- eqs]) of
+>     [] -> return ()
+>     P p _ : _ -> errorAt p (differentArity f)
+>   where arity lhs = length $ snd $ flatLhs lhs
 
 > joinEquations :: [Decl] -> [Decl]
 > joinEquations [] = []
 > joinEquations (FunctionDecl p f eqs : FunctionDecl p' f' [eq] : ds)
->   | f == f' =
->       if arity (head eqs) == arity eq then
->         joinEquations (FunctionDecl p f (eqs ++ [eq]) : ds)
->       else
->         errorAt p' (differentArity f)
->   where arity (Equation _ lhs _) = length $ snd $ flatLhs lhs
+>   | f == f' = joinEquations (FunctionDecl p f (eqs ++ [eq]) : ds)
 > joinEquations (d : ds) = d : joinEquations ds
 
-> checkEquation :: VarEnv -> Equation -> Equation
-> checkEquation env (Equation p lhs rhs) = env' `seq` Equation p lhs' rhs'
->   where (env',lhs') = checkLhs p env lhs
->         rhs' = checkRhs env' rhs
+> checkEquation :: VarEnv -> Equation -> Error Equation
+> checkEquation env (Equation p lhs rhs) =
+>   do
+>     (env',lhs') <- checkLhs p env lhs
+>     rhs' <- checkRhs env' rhs
+>     return (Equation p lhs' rhs')
 
 \end{verbatim}
 The syntax checker examines the optional import specification of
@@ -224,37 +253,39 @@ interface addendum~\cite{Chakravarty03:FFI} is supported, except for
 callbacks into Curry are not yet supported by the runtime system.
 \begin{verbatim}
 
-> checkForeign :: Position -> Ident -> CallConv -> Maybe String -> Maybe String
-> checkForeign _ _ CallConvPrimitive ie = ie
+> checkForeign :: Position -> Ident -> CallConv -> Maybe String
+>              -> Error (Maybe String)
+> checkForeign _ _ CallConvPrimitive ie = return ie
 > checkForeign p f CallConvCCall ie =
->   maybe (checkFunName f Nothing)
->         (Just . unwords . kind . words . join . break ('&' ==))
+>   maybe (checkFunName f >> return Nothing)
+>         (impEnt . words . join . break ('&' ==))
 >         ie
 >   where join (cs,[]) = cs
 >         join (cs,c':cs') = cs ++ [' ',c',' '] ++ cs'
+>         impEnt ie = kind ie >> return (Just (unwords ie))
 >         kind [] = ident []
 >         kind (x:xs)
->           | x == "static" = x : header xs
->           | x == "dynamic" = x : end x xs
+>           | x == "static" = header xs
+>           | x == "dynamic" = end x xs
 >           | otherwise = header (x:xs)
 >         header [] = ident []
 >         header (x:xs)
 >           | not (".h" `isSuffixOf` x) = addr (x:xs)
->           | all isHeaderChar x = x : addr xs
+>           | all isHeaderChar x = addr xs
 >           | otherwise = errorAt p (invalidCImpEnt (notCHeader x) ie)
 >         addr [] = ident []
 >         addr (x:xs)
->           | x == "&" = x : ident xs
+>           | x == "&" = ident xs
 >           | otherwise = ident (x:xs)
->         ident [] = checkFunName f []
+>         ident [] = checkFunName f
 >         ident (x:xs)
->           | isCIdent x = x : end ("C identifier " ++ x) xs
+>           | isCIdent x = end ("C identifier " ++ x) xs
 >           | otherwise = errorAt p (invalidCImpEnt (notCIdent x) ie)
 >         end what xs
->           | null xs = []
+>           | null xs = return ()
 >           | otherwise = errorAt p (invalidCImpEnt (junkAfter what) ie)
->         checkFunName f x
->           | isCIdent f' = x
+>         checkFunName f
+>           | isCIdent f' = return ()
 >           | otherwise = errorAt p (invalidCImpEnt (notCIdent f') Nothing)
 >           where f' = name f
 >         isCIdent [] = False
@@ -263,147 +294,191 @@ callbacks into Curry are not yet supported by the runtime system.
 >         isLetNum c = isLetter c || isDigit c
 >         isHeaderChar c = isLetNum c || c `elem` "!#$%*+./<=>?@\\^|-~"
 
-> checkLhs :: Position -> VarEnv -> Lhs -> (VarEnv,Lhs)
-> checkLhs p env lhs = (checkBoundVars p env lhs',lhs')
->   where lhs' = checkLhsTerm p env lhs
+> checkLhs :: Position -> VarEnv -> Lhs -> Error (VarEnv,Lhs)
+> checkLhs p env lhs =
+>   do
+>     lhs' <- checkLhsTerm p env lhs
+>     env' <- checkBoundVars p env lhs'
+>     return (env',lhs')
 
-> checkLhsTerm :: Position -> VarEnv -> Lhs -> Lhs
-> checkLhsTerm p env (FunLhs f ts) = FunLhs f (map (checkConstrTerm p env) ts)
+> checkLhsTerm :: Position -> VarEnv -> Lhs -> Error Lhs
+> checkLhsTerm p env (FunLhs f ts) =
+>   liftM (FunLhs f) (mapM (checkConstrTerm p env) ts)
 > checkLhsTerm p env (OpLhs t1 op t2) =
->   OpLhs (checkConstrTerm p env t1) op (checkConstrTerm p env t2)
+>   liftM2 (flip OpLhs op) (checkConstrTerm p env t1) (checkConstrTerm p env t2)
 > checkLhsTerm p env (ApLhs lhs ts) =
->   ApLhs (checkLhsTerm p env lhs) (map (checkConstrTerm p env) ts)
+>   liftM2 ApLhs (checkLhsTerm p env lhs) (mapM (checkConstrTerm p env) ts)
 
-> checkArg :: Position -> VarEnv -> ConstrTerm -> (VarEnv,ConstrTerm)
-> checkArg p env t = (checkBoundVars p env t',t')
->   where t' = checkConstrTerm p env t
+> checkArg :: Position -> VarEnv -> ConstrTerm -> Error (VarEnv,ConstrTerm)
+> checkArg p env t =
+>   do
+>     t' <- checkConstrTerm p env t
+>     env' <- checkBoundVars p env t'
+>     return (env',t')
 
-> checkArgs :: Position -> VarEnv -> [ConstrTerm] -> (VarEnv,[ConstrTerm])
-> checkArgs p env ts = (checkBoundVars p env ts',ts')
->   where ts' = map (checkConstrTerm p env) ts
+> checkArgs :: Position -> VarEnv -> [ConstrTerm] -> Error (VarEnv,[ConstrTerm])
+> checkArgs p env ts =
+>   do
+>     ts' <- mapM (checkConstrTerm p env) ts
+>     env' <- checkBoundVars p env ts'
+>     return (env',ts')
 
-> checkBoundVars :: QuantExpr t => Position -> VarEnv -> t -> VarEnv
+> checkBoundVars :: QuantExpr t => Position -> VarEnv -> t -> Error VarEnv
 > checkBoundVars p env ts =
 >   case linear bvs of
->     Linear -> foldr (bindVar . P p) (nestEnv env) bvs
+>     Linear -> return (foldr (bindVar . P p) (nestEnv env) bvs)
 >     NonLinear v -> errorAt p (duplicateVariable v)
 >   where bvs = bv ts
 
-> checkConstrTerm :: Position -> VarEnv -> ConstrTerm -> ConstrTerm
-> checkConstrTerm _ _ (LiteralPattern l) = LiteralPattern l
-> checkConstrTerm _ _ (NegativePattern op l) = NegativePattern op l
+> checkConstrTerm :: Position -> VarEnv -> ConstrTerm -> Error ConstrTerm
+> checkConstrTerm _ _ (LiteralPattern l) = return (LiteralPattern l)
+> checkConstrTerm _ _ (NegativePattern op l) = return (NegativePattern op l)
 > checkConstrTerm p env (VariablePattern v)
->   | v == anonId = VariablePattern v
+>   | v == anonId = return (VariablePattern v)
 >   | otherwise = checkConstrTerm p env (ConstructorPattern (qualify v) [])
 > checkConstrTerm p env (ConstructorPattern c ts) =
 >   case qualLookupVar c env of
 >     [Constr _ n]
->       | n == n' -> ConstructorPattern c (map (checkConstrTerm p env) ts)
+>       | n == n' ->
+>           liftM (ConstructorPattern c) (mapM (checkConstrTerm p env) ts)
 >       | otherwise -> errorAt p (wrongArity c n n')
 >       where n' = length ts
 >     rs
 >       | any isConstr rs -> errorAt p (ambiguousData c)
->       | not (isQualified c) && null ts -> VariablePattern (unqualify c)
+>       | not (isQualified c) && null ts ->
+>           return (VariablePattern (unqualify c))
 >       | otherwise -> errorAt p (undefinedData c)
 > checkConstrTerm p env (InfixPattern t1 op t2) =
 >   case qualLookupVar op env of
 >     [Constr _ n]
->       | n == 2 -> InfixPattern (checkConstrTerm p env t1) op
->                                (checkConstrTerm p env t2)
+>       | n == 2 ->
+>           liftM2 (flip InfixPattern op)
+>                  (checkConstrTerm p env t1)
+>                  (checkConstrTerm p env t2)
 >       | otherwise -> errorAt p (wrongArity op n 2)
 >     rs
 >       | any isConstr rs -> errorAt p (ambiguousData op)
 >       | otherwise -> errorAt p (undefinedData op)
 > checkConstrTerm p env (ParenPattern t) =
->   ParenPattern (checkConstrTerm p env t)
+>   liftM ParenPattern (checkConstrTerm p env t)
 > checkConstrTerm p env (TuplePattern ts) =
->   TuplePattern (map (checkConstrTerm p env) ts)
+>   liftM TuplePattern (mapM (checkConstrTerm p env) ts)
 > checkConstrTerm p env (ListPattern ts) =
->   ListPattern (map (checkConstrTerm p env) ts)
+>   liftM ListPattern (mapM (checkConstrTerm p env) ts)
 > checkConstrTerm p env (AsPattern v t) =
->   AsPattern (head (checkVars "@ pattern" p env [v])) (checkConstrTerm p env t)
+>   do
+>     checkVars "@ pattern" p env [v]
+>     liftM (AsPattern v) (checkConstrTerm p env t)
 > checkConstrTerm p env (LazyPattern t) =
->   LazyPattern (checkConstrTerm p env t)
+>   liftM LazyPattern (checkConstrTerm p env t)
 
-> checkRhs :: VarEnv -> Rhs -> Rhs
-> checkRhs env (SimpleRhs p e ds) = env' `seq` SimpleRhs p e' ds'
->   where (env',ds') = checkLocalDecls env ds
->         e' = checkExpr p env' e
-> checkRhs env (GuardedRhs es ds) = env' `seq` GuardedRhs es' ds'
->   where (env',ds') = checkLocalDecls env ds
->         es' = map (checkCondExpr env') es
+> checkRhs :: VarEnv -> Rhs -> Error Rhs
+> checkRhs env (SimpleRhs p e ds) =
+>   do
+>     (env',ds') <- checkLocalDecls env ds
+>     e' <- checkExpr p env' e
+>     return (SimpleRhs p e' ds')
+> checkRhs env (GuardedRhs es ds) =
+>   do
+>     (env',ds') <- checkLocalDecls env ds
+>     es' <- mapM (checkCondExpr env') es
+>     return (GuardedRhs es' ds')
 
-> checkCondExpr :: VarEnv -> CondExpr -> CondExpr
+> checkCondExpr :: VarEnv -> CondExpr -> Error CondExpr
 > checkCondExpr env (CondExpr p g e) =
->   CondExpr p (checkExpr p env g) (checkExpr p env e)
+>   liftM2 (CondExpr p) (checkExpr p env g) (checkExpr p env e)
 
-> checkExpr :: Position -> VarEnv -> Expression -> Expression
-> checkExpr _ _ (Literal l) = Literal l
+> checkExpr :: Position -> VarEnv -> Expression -> Error Expression
+> checkExpr _ _ (Literal l) = return (Literal l)
 > checkExpr p env (Variable v) =
 >   case qualLookupVar v env of
 >     [] -> errorAt p (undefinedVariable v)
->     [Constr _ _] -> Constructor v
->     [Var _] -> Variable v
+>     [Constr _ _] -> return (Constructor v)
+>     [Var _] -> return (Variable v)
 >     rs -> errorAt p (ambiguousIdent rs v)
 > checkExpr p env (Constructor c) = checkExpr p env (Variable c)
-> checkExpr p env (Paren e) = Paren (checkExpr p env e)
-> checkExpr p env (Typed e ty) = Typed (checkExpr p env e) ty
-> checkExpr p env (Tuple es) = Tuple (map (checkExpr p env) es)
-> checkExpr p env (List es) = List (map (checkExpr p env) es)
-> checkExpr p env (ListCompr e qs) = env' `seq` ListCompr e' qs'
->   where (env',qs') = mapAccumL (checkStatement p) env qs
->         e' = checkExpr p env' e
-> checkExpr p env (EnumFrom e) = EnumFrom (checkExpr p env e)
+> checkExpr p env (Paren e) = liftM Paren (checkExpr p env e)
+> checkExpr p env (Typed e ty) = liftM (flip Typed ty) (checkExpr p env e)
+> checkExpr p env (Tuple es) = liftM Tuple (mapM (checkExpr p env) es)
+> checkExpr p env (List es) = liftM List (mapM (checkExpr p env) es)
+> checkExpr p env (ListCompr e qs) =
+>   do
+>     (env',qs') <- mapAccumM (checkStatement p) env qs
+>     e' <- checkExpr p env' e
+>     return (ListCompr e' qs')
+> checkExpr p env (EnumFrom e) = liftM EnumFrom (checkExpr p env e)
 > checkExpr p env (EnumFromThen e1 e2) =
->   EnumFromThen (checkExpr p env e1) (checkExpr p env e2)
+>   liftM2 EnumFromThen (checkExpr p env e1) (checkExpr p env e2)
 > checkExpr p env (EnumFromTo e1 e2) =
->   EnumFromTo (checkExpr p env e1) (checkExpr p env e2)
+>   liftM2 EnumFromTo (checkExpr p env e1) (checkExpr p env e2)
 > checkExpr p env (EnumFromThenTo e1 e2 e3) =
->   EnumFromThenTo (checkExpr p env e1)
->                  (checkExpr p env e2)
->                  (checkExpr p env e3)
-> checkExpr p env (UnaryMinus op e) = UnaryMinus op (checkExpr p env e)
+>   liftM3 EnumFromThenTo
+>          (checkExpr p env e1)
+>          (checkExpr p env e2)
+>          (checkExpr p env e3)
+> checkExpr p env (UnaryMinus op e) = liftM (UnaryMinus op) (checkExpr p env e)
 > checkExpr p env (Apply e1 e2) =
->   Apply (checkExpr p env e1) (checkExpr p env e2)
+>   liftM2 Apply (checkExpr p env e1) (checkExpr p env e2)
 > checkExpr p env (InfixApply e1 op e2) =
->   InfixApply (checkExpr p env e1) (checkOp p env op) (checkExpr p env e2)
+>   liftM3 InfixApply
+>          (checkExpr p env e1)
+>          (checkOp p env op)
+>          (checkExpr p env e2)
 > checkExpr p env (LeftSection e op) =
->   LeftSection (checkExpr p env e) (checkOp p env op)
+>   liftM2 LeftSection (checkExpr p env e) (checkOp p env op)
 > checkExpr p env (RightSection op e) =
->   RightSection (checkOp p env op) (checkExpr p env e)
-> checkExpr p env (Lambda ts e) = env' `seq` Lambda ts' e'
->   where (env',ts') = checkArgs p env ts
->         e' = checkExpr p env' e
-> checkExpr p env (Let ds e) = env' `seq` Let ds' e'
->   where (env',ds') = checkLocalDecls env ds
->         e' = checkExpr p env' e
-> checkExpr p env (Do sts e) = env' `seq` Do sts' e'
->   where (env',sts') = mapAccumL (checkStatement p) env sts
->         e' = checkExpr p env' e
+>   liftM2 RightSection (checkOp p env op) (checkExpr p env e)
+> checkExpr p env (Lambda ts e) =
+>   do
+>     (env',ts') <- checkArgs p env ts
+>     e' <- checkExpr p env' e
+>     return (Lambda ts' e')
+> checkExpr p env (Let ds e) =
+>   do
+>     (env',ds') <- checkLocalDecls env ds
+>     e' <- checkExpr p env' e
+>     return (Let ds' e')
+> checkExpr p env (Do sts e) =
+>   do
+>     (env',sts') <- mapAccumM (checkStatement p) env sts
+>     e' <- checkExpr p env' e
+>     return (Do sts' e')
 > checkExpr p env (IfThenElse e1 e2 e3) =
->   IfThenElse (checkExpr p env e1) (checkExpr p env e2) (checkExpr p env e3)
+>   liftM3 IfThenElse
+>          (checkExpr p env e1)
+>          (checkExpr p env e2)
+>          (checkExpr p env e3)
 > checkExpr p env (Case e alts) =
->   Case (checkExpr p env e) (map (checkAlt env) alts)
+>   liftM2 Case (checkExpr p env e) (mapM (checkAlt env) alts)
 
-> checkStatement :: Position -> VarEnv -> Statement -> (VarEnv,Statement)
-> checkStatement p env (StmtExpr e) = (env,StmtExpr (checkExpr p env e))
+> checkStatement :: Position -> VarEnv -> Statement -> Error (VarEnv,Statement)
+> checkStatement p env (StmtExpr e) =
+>   do
+>     e' <- checkExpr p env e
+>     return (env,StmtExpr e')
 > checkStatement p env (StmtBind t e) =
->   env' `seq` (env',StmtBind t' (checkExpr p env e))
->   where (env',t') = checkArg p env t
-> checkStatement p env (StmtDecl ds) = env' `seq` (env',StmtDecl ds')
->   where (env',ds') = checkLocalDecls env ds
+>   do
+>     e' <- checkExpr p env e
+>     (env',t') <- checkArg p env t
+>     return (env',StmtBind t' e')
+> checkStatement p env (StmtDecl ds) =
+>   do
+>     (env',ds') <- checkLocalDecls env ds
+>     return (env',StmtDecl ds')
 
-> checkAlt :: VarEnv -> Alt -> Alt
-> checkAlt env (Alt p t rhs) = env' `seq` Alt p t' rhs'
->   where (env',t') = checkArg p env t
->         rhs' = checkRhs env' rhs
+> checkAlt :: VarEnv -> Alt -> Error Alt
+> checkAlt env (Alt p t rhs) =
+>   do
+>     (env',t') <- checkArg p env t
+>     rhs' <- checkRhs env' rhs
+>     return (Alt p t' rhs')
 
-> checkOp :: Position -> VarEnv -> InfixOp -> InfixOp
+> checkOp :: Position -> VarEnv -> InfixOp -> Error InfixOp
 > checkOp p env op =
 >   case qualLookupVar v env of
 >     [] -> errorAt p (undefinedVariable v)
->     [Constr _ _] -> InfixConstr v
->     [Var _] -> InfixOp v
+>     [Constr _ _] -> return (InfixConstr v)
+>     [Var _] -> return (InfixOp v)
 >     rs -> errorAt p (ambiguousIdent rs v)
 >   where v = opName op
 

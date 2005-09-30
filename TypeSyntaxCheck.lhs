@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 1776 2005-09-29 10:17:40Z wlux $
+% $Id: TypeSyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -24,6 +24,8 @@ simple it is performed in this module, too.
 
 > module TypeSyntaxCheck(typeSyntaxCheck,typeSyntaxCheckGoal) where
 > import Base
+> import Error
+> import Monad
 > import TopEnv
 
 \end{verbatim}
@@ -36,17 +38,21 @@ defined type constructors are inserted into the environment, and,
 finally, the declarations are checked within this environment.
 \begin{verbatim}
 
-> typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl] -> (TypeEnv,[TopDecl])
+> typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl]
+>                 -> Error (TypeEnv,[TopDecl])
 > typeSyntaxCheck m tcEnv ds =
 >   case linear (map tconstr ds') of
->     Linear -> (env,map (checkTopDecl env) ds)
+>     Linear ->
+>       do
+>         ds' <- mapM (checkTopDecl env) ds
+>         return (env,ds')
 >     NonLinear (P p tc) -> errorAt p (duplicateType tc)
 >   where ds' = filter isTypeDecl ds
 >         env = foldr (bindType m) (fmap typeKind tcEnv) ds'
 
-> typeSyntaxCheckGoal :: TCEnv -> Goal -> Goal
+> typeSyntaxCheckGoal :: TCEnv -> Goal -> Error Goal
 > typeSyntaxCheckGoal tcEnv (Goal p e ds) =
->   Goal p (checkExpr env p e) (map (checkDecl env) ds)
+>   liftM2 (Goal p) (checkExpr env p e) (mapM (checkDecl env) ds)
 >   where env = fmap typeKind tcEnv
 
 > bindType :: ModuleIdent -> TopDecl -> TypeEnv -> TypeEnv
@@ -67,54 +73,63 @@ pattern declarations are traversed in order to check local type
 signatures.
 \begin{verbatim}
 
-> checkTopDecl :: TypeEnv -> TopDecl -> TopDecl
+> checkTopDecl :: TypeEnv -> TopDecl -> Error TopDecl
 > checkTopDecl env (DataDecl p tc tvs cs) =
->   DataDecl p tc tvs' (map (checkConstrDecl env tvs') cs)
->   where tvs' = checkTypeLhs env p tvs
+>   do
+>     checkTypeLhs env p tvs
+>     liftM (DataDecl p tc tvs) (mapM (checkConstrDecl env tvs) cs)
 > checkTopDecl env (NewtypeDecl p tc tvs nc) =
->   NewtypeDecl p tc tvs' (checkNewConstrDecl env tvs' nc)
->   where tvs' = checkTypeLhs env p tvs
+>   do
+>     checkTypeLhs env p tvs
+>     liftM (NewtypeDecl p tc tvs) (checkNewConstrDecl env tvs nc)
 > checkTopDecl env (TypeDecl p tc tvs ty) =
->   TypeDecl p tc tvs' (checkClosedType env p tvs' ty)
->   where tvs' = checkTypeLhs env p tvs
-> checkTopDecl env (BlockDecl d) = BlockDecl (checkDecl env d)
+>   do
+>     checkTypeLhs env p tvs
+>     liftM (TypeDecl p tc tvs) (checkClosedType env p tvs ty)
+> checkTopDecl env (BlockDecl d) = liftM BlockDecl (checkDecl env d)
 
-> checkDecl :: TypeEnv -> Decl -> Decl
+> checkDecl :: TypeEnv -> Decl -> Error Decl
 > checkDecl env (TypeSig p vs ty) =
->   TypeSig p vs (checkType env p ty)
+>   liftM (TypeSig p vs) (checkType env p ty)
 > checkDecl env (FunctionDecl p f eqs) =
->   FunctionDecl p f (map (checkEquation env) eqs)
+>   liftM (FunctionDecl p f) (mapM (checkEquation env) eqs)
 > checkDecl env (PatternDecl p t rhs) =
->   PatternDecl p t (checkRhs env rhs)
+>   liftM (PatternDecl p t) (checkRhs env rhs)
 > checkDecl env (ForeignDecl p cc ie f ty) =
->   ForeignDecl p cc ie f (checkType env p ty)
-> checkDecl _ d = d
+>   liftM (ForeignDecl p cc ie f) (checkType env p ty)
+> checkDecl _ d = return d
 
-> checkTypeLhs :: TypeEnv -> Position -> [Ident] -> [Ident]
-> checkTypeLhs env p (tv:tvs)
->   | tv == anonId = tv : checkTypeLhs env p tvs
->   | isTypeConstr tv = errorAt p (noVariable tv)
->   | tv `elem` tvs = errorAt p (nonLinear tv)
->   | otherwise = tv : checkTypeLhs env p tvs
+> checkTypeLhs :: TypeEnv -> Position -> [Ident] -> Error ()
+> checkTypeLhs env p tvs =
+>   case filter isTypeConstr tvs of
+>     [] ->
+>       case linear (filter (anonId /=) tvs) of
+>         Linear -> return ()
+>         NonLinear tv -> errorAt p (nonLinear tv)
+>     tv:_ -> errorAt p (noVariable tv)
 >   where isTypeConstr tv = not (null (lookupType tv env))
-> checkTypeLhs _ _ [] = []
 
-> checkConstrDecl :: TypeEnv -> [Ident] -> ConstrDecl -> ConstrDecl
+> checkConstrDecl :: TypeEnv -> [Ident] -> ConstrDecl -> Error ConstrDecl
 > checkConstrDecl env tvs (ConstrDecl p evs c tys) =
->   ConstrDecl p evs' c (map (checkClosedType env p tvs') tys)
->   where evs' = checkTypeLhs env p evs
->         tvs' = evs' ++ tvs
+>   do
+>     checkTypeLhs env p evs
+>     liftM (ConstrDecl p evs c) (mapM (checkClosedType env p tvs') tys)
+>   where tvs' = evs ++ tvs
 > checkConstrDecl env tvs (ConOpDecl p evs ty1 op ty2) =
->   ConOpDecl p evs' (checkClosedType env p tvs' ty1) op
->             (checkClosedType env p tvs' ty2)
->   where evs' = checkTypeLhs env p evs
->         tvs' = evs' ++ tvs
+>   do
+>     checkTypeLhs env p evs
+>     liftM2 (flip (ConOpDecl p evs) op)
+>            (checkClosedType env p tvs' ty1)
+>            (checkClosedType env p tvs' ty2)
+>   where tvs' = evs ++ tvs
 
-> checkNewConstrDecl :: TypeEnv -> [Ident] -> NewConstrDecl -> NewConstrDecl
+> checkNewConstrDecl :: TypeEnv -> [Ident] -> NewConstrDecl
+>                    -> Error NewConstrDecl
 > checkNewConstrDecl env tvs (NewConstrDecl p evs c ty) =
->   NewConstrDecl p evs' c (checkClosedType env p tvs' ty)
->   where evs' = checkTypeLhs env p evs
->         tvs' = evs' ++ tvs
+>   do
+>     checkTypeLhs env p evs
+>     liftM (NewConstrDecl p evs c) (checkClosedType env p tvs' ty)
+>   where tvs' = evs ++ tvs
 
 \end{verbatim}
 Checking expressions is rather straight forward. The compiler must
@@ -122,63 +137,70 @@ only traverse the structure of expressions in order to find local
 declaration groups.
 \begin{verbatim}
 
-> checkEquation :: TypeEnv -> Equation -> Equation
-> checkEquation env (Equation p lhs rhs) = Equation p lhs (checkRhs env rhs)
+> checkEquation :: TypeEnv -> Equation -> Error Equation
+> checkEquation env (Equation p lhs rhs) =
+>   liftM (Equation p lhs) (checkRhs env rhs)
 
-> checkRhs :: TypeEnv -> Rhs -> Rhs
+> checkRhs :: TypeEnv -> Rhs -> Error Rhs
 > checkRhs env (SimpleRhs p e ds) =
->   SimpleRhs p (checkExpr env p e) (map (checkDecl env) ds)
+>   liftM2 (SimpleRhs p) (checkExpr env p e) (mapM (checkDecl env) ds)
 > checkRhs env (GuardedRhs es ds) =
->   GuardedRhs (map (checkCondExpr env) es) (map (checkDecl env) ds)
+>   liftM2 GuardedRhs (mapM (checkCondExpr env) es) (mapM (checkDecl env) ds)
 
-> checkCondExpr :: TypeEnv -> CondExpr -> CondExpr
+> checkCondExpr :: TypeEnv -> CondExpr -> Error CondExpr
 > checkCondExpr env (CondExpr p g e) =
->   CondExpr p (checkExpr env p g) (checkExpr env p e)
+>   liftM2 (CondExpr p) (checkExpr env p g) (checkExpr env p e)
 
-> checkExpr :: TypeEnv -> Position -> Expression -> Expression
-> checkExpr _ _ (Literal l) = Literal l
-> checkExpr _ _ (Variable v) = Variable v
-> checkExpr _ _ (Constructor c) = Constructor c
-> checkExpr env p (Paren e) = Paren (checkExpr env p e)
+> checkExpr :: TypeEnv -> Position -> Expression -> Error Expression
+> checkExpr _ _ (Literal l) = return (Literal l)
+> checkExpr _ _ (Variable v) = return (Variable v)
+> checkExpr _ _ (Constructor c) = return (Constructor c)
+> checkExpr env p (Paren e) = liftM Paren (checkExpr env p e)
 > checkExpr env p (Typed e ty) =
->   Typed (checkExpr env p e) (checkType env p ty)
-> checkExpr env p (Tuple es) = Tuple (map (checkExpr env p) es)
-> checkExpr env p (List es) = List (map (checkExpr env p) es)
+>   liftM2 Typed (checkExpr env p e) (checkType env p ty)
+> checkExpr env p (Tuple es) = liftM Tuple (mapM (checkExpr env p) es)
+> checkExpr env p (List es) = liftM List (mapM (checkExpr env p) es)
 > checkExpr env p (ListCompr e qs) =
->   ListCompr (checkExpr env p e) (map (checkStmt env p) qs)
-> checkExpr env p (EnumFrom e) = EnumFrom (checkExpr env p e)
+>   liftM2 ListCompr (checkExpr env p e) (mapM (checkStmt env p) qs)
+> checkExpr env p (EnumFrom e) = liftM EnumFrom (checkExpr env p e)
 > checkExpr env p (EnumFromThen e1 e2) =
->   EnumFromThen (checkExpr env p e1) (checkExpr env p e2)
+>   liftM2 EnumFromThen (checkExpr env p e1) (checkExpr env p e2)
 > checkExpr env p (EnumFromTo e1 e2) =
->   EnumFromTo (checkExpr env p e1) (checkExpr env p e2)
+>   liftM2 EnumFromTo (checkExpr env p e1) (checkExpr env p e2)
 > checkExpr env p (EnumFromThenTo e1 e2 e3) =
->   EnumFromThenTo (checkExpr env p e1) (checkExpr env p e2)
->                  (checkExpr env p e3)
-> checkExpr env p (UnaryMinus op e) = UnaryMinus op (checkExpr env p e)
+>   liftM3 EnumFromThenTo
+>          (checkExpr env p e1)
+>          (checkExpr env p e2)
+>          (checkExpr env p e3)
+> checkExpr env p (UnaryMinus op e) = liftM (UnaryMinus op) (checkExpr env p e)
 > checkExpr env p (Apply e1 e2) =
->   Apply (checkExpr env p e1) (checkExpr env p e2)
+>   liftM2 Apply (checkExpr env p e1) (checkExpr env p e2)
 > checkExpr env p (InfixApply e1 op e2) =
->   InfixApply (checkExpr env p e1) op (checkExpr env p e2)
-> checkExpr env p (LeftSection e op) = LeftSection (checkExpr env p e) op
-> checkExpr env p (RightSection op e) = RightSection op (checkExpr env p e)
-> checkExpr env p (Lambda ts e) = Lambda ts (checkExpr env p e)
+>   liftM2 (flip InfixApply op) (checkExpr env p e1) (checkExpr env p e2)
+> checkExpr env p (LeftSection e op) =
+>   liftM (flip LeftSection op) (checkExpr env p e)
+> checkExpr env p (RightSection op e) =
+>   liftM (RightSection op) (checkExpr env p e)
+> checkExpr env p (Lambda ts e) = liftM (Lambda ts) (checkExpr env p e)
 > checkExpr env p (Let ds e) =
->   Let (map (checkDecl env) ds) (checkExpr env p e)
+>   liftM2 Let (mapM (checkDecl env) ds) (checkExpr env p e)
 > checkExpr env p (Do sts e) =
->   Do (map (checkStmt env p) sts) (checkExpr env p e)
+>   liftM2 Do (mapM (checkStmt env p) sts) (checkExpr env p e)
 > checkExpr env p (IfThenElse e1 e2 e3) =
->   IfThenElse (checkExpr env p e1) (checkExpr env p e2)
->              (checkExpr env p e3)
+>   liftM3 IfThenElse
+>          (checkExpr env p e1)
+>          (checkExpr env p e2)
+>          (checkExpr env p e3)
 > checkExpr env p (Case e alts) =
->   Case (checkExpr env p e) (map (checkAlt env) alts)
+>   liftM2 Case (checkExpr env p e) (mapM (checkAlt env) alts)
 
-> checkStmt :: TypeEnv -> Position -> Statement -> Statement
-> checkStmt env p (StmtExpr e) = StmtExpr (checkExpr env p e)
-> checkStmt env p (StmtBind t e) = StmtBind t (checkExpr env p e)
-> checkStmt env p (StmtDecl ds) = StmtDecl (map (checkDecl env) ds)
+> checkStmt :: TypeEnv -> Position -> Statement -> Error Statement
+> checkStmt env p (StmtExpr e) = liftM StmtExpr (checkExpr env p e)
+> checkStmt env p (StmtBind t e) = liftM (StmtBind t) (checkExpr env p e)
+> checkStmt env p (StmtDecl ds) = liftM StmtDecl (mapM (checkDecl env) ds)
 
-> checkAlt :: TypeEnv -> Alt -> Alt
-> checkAlt env (Alt p t rhs) = Alt p t (checkRhs env rhs)
+> checkAlt :: TypeEnv -> Alt -> Error Alt
+> checkAlt env (Alt p t rhs) = liftM (Alt p t) (checkRhs env rhs)
 
 \end{verbatim}
 The parser cannot distinguish unqualified nullary type constructors
@@ -187,34 +209,37 @@ identifier in a position where a type variable is admissible, it will
 interpret the identifier as such.
 \begin{verbatim}
 
-> checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr -> TypeExpr
+> checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr
+>                 -> Error TypeExpr
 > checkClosedType env p tvs ty =
->   case filter (\tv -> tv == anonId || tv `notElem` tvs) (fv ty') of
->     [] -> ty'
->     tv:_ -> errorAt p (unboundVariable tv)
->   where ty' = checkType env p ty
+>   do
+>     ty' <- checkType env p ty
+>     case filter (\tv -> tv == anonId || tv `notElem` tvs) (fv ty') of
+>       [] -> return ty'
+>       tv:_ -> errorAt p (unboundVariable tv)
 
-> checkType :: TypeEnv -> Position -> TypeExpr -> TypeExpr
+> checkType :: TypeEnv -> Position -> TypeExpr -> Error TypeExpr
 > checkType env p (ConstructorType tc tys) =
 >   case qualLookupType tc env of
 >     []
->       | not (isQualified tc) && null tys -> VariableType (unqualify tc)
+>       | not (isQualified tc) && null tys ->
+>           return (VariableType (unqualify tc))
 >       | otherwise -> errorAt p (undefinedType tc)
 >     [t]
->       | n == n' -> ConstructorType tc (map (checkType env p) tys)
+>       | n == n' -> liftM (ConstructorType tc) (mapM (checkType env p) tys)
 >       | otherwise -> errorAt p (wrongArity tc n n')
 >       where n = arity t
 >             n' = length tys
 >     _ -> errorAt p (ambiguousType tc)
 > checkType env p (VariableType tv)
->   | tv == anonId = VariableType tv
+>   | tv == anonId = return (VariableType tv)
 >   | otherwise = checkType env p (ConstructorType (qualify tv) [])
 > checkType env p (TupleType tys) =
->   TupleType (map (checkType env p) tys)
+>   liftM TupleType (mapM (checkType env p) tys)
 > checkType env p (ListType ty) =
->   ListType (checkType env p ty)
+>   liftM ListType (checkType env p ty)
 > checkType env p (ArrowType ty1 ty2) =
->   ArrowType (checkType env p ty1) (checkType env p ty2)
+>   liftM2 ArrowType (checkType env p ty1) (checkType env p ty2)
 
 \end{verbatim}
 Auxiliary definitions.

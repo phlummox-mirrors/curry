@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: LexComb.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: LexComb.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -54,7 +54,7 @@ Monad functions for the lexer.
 > closeP1 f pos s bol ctxt = Ok (\x _ _ _ _ -> f x pos s bol ctxt)
 
 > parseError :: Position -> String -> String
-> parseError p what = "\n" ++ show p ++ ": " ++ what
+> parseError p what = show p ++ ": " ++ what
 
 \end{verbatim}
 Combinators that handle layout.

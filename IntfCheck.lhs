@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1773 2005-09-22 10:23:22Z wlux $
+% $Id: IntfCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -47,59 +47,60 @@ interface module only. However, this has not been implemented yet.
 
 > module IntfCheck(intfCheck) where
 > import Base
+> import Error
+> import Maybe
+> import Monad
 
-> intfCheck :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> [IDecl] -> [IDecl]
-> intfCheck m pEnv tcEnv tyEnv = map (checkImport m pEnv tcEnv tyEnv)
+> intfCheck :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> [IDecl] -> Error ()
+> intfCheck m pEnv tcEnv tyEnv = mapM_ (checkImport m pEnv tcEnv tyEnv)
 
-> checkImport :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> IDecl -> IDecl
+> checkImport :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> IDecl -> Error ()
 > checkImport _ pEnv _ _ (IInfixDecl p fix pr op) =
->   checkPrecInfo checkPrec pEnv p op (IInfixDecl p fix pr op)
+>   checkPrecInfo checkPrec pEnv p op
 >   where checkPrec (PrecInfo op' (OpPrec fix' pr')) =
 >           op == op' && fix == fix' && pr == pr'
 > checkImport _ _ tcEnv _ (HidingDataDecl p tc tvs) =
 >   checkTypeInfo "hidden data type" checkData tcEnv p tc
->                 (const (HidingDataDecl p tc tvs)) undefined
 >   where checkData (DataType tc' n' _)
->           | tc == tc' && length tvs == n' = Just id
+>           | tc == tc' && length tvs == n' = Just (return ())
 >         checkData (RenamingType tc' n' _)
->           | tc == tc' && length tvs == n' = Just id
+>           | tc == tc' && length tvs == n' = Just (return ())
 >         checkData _ = Nothing
 > checkImport m _ tcEnv tyEnv (IDataDecl p tc tvs cs) =
->   checkTypeInfo "data type" checkData tcEnv p tc (IDataDecl p tc tvs) cs
+>   checkTypeInfo "data type" checkData tcEnv p tc
 >   where checkData (DataType tc' n' cs')
 >           | tc == tc' && length tvs == n' &&
 >             (null cs || length cs == length cs') &&
 >             and (zipWith isVisible cs cs') =
->               Just (map (fmap (checkConstrImport m tyEnv tc tvs)))
+>               Just (mapM_ (checkConstrImport m tyEnv tc tvs) (catMaybes cs))
 >         checkData (RenamingType tc' n' _)
->           | tc == tc' && length tvs == n' && null cs = Just (const [])
+>           | tc == tc' && length tvs == n' && null cs = Just (return ())
 >         checkData _ = Nothing
 >         isVisible (Just c) (Just c') = constr c == c'
 >         isVisible (Just _) Nothing = False
 >         isVisible Nothing _ = True
 > checkImport m _ tcEnv tyEnv (INewtypeDecl p tc tvs nc) =
->   checkTypeInfo "newtype" checkNewtype tcEnv p tc (INewtypeDecl p tc tvs) nc
+>   checkTypeInfo "newtype" checkNewtype tcEnv p tc
 >   where checkNewtype (RenamingType tc' n' nc')
 >           | tc == tc' && length tvs == n' && nconstr nc == nc' =
->               Just (checkNewConstrImport m tyEnv tc tvs)
+>               Just (checkNewConstrImport m tyEnv tc tvs nc)
 >         checkNewtype _ = Nothing
 > checkImport m _ tcEnv _ (ITypeDecl p tc tvs ty) =
->   checkTypeInfo "synonym type" checkType tcEnv p tc (ITypeDecl p tc tvs) ty
+>   checkTypeInfo "synonym type" checkType tcEnv p tc
 >   where checkType (AliasType tc' n' ty')
 >           | tc == tc' && length tvs == n' && toQualType m tvs ty == ty' =
->               Just id
+>               Just (return ())
 >         checkType _ = Nothing
 > checkImport m _ _ tyEnv (IFunctionDecl p f ty) =
->   checkValueInfo "function" checkFun tyEnv p f (IFunctionDecl p f ty)
+>   checkValueInfo "function" checkFun tyEnv p f
 >   where checkFun (Value f' (ForAll _ ty')) =
 >           f == f' && toQualType m [] ty == ty'
 >         checkFun _ = False
 
 > checkConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
->                   -> ConstrDecl -> ConstrDecl
+>                   -> ConstrDecl -> Error ()
 > checkConstrImport m tyEnv tc tvs (ConstrDecl p evs c tys) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
->                  (ConstrDecl p evs c tys)
 >   where qc = qualifyLike tc c
 >         checkConstr (DataConstructor c' (ForAllExist _ n' ty')) =
 >           qc == c' && length evs == n' &&
@@ -107,7 +108,6 @@ interface module only. However, this has not been implemented yet.
 >         checkConstr _ = False
 > checkConstrImport m tyEnv tc tvs (ConOpDecl p evs ty1 op ty2) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
->                  (ConOpDecl p evs ty1 op ty2)
 >   where qc = qualifyLike tc op
 >         checkConstr (DataConstructor c' (ForAllExist _ n' ty')) =
 >           qc == c' && length evs == n' &&
@@ -115,10 +115,9 @@ interface module only. However, this has not been implemented yet.
 >         checkConstr _ = False
 
 > checkNewConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
->                      -> NewConstrDecl -> NewConstrDecl
+>                      -> NewConstrDecl -> Error ()
 > checkNewConstrImport m tyEnv tc tvs (NewConstrDecl p evs c ty) =
 >   checkValueInfo "newtype constructor" checkNewConstr tyEnv p qc
->                  (NewConstrDecl p evs c ty)
 >   where qc = qualifyLike tc c
 >         checkNewConstr (NewtypeConstructor c' (ForAllExist _ n' ty')) =
 >           qc == c' && length evs == n' &&
@@ -126,44 +125,40 @@ interface module only. However, this has not been implemented yet.
 >         checkNewConstr _ = False
 
 > checkPrecInfo :: (PrecInfo -> Bool) -> PEnv -> Position
->               -> QualIdent -> a -> a
+>               -> QualIdent -> Error ()
 > checkPrecInfo check pEnv p op = checkImported checkInfo op
 >   where checkInfo m op' =
 >           case qualLookupP op pEnv of
 >             [] -> errorAt p (noPrecedence m op')
->             [pi]
->               | check pi -> id
->               | otherwise -> errorAt p (importConflict "precedence" m op')
+>             [pi] ->
+>               unless (check pi)
+>                      (errorAt p (importConflict "precedence" m op'))
 >             _ -> internalError "checkPrecInfo"
 
-> checkTypeInfo :: String -> (TypeInfo -> Maybe (a -> a)) -> TCEnv -> Position
->               -> QualIdent -> (a -> b) -> a -> b
+> checkTypeInfo :: String -> (TypeInfo -> Maybe (Error ())) -> TCEnv -> Position
+>               -> QualIdent -> Error ()
 > checkTypeInfo what check tcEnv p tc = checkImported checkInfo tc
 >   where checkInfo m tc' =
 >           case qualLookupTC tc tcEnv of
 >             [] -> errorAt p (notExported what m tc')
 >             [ti] ->
->               case check ti of
->                 Just checkConstrs -> \f cs -> f (checkConstrs cs)
->                 Nothing -> errorAt p (importConflict what m tc')
+>               fromMaybe (errorAt p (importConflict what m tc')) (check ti)
 >             _ -> internalError "checkTypeInfo"
 
 > checkValueInfo :: String -> (ValueInfo -> Bool) -> ValueEnv -> Position
->                -> QualIdent -> a -> a
+>                -> QualIdent -> Error ()
 > checkValueInfo what check tyEnv p x = checkImported checkInfo x
 >   where checkInfo m x' =
 >           case qualLookupValue x tyEnv of
 >             [] -> errorAt p (notExported what m x')
->             [vi]
->               | check vi -> id
->               | otherwise -> errorAt p (importConflict what m x')
+>             [vi] -> unless (check vi) (errorAt p (importConflict what m x'))
 >             _ -> internalError "checkValueInfo"
 
-> checkImported :: (ModuleIdent -> Ident -> a -> a) -> QualIdent -> a -> a
+> checkImported :: (ModuleIdent -> Ident -> Error ()) -> QualIdent -> Error ()
 > checkImported f x =
 >   case splitQualIdent x of
 >     (Just m,x') -> f m x'
->     (Nothing,_) -> id
+>     (Nothing,_) -> return ()
 
 \end{verbatim}
 Error messages.

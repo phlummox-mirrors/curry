@@ -1,14 +1,16 @@
--- $Id: cycc.hs 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: cycc.hs 1777 2005-09-30 14:56:48Z wlux $
 --
--- Copyright (c) 1999-2003, Wolfgang Lux
+-- Copyright (c) 1999-2005, Wolfgang Lux
 -- See LICENSE for the full license.
 
 import Modules
 import PathUtils
 import Options
+import Combined
+import Error
 import GetOpt
-import Maybe
 import IO
+import Maybe
 import System
 
 main :: IO ()
@@ -33,7 +35,7 @@ printUsage :: String -> IO ()
 printUsage prog =
   do
     putStrLn (usageInfo (unlines header) options)
-    exitWith (ExitSuccess)
+    exitWith ExitSuccess
   where header = ["usage: " ++ prog ++ " [OPTION]... SCRIPT..."]
 
 badUsage :: String -> [String] -> IO ()
@@ -52,7 +54,7 @@ processFiles opts prog files =
           badUsage prog ["only one of -e and -t must be specified\n"]
       | length files > 1 ->
           badUsage prog ["cannot specify -t with multiple input files\n"]
-      | otherwise -> typeGoal opts g (listToMaybe files)
+      | otherwise -> compile (typeGoal opts g (listToMaybe files))
     Nothing ->
       case goal opts of
         Just g
@@ -60,12 +62,17 @@ processFiles opts prog files =
               badUsage prog ["must specify -e with an output file\n"]
           | length files > 1 ->
               badUsage prog ["cannot specify -e with multiple input files\n"]
-          | otherwise -> compileGoal opts g (listToMaybe files)
+          | otherwise -> compile (compileGoal opts g (listToMaybe files))
 	Nothing
           | null files -> badUsage prog ["no input files\n"]
           | isJust (output opts) && length files > 1 ->
               badUsage prog ["cannot specify -o with multiple input files\n"]
-          | otherwise -> mapM_ (compileModule opts) files
+          | otherwise -> mapM_ (compile . compileModule opts) files
+
+compile :: ErrorT IO a -> IO a
+compile c = callErr c >>= checkOk
+  where checkOk (Ok x) = return x
+        checkOk (Error msg) = putErrLn msg >> exitWith (ExitFailure 1)
 
 putErr, putErrLn :: String -> IO ()
 putErr = hPutStr stderr

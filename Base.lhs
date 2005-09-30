@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1776 2005-09-29 10:17:40Z wlux $
+% $Id: Base.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -584,8 +584,8 @@ variable, but always refers to a global function from the prelude.
 Error handling
 \begin{verbatim}
 
-> errorAt :: Position -> String -> a
-> errorAt p msg = error ("\n" ++ show p ++ ": " ++ msg)
+> errorAt :: Monad m => Position -> String -> m a
+> errorAt p msg = fail (show p ++ ": " ++ msg)
 
 > internalError :: String -> a
 > internalError what = error ("internal error: " ++ what)

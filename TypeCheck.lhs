@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1765 2005-09-12 13:42:51Z wlux $
+% $Id: TypeCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -25,14 +25,15 @@ type annotation is present.
 > import CurryPP
 > import Env
 > import TopEnv
-> import Set
-> import Combined
-> import SCC
 > import TypeSubst
-> import Utils
+> import Combined
+> import Error
 > import List
-> import Monad
 > import Maybe
+> import Monad
+> import SCC
+> import Set
+> import Utils
 
 > infixl 5 $-$
 
@@ -48,14 +49,16 @@ definitions is performed. The type checker returns the resulting type
 constructor and type environments.
 \begin{verbatim}
 
-> typeCheck :: ModuleIdent -> TCEnv -> ValueEnv -> [TopDecl] -> (TCEnv,ValueEnv)
+> typeCheck :: ModuleIdent -> TCEnv -> ValueEnv -> [TopDecl]
+>           -> Error (TCEnv,ValueEnv)
 > typeCheck m tcEnv tyEnv ds =
->   run (tcDecls m tcEnv' [d | BlockDecl d <- vds] >>
->        liftSt fetchSt >>= \theta -> fetchSt >>= \tyEnv' ->
->        return (tcEnv',subst theta tyEnv'))
->       (foldr (bindConstrs m tcEnv') tyEnv tds)
+>   do
+>     tcEnv' <- liftM (flip (bindTypes m) tcEnv) (sortTypeDecls m tds)
+>     run (tcDecls m tcEnv' [d | BlockDecl d <- vds] >>
+>          liftSt fetchSt >>= \theta -> fetchSt >>= \tyEnv' ->
+>          return (tcEnv',subst theta tyEnv'))
+>         (foldr (bindConstrs m tcEnv') tyEnv tds)
 >   where (tds,vds) = partition isTypeDecl ds
->         tcEnv' = bindTypes m tds tcEnv
 
 \end{verbatim}
 Type checking of a goal expression is simpler because the type
@@ -63,7 +66,7 @@ constructor environment is fixed already and there are no
 type declarations in a goal.
 \begin{verbatim}
 
-> typeCheckGoal :: TCEnv -> ValueEnv -> Goal -> ValueEnv
+> typeCheckGoal :: TCEnv -> ValueEnv -> Goal -> Error ValueEnv
 > typeCheckGoal tcEnv tyEnv (Goal p e ds) =
 >    run (tcRhs emptyMIdent tcEnv (SimpleRhs p e ds) >>
 >         liftSt fetchSt >>= \theta -> fetchSt >>= \tyEnv' ->
@@ -75,10 +78,10 @@ maintain the type environment, the current substitution, and a counter
 which is used for generating fresh type variables.
 \begin{verbatim}
 
-> type TcState a = StateT ValueEnv (StateT TypeSubst (StateT Int Id)) a
+> type TcState a = StateT ValueEnv (StateT TypeSubst (StateT Int Error)) a
 
-> run :: TcState a -> ValueEnv -> a
-> run m tyEnv = runSt (callSt (callSt m tyEnv) idSubst) 1
+> run :: TcState a -> ValueEnv -> Error a
+> run m tyEnv = callSt (callSt (callSt m tyEnv) idSubst) 1
 
 \end{verbatim}
 \paragraph{Defining Types}
@@ -91,13 +94,14 @@ recursive type synonyms.
 
 Note that \texttt{bindTC} is passed the \emph{final} type constructor
 environment in order to handle the expansion of type synonyms. This
-does not lead to termination problems because \texttt{sortTypeDecls}
-checks that there are no recursive type synonyms.
+does not lead to termination problems because the type declarations
+were sorted with \texttt{sortTypeDecls}, which checks that there are
+no recursive type synonyms.
 \begin{verbatim}
 
 > bindTypes :: ModuleIdent -> [TopDecl] -> TCEnv -> TCEnv
 > bindTypes m ds tcEnv = tcEnv'
->   where tcEnv' = foldr (bindTC m tcEnv') tcEnv (sortTypeDecls m ds)
+>   where tcEnv' = foldr (bindTC m tcEnv') tcEnv ds
 
 > bindTC :: ModuleIdent -> TCEnv -> TopDecl -> TCEnv -> TCEnv
 > bindTC m tcEnv (DataDecl _ tc tvs cs) =
@@ -108,8 +112,8 @@ checks that there are no recursive type synonyms.
 >   bindTypeInfo AliasType m tc tvs (expandMonoType tcEnv tvs ty)
 > bindTC _ _ (BlockDecl _) = id
 
-> sortTypeDecls :: ModuleIdent -> [TopDecl] -> [TopDecl]
-> sortTypeDecls m = map (typeDecl m) . scc bound free
+> sortTypeDecls :: ModuleIdent -> [TopDecl] -> Error [TopDecl]
+> sortTypeDecls m = mapM (typeDecl m) . scc bound free
 >   where bound (DataDecl _ tc _ _) = [tc]
 >         bound (NewtypeDecl _ tc _ _) = [tc]
 >         bound (TypeDecl _ tc _ _) = [tc]
@@ -119,13 +123,13 @@ checks that there are no recursive type synonyms.
 >         free (TypeDecl _ _ _ ty) = ft m ty []
 >         free (BlockDecl _) = []
 
-> typeDecl :: ModuleIdent -> [TopDecl] -> TopDecl
+> typeDecl :: ModuleIdent -> [TopDecl] -> Error TopDecl
 > typeDecl _ [] = internalError "typeDecl"
-> typeDecl _ [d@(DataDecl _ _ _ _)] = d
-> typeDecl _ [d@(NewtypeDecl _ _ _ _)] = d
+> typeDecl _ [d@(DataDecl _ _ _ _)] = return d
+> typeDecl _ [d@(NewtypeDecl _ _ _ _)] = return d
 > typeDecl m [d@(TypeDecl p tc _ ty)]
 >   | tc `elem` ft m ty [] = errorAt p (recursiveTypes [tc])
->   | otherwise = d
+>   | otherwise = return d
 > typeDecl _ (TypeDecl p tc _ _ : ds) =
 >   errorAt p (recursiveTypes (tc : [tc' | TypeDecl _ tc' _ _ <- ds]))
 
@@ -291,30 +295,32 @@ arbitrary type.
 > tcForeignFunct :: ModuleIdent -> TCEnv -> Position -> CallConv
 >                -> Maybe String -> Ident -> TypeExpr -> TcState ()
 > tcForeignFunct m tcEnv p cc ie f ty =
->   updateSt_ (bindFun m f (checkForeignType cc (expandPolyType tcEnv ty)))
->   where checkForeignType CallConvPrimitive ty = ty
->         checkForeignType CallConvCCall (ForAll n ty)
->           | ie == Just "dynamic" = ForAll n (checkCDynCallType m p ty)
->           | maybe False ('&' `elem`) ie = ForAll n (checkCAddrType m p ty)
->           | otherwise = ForAll n (checkCCallType m p ty)
+>   do
+>     checkForeignType cc ty'
+>     updateSt_ (bindFun m f ty')
+>   where ty' = expandPolyType tcEnv ty
+>         checkForeignType CallConvPrimitive _ = return ()
+>         checkForeignType CallConvCCall (ForAll _ ty)
+>           | ie == Just "dynamic" = checkCDynCallType m p ty
+>           | maybe False ('&' `elem`) ie = checkCAddrType m p ty
+>           | otherwise = checkCCallType m p ty
 
-> checkCCallType :: ModuleIdent -> Position -> Type -> Type
+> checkCCallType :: ModuleIdent -> Position -> Type -> TcState ()
 > checkCCallType m p (TypeArrow ty1 ty2)
->   | isCArgType ty1 = TypeArrow ty1 (checkCCallType m p ty2)
+>   | isCArgType ty1 = checkCCallType m p ty2
 >   | otherwise = errorAt p (invalidCType "argument" m ty1)
 > checkCCallType m p ty
->   | isCRetType ty = ty
+>   | isCRetType ty = return ()
 >   | otherwise = errorAt p (invalidCType "result" m ty)
 
-> checkCDynCallType :: ModuleIdent -> Position -> Type -> Type
+> checkCDynCallType :: ModuleIdent -> Position -> Type -> TcState ()
 > checkCDynCallType m p (TypeArrow (TypeConstructor tc [ty1]) ty2)
->   | tc == qFunPtrId && ty1 == ty2 =
->       TypeArrow (TypeConstructor tc [checkCCallType m p ty1]) ty2
+>   | tc == qFunPtrId && ty1 == ty2 = checkCCallType m p ty1
 > checkCDynCallType m p ty = errorAt p (invalidCType "dynamic function" m ty)
 
-> checkCAddrType :: ModuleIdent -> Position -> Type -> Type
+> checkCAddrType :: ModuleIdent -> Position -> Type -> TcState ()
 > checkCAddrType m p ty
->   | isCPtrType ty = ty
+>   | isCPtrType ty = return ()
 >   | otherwise = errorAt p (invalidCType "static address" m ty)
 
 > isCArgType :: Type -> Bool
@@ -491,7 +497,7 @@ is checked in \texttt{tcVariable} below.
 >     let sigma = gen (fvEnv (subst theta tyEnv0)) (subst theta ty)
 >     unless (sigma == sigma')
 >       (errorAt p (typeSigTooGeneral m (text "Expression:" <+> ppExpr 0 e)
->                  sig' sigma))
+>                                     sig' sigma))
 >     return ty
 >   where sig' = nameSigType sig
 >         sigma' = expandPolyType tcEnv sig'
@@ -910,9 +916,9 @@ Error functions.
 \begin{verbatim}
 
 > recursiveTypes :: [Ident] -> String
-> recursiveTypes [tc] = "Recursive synonym type " ++ name tc
+> recursiveTypes [tc] = "Recursive type synonym " ++ name tc
 > recursiveTypes (tc:tcs) =
->   "Recursive synonym types " ++ name tc ++ types "" tcs
+>   "Mutually recursive type synonyms " ++ name tc ++ types "" tcs
 >   where types comma [tc] = comma ++ " and " ++ name tc
 >         types _ (tc:tcs) = ", " ++ name tc ++ types "," tcs
 
@@ -951,7 +957,7 @@ Error functions.
 
 > invalidCType :: String -> ModuleIdent -> Type -> String
 > invalidCType what m ty = show $
->   vcat [text ("Invalid " ++ what ++ " type in foreign declaration"),
+>   vcat [text ("Invalid " ++ what ++ " type in foreign declaration:"),
 >         ppType m ty]
 
 > recursiveType :: ModuleIdent -> Int -> Type -> Doc

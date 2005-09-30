@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ImportSyntaxCheck.lhs 1771 2005-09-21 14:18:10Z wlux $
+% $Id: ImportSyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -13,11 +13,15 @@ import declarations.
 
 > module ImportSyntaxCheck(checkImports) where
 > import Base
+> import Error
 > import Env
+> import List
 > import Maybe
+> import Monad
 
-> checkImports :: Interface -> Maybe ImportSpec -> Maybe ImportSpec
-> checkImports (Interface m _ ds) = fmap (expandSpecs m tEnv vEnv)
+> checkImports :: Interface -> Maybe ImportSpec -> Error (Maybe ImportSpec)
+> checkImports (Interface m _ ds) =
+>   maybe (return Nothing) (liftM Just . expandSpecs m tEnv vEnv)
 >   where tEnv = foldr (bindType m) emptyEnv ds
 >         vEnv = foldr (bindValue m) emptyEnv ds
 
@@ -88,72 +92,77 @@ data constructors are added.
 \begin{verbatim}
 
 > expandSpecs :: ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> ImportSpec
->             -> ImportSpec
+>             -> Error ImportSpec
 > expandSpecs m tEnv vEnv (Importing p is) =
->   Importing p (concat (map (expandImport p m tEnv vEnv) is))
+>   liftM (Importing p . concat) (mapM (expandImport p m tEnv vEnv) is)
 > expandSpecs m tEnv vEnv (Hiding p is) =
->   Hiding p (concat (map (expandHiding p m tEnv vEnv) is))
+>   liftM (Hiding p . concat) (mapM (expandHiding p m tEnv vEnv) is)
 
 > expandImport :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Import
->              -> [Import]
+>              -> Error [Import]
 > expandImport p m tEnv vEnv (Import x) = expandThing p m tEnv vEnv x
 > expandImport p m tEnv vEnv (ImportTypeWith tc cs) =
->   [expandTypeWith p m tEnv tc cs]
-> expandImport p m tEnv vEnv (ImportTypeAll tc) =
->   [expandTypeAll p m tEnv tc]
+>   expandTypeWith p m tEnv tc cs
+> expandImport p m tEnv vEnv (ImportTypeAll tc) = expandTypeAll p m tEnv tc
 
 > expandHiding :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Import
->              -> [Import]
+>              -> Error [Import]
 > expandHiding p m tEnv vEnv (Import x) = expandHide p m tEnv vEnv x
 > expandHiding p m tEnv vEnv (ImportTypeWith tc cs) =
->   [expandTypeWith p m tEnv tc cs]
-> expandHiding p m tEnv vEnv (ImportTypeAll tc) =
->   [expandTypeAll p m tEnv tc]
+>   expandTypeWith p m tEnv tc cs
+> expandHiding p m tEnv vEnv (ImportTypeAll tc) = expandTypeAll p m tEnv tc
 
 > expandThing :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Ident
->             -> [Import]
+>             -> Error [Import]
 > expandThing p m tEnv vEnv tc =
 >   case lookupEnv tc tEnv of
 >     Just _ -> expandThing' p m vEnv tc (Just [ImportTypeWith tc []])
 >     Nothing -> expandThing' p m vEnv tc Nothing
 
 > expandThing' :: Position -> ModuleIdent -> ExpFunEnv -> Ident
->              -> Maybe [Import] -> [Import]
+>              -> Maybe [Import] -> Error [Import]
 > expandThing' p m vEnv f tcImport =
 >   case lookupEnv f vEnv of
->     Just (Constr _ _) -> fromMaybe (errorAt p (importDataConstr m f)) tcImport
->     Just (Var _) -> Import f : fromMaybe [] tcImport
->     Nothing -> fromMaybe (errorAt p (undefinedEntity m f)) tcImport
+>     Just (Constr _ _) ->
+>       maybe (errorAt p (importDataConstr m f)) return tcImport
+>     Just (Var _) -> return (Import f : fromMaybe [] tcImport)
+>     Nothing -> maybe (errorAt p (undefinedEntity m f)) return tcImport
 
 > expandHide :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Ident
->            -> [Import]
+>            -> Error [Import]
 > expandHide p m tEnv vEnv tc =
 >   case lookupEnv tc tEnv of
 >     Just _ -> expandHide' p m vEnv tc (Just [ImportTypeWith tc []])
 >     Nothing -> expandHide' p m vEnv tc Nothing
 
 > expandHide' :: Position -> ModuleIdent -> ExpFunEnv -> Ident
->             -> Maybe [Import] -> [Import]
+>             -> Maybe [Import] -> Error [Import]
 > expandHide' p m vEnv f tcImport =
 >   case lookupEnv f vEnv of
->     Just _ -> Import f : fromMaybe [] tcImport
->     Nothing -> fromMaybe (errorAt p (undefinedEntity m f)) tcImport
+>     Just _ -> return (Import f : fromMaybe [] tcImport)
+>     Nothing -> maybe (errorAt p (undefinedEntity m f)) return tcImport
 
 > expandTypeWith :: Position -> ModuleIdent -> ExpTypeEnv -> Ident -> [Ident]
->                -> Import
+>                -> Error [Import]
 > expandTypeWith p m tEnv tc cs =
 >   case lookupEnv tc tEnv of
->     Just (Data _ _ cs') -> ImportTypeWith tc (map (checkConstr cs') cs)
+>     Just (Data _ _ cs') ->
+>       do
+>         checkConstrs cs' cs''
+>         return [ImportTypeWith tc cs'']
 >     Just (Alias _ _) -> errorAt p (nonDataType m tc)
 >     Nothing -> errorAt p (undefinedType m tc)
->   where checkConstr cs c
->           | c `elem` cs = c
->           | otherwise = errorAt p (undefinedDataConstr m tc c)
+>   where cs'' = nub cs
+>         checkConstrs cs' cs =
+>           case filter (`notElem` cs') cs of
+>             [] -> return ()
+>             c:_ -> errorAt p (undefinedDataConstr m tc c)
 
-> expandTypeAll :: Position -> ModuleIdent -> ExpTypeEnv -> Ident -> Import
+> expandTypeAll :: Position -> ModuleIdent -> ExpTypeEnv -> Ident
+>               -> Error [Import]
 > expandTypeAll p m tEnv tc =
 >   case lookupEnv tc tEnv of
->     Just (Data _ _ cs) -> ImportTypeWith tc cs
+>     Just (Data _ _ cs) -> return [ImportTypeWith tc cs]
 >     Just (Alias _ _) -> errorAt p (nonDataType m tc)
 >     Nothing -> errorAt p (undefinedType m tc)
 

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1773 2005-09-22 10:23:22Z wlux $
+% $Id: Modules.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -42,15 +42,16 @@ This module controls the compilation of modules.
 > import CurryPP(ppModule,ppInterface,ppIDecl,ppGoal)
 > import qualified ILPP(ppModule)
 > import Options(Options(..),Dump(..))
-> import PathUtils
-> import List
-> import IO
-> import Maybe
-> import Monad
-> import Pretty
-> import Error
 > import Env
 > import TopEnv
+> import Combined
+> import Error
+> import IO
+> import List
+> import Maybe
+> import Monad
+> import PathUtils
+> import Pretty
 > import Typing
 
 \end{verbatim}
@@ -64,18 +65,18 @@ The compiler automatically loads the prelude when compiling a module
 declaration to the module.
 \begin{verbatim}
 
-> compileModule :: Options -> FilePath -> IO ()
+> compileModule :: Options -> FilePath -> ErrorT IO ()
 > compileModule opts fn =
 >   do
->     m <- liftM (parseModule fn) (readFile fn)
+>     m <- liftErr (readFile fn) >>= okM . parseModule fn
 >     mEnv <- loadInterfaces paths m
->     let (tyEnv,m',intf) = checkModule mEnv m
+>     (tyEnv,m',intf) <- okM $ checkModule mEnv m
 >     mEnv' <- importDebugPrelude paths dbg fn (bindModule intf mEnv)
 >     let (ccode,dumps) = transModule split dbg trust mEnv' tyEnv m'
 >         ccode' = compileDefaultGoal dbg mEnv' intf
->     unless (noInterface opts) (updateInterface fn intf)
->     mapM_ (doDump opts) dumps
->     writeCode (output opts) fn (merge ccode ccode')
+>     liftErr $ unless (noInterface opts) (updateInterface fn intf) >>
+>               mapM_ (doDump opts) dumps >>
+>               writeCode (output opts) fn (merge ccode ccode')
 >   where paths = importPath opts
 >         split = splitCode opts
 >         dbg = debug opts
@@ -84,26 +85,28 @@ declaration to the module.
 >         merge' (Left cf1) = Left . mergeCFile cf1
 >         merge' (Right cfs) = Right . (cfs ++) . return
 
-> parseModule :: FilePath -> String -> Module
-> parseModule fn = importPrelude fn . ok . parseSource fn . unlitLiterate fn
+> parseModule :: FilePath -> String -> Error Module
+> parseModule fn s =
+>   unlitLiterate fn s >>= liftM (importPrelude fn) . parseSource fn
 
-> loadInterfaces :: [FilePath] -> Module -> IO ModuleEnv
+> loadInterfaces :: [FilePath] -> Module -> ErrorT IO ModuleEnv
 > loadInterfaces paths (Module m _ is _) =
 >   foldM (loadInterface paths [m]) emptyEnv
->         [(p,m) | ImportDecl p m _ _ _ <- is]
+>         [P p m | ImportDecl p m _ _ _ <- is]
 
-> checkModule :: ModuleEnv -> Module -> (ValueEnv,Module,Interface)
+> checkModule :: ModuleEnv -> Module -> Error (ValueEnv,Module,Interface)
 > checkModule mEnv (Module m es is ds) =
->   (tyEnv'',
->    Module m (Just es') is (qual tyEnv' ds'''),
->    exportInterface m es' pEnv'' tcEnv'' tyEnv'')
->   where (pEnv,tcEnv,tyEnv) = importModules mEnv is
->         (tEnv,ds') = typeSyntaxCheck m tcEnv ds
->         (vEnv,ds'') = syntaxCheck m tyEnv ds'
->         es' = checkExports m is tEnv vEnv es
->         (pEnv',ds''') = precCheck m pEnv $ rename ds''
->         (tcEnv',tyEnv') = typeCheck m tcEnv tyEnv ds'''
->         (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv pEnv' tcEnv' tyEnv'
+>   do
+>     (pEnv,tcEnv,tyEnv) <- importModules mEnv is
+>     (tEnv,ds') <- typeSyntaxCheck m tcEnv ds
+>     (vEnv,ds'') <- syntaxCheck m tyEnv ds'
+>     es' <- checkExports m is tEnv vEnv es
+>     (pEnv',ds''') <- precCheck m pEnv $ rename ds''
+>     (tcEnv',tyEnv') <- typeCheck m tcEnv tyEnv ds'''
+>     let (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv pEnv' tcEnv' tyEnv'
+>     return (tyEnv'',
+>             Module m (Just es') is (qual tyEnv' ds'''),
+>             exportInterface m es' pEnv'' tcEnv'' tyEnv'')
 
 > transModule :: Bool -> Bool -> Bool -> ModuleEnv -> ValueEnv -> Module
 >             -> (Either CFile [CFile],[(Dump,Doc)])
@@ -171,48 +174,50 @@ parsed and type checked before the goal can be compiled. Otherwise,
 compilation of a goal is similar to that of a module.
 \begin{verbatim}
 
-> compileGoal :: Options -> Maybe String -> Maybe FilePath -> IO ()
+> compileGoal :: Options -> Maybe String -> Maybe FilePath -> ErrorT IO ()
 > compileGoal opts (Just g) fn =
 >   do
 >     (mEnv,_,is) <- loadGoalModule paths fn
->     let (tyEnv,g') = checkGoal mEnv is (ok (parseGoal g))
+>     (tyEnv,g') <- okM $ parseGoal g >>= checkGoal mEnv is
 >     mEnv' <- importDebugPrelude paths dbg "" mEnv
->     let (ccode,dumps) =
->           transGoal dbg run mEnv' tyEnv (mkIdent "goal") g'
->     mapM_ (doDump opts) dumps
->     writeGoalCode (output opts) (mergeCFile (genMain run) ccode)
+>     let (ccode,dumps) = transGoal dbg run mEnv' tyEnv (mkIdent "goal") g'
+>     liftErr $ mapM_ (doDump opts) dumps >>
+>               writeGoalCode (output opts) (mergeCFile (genMain run) ccode)
 >   where run = "curry_goal"
 >         dbg = debug opts
 >         paths = importPath opts
 > compileGoal opts Nothing fn =
->   writeGoalCode (output opts) (genMain "curry_main")
+>   liftErr $ writeGoalCode (output opts) (genMain "curry_main")
 
-> typeGoal :: Options -> String -> Maybe FilePath -> IO ()
+> typeGoal :: Options -> String -> Maybe FilePath -> ErrorT IO ()
 > typeGoal opts g fn =
 >   do
 >     (mEnv,m,is) <- loadGoalModule (importPath opts) fn
->     let (tyEnv,Goal _ e _) = checkGoal mEnv is (ok (parseGoal g))
->     print (ppType m (typeOf tyEnv e))
+>     (tyEnv,Goal _ e _) <- okM $ parseGoal g >>= checkGoal mEnv is
+>     liftErr $ print (ppType m (typeOf tyEnv e))
 
 > loadGoalModule :: [FilePath] -> Maybe FilePath
->                -> IO (ModuleEnv,ModuleIdent,[ImportDecl])
+>                -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
 > loadGoalModule paths fn =
 >   do
 >     Module m _ is ds <- maybe (return emptyModule) parseGoalModule fn
 >     mEnv <- loadInterfaces paths (Module m Nothing is ds)
->     let (_,_,intf) = checkModule mEnv (Module m Nothing is ds)
+>     (_,_,intf) <- okM $ checkModule mEnv (Module m Nothing is ds)
 >     return (bindModule intf mEnv,m,is ++ [importMain m])
 >   where emptyModule = importPrelude "" (Module emptyMIdent Nothing [] [])
->         parseGoalModule fn = liftM (parseModule fn) (readFile fn)
->         importMain m = ImportDecl (first "") m False Nothing Nothing
+>         parseGoalModule fn = liftErr (readFile fn) >>= okM . parseModule fn
+>         importMain m = importDecl (first "") m False
 
-> checkGoal :: ModuleEnv -> [ImportDecl] -> Goal -> (ValueEnv,Goal)
-> checkGoal mEnv is g = (tyEnv'',qualGoal tyEnv' g')
->   where (pEnv,tcEnv,tyEnv) = importModules mEnv is
->         g' = precCheckGoal pEnv $ renameGoal $ syntaxCheckGoal tyEnv
->                                 $ typeSyntaxCheckGoal tcEnv g
->         tyEnv' = typeCheckGoal tcEnv tyEnv g'
->         (_,_,tyEnv'') = qualifyEnv mEnv pEnv tcEnv tyEnv'
+> checkGoal :: ModuleEnv -> [ImportDecl] -> Goal -> Error (ValueEnv,Goal)
+> checkGoal mEnv is g =
+>   do
+>     (pEnv,tcEnv,tyEnv) <- importModules mEnv is
+>     g' <- typeSyntaxCheckGoal tcEnv g >>=
+>           syntaxCheckGoal tyEnv >>=
+>           precCheckGoal pEnv . renameGoal
+>     tyEnv' <- typeCheckGoal tcEnv tyEnv g'
+>     let (_,_,tyEnv'') = qualifyEnv mEnv pEnv tcEnv tyEnv'
+>     return (tyEnv'',qualGoal tyEnv' g')
 
 > transGoal :: Bool -> String -> ModuleEnv -> ValueEnv -> Ident -> Goal
 >           -> (CFile,[(Dump,Doc)])
@@ -254,24 +259,30 @@ to determine the type of the goal when linking the program.
 >   | otherwise = Nothing
 >   where qMainId = qualify mainId
 >         mEnv' = bindModule (Interface m is ds) mEnv
->         (tyEnv,g) =
->           checkGoal mEnv' [ImportDecl (first "") m False Nothing Nothing]
+>         (tyEnv,g) = ok $
+>           checkGoal mEnv' [importDecl (first "") m False]
 >                     (Goal (first "") (Variable qMainId) [])
 >         (ccode,_) = transGoal debug "curry_main" mEnv' tyEnv mainId g
 
 \end{verbatim}
 The function \texttt{importModules} brings the declarations of all
-imported modules into scope for the current module.
+imported modules into scope in the current module.
 \begin{verbatim}
 
-> importModules :: ModuleEnv -> [ImportDecl] -> (PEnv,TCEnv,ValueEnv)
-> importModules mEnv ds = (pEnv,importUnifyData tcEnv,tyEnv)
->   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs ds
->         importModule envs (ImportDecl _ m q asM is) =
->           case lookupModule m mEnv of
->             Just i ->
->               importInterface (fromMaybe m asM) q (checkImports i is) envs i
->             Nothing -> internalError "importModules"
+> importModules :: ModuleEnv -> [ImportDecl] -> Error (PEnv,TCEnv,ValueEnv)
+> importModules mEnv ds =
+>   do
+>     (pEnv,tcEnv,tyEnv) <- foldM importModule initEnvs ds
+>     return (pEnv,importUnifyData tcEnv,tyEnv)
+>   where importModule envs (ImportDecl _ m q asM is) =
+>           do
+>             is' <- checkImports i is
+>             return (importInterface (fromMaybe m asM) q is' envs i)
+>           where i = moduleInterface m mEnv
+
+> moduleInterface :: ModuleIdent -> ModuleEnv -> Interface
+> moduleInterface m mEnv =
+>   fromMaybe (internalError "moduleInterface") (lookupModule m mEnv)
 
 > initEnvs :: (PEnv,TCEnv,ValueEnv)
 > initEnvs = (initPEnv,initTCEnv,initDCEnv)
@@ -286,10 +297,12 @@ only a qualified import is added.
 > importPrelude :: FilePath -> Module -> Module
 > importPrelude fn (Module m es is ds) =
 >   Module m es (if m == preludeMIdent then is else is') ds
->   where is' = ImportDecl (first fn) preludeMIdent
->                          (preludeMIdent `elem` map importedModule is)
->                          Nothing Nothing : is
->         importedModule (ImportDecl _ m q asM is) = fromMaybe m asM
+>   where is' = importDecl (first fn) preludeMIdent q : is
+>         q = preludeMIdent `elem` map importedModule is
+>         importedModule (ImportDecl _ m _ asM _) = fromMaybe m asM
+
+> importDecl :: Position -> ModuleIdent -> Bool -> ImportDecl
+> importDecl p m q = ImportDecl p m q Nothing Nothing
 
 \end{verbatim}
 The module \texttt{DebugPrelude} is loaded automatically when the
@@ -300,9 +313,9 @@ file has been checked.
 \begin{verbatim}
 
 > importDebugPrelude :: [FilePath] -> Bool -> FilePath -> ModuleEnv
->                    -> IO ModuleEnv
+>                    -> ErrorT IO ModuleEnv
 > importDebugPrelude paths dbg fn mEnv
->   | dbg = loadInterface paths [] mEnv (first fn,debugPreludeMIdent)
+>   | dbg = loadInterface paths [] mEnv (P (first fn) debugPreludeMIdent)
 >   | otherwise = return mEnv
 
 \end{verbatim}
@@ -315,13 +328,13 @@ otherwise the interface is searched in the import paths and loaded if
 it is found.
 \begin{verbatim}
 
-> loadInterface :: [FilePath] -> [ModuleIdent] -> ModuleEnv ->
->     (Position,ModuleIdent) -> IO ModuleEnv
-> loadInterface paths ctxt mEnv (p,m)
+> loadInterface :: [FilePath] -> [ModuleIdent] -> ModuleEnv -> P ModuleIdent
+>               -> ErrorT IO ModuleEnv
+> loadInterface paths ctxt mEnv (P p m)
 >   | m `elem` ctxt = errorAt p (cyclicImport m (takeWhile (/= m) ctxt))
 >   | isJust (lookupModule m mEnv) = return mEnv
 >   | otherwise =
->       lookupInterface paths m >>=
+>       liftErr (lookupInterface paths m) >>=
 >       maybe (errorAt p (interfaceNotFound m))
 >             (compileInterface paths ctxt mEnv m)
 
@@ -335,22 +348,26 @@ that are imported directly from that module.}
 \begin{verbatim}
 
 > compileInterface :: [FilePath] -> [ModuleIdent] -> ModuleEnv -> ModuleIdent
->                  -> FilePath -> IO ModuleEnv
+>                  -> FilePath -> ErrorT IO ModuleEnv
 > compileInterface paths ctxt mEnv m fn =
 >   do
->     i@(Interface m' _ _) <- liftM (ok . parseInterface fn) (readFile fn)
+>     i@(Interface m' _ _) <- liftErr (readFile fn) >>= okM . parseInterface fn
 >     unless (m == m') (errorAt (first fn) (wrongInterface m m'))
 >     mEnv' <- loadIntfInterfaces paths ctxt mEnv i
->     return (bindModule (checkInterface mEnv' i) mEnv')
+>     i' <- okM (checkInterface mEnv' i)
+>     return (bindModule i' mEnv')
 
 > loadIntfInterfaces :: [FilePath] -> [ModuleIdent] -> ModuleEnv -> Interface
->                    -> IO ModuleEnv
+>                    -> ErrorT IO ModuleEnv
 > loadIntfInterfaces paths ctxt mEnv (Interface m is _) =
->   foldM (loadInterface paths (m:ctxt)) mEnv [(p,m) | IImportDecl p m <- is]
+>   foldM (loadInterface paths (m:ctxt)) mEnv [P p m | IImportDecl p m <- is]
 
-> checkInterface :: ModuleEnv -> Interface -> Interface
+> checkInterface :: ModuleEnv -> Interface -> Error Interface
 > checkInterface mEnv (Interface m is ds) =
->   Interface m is (intfCheck m pEnv tcEnv tyEnv (intfSyntaxCheck ds))
+>   do
+>     ds' <- intfSyntaxCheck ds
+>     intfCheck m pEnv tcEnv tyEnv ds'
+>     return (Interface m is ds')
 >   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs is
 >         importModule envs (IImportDecl p m) =
 >           case lookupModule m mEnv of
@@ -405,11 +422,11 @@ directory is always searched first.
 Literate source files use the extension \texttt{".lcurry"}.
 \begin{verbatim}
 
-> unlitLiterate :: FilePath -> String -> String
+> unlitLiterate :: FilePath -> String -> Error String
 > unlitLiterate fn s
->   | not (isLiterateSource fn) = s
->   | null es = s'
->   | otherwise = error es
+>   | not (isLiterateSource fn) = return s
+>   | null es = return s'
+>   | otherwise = fail es
 >   where (es,s') = unlit fn s
 
 > isLiterateSource :: FilePath -> Bool

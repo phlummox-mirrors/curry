@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1772 2005-09-21 15:10:12Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -15,27 +15,32 @@ entities.
 
 > module ExportSyntaxCheck(checkExports) where
 > import Base
+> import Error
 > import List
 > import Map
 > import Maybe
+> import Monad
 > import Set
 > import TopEnv
 
 > checkExports :: ModuleIdent -> [ImportDecl] -> TypeEnv -> FunEnv
->              -> Maybe ExportSpec -> ExportSpec
+>              -> Maybe ExportSpec -> Error ExportSpec
 > checkExports m is tEnv fEnv =
->   maybe (Exporting noPos (expandLocalModule tEnv fEnv))
->         (checkInterface . nubExports . expandSpecs ms m tEnv fEnv)
+>   maybe (return (Exporting noPos (expandLocalModule tEnv fEnv)))
+>         (\es -> do
+>                   es' <- liftM nubExports (expandSpecs ms m tEnv fEnv es)
+>                   checkInterface es'
+>                   return es')
 >   where ms = fromListSet [fromMaybe m asM | ImportDecl _ m _ asM _ <- is]
 >         noPos = undefined
 
-> checkInterface :: ExportSpec -> ExportSpec
+> checkInterface :: ExportSpec -> Error ()
 > checkInterface (Exporting p es) =
 >   case linear [unqualify tc | ExportTypeWith tc _ <- es] of
 >     Linear ->
 >       case linear ([c | ExportTypeWith _ cs <- es, c <- cs] ++
 >                    [unqualify f | Export f <- es]) of
->         Linear -> Exporting p es
+>         Linear -> return ()
 >         NonLinear v -> errorAt p (ambiguousExportValue v)
 >     NonLinear tc -> errorAt p (ambiguousExportType tc)
 
@@ -54,23 +59,23 @@ export a type constructor \texttt{x} \emph{and} a global function
 \begin{verbatim}
 
 > expandSpecs :: Set ModuleIdent -> ModuleIdent -> TypeEnv -> FunEnv
->             -> ExportSpec -> ExportSpec
+>             -> ExportSpec -> Error ExportSpec
 > expandSpecs ms m tEnv fEnv (Exporting p es) =
->   Exporting p (concat (map (expandExport p ms m tEnv fEnv) es))
+>   liftM (Exporting p . concat) (mapM (expandExport p ms m tEnv fEnv) es)
 
 > expandExport :: Position -> Set ModuleIdent -> ModuleIdent -> TypeEnv
->              -> FunEnv -> Export -> [Export]
+>              -> FunEnv -> Export -> Error [Export]
 > expandExport p _ _ tEnv fEnv (Export x) = expandThing p tEnv fEnv x
-> expandExport p _ _ tEnv _ (ExportTypeWith tc cs) =
->   [expandTypeWith p tEnv tc cs]
-> expandExport p _ _ tEnv _ (ExportTypeAll tc) = [expandTypeAll p tEnv tc]
+> expandExport p _ _ tEnv _ (ExportTypeWith tc cs) = expandTypeWith p tEnv tc cs
+> expandExport p _ _ tEnv _ (ExportTypeAll tc) = expandTypeAll p tEnv tc
 > expandExport p ms m tEnv fEnv (ExportModule m')
->   | m == m' = (if m `elemSet` ms then expandModule tEnv fEnv m else [])
->               ++ expandLocalModule tEnv fEnv
->   | m' `elemSet` ms = expandModule tEnv fEnv m'
+>   | m == m' =
+>       return ((if m `elemSet` ms then expandModule tEnv fEnv m else []) ++
+>               expandLocalModule tEnv fEnv)
+>   | m' `elemSet` ms = return (expandModule tEnv fEnv m')
 >   | otherwise = errorAt p (moduleNotImported m')
 
-> expandThing :: Position -> TypeEnv -> FunEnv -> QualIdent -> [Export]
+> expandThing :: Position -> TypeEnv -> FunEnv -> QualIdent -> Error [Export]
 > expandThing p tEnv fEnv tc =
 >   case qualLookupType tc tEnv of
 >     [] -> expandThing' p fEnv tc Nothing
@@ -79,30 +84,37 @@ export a type constructor \texttt{x} \emph{and} a global function
 >             abstract (Alias tc n) = Alias tc n
 >     _ -> errorAt p (ambiguousType tc)
 
-> expandThing' :: Position -> FunEnv -> QualIdent -> Maybe [Export] -> [Export]
+> expandThing' :: Position -> FunEnv -> QualIdent -> Maybe [Export]
+>              -> Error [Export]
 > expandThing' p fEnv f tcExport =
 >   case qualLookupFun f fEnv of
->     [] -> fromMaybe (errorAt p (undefinedEntity f)) tcExport
->     [Var f'] -> Export f' : fromMaybe [] tcExport
->     [Constr _ _] -> fromMaybe (errorAt p (exportDataConstr f)) tcExport
+>     [] -> maybe (errorAt p (undefinedEntity f)) return tcExport
+>     [Var f'] -> return (Export f' : fromMaybe [] tcExport)
+>     [Constr _ _] -> maybe (errorAt p (exportDataConstr f)) return tcExport
 >     _ -> errorAt p (ambiguousName f)
 
-> expandTypeWith :: Position -> TypeEnv -> QualIdent -> [Ident] -> Export
+> expandTypeWith :: Position -> TypeEnv -> QualIdent -> [Ident]
+>                -> Error [Export]
 > expandTypeWith p tEnv tc cs =
 >   case qualLookupType tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
->     [Data tc' _ cs'] -> ExportTypeWith tc' (map (checkConstr cs') (nub cs))
+>     [Data tc' _ cs'] ->
+>       do
+>         checkConstrs cs' cs''
+>         return [ExportTypeWith tc' cs'']
 >     [Alias _ _] -> errorAt p (nonDataType tc)
 >     _ -> errorAt p (ambiguousType tc)
->   where checkConstr cs c
->           | c `elem` cs = c
->           | otherwise = errorAt p (undefinedDataConstr tc c)
+>   where cs'' = nub cs
+>         checkConstrs cs' cs =
+>           case filter (`notElem` cs') cs of
+>             [] -> return ()
+>             c:_ -> errorAt p (undefinedDataConstr tc c)
 
-> expandTypeAll :: Position -> TypeEnv -> QualIdent -> Export
+> expandTypeAll :: Position -> TypeEnv -> QualIdent -> Error [Export]
 > expandTypeAll p tEnv tc =
 >   case qualLookupType tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
->     [Data tc' _ cs'] -> ExportTypeWith tc' cs'
+>     [Data tc' _ cs'] -> return [ExportTypeWith tc' cs']
 >     [Alias _ _] -> errorAt p (nonDataType tc)
 >     _ -> errorAt p (ambiguousType tc)
 

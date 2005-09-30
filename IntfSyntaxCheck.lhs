@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 1776 2005-09-29 10:17:40Z wlux $
+% $Id: IntfSyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -18,11 +18,13 @@ the global environments.
 
 > module IntfSyntaxCheck(intfSyntaxCheck) where
 > import Base
+> import Error
 > import Maybe
+> import Monad
 > import TopEnv
 
-> intfSyntaxCheck :: [IDecl] -> [IDecl]
-> intfSyntaxCheck ds = map (checkIDecl env) ds
+> intfSyntaxCheck :: [IDecl] -> Error [IDecl]
+> intfSyntaxCheck ds = mapM (checkIDecl env) ds
 >   where env = foldr bindType (fmap typeKind initTCEnv) ds
 
 \end{verbatim}
@@ -50,77 +52,100 @@ The checks applied to the interface are similar to those performed
 during syntax checking of type expressions.
 \begin{verbatim}
 
-> checkIDecl :: TypeEnv -> IDecl -> IDecl
+> checkIDecl :: TypeEnv -> IDecl -> Error IDecl
+> checkIDecl _ (IInfixDecl p fix pr op) = return (IInfixDecl p fix pr op)
 > checkIDecl env (HidingDataDecl p tc tvs) =
->   HidingDataDecl p tc (checkTypeLhs env p tvs)
+>   do
+>     checkTypeLhs env p tvs
+>     return (HidingDataDecl p tc tvs)
 > checkIDecl env (IDataDecl p tc tvs cs) =
->   IDataDecl p tc tvs' (map (fmap (checkConstrDecl env tvs')) cs)
->   where tvs' = checkTypeLhs env p tvs
+>   do
+>     checkTypeLhs env p tvs
+>     liftM (IDataDecl p tc tvs) (mapM (liftMaybe (checkConstrDecl env tvs)) cs)
 > checkIDecl env (INewtypeDecl p tc tvs nc) =
->   INewtypeDecl p tc tvs' (checkNewConstrDecl env tvs' nc)
->   where tvs' = checkTypeLhs env p tvs
+>   do
+>     checkTypeLhs env p tvs
+>     liftM (INewtypeDecl p tc tvs) (checkNewConstrDecl env tvs nc)
 > checkIDecl env (ITypeDecl p tc tvs ty) =
->   ITypeDecl p tc tvs' (checkClosedType env p tvs' ty)
->   where tvs' = checkTypeLhs env p tvs
+>   do
+>     checkTypeLhs env p tvs
+>     liftM (ITypeDecl p tc tvs) (checkClosedType env p tvs ty)
 > checkIDecl env (IFunctionDecl p f ty) =
->   IFunctionDecl p f (checkType env p ty)
-> checkIDecl _ d = d
+>   liftM (IFunctionDecl p f) (checkType env p ty)
 
-> checkTypeLhs :: TypeEnv -> Position -> [Ident] -> [Ident]
-> checkTypeLhs env p (tv:tvs)
->   | isTypeConstr tv = errorAt p (noVariable tv)
->   | tv `elem` tvs = errorAt p  (nonLinear tv)
->   | otherwise = tv : checkTypeLhs env p tvs
+> checkTypeLhs :: TypeEnv -> Position -> [Ident] -> Error ()
+> checkTypeLhs env p tvs =
+>   case filter isTypeConstr tvs of
+>     [] ->
+>       case linear tvs of
+>         Linear -> return ()
+>         NonLinear tv -> errorAt p (nonLinear tv)
+>     tv:_ -> errorAt p (noVariable tv)
 >   where isTypeConstr tv = not (null (lookupType tv env))
-> checkTypeLhs env p [] = []
 
-> checkConstrDecl :: TypeEnv -> [Ident] -> ConstrDecl -> ConstrDecl
+> checkConstrDecl :: TypeEnv -> [Ident] -> ConstrDecl -> Error ConstrDecl
 > checkConstrDecl env tvs (ConstrDecl p evs c tys) =
->   ConstrDecl p evs' c (map (checkClosedType env p tvs') tys)
->   where evs' = checkTypeLhs env p evs
->         tvs' = evs' ++ tvs
+>   do
+>     checkTypeLhs env p evs
+>     liftM (ConstrDecl p evs c) (mapM (checkClosedType env p tvs') tys)
+>   where tvs' = evs ++ tvs
 > checkConstrDecl env tvs (ConOpDecl p evs ty1 op ty2) =
->   ConOpDecl p evs' (checkClosedType env p tvs' ty1) op
->             (checkClosedType env p tvs' ty2)
->   where evs' = checkTypeLhs env p evs
->         tvs' = evs' ++ tvs
+>   do
+>     checkTypeLhs env p evs
+>     liftM2 (flip (ConOpDecl p evs) op)
+>            (checkClosedType env p tvs' ty1)
+>            (checkClosedType env p tvs' ty2)
+>   where tvs' = evs ++ tvs
 
-> checkNewConstrDecl :: TypeEnv -> [Ident] -> NewConstrDecl -> NewConstrDecl
+> checkNewConstrDecl :: TypeEnv -> [Ident] -> NewConstrDecl
+>                    -> Error NewConstrDecl
 > checkNewConstrDecl env tvs (NewConstrDecl p evs c ty) =
->   NewConstrDecl p evs' c (checkClosedType env p tvs' ty)
->   where evs' = checkTypeLhs env p evs
->         tvs' = evs' ++ tvs
+>   do
+>     checkTypeLhs env p evs
+>     liftM (NewConstrDecl p evs c) (checkClosedType env p tvs' ty)
+>   where tvs' = evs ++ tvs
 
-> checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr -> TypeExpr
+> checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr
+>                 -> Error TypeExpr
 > checkClosedType env p tvs ty =
->   case filter (`notElem` tvs) (fv ty') of
->     [] -> ty'
->     tv:_ -> errorAt p (unboundVariable tv)
->   where ty' = checkType env p ty
+>   do
+>     ty' <- checkType env p ty
+>     case filter (`notElem` tvs) (fv ty') of
+>       [] -> return ty'
+>       tv:_ -> errorAt p (unboundVariable tv)
 
-> checkType :: TypeEnv -> Position -> TypeExpr -> TypeExpr
+> checkType :: TypeEnv -> Position -> TypeExpr -> Error TypeExpr
 > checkType env p (ConstructorType tc tys) =
 >   case qualLookupType tc env of
 >     []
->       | not (isQualified tc) && null tys -> VariableType (unqualify tc)
+>       | not (isQualified tc) && null tys ->
+>           return (VariableType (unqualify tc))
 >       | otherwise -> errorAt p (undefinedType tc)
 >     [Data _ n _]
->       | n == n' -> ConstructorType tc (map (checkType env p) tys)
+>       | n == n' -> liftM (ConstructorType tc) (mapM (checkType env p) tys)
 >       | otherwise -> errorAt p (wrongArity tc n n')
 >       where n' = length tys
 >     [Alias _ _] -> errorAt p (badTypeSynonym tc)
 >     _ -> internalError "checkType"
 > checkType env p (VariableType tv) =
 >   checkType env p (ConstructorType (qualify tv) [])
-> checkType env p (TupleType tys) = TupleType (map (checkType env p) tys)
-> checkType env p (ListType ty) = ListType (checkType env p ty)
+> checkType env p (TupleType tys) = liftM TupleType (mapM (checkType env p) tys)
+> checkType env p (ListType ty) = liftM ListType (checkType env p ty)
 > checkType env p (ArrowType ty1 ty2) =
->   ArrowType (checkType env p ty1) (checkType env p ty2)
+>   liftM2 ArrowType (checkType env p ty1) (checkType env p ty2)
 
 \end{verbatim}
 \ToDo{Much of the above code could be shared with module
   \texttt{TypeSyntaxCheck}.}
 
+Auxiliary functions.
+\begin{verbatim}
+
+> liftMaybe :: Monad m => (a -> m b) -> Maybe a -> m (Maybe b)
+> liftMaybe f (Just x) = liftM Just (f x)
+> liftMaybe f Nothing = return Nothing
+
+\end{verbatim}
 Error messages.
 \begin{verbatim}
 
