@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: Modules.lhs 1778 2005-09-30 18:56:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -68,14 +68,12 @@ declaration to the module.
 > compileModule :: Options -> FilePath -> ErrorT IO ()
 > compileModule opts fn =
 >   do
->     m <- liftErr (readFile fn) >>= okM . parseModule fn
->     mEnv <- loadInterfaces paths m
->     (tyEnv,m',intf) <- okM $ checkModule mEnv m
->     mEnv' <- importDebugPrelude paths dbg fn (bindModule intf mEnv)
->     let (ccode,dumps) = transModule split dbg trust mEnv' tyEnv m'
+>     (mEnv,tyEnv,m,intf) <- loadModule id paths fn
+>     mEnv' <- importDebugPrelude paths dbg fn mEnv
+>     let (ccode,dumps) = transModule split dbg trust mEnv' tyEnv m
 >         ccode' = compileDefaultGoal dbg mEnv' intf
->     liftErr $ unless (noInterface opts) (updateInterface fn intf) >>
->               mapM_ (doDump opts) dumps >>
+>     liftErr $ mapM_ (doDump opts) dumps >>
+>               unless (noInterface opts) (updateInterface fn intf) >>
 >               writeCode (output opts) fn (merge ccode ccode')
 >   where paths = importPath opts
 >         split = splitCode opts
@@ -84,6 +82,15 @@ declaration to the module.
 >         merge ccode = maybe ccode (merge' ccode)
 >         merge' (Left cf1) = Left . mergeCFile cf1
 >         merge' (Right cfs) = Right . (cfs ++) . return
+
+> loadModule :: (Module -> Module) -> [FilePath] -> FilePath
+>            -> ErrorT IO (ModuleEnv,ValueEnv,Module,Interface)
+> loadModule f paths fn =
+>   do
+>     m <- liftM f $ liftErr (readFile fn) >>= okM . parseModule fn
+>     mEnv <- loadInterfaces paths m
+>     (tyEnv,m',intf) <- okM $ checkModule mEnv m
+>     return (bindModule intf mEnv,tyEnv,m',intf)
 
 > parseModule :: FilePath -> String -> Error Module
 > parseModule fn s =
@@ -177,8 +184,7 @@ compilation of a goal is similar to that of a module.
 > compileGoal :: Options -> Maybe String -> Maybe FilePath -> ErrorT IO ()
 > compileGoal opts (Just g) fn =
 >   do
->     (mEnv,_,is) <- loadGoalModule paths fn
->     (tyEnv,g') <- okM $ parseGoal g >>= checkGoal mEnv is
+>     (mEnv,tyEnv,_,g') <- loadGoal paths g fn
 >     mEnv' <- importDebugPrelude paths dbg "" mEnv
 >     let (ccode,dumps) = transGoal dbg run mEnv' tyEnv (mkIdent "goal") g'
 >     liftErr $ mapM_ (doDump opts) dumps >>
@@ -192,21 +198,30 @@ compilation of a goal is similar to that of a module.
 > typeGoal :: Options -> String -> Maybe FilePath -> ErrorT IO ()
 > typeGoal opts g fn =
 >   do
->     (mEnv,m,is) <- loadGoalModule (importPath opts) fn
->     (tyEnv,Goal _ e _) <- okM $ parseGoal g >>= checkGoal mEnv is
+>     (_,tyEnv,m,Goal _ e _) <- loadGoal (importPath opts) g fn
 >     liftErr $ print (ppType m (typeOf tyEnv e))
+
+> loadGoal :: [FilePath] -> String -> Maybe FilePath
+>          -> ErrorT IO (ModuleEnv,ValueEnv,ModuleIdent,Goal)
+> loadGoal paths g fn =
+>   do
+>     (mEnv,m,is) <- loadGoalModule paths fn
+>     (tyEnv,g') <- okM $ parseGoal g >>= checkGoal mEnv is
+>     return (mEnv,tyEnv,m,g')
 
 > loadGoalModule :: [FilePath] -> Maybe FilePath
 >                -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
-> loadGoalModule paths fn =
+> loadGoalModule paths (Just fn) =
 >   do
->     Module m _ is ds <- maybe (return emptyModule) parseGoalModule fn
->     mEnv <- loadInterfaces paths (Module m Nothing is ds)
->     (_,_,intf) <- okM $ checkModule mEnv (Module m Nothing is ds)
->     return (bindModule intf mEnv,m,is ++ [importMain m])
->   where emptyModule = importPrelude "" (Module emptyMIdent Nothing [] [])
->         parseGoalModule fn = liftErr (readFile fn) >>= okM . parseModule fn
->         importMain m = importDecl (first "") m False
+>     (mEnv,_,Module m _ is _,_) <- loadModule transparent paths fn
+>     return (mEnv,m,is ++ [importDecl (first "") m False])
+>   where transparent (Module m _ is ds) = Module m Nothing is ds
+> loadGoalModule paths Nothing =
+>   do
+>     mEnv <- loadInterface paths [] emptyEnv (P p m)
+>     return (mEnv,emptyMIdent,[importDecl p m False])
+>   where p = first ""
+>         m = preludeMIdent
 
 > checkGoal :: ModuleEnv -> [ImportDecl] -> Goal -> Error (ValueEnv,Goal)
 > checkGoal mEnv is g =
