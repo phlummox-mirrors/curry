@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: SyntaxCheck.lhs 1781 2005-10-03 20:26:58Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -44,27 +44,14 @@ declarations are checked within the resulting environment.
 >         return (toplevelEnv env',tds ++ map BlockDecl vds')
 >     NonLinear (P p c) -> errorAt p (duplicateData c)
 >   where (tds,vds) = partition isTypeDecl ds
->         env = foldr (bindConstrs m) (globalEnv (fmap valueKind tyEnv)) tds
+>         env = foldr (bindConstr m) (globalEnv (fmap valueKind tyEnv)) cs
 >         cs = concatMap constrs tds
 
 > syntaxCheckGoal :: ValueEnv -> Goal -> Error Goal
 > syntaxCheckGoal tyEnv g = checkGoal (globalEnv (fmap valueKind tyEnv)) g
 
-> bindConstrs :: ModuleIdent -> TopDecl -> VarEnv -> VarEnv
-> bindConstrs m (DataDecl _ tc _ cs) env = foldr (bindConstr m) env cs
-> bindConstrs m (NewtypeDecl _ tc _ nc) env = bindNewConstr m nc env
-> bindConstrs _ (TypeDecl _ _ _ _) env = env
-> bindConstrs _ (BlockDecl _) env = env
-
-> bindConstr :: ModuleIdent -> ConstrDecl -> VarEnv -> VarEnv
-> bindConstr m (ConstrDecl _ _ c tys) =
->   bindGlobal m c (Constr (qualifyWith m c) (length tys))
-> bindConstr m (ConOpDecl _ _ _ op _) =
->   bindGlobal m op (Constr (qualifyWith m op) 2)
-
-> bindNewConstr :: ModuleIdent -> NewConstrDecl -> VarEnv -> VarEnv
-> bindNewConstr m (NewConstrDecl _ _ c _) =
->   bindGlobal m c (Constr (qualifyWith m c) 1)
+> bindConstr :: ModuleIdent -> P Ident -> VarEnv -> VarEnv
+> bindConstr m (P _ c) = bindGlobal m c (Constr (qualifyWith m c))
 
 > bindFunc :: ModuleIdent -> P Ident -> VarEnv -> VarEnv
 > bindFunc m (P _ f) = bindGlobal m f (Var (qualifyWith m f))
@@ -338,11 +325,8 @@ callbacks into Curry are not yet supported by the runtime system.
 >   | otherwise = checkConstrTerm p env (ConstructorPattern (qualify v) [])
 > checkConstrTerm p env (ConstructorPattern c ts) =
 >   case qualLookupVar c env of
->     [Constr _ n]
->       | n == n' ->
->           liftM (ConstructorPattern c) (mapM (checkConstrTerm p env) ts)
->       | otherwise -> errorAt p (wrongArity c n n')
->       where n' = length ts
+>     [Constr _] ->
+>       liftM (ConstructorPattern c) (mapM (checkConstrTerm p env) ts)
 >     rs
 >       | any isConstr rs -> errorAt p (ambiguousData c)
 >       | not (isQualified c) && null ts ->
@@ -350,12 +334,10 @@ callbacks into Curry are not yet supported by the runtime system.
 >       | otherwise -> errorAt p (undefinedData c)
 > checkConstrTerm p env (InfixPattern t1 op t2) =
 >   case qualLookupVar op env of
->     [Constr _ n]
->       | n == 2 ->
->           liftM2 (flip InfixPattern op)
->                  (checkConstrTerm p env t1)
->                  (checkConstrTerm p env t2)
->       | otherwise -> errorAt p (wrongArity op n 2)
+>     [Constr _] ->
+>       liftM2 (flip InfixPattern op)
+>              (checkConstrTerm p env t1)
+>              (checkConstrTerm p env t2)
 >     rs
 >       | any isConstr rs -> errorAt p (ambiguousData op)
 >       | otherwise -> errorAt p (undefinedData op)
@@ -393,7 +375,7 @@ callbacks into Curry are not yet supported by the runtime system.
 > checkExpr p env (Variable v) =
 >   case qualLookupVar v env of
 >     [] -> errorAt p (undefinedVariable v)
->     [Constr _ _] -> return (Constructor v)
+>     [Constr _] -> return (Constructor v)
 >     [Var _] -> return (Variable v)
 >     rs -> errorAt p (ambiguousIdent rs v)
 > checkExpr p env (Constructor c) = checkExpr p env (Variable c)
@@ -477,7 +459,7 @@ callbacks into Curry are not yet supported by the runtime system.
 > checkOp p env op =
 >   case qualLookupVar v env of
 >     [] -> errorAt p (undefinedVariable v)
->     [Constr _ _] -> return (InfixConstr v)
+>     [Constr _] -> return (InfixConstr v)
 >     [Var _] -> return (InfixOp v)
 >     rs -> errorAt p (ambiguousIdent rs v)
 >   where v = opName op
@@ -525,7 +507,7 @@ name.
 > isDataConstr env v = any isConstr (lookupVar v (globalEnv (toplevelEnv env)))
 
 > isConstr :: ValueKind -> Bool
-> isConstr (Constr _ _) = True
+> isConstr (Constr _) = True
 > isConstr (Var _) = False
 
 \end{verbatim}
@@ -579,14 +561,6 @@ Error messages.
 
 > differentArity :: Ident -> String
 > differentArity f = "Equations for " ++ name f ++ " have different arities"
-
-> wrongArity :: QualIdent -> Int -> Int -> String
-> wrongArity c arity argc =
->   "Data constructor " ++ qualName c ++ " expects " ++ arguments arity ++
->   " but is applied to " ++ show argc
->   where arguments 0 = "no arguments"
->         arguments 1 = "1 argument"
->         arguments n = show n ++ " arguments"
 
 > noExpressionStatement :: String
 > noExpressionStatement =

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ImportSyntaxCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
+% $Id: ImportSyntaxCheck.lhs 1781 2005-10-03 20:26:58Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -51,14 +51,12 @@ declarations.
 > bindValue _ _ = id
 
 > bindConstr :: QualIdent -> ConstrDecl -> ExpFunEnv -> ExpFunEnv
-> bindConstr tc (ConstrDecl _ _ c tys) =
->   bindEnv c (Constr (qualifyLike tc c) (length tys))
-> bindConstr tc (ConOpDecl _ _ _ op _) =
->   bindEnv op (Constr (qualifyLike tc op) 2)
+> bindConstr tc (ConstrDecl _ _ c _) = bindEnv c (Constr (qualifyLike tc c))
+> bindConstr tc (ConOpDecl _ _ _ op _) = bindEnv op (Constr (qualifyLike tc op))
 
 > bindNewConstr :: QualIdent -> NewConstrDecl -> ExpFunEnv -> ExpFunEnv
 > bindNewConstr tc (NewConstrDecl _ _ c _) =
->   bindEnv c (Constr (qualifyLike tc c) 1)
+>   bindEnv c (Constr (qualifyLike tc c))
 
 > bindUnqual :: QualIdent -> a -> Env Ident a -> Env Ident a
 > bindUnqual x = bindEnv (unqualify x)
@@ -126,7 +124,7 @@ data constructors are added.
 >              -> Maybe [Import] -> Error [Import]
 > expandThing' p m vEnv f tcImport =
 >   case lookupEnv f vEnv of
->     Just (Constr _ _) ->
+>     Just (Constr _) ->
 >       maybe (errorAt p (importDataConstr m f)) return tcImport
 >     Just (Var _) -> return (Import f : fromMaybe [] tcImport)
 >     Nothing -> maybe (errorAt p (undefinedEntity m f)) return tcImport

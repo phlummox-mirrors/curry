@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Types.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Types.lhs 1781 2005-10-03 20:26:58Z wlux $
 %
-% Copyright (c) 2002-2004, Wolfgang Lux
+% Copyright (c) 2002-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Types.lhs}
@@ -51,8 +51,9 @@ $t = t_1 \rightarrow t_2 \rightarrow \dots \rightarrow t_{n+1}$
 ($n\geq0$) is a function type, i.e., whether $n > 0$ . The function
 \texttt{arrowArity} returns the arity $n$ of a function type, the
 function \texttt{arrowArgs} returns the list of types
-\texttt{[$t_1$,$\dots$,$t_{n}$]}, and \texttt{arrowBase} returns the
-type $t_{n+1}$.
+\texttt{[$t_1$,$\dots$,$t_{n}$]}, \texttt{arrowBase} returns the
+type $t_{n+1}$, and \texttt{arrowUnapply} combines \texttt{arrowArgs}
+and \texttt{arrowBase} in one call.
 \begin{verbatim}
 
 > isArrowType :: Type -> Bool
@@ -60,16 +61,18 @@ type $t_{n+1}$.
 > isArrowType _ = False
 
 > arrowArity :: Type -> Int
-> arrowArity (TypeArrow _ ty) = 1 + arrowArity ty
-> arrowArity _ = 0
+> arrowArity = length . arrowArgs
 
 > arrowArgs :: Type -> [Type]
-> arrowArgs (TypeArrow ty1 ty2) = ty1 : arrowArgs ty2
-> arrowArgs ty = []
+> arrowArgs = fst . arrowUnapply
 
 > arrowBase :: Type -> Type
-> arrowBase (TypeArrow _ ty) = arrowBase ty
-> arrowBase ty = ty
+> arrowBase = snd . arrowUnapply
+
+> arrowUnapply :: Type -> ([Type],Type)
+> arrowUnapply (TypeArrow ty1 ty2) = (ty1 : tys,ty)
+>   where (tys,ty) = arrowUnapply ty2
+> arrowUnapply ty = ([],ty)
 
 \end{verbatim}
 The functions \texttt{typeVars}, \texttt{typeConstrs},

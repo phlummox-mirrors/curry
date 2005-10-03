@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
+% $Id: TypeCheck.lhs 1781 2005-10-03 20:26:58Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -356,19 +356,9 @@ is checked in \texttt{tcVariable} below.
 > tcConstrTerm m tcEnv sigs p (VariablePattern v) =
 >   tcVariable m tcEnv sigs False p v
 > tcConstrTerm m tcEnv sigs p t@(ConstructorPattern c ts) =
->   do
->     tyEnv <- fetchSt
->     ty <- skol (conType c tyEnv)
->     zipWithM_ (tcConstrArg m tcEnv sigs p (ppConstrTerm 0 t))
->               ts (arrowArgs ty)
->     return (arrowBase ty)
+>   tcConstrApp m tcEnv sigs p (ppConstrTerm 0 t) c ts
 > tcConstrTerm m tcEnv sigs p t@(InfixPattern t1 op t2) =
->   do
->     tyEnv <- fetchSt
->     ty <- skol (conType op tyEnv)
->     zipWithM_ (tcConstrArg m tcEnv sigs p (ppConstrTerm 0 t))
->               [t1,t2] (arrowArgs ty)
->     return (arrowBase ty)
+>   tcConstrApp m tcEnv sigs p (ppConstrTerm 0 t) op [t1,t2]
 > tcConstrTerm m tcEnv sigs p (ParenPattern t) = tcConstrTerm m tcEnv sigs p t
 > tcConstrTerm m tcEnv sigs p (TuplePattern ts)
 >  | null ts = return unitType
@@ -389,6 +379,17 @@ is checked in \texttt{tcVariable} below.
 >       unify p "pattern" (ppConstrTerm 0 t) m ty
 >     return ty
 > tcConstrTerm m tcEnv sigs p (LazyPattern t) = tcConstrTerm m tcEnv sigs p t
+
+> tcConstrApp :: ModuleIdent -> TCEnv -> SigEnv -> Position -> Doc
+>             -> QualIdent -> [ConstrTerm] -> TcState Type
+> tcConstrApp m tcEnv sigs p doc c ts =
+>   do
+>     tyEnv <- fetchSt
+>     (tys,ty) <- liftM arrowUnapply (skol (conType c tyEnv))
+>     unless (length tys == n) (errorAt p (wrongArity c (length tys) n))
+>     zipWithM_ (tcConstrArg m tcEnv sigs p doc) ts tys
+>     return ty
+>   where n = length ts
 
 > tcConstrArg :: ModuleIdent -> TCEnv -> SigEnv -> Position -> Doc
 >             -> ConstrTerm -> Type -> TcState ()
@@ -836,6 +837,13 @@ Error functions.
 >   vcat [text "Type signature too general", what,
 >         text "Inferred type:" <+> ppTypeScheme m sigma,
 >         text "Type signature:" <+> ppTypeExpr 0 ty]
+
+> wrongArity :: QualIdent -> Int -> Int -> String
+> wrongArity c arity argc = show $
+>   hsep [text "Constructor", ppQIdent c, text "requires",
+>         int arity, text (plural arity "argument"),
+>         text "in patterns, but is applied to", int argc]
+>   where plural n x = if n == 1 then x else x ++ "s"
 
 > nonFunctionType :: String -> Doc -> ModuleIdent -> Type -> String
 > nonFunctionType what doc m ty = show $

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1781 2005-10-03 20:26:58Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -90,7 +90,7 @@ export a type constructor \texttt{x} \emph{and} a global function
 >   case qualLookupFun f fEnv of
 >     [] -> maybe (errorAt p (undefinedEntity f)) return tcExport
 >     [Var f'] -> return (Export f' : fromMaybe [] tcExport)
->     [Constr _ _] -> maybe (errorAt p (exportDataConstr f)) return tcExport
+>     [Constr _] -> maybe (errorAt p (exportDataConstr f)) return tcExport
 >     _ -> errorAt p (ambiguousName f)
 
 > expandTypeWith :: Position -> TypeEnv -> QualIdent -> [Ident]

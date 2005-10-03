@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1780 2005-10-03 18:54:07Z wlux $
+% $Id: Base.lhs 1781 2005-10-03 20:26:58Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -212,18 +212,18 @@ constructors.
 \end{verbatim}
 A simpler kind of environment is used for syntax checking of
 expressions. We only distinguish constructors and variables here. A
-nested environment is used for syntax checking because it is applied
+nested environment is used for syntax checking because it is performed
 before renaming. However, only the top-level of this environment is
 used in order to check the export list of a module.
 \begin{verbatim}
 
 > type FunEnv = TopEnv ValueKind
 > type VarEnv = NestEnv ValueKind
-> data ValueKind = Constr QualIdent Int | Var QualIdent deriving (Eq,Show)
+> data ValueKind = Constr QualIdent | Var QualIdent deriving (Eq,Show)
 
 > valueKind :: ValueInfo -> ValueKind
-> valueKind (DataConstructor c (ForAllExist _ _ ty)) = Constr c (arrowArity ty)
-> valueKind (NewtypeConstructor c _) = Constr c 1
+> valueKind (DataConstructor c _) = Constr c
+> valueKind (NewtypeConstructor c _) = Constr c
 > valueKind (Value v _) = Var v
 
 > bindGlobal :: ModuleIdent -> Ident -> ValueKind -> VarEnv -> VarEnv
