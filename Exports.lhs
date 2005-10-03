@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1773 2005-09-22 10:23:22Z wlux $
+% $Id: Exports.lhs 1779 2005-10-03 14:55:35Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,6 +17,7 @@ types.
 > module Exports(exportInterface) where
 > import Base
 > import Set
+> import TypeTrans
 
 > exportInterface :: ModuleIdent -> ExportSpec -> PEnv -> TCEnv -> ValueEnv
 >                 -> Interface
@@ -57,7 +58,7 @@ types.
 >       | otherwise -> iTypeDecl INewtypeDecl m tc n newConstr : ds
 >       where newConstr tvs = newConstrDecl m tyEnv tc tvs c
 >     [AliasType tc n ty] ->
->       iTypeDecl ITypeDecl m tc n (const (fromQualType m ty)) : ds
+>       iTypeDecl ITypeDecl m tc n (const (fromType m ty)) : ds
 >     _ -> internalError "typeDecl"
 
 > iTypeDecl :: (Position -> QualIdent -> [Ident] -> a -> IDecl)
@@ -70,7 +71,7 @@ types.
 > constrDecl m tyEnv tc tvs c =
 >   case qualLookupValue (qualifyLike tc c) tyEnv of
 >     [DataConstructor _ (ForAllExist _ n ty)] ->
->       iConstrDecl (take n tvs) c (map (fromQualType m) (arrowArgs ty))
+>       iConstrDecl (take n tvs) c (map (fromType m) (arrowArgs ty))
 >     _ -> internalError "constrDecl"
 
 > iConstrDecl :: [Ident] -> Ident -> [TypeExpr] -> ConstrDecl
@@ -83,15 +84,14 @@ types.
 > newConstrDecl m tyEnv tc tvs c =
 >   case qualLookupValue (qualifyLike tc c) tyEnv of
 >     [NewtypeConstructor _ (ForAllExist _ n ty)] ->
->       NewConstrDecl noPos (take n tvs) c
->                     (fromQualType m (head (arrowArgs ty)))
+>       NewConstrDecl noPos (take n tvs) c (fromType m (head (arrowArgs ty)))
 >     _ -> internalError "newConstrDecl"
 
 > funDecl :: ModuleIdent -> ValueEnv -> Export -> [IDecl] -> [IDecl]
 > funDecl m tyEnv (Export f) ds =
 >   case qualLookupValue f tyEnv of
 >     [Value _ (ForAll _ ty)] ->
->       IFunctionDecl noPos (qualUnqualify m f) (fromQualType m ty) : ds
+>       IFunctionDecl noPos (qualUnqualify m f) (fromType m ty) : ds
 >     _ -> internalError "funDecl"
 > funDecl _ _ (ExportTypeWith _ _) ds = ds
 

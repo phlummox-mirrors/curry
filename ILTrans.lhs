@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1765 2005-09-12 13:42:51Z wlux $
+% $Id: ILTrans.lhs 1779 2005-10-03 14:55:35Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -20,11 +20,12 @@ data structures, we can use only a qualified import for the
 > module ILTrans(ilTrans,ilTransIntf) where
 > import Base
 > import qualified IL
-> import Utils
 > import Env
-> import Set
 > import Maybe
 > import List
+> import Set
+> import TypeTrans
+> import Utils
 
 \end{verbatim}
 \paragraph{Modules}
@@ -113,10 +114,9 @@ which are imported into the interface from some other module.
 > translIntfConstrDecl :: ModuleIdent -> [Ident] -> ConstrDecl
 >                      -> IL.ConstrDecl [IL.Type]
 > translIntfConstrDecl m tvs (ConstrDecl _ _ c tys) =
->   IL.ConstrDecl (qualifyWith m c) (map translType (toQualTypes m tvs tys))
+>   IL.ConstrDecl (qualifyWith m c) (map translType (toTypes m tvs tys))
 > translIntfConstrDecl m tvs (ConOpDecl _ _ ty1 op ty2) =
->   IL.ConstrDecl (qualifyWith m op)
->                 (map translType (toQualTypes m tvs [ty1,ty2]))
+>   IL.ConstrDecl (qualifyWith m op) (map translType (toTypes m tvs [ty1,ty2]))
 
 \end{verbatim}
 \paragraph{Types}

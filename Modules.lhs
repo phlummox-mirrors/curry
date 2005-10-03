@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1778 2005-09-30 18:56:49Z wlux $
+% $Id: Modules.lhs 1779 2005-10-03 14:55:35Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -52,6 +52,7 @@ This module controls the compilation of modules.
 > import Monad
 > import PathUtils
 > import Pretty
+> import TypeTrans
 > import Typing
 
 \end{verbatim}
@@ -477,7 +478,7 @@ from the type environment.
 > ppTypes :: ModuleIdent -> [(Ident,ValueInfo)] -> Doc
 > ppTypes m = vcat . map (ppIDecl . mkDecl) . filter (isValue . snd)
 >   where mkDecl (v,Value _ (ForAll _ ty)) =
->           IFunctionDecl undefined (qualify v) (fromQualType m ty)
+>           IFunctionDecl undefined (qualify v) (fromType m ty)
 >         isValue (DataConstructor _ _) = False
 >         isValue (NewtypeConstructor _ _) = False
 >         isValue (Value _ _) = True

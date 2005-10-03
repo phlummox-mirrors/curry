@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: IntfCheck.lhs 1779 2005-10-03 14:55:35Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -50,6 +50,7 @@ interface module only. However, this has not been implemented yet.
 > import Error
 > import Maybe
 > import Monad
+> import TypeTrans
 
 > intfCheck :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> [IDecl] -> Error ()
 > intfCheck m pEnv tcEnv tyEnv = mapM_ (checkImport m pEnv tcEnv tyEnv)
@@ -88,13 +89,12 @@ interface module only. However, this has not been implemented yet.
 > checkImport m _ tcEnv _ (ITypeDecl p tc tvs ty) =
 >   checkTypeInfo "synonym type" checkType tcEnv p tc
 >   where checkType (AliasType tc' n' ty')
->           | tc == tc' && length tvs == n' && toQualType m tvs ty == ty' =
+>           | tc == tc' && length tvs == n' && toType m tvs ty == ty' =
 >               Just (return ())
 >         checkType _ = Nothing
 > checkImport m _ _ tyEnv (IFunctionDecl p f ty) =
 >   checkValueInfo "function" checkFun tyEnv p f
->   where checkFun (Value f' (ForAll _ ty')) =
->           f == f' && toQualType m [] ty == ty'
+>   where checkFun (Value f' (ForAll _ ty')) = f == f' && toType m [] ty == ty'
 >         checkFun _ = False
 
 > checkConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
@@ -103,15 +103,14 @@ interface module only. However, this has not been implemented yet.
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc c
 >         checkConstr (DataConstructor c' (ForAllExist _ n' ty')) =
->           qc == c' && length evs == n' &&
->           toQualTypes m tvs tys == arrowArgs ty'
+>           qc == c' && length evs == n' && toTypes m tvs tys == arrowArgs ty'
 >         checkConstr _ = False
 > checkConstrImport m tyEnv tc tvs (ConOpDecl p evs ty1 op ty2) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc op
 >         checkConstr (DataConstructor c' (ForAllExist _ n' ty')) =
 >           qc == c' && length evs == n' &&
->           toQualTypes m tvs [ty1,ty2] == arrowArgs ty'
+>           toTypes m tvs [ty1,ty2] == arrowArgs ty'
 >         checkConstr _ = False
 
 > checkNewConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
@@ -121,7 +120,7 @@ interface module only. However, this has not been implemented yet.
 >   where qc = qualifyLike tc c
 >         checkNewConstr (NewtypeConstructor c' (ForAllExist _ n' ty')) =
 >           qc == c' && length evs == n' &&
->           toQualType m tvs ty == head (arrowArgs ty')
+>           toType m tvs ty == head (arrowArgs ty')
 >         checkNewConstr _ = False
 
 > checkPrecInfo :: (PrecInfo -> Bool) -> PEnv -> Position

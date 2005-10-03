@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: TypeCheck.lhs 1779 2005-10-03 14:55:35Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -26,6 +26,7 @@ type annotation is present.
 > import Env
 > import TopEnv
 > import TypeSubst
+> import TypeTrans
 > import Combined
 > import Error
 > import List
@@ -864,35 +865,6 @@ unambiguously refers to the local definition.
 >   case qualLookupValue f tyEnv of
 >     [Value _ sigma] -> sigma
 >     _ -> internalError ("funType " ++ show f)
-
-\end{verbatim}
-The function \texttt{expandType} expands all type synonyms in a type
-and also qualifies all type constructors with the name of the module
-in which the type was defined.
-\begin{verbatim}
-
-> expandMonoType :: TCEnv -> [Ident] -> TypeExpr -> Type
-> expandMonoType tcEnv tvs ty = expandType tcEnv (toType tvs ty)
-
-> expandMonoTypes :: TCEnv -> [Ident] -> [TypeExpr] -> [Type]
-> expandMonoTypes tcEnv tvs tys = map (expandType tcEnv) (toTypes tvs tys)
-
-> expandPolyType :: TCEnv -> TypeExpr -> TypeScheme
-> expandPolyType tcEnv ty = polyType $ normalize $ expandMonoType tcEnv [] ty
-
-> expandType :: TCEnv -> Type -> Type
-> expandType tcEnv (TypeConstructor tc tys) =
->   case qualLookupTC tc tcEnv of
->     [DataType tc' _ _] -> TypeConstructor tc' tys'
->     [RenamingType tc' _ _] -> TypeConstructor tc' tys'
->     [AliasType _ _ ty] -> expandAliasType tys' ty
->     _ -> internalError ("expandType " ++ show tc)
->   where tys' = map (expandType tcEnv) tys
-> expandType _ (TypeVariable tv) = TypeVariable tv
-> expandType _ (TypeConstrained tys tv) = TypeConstrained tys tv
-> expandType tcEnv (TypeArrow ty1 ty2) =
->   TypeArrow (expandType tcEnv ty1) (expandType tcEnv ty2)
-> expandType tcEnv (TypeSkolem k) = TypeSkolem k
 
 \end{verbatim}
 The functions \texttt{fvEnv} and \texttt{fsEnv} compute the set of

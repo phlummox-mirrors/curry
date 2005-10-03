@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: Base.lhs 1779 2005-10-03 14:55:35Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -14,112 +14,14 @@ in various phases of the compiler.
 >             module CurrySyntax) where
 > import Ident
 > import Position
-> import Types
 > import CurrySyntax
-> import CurryPP
-> import Pretty
+> import Types
 > import Env
 > import NestEnv
-> import List
-> import Map
 > import Maybe
 > import Monad
 > import Set
 > import Utils
-
-\end{verbatim}
-\paragraph{Types}
-The functions \texttt{toType}, \texttt{toTypes}, and \texttt{fromType}
-convert Curry type expressions into types and vice versa. The
-functions \texttt{qualifyType} and \texttt{unqualifyType} add and
-remove module qualifiers in a type, respectively.
-
-When Curry type expressions are converted with \texttt{toType} and
-\texttt{toTypes}, type variables are assigned ascending indices in the
-order of their occurrence. It is possible to pass a list of additional
-type variables to both functions, which are assigned indices before
-those variables occurring in the type. This allows preserving the
-order of type variables in the left hand side of a type declaration.
-\begin{verbatim}
-
-> toQualType :: ModuleIdent -> [Ident] -> TypeExpr -> Type
-> toQualType m tvs ty = qualifyType m (toType tvs ty)
-
-> toQualTypes :: ModuleIdent -> [Ident] -> [TypeExpr] -> [Type]
-> toQualTypes m tvs tys = map (qualifyType m) (toTypes tvs tys)
-
-> toType :: [Ident] -> TypeExpr -> Type
-> toType tvs ty = toType' (fromListFM (zip (tvs ++ tvs') [0..])) ty
->   where tvs' = [tv | tv <- nub (fv ty), tv `notElem` tvs]
-
-> toTypes :: [Ident] -> [TypeExpr] -> [Type]
-> toTypes tvs tys = map (toType' (fromListFM (zip (tvs ++ tvs') [0..]))) tys
->   where tvs' = [tv | tv <- nub (concatMap fv tys), tv `notElem` tvs]
-
-> toType' :: FM Ident Int -> TypeExpr -> Type
-> toType' tvs (ConstructorType tc tys) =
->   TypeConstructor tc (map (toType' tvs) tys)
-> toType' tvs (VariableType tv) =
->   maybe (internalError ("toType " ++ show tv)) TypeVariable (lookupFM tv tvs)
-> toType' tvs (TupleType tys)
->   | null tys = unitType
->   | otherwise = tupleType (map (toType' tvs) tys)
-> toType' tvs (ListType ty) = listType (toType' tvs ty)
-> toType' tvs (ArrowType ty1 ty2) =
->   TypeArrow (toType' tvs ty1) (toType' tvs ty2)
-
-> qualifyType :: ModuleIdent -> Type -> Type
-> qualifyType m (TypeConstructor tc tys)
->   | isQTupleId tc = tupleType tys'
->   | tc == qUnitId && n == 0 = unitType
->   | tc == qListId && n == 1 = listType (head tys')
->   | otherwise = TypeConstructor (qualQualify m tc) tys'
->   where n = length tys'
->         tys' = map (qualifyType m) tys
-> qualifyType _ (TypeVariable tv) = TypeVariable tv
-> qualifyType m (TypeConstrained tys tv) =
->   TypeConstrained (map (qualifyType m) tys) tv
-> qualifyType m (TypeArrow ty1 ty2) =
->   TypeArrow (qualifyType m ty1) (qualifyType m ty2)
-> qualifyType _ (TypeSkolem k) = TypeSkolem k
-
-> fromQualType :: ModuleIdent -> Type -> TypeExpr
-> fromQualType m ty = fromType (unqualifyType m ty)
-
-> fromType :: Type -> TypeExpr
-> fromType (TypeConstructor tc tys)
->   | isQTupleId tc = TupleType tys'
->   | tc == qListId && length tys == 1 = ListType (head tys')
->   | tc == qUnitId && null tys = TupleType []
->   | otherwise = ConstructorType tc tys'
->   where tys' = map (fromType) tys
-> fromType (TypeVariable tv) =
->   VariableType (if tv >= 0 then nameSupply !! tv
->                            else mkIdent ('_' : show (-tv)))
-> fromType (TypeConstrained tys _) = fromType (head tys)
-> fromType (TypeArrow ty1 ty2) = ArrowType (fromType ty1) (fromType ty2)
-> fromType (TypeSkolem k) = VariableType (mkIdent ("_?" ++ show k))
-
-> unqualifyType :: ModuleIdent -> Type -> Type
-> unqualifyType m (TypeConstructor tc tys) =
->   TypeConstructor (qualUnqualify m tc) (map (unqualifyType m) tys)
-> unqualifyType _ (TypeVariable tv) = TypeVariable tv
-> unqualifyType m (TypeConstrained tys tv) =
->   TypeConstrained (map (unqualifyType m) tys) tv
-> unqualifyType m (TypeArrow ty1 ty2) =
->   TypeArrow (unqualifyType m ty1) (unqualifyType m ty2)
-> unqualifyType m (TypeSkolem k) = TypeSkolem k
-
-\end{verbatim}
-The following functions implement pretty-printing for types by
-converting them into type expressions.
-\begin{verbatim}
-
-> ppType :: ModuleIdent -> Type -> Doc
-> ppType m = ppTypeExpr 0 . fromQualType m
-
-> ppTypeScheme :: ModuleIdent -> TypeScheme -> Doc
-> ppTypeScheme m (ForAll _ ty) = ppType m ty
 
 \end{verbatim}
 \paragraph{Interfaces}

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1773 2005-09-22 10:23:22Z wlux $
+% $Id: Imports.lhs 1779 2005-10-03 14:55:35Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -16,6 +16,7 @@ interfaces into the current module.
 > import Map
 > import Set
 > import TopEnv
+> import TypeTrans
 
 > type I a = (Ident,a)
 
@@ -106,7 +107,7 @@ following functions.
 > types _ m (INewtypeDecl _ tc tvs nc) =
 >   qual tc (typeCon RenamingType m tc tvs (nconstr nc))
 > types _ m (ITypeDecl _ tc tvs ty) =
->   qual tc (typeCon AliasType m tc tvs (toQualType m tvs ty))
+>   qual tc (typeCon AliasType m tc tvs (toType m tvs ty))
 > types _ _ _ = id
 
 > values :: ModuleIdent -> IDecl -> [I ValueInfo] -> [I ValueInfo]
@@ -117,7 +118,7 @@ following functions.
 >   (newConstr m tc' tvs (constrType tc' tvs) nc :)
 >   where tc' = qualQualify m tc
 > values m (IFunctionDecl _ f ty) =
->   qual f (Value (qualQualify m f) (polyType (toQualType m [] ty)))
+>   qual f (Value (qualQualify m f) (polyType (toType m [] ty)))
 > values _ _ = id
 
 > dataConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> ConstrDecl
@@ -169,7 +170,7 @@ Auxiliary functions:
 >     -> [Ident] -> [Ident] -> Ident -> TypeExpr -> a
 > con f m tc tvs evs c ty =
 >   f (qualifyLike tc c)
->     (ForAllExist (length tvs) (length evs) (toQualType m tvs ty))
+>     (ForAllExist (length tvs) (length evs) (toType m tvs ty))
 
 > constrType :: QualIdent -> [Ident] -> TypeExpr
 > constrType tc tvs = ConstructorType tc (map VariableType tvs)
