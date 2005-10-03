@@ -1,14 +1,15 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1779 2005-10-03 14:55:35Z wlux $
+% $Id: TypeCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeCheck.lhs}
-\section{Type Checking Curry Programs}
+\section{Type Inference}
 This module implements the type checker of the Curry compiler. The
 type checker is invoked after the syntactic correctness of the program
-has been verified. Local variables have been renamed already. Thus the
+has been verified and kind checking has been applied to all type
+expressions. Local variables have been renamed already. Therefore, the
 compiler can maintain a flat type environment (which is necessary in
 order to pass the type information to later phases of the compiler).
 The type checker now checks the correct typing of all expressions and
@@ -30,7 +31,6 @@ type annotation is present.
 > import Combined
 > import Error
 > import List
-> import Maybe
 > import Monad
 > import SCC
 > import Set
@@ -42,36 +42,28 @@ type annotation is present.
 > x $-$ y = x $$ space $$ y
 
 \end{verbatim}
-Type checking proceeds as follows. First, the type constructor
-environment is initialized by adding all types defined in the current
-module. Next, the types of all data constructors are entered into the
-type environment and then a type inference for all function and value
-definitions is performed. The type checker returns the resulting type
-constructor and type environments.
+Before checking the function declarations of a module, the compiler
+adds the types of all data and newtype constructors defined in the
+current module into the type environment.
 \begin{verbatim}
 
-> typeCheck :: ModuleIdent -> TCEnv -> ValueEnv -> [TopDecl]
->           -> Error (TCEnv,ValueEnv)
+> typeCheck :: ModuleIdent -> TCEnv -> ValueEnv -> [TopDecl] -> Error ValueEnv
 > typeCheck m tcEnv tyEnv ds =
->   do
->     tcEnv' <- liftM (flip (bindTypes m) tcEnv) (sortTypeDecls m tds)
->     run (tcDecls m tcEnv' [d | BlockDecl d <- vds] >>
->          liftSt fetchSt >>= \theta -> fetchSt >>= \tyEnv' ->
->          return (tcEnv',subst theta tyEnv'))
->         (foldr (bindConstrs m tcEnv') tyEnv tds)
+>   run (tcDecls m tcEnv [d | BlockDecl d <- vds] >>
+>        liftSt fetchSt >>= \theta -> liftM (subst theta) fetchSt)
+>       (foldr (bindConstrs m tcEnv) tyEnv tds)
 >   where (tds,vds) = partition isTypeDecl ds
 
 \end{verbatim}
-Type checking of a goal expression is simpler because the type
-constructor environment is fixed already and there are no
-type declarations in a goal.
+Type checking of a goal is simpler because there are no type
+declarations.
 \begin{verbatim}
 
 > typeCheckGoal :: TCEnv -> ValueEnv -> Goal -> Error ValueEnv
 > typeCheckGoal tcEnv tyEnv (Goal p e ds) =
 >    run (tcRhs emptyMIdent tcEnv (SimpleRhs p e ds) >>
->         liftSt fetchSt >>= \theta -> fetchSt >>= \tyEnv' ->
->         return (subst theta tyEnv')) tyEnv
+>         liftSt fetchSt >>= \theta -> liftM (subst theta) fetchSt)
+>        tyEnv
 
 \end{verbatim}
 The type checker makes use of nested state monads in order to
@@ -85,68 +77,10 @@ which is used for generating fresh type variables.
 > run m tyEnv = callSt (callSt (callSt m tyEnv) idSubst) 1
 
 \end{verbatim}
-\paragraph{Defining Types}
-Before type checking starts, the types defined in the local module
-have to be entered into the type constructor environment. All type
-synonyms occurring in the definitions are fully expanded and all type
-constructors are qualified with the name of the module in which they
-are defined. This is possible because Curry does not allow (mutually)
-recursive type synonyms.
-
-Note that \texttt{bindTC} is passed the \emph{final} type constructor
-environment in order to handle the expansion of type synonyms. This
-does not lead to termination problems because the type declarations
-were sorted with \texttt{sortTypeDecls}, which checks that there are
-no recursive type synonyms.
-\begin{verbatim}
-
-> bindTypes :: ModuleIdent -> [TopDecl] -> TCEnv -> TCEnv
-> bindTypes m ds tcEnv = tcEnv'
->   where tcEnv' = foldr (bindTC m tcEnv') tcEnv ds
-
-> bindTC :: ModuleIdent -> TCEnv -> TopDecl -> TCEnv -> TCEnv
-> bindTC m tcEnv (DataDecl _ tc tvs cs) =
->   bindTypeInfo DataType m tc tvs (map (Just . constr) cs)
-> bindTC m tcEnv (NewtypeDecl _ tc tvs (NewConstrDecl _ _ c _)) =
->   bindTypeInfo RenamingType m tc tvs c
-> bindTC m tcEnv (TypeDecl _ tc tvs ty) =
->   bindTypeInfo AliasType m tc tvs (expandMonoType tcEnv tvs ty)
-> bindTC _ _ (BlockDecl _) = id
-
-> sortTypeDecls :: ModuleIdent -> [TopDecl] -> Error [TopDecl]
-> sortTypeDecls m = mapM (typeDecl m) . scc bound free
->   where bound (DataDecl _ tc _ _) = [tc]
->         bound (NewtypeDecl _ tc _ _) = [tc]
->         bound (TypeDecl _ tc _ _) = [tc]
->         bound (BlockDecl _) = []
->         free (DataDecl _ _ _ _) = []
->         free (NewtypeDecl _ _ _ _) = []
->         free (TypeDecl _ _ _ ty) = ft m ty []
->         free (BlockDecl _) = []
-
-> typeDecl :: ModuleIdent -> [TopDecl] -> Error TopDecl
-> typeDecl _ [] = internalError "typeDecl"
-> typeDecl _ [d@(DataDecl _ _ _ _)] = return d
-> typeDecl _ [d@(NewtypeDecl _ _ _ _)] = return d
-> typeDecl m [d@(TypeDecl p tc _ ty)]
->   | tc `elem` ft m ty [] = errorAt p (recursiveTypes [tc])
->   | otherwise = return d
-> typeDecl _ (TypeDecl p tc _ _ : ds) =
->   errorAt p (recursiveTypes (tc : [tc' | TypeDecl _ tc' _ _ <- ds]))
-
-> ft :: ModuleIdent -> TypeExpr -> [Ident] -> [Ident]
-> ft m (ConstructorType tc tys) tcs =
->   maybe id (:) (localIdent m tc) (foldr (ft m) tcs tys)
-> ft _ (VariableType _) tcs = tcs
-> ft m (TupleType tys) tcs = foldr (ft m) tcs tys
-> ft m (ListType ty) tcs = ft m ty tcs
-> ft m (ArrowType ty1 ty2) tcs = ft m ty1 $ ft m ty2 $ tcs
-
-\end{verbatim}
 \paragraph{Defining Data Constructors}
-In the next step, the types of all data and newtype constructors are
-entered into the type environment. All type synonyms occurring in
-their types are expanded as well.
+First, the types of all data and newtype constructors are entered into
+the type environment. All type synonyms occurring in their types are
+expanded.
 
 We have to be careful with existentially quantified type variables for
 data and newtype constructors. An existentially quantified type
@@ -190,9 +124,9 @@ in the left hand side by \texttt{anonId} before passing them to
 \paragraph{Type Signatures}
 The type checker collects type signatures in a flat environment. All
 anonymous variables occurring in a signature are replaced by fresh
-names. However, the type is not expanded so that the signature is
-available for use in the error message that is printed when the
-inferred type is less general than the signature.
+names. However, the types are not expanded so that the signatures can
+be used in the error messages, which are printed when an inferred type
+is less general than the signature.
 \begin{verbatim}
 
 > type SigEnv = Env Ident TypeExpr
@@ -869,8 +803,8 @@ unambiguously refers to the local definition.
 \end{verbatim}
 The functions \texttt{fvEnv} and \texttt{fsEnv} compute the set of
 free type variables and free skolems of a type environment,
-respectively. We ignore the types of data constructors here because we
-know that they are closed.
+respectively. We ignore the types of data and newtype constructors
+here because we know that they are closed.
 \begin{verbatim}
 
 > fvEnv :: ValueEnv -> Set Int

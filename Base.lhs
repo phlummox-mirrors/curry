@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1779 2005-10-03 14:55:35Z wlux $
+% $Id: Base.lhs 1780 2005-10-03 18:54:07Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -116,22 +116,22 @@ impossible to insert them into the environment in advance.
 
 \end{verbatim}
 A simpler environment is used for checking the syntax of type
-expressions, where only the arity of each type constructor is needed.
-We only distinguish data and renaming types on one side and synonym
-types on the other side because they are treated differently in module
-export lists.
+expressions, where only the original names and the data constructors
+associated with each type are needed. Since synonym types are treated
+differently in import and export lists, we distinguish data and
+renaming types on one side and synonym types on the other side.
 \begin{verbatim}
 
 > type TypeEnv = TopEnv TypeKind
 > data TypeKind =
->     Data QualIdent Int [Ident]
->   | Alias QualIdent Int
+>     Data QualIdent [Ident]
+>   | Alias QualIdent
 >   deriving (Eq,Show)
 
 > typeKind :: TypeInfo -> TypeKind
-> typeKind (DataType tc n cs) = Data tc n (catMaybes cs)
-> typeKind (RenamingType tc n c) = Data tc n [c]
-> typeKind (AliasType tc n _) = Alias tc n
+> typeKind (DataType tc _ cs) = Data tc (catMaybes cs)
+> typeKind (RenamingType tc _ c) = Data tc [c]
+> typeKind (AliasType tc _ _) = Alias tc
 
 > bindTop :: ModuleIdent -> Ident -> TypeKind -> TypeEnv -> TypeEnv
 > bindTop m tc t = bindTopEnv tc t . qualBindTopEnv (qualifyWith m tc) t

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1779 2005-10-03 14:55:35Z wlux $
+% $Id: Modules.lhs 1780 2005-10-03 18:54:07Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,6 +19,7 @@ This module controls the compilation of modules.
 > import ExportSyntaxCheck(checkExports)
 > import Renaming(rename,renameGoal)
 > import PrecCheck(precCheck,precCheckGoal)
+> import KindCheck(kindCheck,kindCheckGoal)
 > import TypeCheck(typeCheck,typeCheckGoal)
 > import IntfSyntaxCheck(intfSyntaxCheck)
 > import IntfCheck(intfCheck)
@@ -110,7 +111,8 @@ declaration to the module.
 >     (vEnv,ds'') <- syntaxCheck m tyEnv ds'
 >     es' <- checkExports m is tEnv vEnv es
 >     (pEnv',ds''') <- precCheck m pEnv $ rename ds''
->     (tcEnv',tyEnv') <- typeCheck m tcEnv tyEnv ds'''
+>     tcEnv' <- kindCheck m tcEnv ds'''
+>     tyEnv' <- typeCheck m tcEnv' tyEnv ds'''
 >     let (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv pEnv' tcEnv' tyEnv'
 >     return (tyEnv'',
 >             Module m (Just es') is (qual tyEnv' ds'''),
@@ -231,7 +233,8 @@ compilation of a goal is similar to that of a module.
 >     g' <- typeSyntaxCheckGoal tcEnv g >>=
 >           syntaxCheckGoal tyEnv >>=
 >           precCheckGoal pEnv . renameGoal
->     tyEnv' <- typeCheckGoal tcEnv tyEnv g'
+>     tyEnv' <- kindCheckGoal tcEnv g' >>
+>               typeCheckGoal tcEnv tyEnv g'
 >     let (_,_,tyEnv'') = qualifyEnv mEnv pEnv tcEnv tyEnv'
 >     return (tyEnv'',qualGoal tyEnv' g')
 

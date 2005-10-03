@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: IntfSyntaxCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -35,17 +35,13 @@ The latter must not occur in type expressions in interfaces.
 \begin{verbatim}
 
 > bindType :: IDecl -> TypeEnv -> TypeEnv
-> bindType (HidingDataDecl _ tc tvs) =
->   qualBindTopEnv tc (typeCon Data tc tvs [])
-> bindType (IDataDecl _ tc tvs cs) =
->   qualBindTopEnv tc (typeCon Data tc tvs (map constr (catMaybes cs)))
-> bindType (INewtypeDecl _ tc tvs nc) =
->   qualBindTopEnv tc (typeCon Data tc tvs [nconstr nc])
-> bindType (ITypeDecl _ tc tvs _) = qualBindTopEnv tc (typeCon Alias tc tvs)
-> bindType _ = id
-
-> typeCon :: (QualIdent -> Int -> a) -> QualIdent -> [Ident] -> a
-> typeCon f tc tvs = f tc (length tvs)
+> bindType (IInfixDecl _ _ _ _) = id
+> bindType (HidingDataDecl _ tc _) = qualBindTopEnv tc (Data tc [])
+> bindType (IDataDecl _ tc _ cs) =
+>   qualBindTopEnv tc (Data tc (map constr (catMaybes cs)))
+> bindType (INewtypeDecl _ tc _ nc) = qualBindTopEnv tc (Data tc [nconstr nc])
+> bindType (ITypeDecl _ tc _ _) = qualBindTopEnv tc (Alias tc)
+> bindType (IFunctionDecl _ _ _) = id
 
 \end{verbatim}
 The checks applied to the interface are similar to those performed
@@ -121,11 +117,8 @@ during syntax checking of type expressions.
 >       | not (isQualified tc) && null tys ->
 >           return (VariableType (unqualify tc))
 >       | otherwise -> errorAt p (undefinedType tc)
->     [Data _ n _]
->       | n == n' -> liftM (ConstructorType tc) (mapM (checkType env p) tys)
->       | otherwise -> errorAt p (wrongArity tc n n')
->       where n' = length tys
->     [Alias _ _] -> errorAt p (badTypeSynonym tc)
+>     [Data _ _] -> liftM (ConstructorType tc) (mapM (checkType env p) tys)
+>     [Alias _] -> errorAt p (badTypeSynonym tc)
 >     _ -> internalError "checkType"
 > checkType env p (VariableType tv) =
 >   checkType env p (ConstructorType (qualify tv) [])
@@ -161,14 +154,6 @@ Error messages.
 > noVariable tv =
 >   "Type constructor " ++ name tv ++
 >   " used in left hand side of type declaration"
-
-> wrongArity :: QualIdent -> Int -> Int -> String
-> wrongArity tc arity argc =
->   "Type constructor " ++ qualName tc ++ " expects " ++ arguments arity ++
->   " but is applied to " ++ show argc
->   where arguments 0 = "no arguments"
->         arguments 1 = "1 argument"
->         arguments n = show n ++ " arguments"
 
 > unboundVariable :: Ident -> String
 > unboundVariable tv = "Unbound type variable " ++ name tv

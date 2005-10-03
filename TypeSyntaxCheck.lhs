@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: TypeSyntaxCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -11,15 +11,7 @@ imported, the compiler first checks all type definitions and
 signatures. In particular, this module disambiguates nullary
 constructors and type variables, which -- in contrast to many other
 declarative languages -- cannot be done in the parser due to the lack
-of a capitalization convention. In addition, this module checks that
-all type constructors and type variables are unambiguously defined and
-no type constructor is defined more than once.
-
-Since Curry currently does not support type classes, all types must be
-of first order kind ($\star$). This makes kind checking in Curry
-rather trivial; the compiler must only ensure that all type
-constructor applications are saturated. Because this check is so
-simple it is performed in this module, too.
+of a capitalization convention.
 \begin{verbatim}
 
 > module TypeSyntaxCheck(typeSyntaxCheck,typeSyntaxCheckGoal) where
@@ -30,25 +22,26 @@ simple it is performed in this module, too.
 
 \end{verbatim}
 In order to check type constructor applications, the compiler
-maintains an environment mapping all type constructors onto their
-arity. The function \texttt{typeSyntaxCheck} first initializes this
-environment by filtering out the arity of each type constructor from
-the imported type environment. Next, the arities of all locally
-defined type constructors are inserted into the environment, and,
-finally, the declarations are checked within this environment.
+maintains an environment, which records all known type constructors.
+The function \texttt{typeSyntaxCheck} first initializes this
+environment from the imported type constructor environment. Next, the
+all locally defined type constructors are inserted into the
+environment, and, finally, the declarations are checked within this
+environment. The final environment is returned in order to be used
+later for checking the optional export list of the current module.
 \begin{verbatim}
 
 > typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl]
 >                 -> Error (TypeEnv,[TopDecl])
 > typeSyntaxCheck m tcEnv ds =
->   case linear (map tconstr ds') of
+>   case linear (map tconstr tds) of
 >     Linear ->
 >       do
 >         ds' <- mapM (checkTopDecl env) ds
 >         return (env,ds')
 >     NonLinear (P p tc) -> errorAt p (duplicateType tc)
->   where ds' = filter isTypeDecl ds
->         env = foldr (bindType m) (fmap typeKind tcEnv) ds'
+>   where tds = filter isTypeDecl ds
+>         env = foldr (bindType m) (fmap typeKind tcEnv) tds
 
 > typeSyntaxCheckGoal :: TCEnv -> Goal -> Error Goal
 > typeSyntaxCheckGoal tcEnv (Goal p e ds) =
@@ -56,15 +49,12 @@ finally, the declarations are checked within this environment.
 >   where env = fmap typeKind tcEnv
 
 > bindType :: ModuleIdent -> TopDecl -> TypeEnv -> TypeEnv
-> bindType m (DataDecl _ tc tvs cs) =
->   bindTop m tc (typeCon Data m tc tvs (map constr cs))
-> bindType m (NewtypeDecl _ tc tvs nc) =
->   bindTop m tc (typeCon Data m tc tvs [nconstr nc])
-> bindType m (TypeDecl _ tc tvs _) = bindTop m tc (typeCon Alias m tc tvs)
+> bindType m (DataDecl _ tc _ cs) =
+>   bindTop m tc (Data (qualifyWith m tc) (map constr cs))
+> bindType m (NewtypeDecl _ tc _ nc) =
+>   bindTop m tc (Data (qualifyWith m tc) [nconstr nc])
+> bindType m (TypeDecl _ tc _ _) = bindTop m tc (Alias (qualifyWith m tc))
 > bindType _ (BlockDecl _) = id
-
-> typeCon :: (QualIdent -> Int -> a) -> ModuleIdent -> Ident -> [Ident] -> a
-> typeCon f m tc tvs = f (qualifyWith m tc) (length tvs)
 
 \end{verbatim}
 The compiler allows anonymous type variables on the left hand side of
@@ -225,11 +215,7 @@ interpret the identifier as such.
 >       | not (isQualified tc) && null tys ->
 >           return (VariableType (unqualify tc))
 >       | otherwise -> errorAt p (undefinedType tc)
->     [t]
->       | n == n' -> liftM (ConstructorType tc) (mapM (checkType env p) tys)
->       | otherwise -> errorAt p (wrongArity tc n n')
->       where n = arity t
->             n' = length tys
+>     [_] -> liftM (ConstructorType tc) (mapM (checkType env p) tys)
 >     _ -> errorAt p (ambiguousType tc)
 > checkType env p (VariableType tv)
 >   | tv == anonId = return (VariableType tv)
@@ -251,12 +237,8 @@ Auxiliary definitions.
 > tconstr (TypeDecl p tc _ _) = P p tc
 > tconstr (BlockDecl _) = internalError "tconstr"
 
-> arity :: TypeKind -> Int
-> arity (Data _ n _) = n
-> arity (Alias _ n) = n
-
 \end{verbatim}
-Error messages:
+Error messages.
 \begin{verbatim}
 
 > undefinedType :: QualIdent -> String
@@ -277,14 +259,6 @@ Error messages:
 > noVariable tv =
 >   "Type constructor " ++ name tv ++
 >   " used in left hand side of type declaration"
-
-> wrongArity :: QualIdent -> Int -> Int -> String
-> wrongArity tc arity argc =
->   "Type constructor " ++ qualName tc ++ " expects " ++ arguments arity ++
->   " but is applied to " ++ show argc
->   where arguments 0 = "no arguments"
->         arguments 1 = "1 argument"
->         arguments n = show n ++ " arguments"
 
 > unboundVariable :: Ident -> String
 > unboundVariable tv = "Unbound type variable " ++ name tv

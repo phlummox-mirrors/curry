@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ImportSyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: ImportSyntaxCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -36,11 +36,11 @@ declarations.
 > type ExpFunEnv = Env Ident ValueKind
 
 > bindType :: ModuleIdent -> IDecl -> ExpTypeEnv -> ExpTypeEnv
-> bindType m (IDataDecl _ tc tvs cs) =
->   bindUnqual tc (typeCon Data m tc tvs (map constr (catMaybes cs)))
-> bindType m (INewtypeDecl _ tc tvs nc) =
->   bindUnqual tc (typeCon Data m tc tvs [nconstr nc])
-> bindType m (ITypeDecl _ tc tvs _) = bindUnqual tc (typeCon Alias m tc tvs)
+> bindType m (IDataDecl _ tc _ cs) =
+>   bindUnqual tc (Data (qualQualify m tc) (map constr (catMaybes cs)))
+> bindType m (INewtypeDecl _ tc _ nc) =
+>   bindUnqual tc (Data (qualQualify m tc) [nconstr nc])
+> bindType m (ITypeDecl _ tc _ _) = bindUnqual tc (Alias (qualQualify m tc))
 > bindType _ _ = id
 
 > bindValue :: ModuleIdent -> IDecl -> ExpFunEnv -> ExpFunEnv
@@ -51,11 +51,14 @@ declarations.
 > bindValue _ _ = id
 
 > bindConstr :: QualIdent -> ConstrDecl -> ExpFunEnv -> ExpFunEnv
-> bindConstr tc (ConstrDecl _ _ c tys) = bindEnv c (con tc c (length tys))
-> bindConstr tc (ConOpDecl _ _ _ op _) = bindEnv op (con tc op 2)
+> bindConstr tc (ConstrDecl _ _ c tys) =
+>   bindEnv c (Constr (qualifyLike tc c) (length tys))
+> bindConstr tc (ConOpDecl _ _ _ op _) =
+>   bindEnv op (Constr (qualifyLike tc op) 2)
 
 > bindNewConstr :: QualIdent -> NewConstrDecl -> ExpFunEnv -> ExpFunEnv
-> bindNewConstr tc (NewConstrDecl _ _ c _) = bindEnv c (con tc c 1)
+> bindNewConstr tc (NewConstrDecl _ _ c _) =
+>   bindEnv c (Constr (qualifyLike tc c) 1)
 
 > bindUnqual :: QualIdent -> a -> Env Ident a -> Env Ident a
 > bindUnqual x = bindEnv (unqualify x)
@@ -146,11 +149,11 @@ data constructors are added.
 >                -> Error [Import]
 > expandTypeWith p m tEnv tc cs =
 >   case lookupEnv tc tEnv of
->     Just (Data _ _ cs') ->
+>     Just (Data _ cs') ->
 >       do
 >         checkConstrs cs' cs''
 >         return [ImportTypeWith tc cs'']
->     Just (Alias _ _) -> errorAt p (nonDataType m tc)
+>     Just (Alias _) -> errorAt p (nonDataType m tc)
 >     Nothing -> errorAt p (undefinedType m tc)
 >   where cs'' = nub cs
 >         checkConstrs cs' cs =
@@ -162,22 +165,12 @@ data constructors are added.
 >               -> Error [Import]
 > expandTypeAll p m tEnv tc =
 >   case lookupEnv tc tEnv of
->     Just (Data _ _ cs) -> return [ImportTypeWith tc cs]
->     Just (Alias _ _) -> errorAt p (nonDataType m tc)
+>     Just (Data _ cs) -> return [ImportTypeWith tc cs]
+>     Just (Alias _) -> errorAt p (nonDataType m tc)
 >     Nothing -> errorAt p (undefinedType m tc)
 
 \end{verbatim}
-Auxiliary functions:
-\begin{verbatim}
-
-> typeCon :: (QualIdent -> Int -> a) -> ModuleIdent -> QualIdent -> [Ident] -> a
-> typeCon f m tc tvs = f (qualQualify m tc) (length tvs)
-
-> con :: QualIdent -> Ident -> Int -> ValueKind
-> con tc c = Constr (qualifyLike tc c)
-
-\end{verbatim}
-Error messages:
+Error messages.
 \begin{verbatim}
 
 > undefinedEntity :: ModuleIdent -> Ident -> String

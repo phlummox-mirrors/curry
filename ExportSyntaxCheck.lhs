@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -80,8 +80,8 @@ export a type constructor \texttt{x} \emph{and} a global function
 >   case qualLookupType tc tEnv of
 >     [] -> expandThing' p fEnv tc Nothing
 >     [t] -> expandThing' p fEnv tc (Just [exportType (abstract t)])
->       where abstract (Data tc n _) = Data tc n []
->             abstract (Alias tc n) = Alias tc n
+>       where abstract (Data tc _) = Data tc []
+>             abstract (Alias tc) = Alias tc
 >     _ -> errorAt p (ambiguousType tc)
 
 > expandThing' :: Position -> FunEnv -> QualIdent -> Maybe [Export]
@@ -98,11 +98,11 @@ export a type constructor \texttt{x} \emph{and} a global function
 > expandTypeWith p tEnv tc cs =
 >   case qualLookupType tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
->     [Data tc' _ cs'] ->
+>     [Data tc' cs'] ->
 >       do
 >         checkConstrs cs' cs''
 >         return [ExportTypeWith tc' cs'']
->     [Alias _ _] -> errorAt p (nonDataType tc)
+>     [Alias _] -> errorAt p (nonDataType tc)
 >     _ -> errorAt p (ambiguousType tc)
 >   where cs'' = nub cs
 >         checkConstrs cs' cs =
@@ -114,8 +114,8 @@ export a type constructor \texttt{x} \emph{and} a global function
 > expandTypeAll p tEnv tc =
 >   case qualLookupType tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
->     [Data tc' _ cs'] -> return [ExportTypeWith tc' cs']
->     [Alias _ _] -> errorAt p (nonDataType tc)
+>     [Data tc' cs'] -> return [ExportTypeWith tc' cs']
+>     [Alias _] -> errorAt p (nonDataType tc)
 >     _ -> errorAt p (ambiguousType tc)
 
 > expandLocalModule :: TypeEnv -> FunEnv -> [Export]
@@ -129,8 +129,8 @@ export a type constructor \texttt{x} \emph{and} a global function
 >   [Export f | (_,Var f) <- moduleImports m fEnv]
 
 > exportType :: TypeKind -> Export
-> exportType (Data tc _ cs) = ExportTypeWith tc cs
-> exportType (Alias tc _) = ExportTypeWith tc []
+> exportType (Data tc cs) = ExportTypeWith tc cs
+> exportType (Alias tc) = ExportTypeWith tc []
 
 \end{verbatim}
 The expanded list of exported entities may contain duplicates. These
