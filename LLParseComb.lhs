@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: LLParseComb.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: LLParseComb.lhs 1782 2005-10-06 13:45:22Z wlux $
 %
-% Copyright (c) 1999-2004, Wolfgang Lux
+% Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{LLParseComb.lhs}
@@ -26,6 +26,7 @@ string in this case.
 >                    opt,(<$>),(<$->),(<*->),(<-*>),(<**>),(<??>),(<.>),
 >                    many,many1, sepBy,sepBy1, chainr,chainr1,chainl,chainl1,
 >                    bracket,ops, layoutOn,layoutOff,layoutEnd) where
+> import Prelude hiding(lex)
 > import Position
 > import Set
 > import Map
@@ -47,9 +48,9 @@ string in this case.
 >   isEOF :: s -> Bool
 
 > type Empty = Bool
-> type SuccessCont s a = Position -> s -> P a
-> type FailureCont a = Position -> String -> P a
-> type Lexer s a = SuccessCont s a -> FailureCont a -> P a
+> type SuccessCont s a = Position -> s -> L a
+> type FailureCont a = Position -> String -> L a
+> type Lexer s a = SuccessCont s a -> FailureCont a -> L a
 > type ParseFun s a b = (a -> SuccessCont s b) -> FailureCont b
 >                     -> SuccessCont s b
 
@@ -63,15 +64,15 @@ string in this case.
 
 > applyParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
 >             -> Error a
-> applyParser p lexer = parse (lexer (choose p lexer done failP) failP)
+> applyParser p lexer = lex (lexer (choose p lexer done failL) failL)
 >   where done x pos s
->           | isEOF s = returnP x
->           | otherwise = failP pos (unexpected s)
+>           | isEOF s = returnL x
+>           | otherwise = failL pos (unexpected s)
 
 > prefixParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
 >              -> Error a
-> prefixParser p lexer = parse (lexer (choose p lexer discard failP) failP)
->   where discard x _ _ = returnP x
+> prefixParser p lexer = lex (lexer (choose p lexer discard failL) failL)
+>   where discard x _ _ = returnL x
 
 > choose :: Symbol s => Parser s a b -> Lexer s b -> ParseFun s a b
 > choose (Parser e ps) lexer success fail pos s =
@@ -135,8 +136,8 @@ and report an ambiguous parse error if both succeed.
 >   where ps1' = fromListFM [(s,maybe p (try p) (lookupFM s ps2))
 >                           | (s,p) <- toListFM ps1]
 >         try p1 p2 lexer success fail pos s =
->           closeP1 p2s `thenP` \p2s' ->
->           closeP1 p2f `thenP` \p2f' ->
+>           closeL1 p2s `thenL` \p2s' ->
+>           closeL1 p2f `thenL` \p2f' ->
 >           parse p1 (retry p2s') (retry p2f')
 >           where p2s r1 = parse p2 (select True r1) (select False r1)
 >                 p2f r1 = parse p2 (flip (select False) r1) (select False r1)
@@ -144,7 +145,7 @@ and report an ambiguous parse error if both succeed.
 >                   p lexer (successK psucc) (failK pfail) pos s
 >                 successK k x pos s = k (pos,success x pos s)
 >                 failK k pos msg = k (pos,fail pos msg)
->                 retry k (pos,p) = closeP0 p `thenP` curry k pos
+>                 retry k (pos,p) = closeL0 p `thenL` curry k pos
 >         select suc (pos1,p1) (pos2,p2) =
 >           case pos1 `compare` pos2 of
 >             GT -> p1

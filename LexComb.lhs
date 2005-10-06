@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: LexComb.lhs 1777 2005-09-30 14:56:48Z wlux $
+% $Id: LexComb.lhs 1782 2005-10-06 13:45:22Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,53 +17,54 @@ nested layout groups.
 \begin{verbatim}
 
 > module LexComb where
+> import Prelude hiding(lex)
 > import Position
 > import Error
 > import Char
 > import Numeric
 
-> infixl 1 `thenP`, `thenP_`
+> infixl 1 `thenL`, `thenL_`
 
 > type Indent = Int
 > type Context = [Indent]
-> type P a = Position -> String -> Bool -> Context -> Error a
+> type L a = Position -> String -> Bool -> Context -> Error a
 
-> parse :: P a -> FilePath -> String -> Error a
-> parse p fn s = p (first fn) s False []
+> lex :: L a -> FilePath -> String -> Error a
+> lex p fn s = p (first fn) s False []
 
 \end{verbatim}
 Monad functions for the lexer.
 \begin{verbatim}
 
-> returnP :: a -> P a
-> returnP x _ _ _ _ = Ok x
+> returnL :: a -> L a
+> returnL x _ _ _ _ = Ok x
 
-> thenP :: P a -> (a -> P b) -> P b
-> thenP lex k pos s bol ctxt = lex pos s bol ctxt >>= \x -> k x pos s bol ctxt
+> thenL :: L a -> (a -> L b) -> L b
+> thenL lex k pos s bol ctxt = lex pos s bol ctxt >>= \x -> k x pos s bol ctxt
 
-> thenP_ :: P a -> P b -> P b
-> p1 `thenP_` p2 = p1 `thenP` \_ -> p2
+> thenL_ :: L a -> L b -> L b
+> p1 `thenL_` p2 = p1 `thenL` \_ -> p2
 
-> failP :: Position -> String -> P a
-> failP pos msg _ _ _ _ = Error (parseError pos msg)
+> failL :: Position -> String -> L a
+> failL pos msg _ _ _ _ = Error (lexError pos msg)
 
-> closeP0 :: P a -> P (P a)
-> closeP0 lex pos s bol ctxt = Ok (\_ _ _ _ -> lex pos s bol ctxt)
+> closeL0 :: L a -> L (L a)
+> closeL0 lex pos s bol ctxt = Ok (\_ _ _ _ -> lex pos s bol ctxt)
 
-> closeP1 :: (a -> P b) -> P (a -> P b)
-> closeP1 f pos s bol ctxt = Ok (\x _ _ _ _ -> f x pos s bol ctxt)
+> closeL1 :: (a -> L b) -> L (a -> L b)
+> closeL1 f pos s bol ctxt = Ok (\x _ _ _ _ -> f x pos s bol ctxt)
 
-> parseError :: Position -> String -> String
-> parseError p what = show p ++ ": " ++ what
+> lexError :: Position -> String -> String
+> lexError p what = show p ++ ": " ++ what
 
 \end{verbatim}
 Combinators that handle layout.
 \begin{verbatim}
 
-> pushContext :: Int -> P a -> P a
+> pushContext :: Int -> L a -> L a
 > pushContext col cont pos s bol ctxt = cont pos s bol (col:ctxt)
 
-> popContext :: P a -> P a
+> popContext :: L a -> L a
 > popContext cont pos s bol (_:ctxt) = cont pos s bol ctxt
 > popContext cont pos s bol [] = error "internal error: popContext"
 

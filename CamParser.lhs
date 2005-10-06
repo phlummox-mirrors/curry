@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CamParser.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CamParser.lhs 1782 2005-10-06 13:45:22Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -185,16 +185,16 @@ in appendix~\ref{sec:ll-parsecomb}.
 >     ("update",   KW_update)
 >   ]
 
-> type SuccessP a = Position -> Token -> P a
-> type FailP a = Position -> String -> P a
+> type SuccessL a = Position -> Token -> L a
+> type FailL a = Position -> String -> L a
 
-> lexFile :: P [(Position,Token)]
-> lexFile = lexer tokens failP
+> lexFile :: L [(Position,Token)]
+> lexFile = lexer tokens failL
 >   where tokens p t
->           | isEOF t = returnP [(p,t)]
->           | otherwise = lexFile `thenP` returnP . ((p,t):)
+>           | isEOF t = returnL [(p,t)]
+>           | otherwise = lexFile `thenL` returnL . ((p,t):)
 
-> lexer :: SuccessP a -> FailP a -> P a
+> lexer :: SuccessL a -> FailL a -> L a
 > lexer success fail p [] = success p (tok EOF) p []
 > lexer success fail p (c:cs)
 >   | isSpace c = lexer success fail (advance c p) cs
@@ -230,12 +230,12 @@ in appendix~\ref{sec:ll-parsecomb}.
 >         advance _ = next
 >         illegalChar = fail p ("Illegal character " ++ show c) p (c:cs)
 
-> lexIdent :: (Token -> P a) -> Char -> P a
+> lexIdent :: (Token -> L a) -> Char -> L a
 > lexIdent success c p cs =
 >   success (nameTok Ident (c : cs')) (incr p (1 + length cs')) cs''
 >   where (cs',cs'') = span isIdent cs
 
-> lexKeyword :: (Token -> P a) -> FailP a -> P a
+> lexKeyword :: (Token -> L a) -> FailL a -> L a
 > lexKeyword success fail p cs
 >   | null cs' = fail p "Keyword expected after '.'" (next p) cs
 >   | otherwise =
@@ -244,7 +244,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >             (lookupFM cs' keywords) (incr p (1 + length cs')) cs''
 >   where (cs',cs'') = span isIdent cs
 
-> lexNumber :: (Token -> P a) -> FailP a -> Char -> P a
+> lexNumber :: (Token -> L a) -> FailL a -> Char -> L a
 > lexNumber success fail c p cs
 >   | null ds && not (isDigit c) =
 >      fail p ("Digit expected after " ++ show c) (next p) cs
@@ -258,7 +258,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >         p' = incr p (1 + length ds)
 >         cat c = if c `elem` "+-" then IntNum else NatNum
 
-> lexFraction :: (Token -> P a) -> FailP a -> String -> P a
+> lexFraction :: (Token -> L a) -> FailL a -> String -> L a
 > lexFraction success fail ds p cs =
 >   case cs' of
 >     ('e':cs'') -> lexExponent success fail ds ds' (next p') cs''
@@ -267,7 +267,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >   where (ds',cs') = span isDigit cs
 >         p' = incr p (length ds')
 
-> lexExponent :: (Token -> P a) -> FailP a -> String -> String -> P a
+> lexExponent :: (Token -> L a) -> FailL a -> String -> String -> L a
 > lexExponent success fail ds ds' p (c:cs)
 >   | isDigit c || c `elem` "+-" =
 >       case span isDigit cs of
@@ -277,7 +277,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >               success (floatTok ds ds' (c:es)) (incr p (1 + length es)) cs'
 > lexExponent success fail _ _ p cs = fail p "Exponent expected" p cs
 
-> lexString :: (String -> P a) -> FailP a -> P a
+> lexString :: (String -> L a) -> FailL a -> L a
 > lexString success fail p [] = fail p "Unterminated string constant" p []
 > lexString success fail p (c:cs)
 >   | c == '"' = success "" (next p) cs

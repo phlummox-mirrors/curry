@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryLexer.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CurryLexer.lhs 1782 2005-10-06 13:45:22Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -253,16 +253,16 @@ Character classes
 Lexing functions
 \begin{verbatim}
 
-> type SuccessP a = Position -> Token -> P a
-> type FailP a = Position -> String -> P a
+> type SuccessL a = Position -> Token -> L a
+> type FailL a = Position -> String -> L a
 
-> lexFile :: P [(Position,Token)]
-> lexFile = lexer tokens failP
+> lexFile :: L [(Position,Token)]
+> lexFile = lexer tokens failL
 >   where tokens p t@(Token c _)
->           | c == EOF = returnP [(p,t)]
->           | otherwise = lexFile `thenP` returnP . ((p,t):)
+>           | c == EOF = returnL [(p,t)]
+>           | otherwise = lexFile `thenL` returnL . ((p,t):)
 
-> lexer :: SuccessP a -> FailP a -> P a
+> lexer :: SuccessL a -> FailL a -> L a
 > lexer success fail = skipBlanks
 >   where -- skipBlanks moves past whitespace and comments
 >         skipBlanks p [] bol = success p (tok EOF) p [] bol
@@ -279,7 +279,7 @@ Lexing functions
 >         tail' [] = []
 >         tail' (_:tl) = tl
 
-> nestedComment :: Position -> P a -> FailP a -> P a
+> nestedComment :: Position -> L a -> FailL a -> L a
 > nestedComment p0 success fail p ('-':'}':s) = success (incr p 2) s
 > nestedComment p0 success fail p ('{':'-':s) =
 >   nestedComment p (nestedComment p0 success fail) fail (incr p 2) s
@@ -292,7 +292,7 @@ Lexing functions
 > nestedComment p0 success fail p [] =
 >   fail p0 "Unterminated nested comment at end-of-file" p []
 
-> lexBOL :: SuccessP a -> FailP a -> P a
+> lexBOL :: SuccessL a -> FailL a -> L a
 > lexBOL success fail p s _ [] = lexToken success fail p s False []
 > lexBOL success fail p s _ ctxt@(n:rest)
 >   | col < n = success p (tok VRightBrace) p s True rest
@@ -300,7 +300,7 @@ Lexing functions
 >   | otherwise = lexToken success fail p s False ctxt
 >   where col = column p
 
-> lexToken :: SuccessP a -> FailP a -> P a
+> lexToken :: SuccessL a -> FailL a -> L a
 > lexToken success fail p [] = success p (tok EOF) p []
 > lexToken success fail p (c:s)
 >   | c == '(' = token LeftParen
@@ -321,7 +321,7 @@ Lexing functions
 >   | otherwise = fail p ("Illegal character " ++ show c) p s
 >   where token t = success p (tok t) (next p) s
 
-> lexIdent :: (Token -> P a) -> P a
+> lexIdent :: (Token -> L a) -> L a
 > lexIdent cont p s =
 >   maybe (lexOptQual cont (token Id) [ident]) (cont . token)
 >         (lookupFM ident reserved_and_special_ids)
@@ -329,20 +329,20 @@ Lexing functions
 >   where (ident,rest) = span isIdent s
 >         token t = idTok t [] ident
 
-> lexSym :: (Token -> P a) -> P a
+> lexSym :: (Token -> L a) -> L a
 > lexSym cont p s =
 >   cont (idTok (maybe Sym id (lookupFM sym reserved_and_special_ops)) [] sym)
 >        (incr p (length sym)) rest
 >   where (sym,rest) = span isSym s
 
-> lexOptQual :: (Token -> P a) -> Token -> [String] -> P a
+> lexOptQual :: (Token -> L a) -> Token -> [String] -> L a
 > lexOptQual cont token mIdent p ('.':c:s)
 >   | isAlpha c = lexQualIdent cont identCont mIdent (next p) (c:s)
 >   | isSym c = lexQualSym cont identCont mIdent (next p) (c:s)
 >   where identCont _ _ = cont token p ('.':c:s)
 > lexOptQual cont token mIdent p s = cont token p s
 
-> lexQualIdent :: (Token -> P a) -> P a -> [String] -> P a
+> lexQualIdent :: (Token -> L a) -> L a -> [String] -> L a
 > lexQualIdent cont identCont mIdent p s =
 >   maybe (lexOptQual cont (idTok QId mIdent ident) (mIdent ++ [ident]))
 >         (const identCont)
@@ -350,14 +350,14 @@ Lexing functions
 >         (incr p (length ident)) rest
 >   where (ident,rest) = span isIdent s
 
-> lexQualSym :: (Token -> P a) -> P a -> [String] -> P a
+> lexQualSym :: (Token -> L a) -> L a -> [String] -> L a
 > lexQualSym cont identCont mIdent p s =
 >   maybe (cont (idTok QSym mIdent sym)) (const identCont)
 >         (lookupFM sym reserved_ops)
 >         (incr p (length sym)) rest
 >   where (sym,rest) = span isSym s
 
-> lexNumber :: (Token -> P a) -> P a
+> lexNumber :: (Token -> L a) -> L a
 > lexNumber cont p ('0':c:s)
 >   | c `elem` "oO" = lexOctal cont nullCont (incr p 2) s
 >   | c `elem` "xX" = lexHexadecimal cont nullCont (incr p 2) s
@@ -366,19 +366,19 @@ Lexing functions
 >   lexOptFraction cont (intTok 10 digits) digits (incr p (length digits)) rest
 >   where (digits,rest) = span isDigit s
 
-> lexOctal :: (Token -> P a) -> P a -> P a
+> lexOctal :: (Token -> L a) -> L a -> L a
 > lexOctal cont nullCont p s
 >   | null digits = nullCont undefined undefined
 >   | otherwise = cont (intTok 8 digits) (incr p (length digits)) rest
 >   where (digits,rest) = span isOctit s
 
-> lexHexadecimal :: (Token -> P a) -> P a -> P a
+> lexHexadecimal :: (Token -> L a) -> L a -> L a
 > lexHexadecimal cont nullCont p s
 >   | null digits = nullCont undefined undefined
 >   | otherwise = cont (intTok 16 digits) (incr p (length digits)) rest
 >   where (digits,rest) = span isHexit s
 
-> lexOptFraction :: (Token -> P a) -> Token -> String -> P a
+> lexOptFraction :: (Token -> L a) -> Token -> String -> L a
 > lexOptFraction cont _ mant p ('.':c:s)
 >   | isDigit c = lexOptExponent cont (floatTok mant frac 0) mant frac
 >                                (incr p (length frac+1)) rest
@@ -388,13 +388,13 @@ Lexing functions
 >   where intCont _ _ = cont token p (c:s)
 > lexOptFraction cont token _ p s = cont token p s
 
-> lexOptExponent :: (Token -> P a) -> Token -> String -> String -> P a
+> lexOptExponent :: (Token -> L a) -> Token -> String -> String -> L a
 > lexOptExponent cont token mant frac p (c:s)
 >   | c `elem` "eE" = lexSignedExponent cont floatCont mant frac (next p) s
 >   where floatCont _ _ = cont token p (c:s)
 > lexOptExponent cont token mant frac p s = cont token p s
 
-> lexSignedExponent :: (Token -> P a) -> P a -> String -> String -> P a
+> lexSignedExponent :: (Token -> L a) -> L a -> String -> String -> L a
 > lexSignedExponent cont floatCont mant frac p ('+':c:s)
 >   | isDigit c = lexExponent cont mant frac id (next p) (c:s)
 > lexSignedExponent cont floatCont mant frac p ('-':c:s)
@@ -403,13 +403,13 @@ Lexing functions
 >   | isDigit c = lexExponent cont mant frac id p (c:s)
 > lexSignedExponent cont floatCont mant frac p s = floatCont p s
 
-> lexExponent :: (Token -> P a) -> String -> String -> (Int -> Int) -> P a
+> lexExponent :: (Token -> L a) -> String -> String -> (Int -> Int) -> L a
 > lexExponent cont mant frac expSign p s =
 >   cont (floatTok mant frac exp) (incr p (length digits)) rest
 >   where (digits,rest) = span isDigit s
 >         exp = expSign (convertIntegral 10 digits)
 
-> lexChar :: Position -> SuccessP a -> FailP a -> P a
+> lexChar :: Position -> SuccessL a -> FailL a -> L a
 > lexChar p0 success fail p [] = fail p0 "Illegal character constant" p []
 > lexChar p0 success fail p (c:s)
 >   | c == '\\' = lexEscape p (lexCharEnd p0 success fail) fail (next p) s
@@ -417,15 +417,15 @@ Lexing functions
 >   | c == '\t' = lexCharEnd p0 success fail c (tab p) s
 >   | otherwise = lexCharEnd p0 success fail c (next p) s
 
-> lexCharEnd :: Position -> SuccessP a -> FailP a -> Char -> P a
+> lexCharEnd :: Position -> SuccessL a -> FailL a -> Char -> L a
 > lexCharEnd p0 success fail c p ('\'':s) = success p0 (charTok c) (next p) s
 > lexCharEnd p0 success fail c p s =
 >   fail p0 "Improperly terminated character constant" p s
 
-> lexString :: Position -> SuccessP a -> FailP a -> P a
+> lexString :: Position -> SuccessL a -> FailL a -> L a
 > lexString p0 success fail = lexStringRest p0 success fail ""
 
-> lexStringRest :: Position -> SuccessP a -> FailP a -> String -> P a
+> lexStringRest :: Position -> SuccessL a -> FailL a -> String -> L a
 > lexStringRest p0 success fail s0 p [] = 
 >   fail p0 "Improperly terminated string constant" p []
 > lexStringRest p0 success fail s0 p (c:s)
@@ -436,14 +436,14 @@ Lexing functions
 >   | c == '\t' = lexStringRest p0 success fail (c:s0) (tab p) s
 >   | otherwise = lexStringRest p0 success fail (c:s0) (next p) s
 
-> lexStringEscape ::  Position -> (String -> P a) -> FailP a -> String -> P a
+> lexStringEscape ::  Position -> (String -> L a) -> FailL a -> String -> L a
 > lexStringEscape p0 success fail s0 p [] = lexEscape p0 undefined fail p []
 > lexStringEscape p0 success fail s0 p (c:s)
 >   | c == '&' = success s0 (next p) s
 >   | isSpace c = lexStringGap (success s0) fail p (c:s)
 >   | otherwise = lexEscape p0 (success . (:s0)) fail p (c:s)
 
-> lexStringGap :: P a -> FailP a -> P a
+> lexStringGap :: L a -> FailL a -> L a
 > lexStringGap success fail p [] = fail p "End of file in string gap" p []
 > lexStringGap success fail p (c:s)
 >   | c == '\\' = success (next p) s
@@ -452,7 +452,7 @@ Lexing functions
 >   | isSpace c = lexStringGap success fail (next p) s
 >   | otherwise = fail p ("Illegal character in string gap " ++ show c) p s
 
-> lexEscape :: Position -> (Char -> P a) -> FailP a -> P a
+> lexEscape :: Position -> (Char -> L a) -> FailL a -> L a
 > lexEscape p0 success fail p ('a':s) = success '\a' (next p) s
 > lexEscape p0 success fail p ('b':s) = success '\b' (next p) s
 > lexEscape p0 success fail p ('f':s) = success '\f' (next p) s
@@ -474,7 +474,7 @@ Lexing functions
 >   | isDigit c = numEscape p0 success fail 10 isDigit p (c:s)
 > lexEscape p0 success fail p s = asciiEscape p0 success fail p s
 
-> asciiEscape :: Position -> (Char -> P a) -> FailP a -> P a
+> asciiEscape :: Position -> (Char -> L a) -> FailL a -> L a
 > asciiEscape p0 success fail p ('N':'U':'L':s) = success '\NUL' (incr p 3) s
 > asciiEscape p0 success fail p ('S':'O':'H':s) = success '\SOH' (incr p 3) s
 > asciiEscape p0 success fail p ('S':'T':'X':s) = success '\STX' (incr p 3) s
@@ -507,7 +507,7 @@ Lexing functions
 > asciiEscape p0 success fail p ('G':'S':s) = success '\GS' (incr p 2) s
 > asciiEscape p0 success fail p ('R':'S':s) = success '\RS' (incr p 2) s
 > asciiEscape p0 success fail p ('U':'S':s) = success '\US' (incr p 2) s
-> asciiEscape p0 success fail p ('S':'P':s) = success '\SP' (incr p 2) s
+> asciiEscape p0 success fail p ('S':'L':s) = success '\SP' (incr p 2) s
 > asciiEscape p0 success fail p ('D':'E':'L':s) = success '\DEL' (incr p 3) s
 > asciiEscape p0 success fail p s = fail p0 "Illegal escape sequence" p s
 
@@ -519,8 +519,8 @@ to 8-bit characters.
 \ToDo{Support the full Unicode character set.}
 \begin{verbatim}
 
-> numEscape :: Position -> (Char -> P a) -> FailP a -> Int
->           -> (Char -> Bool) -> P a
+> numEscape :: Position -> (Char -> L a) -> FailL a -> Int
+>           -> (Char -> Bool) -> L a
 > numEscape p0 success fail b isDigit p s
 >   | n >= min && n <= max = success (chr n) (incr p (length digits)) rest
 >   | otherwise = fail p0 "Numeric escape out-of-range" p s
