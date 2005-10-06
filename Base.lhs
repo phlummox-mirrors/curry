@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1781 2005-10-03 20:26:58Z wlux $
+% $Id: Base.lhs 1783 2005-10-06 20:35:55Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -487,7 +487,7 @@ Error handling
 \begin{verbatim}
 
 > errorAt :: Monad m => Position -> String -> m a
-> errorAt p msg = fail (show p ++ ": " ++ msg)
+> errorAt p msg = fail (atP p msg)
 
 > internalError :: String -> a
 > internalError what = error ("internal error: " ++ what)
@@ -554,17 +554,5 @@ non-linear, the first duplicate object is returned.
 >   | x `elem` xs = NonLinear x
 >   | otherwise = linear xs
 > linear [] = Linear
-
-\end{verbatim}
-The type \texttt{P} associates position information with another type
-without affecting its equality. At present, this is used in the
-compiler in order to pair identifiers with their position in the
-source file when checking for duplicate definitions.
-\begin{verbatim}
-
-> data P a = P Position a
-
-> instance Eq a => Eq (P a) where
->   P _ x == P _ y = x == y
 
 \end{verbatim}

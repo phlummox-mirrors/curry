@@ -1,17 +1,11 @@
 % -*- LaTeX -*-
-% $Id: Unlit.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Unlit.lhs 1783 2005-10-06 20:35:55Z wlux $
 %
-% $Log: Unlit.lhs,v $
-% Revision 1.2  2002/10/01 06:55:50  lux
-% unlit returns an error message to the caller instead of calling error.
-%
-% Revision 1.1  2000/02/07 14:05:55  lux
-% The compiler now supports literate source files. Literate source files
-% must end with the suffix ".lcurry".
-%
+% Copyright (c) 2000-2005, Wolfgang Lux
+% See LICENSE for the full license.
 %
 \nwfilename{Unlit.lhs}
-\section{Literate comments}
+\section{Literate Comments}
 Since version 0.7 of the language report, Curry accepts literate
 source programs. In a literate source all program lines must begin
 with a greater sign in the first column. All other lines are assumed
@@ -92,7 +86,7 @@ error messages, which will contain either one entry or none.
 > adjacent p Comment     (Program _) = [message p "before"]
 > adjacent p _           _           = []
 
-> message p w = show p ++ ": comment line " ++ w ++ " program line."
+> message p w = atP p ("comment line " ++ w ++ " program line.")
 
 \end{verbatim}
 Given the list of program lines generate an error if this list is
@@ -100,8 +94,7 @@ empty.
 \begin{verbatim}
 
 > empty :: FilePath -> [Classified] -> [String]
-> empty fn [] = [show (first fn) ++ ": no code in literate script"]
-> empty fn _ = []
+> empty fn cs = [atP (first fn) ("no code in literate script") | null cs]
 
 > isProgram :: Classified -> Bool
 > isProgram (Program _) = True

@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: LexComb.lhs 1782 2005-10-06 13:45:22Z wlux $
+% $Id: LexComb.lhs 1783 2005-10-06 20:35:55Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{LexComb.lhs}
-\section{Lexing combinators}
+\section{Lexing Combinators}
 The module \texttt{LexComb} provides the basic types and combinators
 to implement the lexers. The combinators use continuation passing code
 in a monadic style. The first argument of the continuation function is
@@ -30,7 +30,7 @@ nested layout groups.
 > type L a = Position -> String -> Bool -> Context -> Error a
 
 > lex :: L a -> FilePath -> String -> Error a
-> lex p fn s = p (first fn) s False []
+> lex l fn s = l (first fn) s False []
 
 \end{verbatim}
 Monad functions for the lexer.
@@ -43,19 +43,16 @@ Monad functions for the lexer.
 > thenL lex k pos s bol ctxt = lex pos s bol ctxt >>= \x -> k x pos s bol ctxt
 
 > thenL_ :: L a -> L b -> L b
-> p1 `thenL_` p2 = p1 `thenL` \_ -> p2
+> l1 `thenL_` l2 = l1 `thenL` \_ -> l2
 
 > failL :: Position -> String -> L a
-> failL pos msg _ _ _ _ = Error (lexError pos msg)
+> failL pos msg _ _ _ _ = Error (atP pos msg)
 
 > closeL0 :: L a -> L (L a)
 > closeL0 lex pos s bol ctxt = Ok (\_ _ _ _ -> lex pos s bol ctxt)
 
 > closeL1 :: (a -> L b) -> L (a -> L b)
 > closeL1 f pos s bol ctxt = Ok (\x _ _ _ _ -> f x pos s bol ctxt)
-
-> lexError :: Position -> String -> String
-> lexError p what = show p ++ ": " ++ what
 
 \end{verbatim}
 Combinators that handle layout.
