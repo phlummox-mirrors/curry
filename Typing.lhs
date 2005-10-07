@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Typing.lhs 1785 2005-10-07 11:13:16Z wlux $
 %
 % Copyright (c) 2003-2004, Wolfgang Lux
 % See LICENSE for the full license.
@@ -75,22 +75,20 @@ or we need access to the type constructor environment.}
 > argType tyEnv (VariablePattern v) = identType tyEnv v
 > argType tyEnv (ConstructorPattern c ts) =
 >   do
->     ty <- instUnivExist (constrType c tyEnv)
->     tys <- mapM (argType tyEnv) ts
->     unifyList (init (flatten ty)) tys
->     return (last (flatten ty))
->   where flatten (TypeArrow ty1 ty2) = ty1 : flatten ty2
->         flatten ty = [ty]
+>     (tys,ty) <- liftM arrowUnapply (instUnivExist (constrType c tyEnv))
+>     tys' <- mapM (argType tyEnv) ts
+>     unifyList tys tys'
+>     return ty
 > argType tyEnv (InfixPattern t1 op t2) =
 >   argType tyEnv (ConstructorPattern op [t1,t2])
 > argType tyEnv (ParenPattern t) = argType tyEnv t
-> argType tyEnv (TuplePattern ts)
->   | null ts = return unitType
->   | otherwise = liftM tupleType $ mapM (argType tyEnv) ts                -- $
-> argType tyEnv (ListPattern ts) = freshTypeVar >>= flip elemType ts
->   where elemType ty [] = return (listType ty)
->         elemType ty (t:ts) =
->           argType tyEnv t >>= unify ty >> elemType ty ts
+> argType tyEnv (TuplePattern ts) = liftM tupleType (mapM (argType tyEnv) ts)
+> argType tyEnv (ListPattern ts) =
+>   do
+>     ty <- freshTypeVar
+>     mapM_ (elemType ty) ts
+>     return (listType ty)
+>   where elemType ty t = argType tyEnv t >>= unify ty
 > argType tyEnv (AsPattern v _) = argType tyEnv (VariablePattern v)
 > argType tyEnv (LazyPattern t) = argType tyEnv t
 
@@ -100,14 +98,14 @@ or we need access to the type constructor environment.}
 > exprType tyEnv (Constructor c) = instUnivExist (constrType c tyEnv)
 > exprType tyEnv (Typed e _) = exprType tyEnv e
 > exprType tyEnv (Paren e) = exprType tyEnv e
-> exprType tyEnv (Tuple es)
->   | null es = return unitType
->   | otherwise = liftM tupleType $ mapM (exprType tyEnv) es
-> exprType tyEnv (List es) = freshTypeVar >>= flip elemType es
->   where elemType ty [] = return (listType ty)
->         elemType ty (e:es) =
->           exprType tyEnv e >>= unify ty >> elemType ty es
-> exprType tyEnv (ListCompr e _) = liftM listType $ exprType tyEnv e
+> exprType tyEnv (Tuple es) = liftM tupleType (mapM (exprType tyEnv) es)
+> exprType tyEnv (List es) =
+>   do
+>     ty <- freshTypeVar
+>     mapM_ (elemType ty) es
+>     return (listType ty)
+>   where elemType ty e = exprType tyEnv e >>= unify ty
+> exprType tyEnv (ListCompr e _) = liftM listType (exprType tyEnv e)
 > exprType tyEnv (EnumFrom _) = return (listType intType)
 > exprType tyEnv (EnumFromThen _ _) = return (listType intType)
 > exprType tyEnv (EnumFromTo _ _) = return (listType intType)
@@ -148,17 +146,21 @@ or we need access to the type constructor environment.}
 >     ty3 <- exprType tyEnv e3
 >     unify ty2 ty3
 >     return ty3
-> exprType tyEnv (Case _ alts) = freshTypeVar >>= flip altType alts
->   where altType ty [] = return ty
->         altType ty (Alt _ _ rhs:alts) =
->           rhsType tyEnv rhs >>= unify ty >> altType ty alts
+> exprType tyEnv (Case _ alts) =
+>   do
+>     ty <- freshTypeVar
+>     mapM_ (altType ty) alts
+>     return ty
+>   where altType ty (Alt _ _ rhs) = rhsType tyEnv rhs >>= unify ty
 
 > rhsType :: ValueEnv -> Rhs -> TyState Type
 > rhsType tyEnv (SimpleRhs _ e _) = exprType tyEnv e
-> rhsType tyEnv (GuardedRhs es _) = freshTypeVar >>= flip condExprType es
->   where condExprType ty [] = return ty
->         condExprType ty (CondExpr _ _ e:es) =
->           exprType tyEnv e >>= unify ty >> condExprType ty es
+> rhsType tyEnv (GuardedRhs es _) =
+>   do
+>     ty <- freshTypeVar
+>     mapM_ (condExprType ty) es
+>     return ty
+>   where condExprType ty (CondExpr _ _ e) = exprType tyEnv e >>= unify ty
 
 \end{verbatim}
 In order to avoid name conflicts with non-generalized type variables

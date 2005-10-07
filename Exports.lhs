@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1779 2005-10-03 14:55:35Z wlux $
+% $Id: Exports.lhs 1785 2005-10-07 11:13:16Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -168,9 +168,10 @@ compiler can check them without loading the imported modules.
 >   where hidingDataDecl tc n = HidingDataDecl noPos tc (take n nameSupply)
 
 > hiddenTypes :: [IDecl] -> [QualIdent]
-> hiddenTypes ds = toListSet (foldr deleteFromSet (fromListSet used) defd)
->   where defd = foldr definedType [] ds
->         used = usedTypes ds []
+> hiddenTypes ds =
+>   filter (not . isPrimTypeId) (toListSet (foldr deleteFromSet used defd))
+>   where used = fromListSet (usedTypes ds [])
+>         defd = foldr definedType [] ds
 
 > definedType :: IDecl -> [QualIdent] -> [QualIdent]
 > definedType (IDataDecl _ tc _ _) tcs = tc : tcs

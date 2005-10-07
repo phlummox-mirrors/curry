@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1781 2005-10-03 20:26:58Z wlux $
+% $Id: TypeCheck.lhs 1785 2005-10-07 11:13:16Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -360,9 +360,8 @@ is checked in \texttt{tcVariable} below.
 > tcConstrTerm m tcEnv sigs p t@(InfixPattern t1 op t2) =
 >   tcConstrApp m tcEnv sigs p (ppConstrTerm 0 t) op [t1,t2]
 > tcConstrTerm m tcEnv sigs p (ParenPattern t) = tcConstrTerm m tcEnv sigs p t
-> tcConstrTerm m tcEnv sigs p (TuplePattern ts)
->  | null ts = return unitType
->  | otherwise = liftM tupleType $ mapM (tcConstrTerm m tcEnv sigs p) ts   -- $
+> tcConstrTerm m tcEnv sigs p (TuplePattern ts) =
+>   liftM tupleType (mapM (tcConstrTerm m tcEnv sigs p) ts)
 > tcConstrTerm m tcEnv sigs p t@(ListPattern ts) =
 >   do
 >     ty <- freshTypeVar
@@ -438,9 +437,7 @@ is checked in \texttt{tcVariable} below.
 >   where sig' = nameSigType sig
 >         sigma' = expandPolyType tcEnv sig'
 > tcExpr m tcEnv p (Paren e) = tcExpr m tcEnv p e
-> tcExpr m tcEnv p (Tuple es)
->   | null es = return unitType
->   | otherwise = liftM tupleType $ mapM (tcExpr m tcEnv p) es             -- $
+> tcExpr m tcEnv p (Tuple es) = liftM tupleType (mapM (tcExpr m tcEnv p) es)
 > tcExpr m tcEnv p e@(List es) =
 >   do
 >     ty <- freshTypeVar

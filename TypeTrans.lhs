@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 1779 2005-10-03 14:55:35Z wlux $
+% $Id: TypeTrans.lhs 1785 2005-10-07 11:13:16Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -53,21 +53,15 @@ indices independently for each type expression.
 >   TypeConstructor tc (map (toType' tvs) tys)
 > toType' tvs (VariableType tv) =
 >   maybe (internalError ("toType " ++ show tv)) TypeVariable (lookupFM tv tvs)
-> toType' tvs (TupleType tys)
->   | null tys = unitType
->   | otherwise = tupleType (map (toType' tvs) tys)
+> toType' tvs (TupleType tys) = tupleType (map (toType' tvs) tys)
 > toType' tvs (ListType ty) = listType (toType' tvs ty)
 > toType' tvs (ArrowType ty1 ty2) =
 >   TypeArrow (toType' tvs ty1) (toType' tvs ty2)
 
 > qualifyType :: ModuleIdent -> Type -> Type
-> qualifyType m (TypeConstructor tc tys)
->   | isQTupleId tc = tupleType tys'
->   | tc == qUnitId && n == 0 = unitType
->   | tc == qListId && n == 1 = listType (head tys')
->   | otherwise = TypeConstructor (qualQualify m tc) tys'
->   where n = length tys'
->         tys' = map (qualifyType m) tys
+> qualifyType m (TypeConstructor tc tys) =
+>   TypeConstructor (if isPrimTypeId tc then tc else qualQualify m tc)
+>                   (map (qualifyType m) tys)
 > qualifyType _ (TypeVariable tv) = TypeVariable tv
 > qualifyType m (TypeConstrained tys tv) =
 >   TypeConstrained (map (qualifyType m) tys) tv
@@ -88,7 +82,6 @@ qualifier from all type constructors defined in the current module.
 > fromType' (TypeConstructor tc tys)
 >   | isQTupleId tc = TupleType tys'
 >   | tc == qListId && length tys == 1 = ListType (head tys')
->   | tc == qUnitId && null tys = TupleType []
 >   | otherwise = ConstructorType tc tys'
 >   where tys' = map (fromType') tys
 > fromType' (TypeVariable tv) =

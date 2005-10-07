@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1773 2005-09-22 10:23:22Z wlux $
+% $Id: CurryParser.lhs 1785 2005-10-07 11:13:16Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -183,7 +183,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >   where decl = var `sepBy1` comma <**> valListDecl
 >           <|?> valDecl <$> constrTerm0 <*> declRhs
 >           <|?> funDecl <$> curriedLhs <*> declRhs
->         valDecl t@(ConstructorPattern c ts)
+>         valDecl (ConstructorPattern c ts)
 >           | not (isConstrId c) = funDecl (f,FunLhs f ts)
 >           where f = unqualify c
 >         valDecl t = opDecl id t
@@ -318,7 +318,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > tupleType :: Parser Token TypeExpr a
 > tupleType = type0 <??> (tuple <$> many1 (comma <-*> type0))
->       `opt` TupleType []
+>       `opt` ConstructorType qUnitId []
 >   where tuple tys ty = TupleType (ty:tys)
 
 > listType :: Parser Token TypeExpr a
@@ -343,13 +343,14 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > constrTerm1 :: Parser Token ConstrTerm a
 > constrTerm1 = varId <**> identPattern
->           <|> ConstructorPattern <$> qConId <\> varId <*> many constrTerm2
+>           <|> constrPattern (qConId <\> varId)
 >           <|> minus <**> negNum
 >           <|> fminus <**> negFloat
 >           <|> leftParen <-*> parenPattern
 >           <|> constrTerm2 <\> qConId <\> leftParen
 >   where identPattern = optAsPattern
 >                    <|> conPattern <$> many1 constrTerm2
+>         constrPattern p = ConstructorPattern <$> p <*> many constrTerm2
 >         parenPattern = minus <**> minusPattern negNum
 >                    <|> fminus <**> minusPattern negFloat
 >                    <|> gconPattern
@@ -358,8 +359,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >                    <|> parenTuplePattern <\> minus <\> fminus <*-> rightParen
 >         minusPattern p = rightParen <-*> identPattern
 >                      <|> parenMinusPattern p <*-> rightParen
->         gconPattern = ConstructorPattern <$> gconId <*-> rightParen
->                                          <*> many constrTerm2
+>         gconPattern = constrPattern (gconId <*-> rightParen)
 >         conPattern ts = flip ConstructorPattern ts . qualify
 
 > constrTerm2 :: Parser Token ConstrTerm a
@@ -425,7 +425,7 @@ the left-hand side of a declaration.
 
 > parenTuplePattern :: Parser Token ConstrTerm a
 > parenTuplePattern = constrTerm0 <**> optTuplePattern
->               `opt` TuplePattern []
+>               `opt` ConstructorPattern qUnitId []
 
 \end{verbatim}
 \paragraph{Expressions}
@@ -463,7 +463,7 @@ the left-hand side of a declaration.
 >             <|> Constructor <$> tupleCommas
 >             <|> leftSectionOrTuple <\> minus <\> fminus
 >             <|> opOrRightSection <\> minus <\> fminus
->           `opt` Tuple []
+>           `opt` Constructor qUnitId
 >         minusOrTuple = flip UnaryMinus <$> expr1 <.> infixOrTuple
 >                  `opt` Variable . qualify
 >         leftSectionOrTuple = expr1 <**> infixOrTuple

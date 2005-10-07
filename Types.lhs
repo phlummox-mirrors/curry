@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Types.lhs 1781 2005-10-03 20:26:58Z wlux $
+% $Id: Types.lhs 1785 2005-10-07 11:13:16Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -137,8 +137,13 @@ starting with 0 and does not renumber the variables.
 > polyType ty = ForAll (maximum (-1 : typeVars ty) + 1) ty
 
 \end{verbatim}
-There are a few predefined types.
+There are a few predefined types. Note that the identifiers of the
+primitive types \texttt{()}, \texttt{[a]}, and the tuple types must
+never be qualified with a module prefix.
 \begin{verbatim}
+
+> isPrimTypeId :: QualIdent -> Bool
+> isPrimTypeId tc = tc `elem` [qUnitId,qListId] || isQTupleId tc
 
 > unitType,boolType,charType,intType,floatType,stringType,successType :: Type
 > unitType = TypeConstructor qUnitId []

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1759 2005-09-03 10:41:38Z wlux $
+% $Id: Desugar.lhs 1785 2005-10-07 11:13:16Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -287,8 +287,7 @@ with a local declaration for $v$.
 >   desugarTerm m p ds (ConstructorPattern op [t1,t2])
 > desugarTerm m p ds (ParenPattern t) = desugarTerm m p ds t
 > desugarTerm m p ds (TuplePattern ts) =
->   desugarTerm m p ds (ConstructorPattern (tupleConstr ts) ts)
->   where tupleConstr ts = if null ts then qUnitId else qTupleId (length ts)
+>   desugarTerm m p ds (ConstructorPattern (qTupleId (length ts)) ts)
 > desugarTerm m p ds (ListPattern ts) =
 >   liftM (apSnd (foldr cons nil)) (mapAccumM (desugarTerm m p) ds ts)
 >   where nil = ConstructorPattern qNilId []
@@ -360,10 +359,9 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 > desugarExpr m p (Paren e) = desugarExpr m p e
 > desugarExpr m p (Typed e _) = desugarExpr m p e
 > desugarExpr m p (Tuple es) =
->   liftM (apply (Constructor (tupleConstr es))) (mapM (desugarExpr m p) es)
->   where tupleConstr es = if null es then qUnitId else qTupleId (length es)
-> desugarExpr m p (List es) =
->   liftM (foldr cons nil) (mapM (desugarExpr m p) es)
+>   liftM (apply (Constructor (qTupleId (length es))))
+>         (mapM (desugarExpr m p) es)
+> desugarExpr m p (List es) = liftM (foldr cons nil) (mapM (desugarExpr m p) es)
 >   where nil = Constructor qNilId
 >         cons = Apply . Apply (Constructor qConsId)
 > desugarExpr m p (ListCompr e []) = desugarExpr m p (List [e])
