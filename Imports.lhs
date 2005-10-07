@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1779 2005-10-03 14:55:35Z wlux $
+% $Id: Imports.lhs 1786 2005-10-07 15:33:33Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -51,9 +51,8 @@ unqualified import are performed.
 >                -> ModuleIdent -> Bool -> (Ident -> Bool) -> (a -> a)
 >                -> Interface -> TopEnv a -> TopEnv a
 > importEntities bind m q isVisible f (Interface m' _ ds) env =
->   foldr (uncurry (if q then qualImportTopEnv m else importUnqual m)) env
+>   foldr (uncurry (importTopEnv q m)) env
 >         [(x,f y) | (x,y) <- foldr (bind m') [] ds, isVisible x]
->   where importUnqual m x y = importTopEnv m x y . qualImportTopEnv m x y
 
 > importData :: (Ident -> Bool) -> TypeInfo -> TypeInfo
 > importData isVisible (DataType tc n cs) =

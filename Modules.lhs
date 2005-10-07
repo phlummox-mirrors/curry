@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1780 2005-10-03 18:54:07Z wlux $
+% $Id: Modules.lhs 1786 2005-10-07 15:33:33Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -154,7 +154,7 @@ declaration to the module.
 >         bindQual (_,y) = qualBindTopEnv (origName y) y
 >         bindGlobal (x,y)
 >           | uniqueId x == 0 = bindQual (x,y)
->           | otherwise = bindTopEnv x y
+>           | otherwise = localBindTopEnv x y
 
 > ilImports :: ModuleEnv -> IL.Module -> [IL.Decl]
 > ilImports mEnv (IL.Module _ is _) =

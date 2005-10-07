@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: NestEnv.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: NestEnv.lhs 1786 2005-10-07 15:33:33Z wlux $
 %
-% Copyright (c) 1999-2003, Wolfgang Lux
+% Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{NestEnv.lhs}
@@ -10,14 +10,14 @@ The \texttt{NestEnv} environment type extends top-level environments
 (see section~\ref{sec:toplevel-env}) to manage nested scopes. Local
 scopes allow only for a single, unambiguous definition.
 
-As a matter of convenience, the module \texttt{TopEnv} is exported by
-the module \texttt{NestEnv}.  Thus, only the latter needs to be
-imported.
+For convenience, the type \texttt{TopEnv} is exported by the module
+\texttt{NestEnv}.
 \begin{verbatim}
 
-> module NestEnv(module TopEnv, NestEnv, bindNestEnv,qualBindNestEnv,
->                lookupNestEnv,qualLookupNestEnv,
->                toplevelEnv,globalEnv,nestEnv) where
+> module NestEnv(NestEnv, TopEnv,
+>                globalBindNestEnv, localBindNestEnv, qualBindNestEnv,
+>                lookupNestEnv, qualLookupNestEnv,
+>                toplevelEnv, globalEnv, nestEnv) where
 > import Env
 > import TopEnv
 > import Ident
@@ -29,9 +29,23 @@ imported.
 >   fmap f (GlobalEnv env) = GlobalEnv (fmap f env)
 >   fmap f (LocalEnv genv env) = LocalEnv (fmap f genv) (fmap f env)
 
-> bindNestEnv :: Ident -> a -> NestEnv a -> NestEnv a
-> bindNestEnv x y (GlobalEnv env) = GlobalEnv (bindTopEnv x y env)
-> bindNestEnv x y (LocalEnv genv env) =
+\end{verbatim}
+The functions \texttt{globalBindNestEnv} and \texttt{localBindNestEnv}
+implement binding of global and local definitions, respectively. The
+former introduces bindings for the qualified and unqualified names of
+an entity, the latter only for the unqualified name.
+\begin{verbatim}
+
+> globalBindNestEnv :: ModuleIdent -> Ident -> a -> NestEnv a -> NestEnv a
+> globalBindNestEnv m x y (GlobalEnv env) =
+>   GlobalEnv (globalBindTopEnv m x y env)
+> globalBindNestEnv _ _ _ (LocalEnv _ _) =
+>   error "internal error: globalBindNestEnv"
+
+> localBindNestEnv :: Ident -> a -> NestEnv a -> NestEnv a
+> localBindNestEnv _ _ (GlobalEnv _) =
+>   error "internal error: localBindNestEnv"
+> localBindNestEnv x y (LocalEnv genv env) =
 >   case lookupEnv x env of
 >     Just _ -> error "internal error: bindNestEnv"
 >     Nothing -> LocalEnv genv (bindEnv x y env)
@@ -57,6 +71,13 @@ imported.
 > qualLookupNestEnv x env
 >   | isQualified x = qualLookupTopEnv x (toplevelEnv env)
 >   | otherwise = lookupNestEnv (unqualify x) env
+
+\end{verbatim}
+The function \texttt{toplevelEnv} returns the top-level environment of
+a nested environment discarding all local scopes. The function
+\texttt{globalEnv} transforms a flat top-level environment into a
+nested environment and \texttt{nestEnv} opens a new nesting scope.
+\begin{verbatim}
 
 > toplevelEnv :: NestEnv a -> TopEnv a
 > toplevelEnv (GlobalEnv env) = env

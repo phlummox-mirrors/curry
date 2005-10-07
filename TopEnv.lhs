@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TopEnv.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: TopEnv.lhs 1786 2005-10-07 15:33:33Z wlux $
 %
-% Copyright (c) 1999-2003, Wolfgang Lux
+% Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TopEnv.lhs}
@@ -14,44 +14,30 @@ presented in \cite{DiatchkiJonesHallgren02:ModuleSystem}, an
 identifier is associated with a list of entities in order to handle
 ambiguous names properly.
 
-In general, two entities are considered equal if the names of their
-original definitions match.  However, in the case of algebraic data
-types it is possible to hide some or all of their data constructors on
-import and export, respectively. In this case we have to merge both
-imports such that all data constructors which are visible through any
-import path are visible in the current module. The class
-\texttt{Entity} is used to handle this merge.
-
 The code in this module ensures that the list of entities returned by
 the functions \texttt{lookupTopEnv} and \texttt{qualLookupTopEnv}
 contains exactly one element for each imported entity regardless of
-how many times and from which module(s) it was imported. Thus, the
+how many times and from which modules it was imported. Thus, the
 result of these function is a list with exactly one element if and
 only if the identifier is unambiguous. The module names associated
 with an imported entity identify the modules from which the entity was
 imported.
 \begin{verbatim}
 
-> module TopEnv(TopEnv, Entity(..), emptyTopEnv,
->               predefTopEnv,qualImportTopEnv,importTopEnv,
->               bindTopEnv,qualBindTopEnv,rebindTopEnv,qualRebindTopEnv,
->               unbindTopEnv,lookupTopEnv,qualLookupTopEnv,
->               allImports,moduleImports,localBindings) where
+> module TopEnv(TopEnv, Entity(..), emptyTopEnv, predefTopEnv,
+>               importTopEnv, qualImportTopEnv,
+>               bindTopEnv, globalBindTopEnv, localBindTopEnv, qualBindTopEnv,
+>               rebindTopEnv, globalRebindTopEnv, localRebindTopEnv,
+>               qualRebindTopEnv, localUnbindTopEnv,
+>               lookupTopEnv, qualLookupTopEnv,
+>               allImports, moduleImports, localBindings) where
 > import Env
 > import Ident
 > import Maybe
 > import Utils
 
-> data Source = Local | Import [ModuleIdent] deriving (Eq,Show)
-
-> class Entity a where
->  origName :: a -> QualIdent
->  merge    :: a -> a -> Maybe a
->  merge x y
->    | origName x == origName y = Just x
->    | otherwise = Nothing
-
 > newtype TopEnv a = TopEnv (Env QualIdent [(Source,a)]) deriving Show
+> data Source = Local | Import [ModuleIdent] deriving (Eq,Show)
 
 > instance Functor TopEnv where
 >   fmap f (TopEnv env) = TopEnv (fmap (map (apSnd f)) env)
@@ -68,13 +54,45 @@ imported.
 >     Just _ -> error "internal error: predefTopEnv"
 >     Nothing -> TopEnv (bindEnv x [(Import [],y)] env)
 
-> importTopEnv :: Entity a => ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
-> importTopEnv m x y (TopEnv env) =
+\end{verbatim}
+In general, two entities are considered equal if the names of their
+original definitions match.  However, in the case of algebraic data
+types it is possible to hide some or all of their data constructors on
+import and export, respectively. In this case we have to merge both
+imports such that all data constructors which are visible through any
+import path are visible in the current module. The class
+\texttt{Entity} is used to handle this merge.
+\begin{verbatim}
+
+> class Entity a where
+>  origName :: a -> QualIdent
+>  merge    :: a -> a -> Maybe a
+>  merge x y
+>    | origName x == origName y = Just x
+>    | otherwise = Nothing
+
+\end{verbatim}
+The function \texttt{importTopEnv} imports an entity from another
+module into an environment. If the \texttt{qual}ified import flag is
+\texttt{True}, only a binding for the qualified name is introduced
+in the environment. Otherwise, both a qualified and an unqualified
+import are performed.
+\begin{verbatim}
+
+> importTopEnv :: Entity a => Bool -> ModuleIdent -> Ident -> a
+>              -> TopEnv a -> TopEnv a
+> importTopEnv qual
+>   | qual = qualImportTopEnv
+>   | otherwise = \m x y -> unqualImportTopEnv m x y . qualImportTopEnv m x y
+
+> unqualImportTopEnv :: Entity a => ModuleIdent -> Ident -> a
+>                    -> TopEnv a -> TopEnv a
+> unqualImportTopEnv m x y (TopEnv env) =
 >   TopEnv (bindEnv x' (mergeImport m y (entities x' env)) env)
 >   where x' = qualify x
 
-> qualImportTopEnv :: Entity a => ModuleIdent -> Ident -> a -> TopEnv a
->                  -> TopEnv a
+> qualImportTopEnv :: Entity a => ModuleIdent -> Ident -> a
+>                  -> TopEnv a -> TopEnv a
 > qualImportTopEnv m x y (TopEnv env) =
 >   TopEnv (bindEnv x' (mergeImport m y (entities x' env)) env)
 >   where x' = qualifyWith m x
@@ -87,8 +105,31 @@ imported.
 >     Just x'' -> (Import (m:ms),x'') : xs
 >     Nothing -> (Import ms,x') : mergeImport m x xs
 
-> bindTopEnv :: Ident -> a -> TopEnv a -> TopEnv a
-> bindTopEnv = qualBindTopEnv . qualify
+\end{verbatim}
+The function \texttt{globalBindTopEnv} introduces a binding for a
+global definition into an environment. Such entities become visible
+with an unqualified and a qualified name. The function
+\texttt{localBindTopEnv} introduces a binding for a local definition
+and binds only the unqualified name. After renaming has been applied,
+the compiler can distinguish global and local identifiers by the value
+of their renaming key. This allows using \texttt{bindTopEnv} to
+introduce bindings for both global and local definitions.
+\begin{verbatim}
+
+> globalKey :: Int
+> globalKey = uniqueId (mkIdent "")
+
+> bindTopEnv :: ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
+> bindTopEnv m x
+>   | uniqueId x == globalKey = globalBindTopEnv m x
+>   | otherwise = localBindTopEnv x
+
+> globalBindTopEnv :: ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
+> globalBindTopEnv m x y =
+>   localBindTopEnv x y . qualBindTopEnv (qualifyWith m x) y
+
+> localBindTopEnv :: Ident -> a -> TopEnv a -> TopEnv a
+> localBindTopEnv = qualBindTopEnv . qualify
 
 > qualBindTopEnv :: QualIdent -> a -> TopEnv a -> TopEnv a
 > qualBindTopEnv x y (TopEnv env) =
@@ -97,8 +138,17 @@ imported.
 >           | null [x' | (Local,x') <- xs] = (Local,x) : xs
 >           | otherwise = error "internal error: qualBindTopEnv"
 
-> rebindTopEnv :: Ident -> a -> TopEnv a -> TopEnv a
-> rebindTopEnv = qualRebindTopEnv . qualify
+> rebindTopEnv :: ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
+> rebindTopEnv m x
+>   | uniqueId x == globalKey = globalRebindTopEnv m x
+>   | otherwise = localRebindTopEnv x
+
+> globalRebindTopEnv :: ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
+> globalRebindTopEnv m x y =
+>   localRebindTopEnv x y . qualRebindTopEnv (qualifyWith m x) y
+
+> localRebindTopEnv :: Ident -> a -> TopEnv a -> TopEnv a
+> localRebindTopEnv = qualRebindTopEnv . qualify
 
 > qualRebindTopEnv :: QualIdent -> a -> TopEnv a -> TopEnv a
 > qualRebindTopEnv x y (TopEnv env) =
@@ -107,8 +157,8 @@ imported.
 >         rebindLocal ((Local,_) : ys) = (Local,y) : ys
 >         rebindLocal ((Import ms,y) : ys) = (Import ms,y) : rebindLocal ys
 
-> unbindTopEnv :: Ident -> TopEnv a -> TopEnv a
-> unbindTopEnv x (TopEnv env) =
+> localUnbindTopEnv :: Ident -> TopEnv a -> TopEnv a
+> localUnbindTopEnv x (TopEnv env) =
 >   TopEnv (bindEnv x' (unbindLocal (entities x' env)) env)
 >   where x' = qualify x
 >         unbindLocal [] = error "internal error: unbindTopEnv"
@@ -120,6 +170,17 @@ imported.
 
 > qualLookupTopEnv :: QualIdent -> TopEnv a -> [a]
 > qualLookupTopEnv x (TopEnv env) = map snd (entities x env)
+
+\end{verbatim}
+The function \texttt{allImports} returns a list of the names and
+values of all entities in an environment that were imported from
+another module. The functions \texttt{localBindings} and
+\texttt{moduleImports} return the list of entities defined in the
+current module and imported from a particular module, respectively.
+Since a name can be defined only once at the top-level of a module and
+imports of the same entity are merged, the result lists of both
+functions will contain no duplicates.
+\begin{verbatim}
 
 > allImports :: TopEnv a -> [(QualIdent,a)]
 > allImports (TopEnv env) =

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1783 2005-10-06 20:35:55Z wlux $
+% $Id: Base.lhs 1786 2005-10-07 15:33:33Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,6 +17,7 @@ in various phases of the compiler.
 > import CurrySyntax
 > import Types
 > import Env
+> import TopEnv
 > import NestEnv
 > import Maybe
 > import Monad
@@ -95,9 +96,8 @@ impossible to insert them into the environment in advance.
 
 > bindTypeInfo :: (QualIdent -> Int -> a -> TypeInfo) -> ModuleIdent
 >              -> Ident -> [Ident] -> a -> TCEnv -> TCEnv
-> bindTypeInfo f m tc tvs x = bindTopEnv tc t . qualBindTopEnv tc' t
->   where tc' = qualifyWith m tc
->         t = f tc' (length tvs) x
+> bindTypeInfo f m tc tvs =
+>   globalBindTopEnv m tc . f (qualifyWith m tc) (length tvs)
 
 > lookupTC :: Ident -> TCEnv -> [TypeInfo]
 > lookupTC tc tcEnv = lookupTopEnv tc tcEnv ++! lookupTupleTC tc
@@ -134,7 +134,7 @@ renaming types on one side and synonym types on the other side.
 > typeKind (AliasType tc _ _) = Alias tc
 
 > bindTop :: ModuleIdent -> Ident -> TypeKind -> TypeEnv -> TypeEnv
-> bindTop m tc t = bindTopEnv tc t . qualBindTopEnv (qualifyWith m tc) t
+> bindTop = globalBindTopEnv
 
 > lookupType :: Ident -> TypeEnv -> [TypeKind]
 > lookupType = lookupTopEnv
@@ -174,23 +174,13 @@ constructors.
 
 > bindGlobalInfo :: (QualIdent -> a -> ValueInfo) -> ModuleIdent -> Ident -> a
 >                -> ValueEnv -> ValueEnv
-> bindGlobalInfo f m c ty = bindTopEnv c v . qualBindTopEnv c' v
->   where c' = qualifyWith m c
->         v = f c' ty
+> bindGlobalInfo f m c ty = globalBindTopEnv m c (f (qualifyWith m c) ty)
 
 > bindFun :: ModuleIdent -> Ident -> TypeScheme -> ValueEnv -> ValueEnv
-> bindFun m f ty
->   | uniqueId f == 0 = bindTopEnv f v . qualBindTopEnv f' v
->   | otherwise = bindTopEnv f v
->   where f' = qualifyWith m f
->         v = Value f' ty
+> bindFun m f ty = bindTopEnv m f (Value (qualifyWith m f) ty)
 
 > rebindFun :: ModuleIdent -> Ident -> TypeScheme -> ValueEnv -> ValueEnv
-> rebindFun m f ty
->   | uniqueId f == 0 = rebindTopEnv f v . qualRebindTopEnv f' v
->   | otherwise = rebindTopEnv f v
->   where f' = qualifyWith m f
->         v = Value f' ty
+> rebindFun m f ty = rebindTopEnv m f (Value (qualifyWith m f) ty)
 
 > lookupValue :: Ident -> ValueEnv -> [ValueInfo]
 > lookupValue x tyEnv = lookupTopEnv x tyEnv ++! lookupTuple x
@@ -227,10 +217,10 @@ used in order to check the export list of a module.
 > valueKind (Value v _) = Var v
 
 > bindGlobal :: ModuleIdent -> Ident -> ValueKind -> VarEnv -> VarEnv
-> bindGlobal m c v = bindNestEnv c v . qualBindNestEnv (qualifyWith m c) v
+> bindGlobal m c v = globalBindNestEnv m c v
 
 > bindLocal :: Ident -> ValueKind -> VarEnv -> VarEnv
-> bindLocal = bindNestEnv
+> bindLocal = localBindNestEnv
 
 > lookupVar :: Ident -> VarEnv -> [ValueKind]
 > lookupVar v env = lookupNestEnv v env ++! lookupTupleConstr v
@@ -287,11 +277,7 @@ because they do not need to handle tuple constructors.
 > type PEnv = TopEnv PrecInfo
 
 > bindP :: ModuleIdent -> Ident -> OpPrec -> PEnv -> PEnv
-> bindP m op p
->   | uniqueId op == 0 = bindTopEnv op info . qualBindTopEnv op' info
->   | otherwise = bindTopEnv op info
->   where op' = qualifyWith m op
->         info = PrecInfo op' p
+> bindP m op p = bindTopEnv m op (PrecInfo (qualifyWith m op) p)
 
 > lookupP :: Ident -> PEnv -> [PrecInfo]
 > lookupP = lookupTopEnv

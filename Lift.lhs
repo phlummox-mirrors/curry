@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1759 2005-09-03 10:41:38Z wlux $
+% $Id: Lift.lhs 1786 2005-10-07 15:33:33Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -313,7 +313,7 @@ to the top-level.
 >   where f' = qualifyWith m f
 
 > unbindFun :: Ident -> ValueEnv -> ValueEnv
-> unbindFun = unbindTopEnv
+> unbindFun = localUnbindTopEnv
 
 > varType :: ValueEnv -> Ident -> Type
 > varType tyEnv v =
