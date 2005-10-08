@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: Exports.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,6 +17,7 @@ types.
 > module Exports(exportInterface) where
 > import Base
 > import Set
+> import TopEnv
 > import TypeTrans
 
 > exportInterface :: ModuleIdent -> ExportSpec -> PEnv -> TCEnv -> ValueEnv
@@ -35,7 +36,7 @@ types.
 
 > iInfixDecl :: ModuleIdent -> PEnv -> QualIdent -> [IDecl] -> [IDecl]
 > iInfixDecl m pEnv op ds =
->   case qualLookupP op pEnv of
+>   case qualLookupTopEnv op pEnv of
 >     [] -> ds
 >     [PrecInfo _ (OpPrec fix pr)] ->
 >       IInfixDecl noPos fix pr (qualUnqualify m op) : ds
@@ -44,7 +45,7 @@ types.
 > typeDecl :: ModuleIdent -> TCEnv -> ValueEnv -> Export -> [IDecl] -> [IDecl]
 > typeDecl _ _ _ (Export _) ds = ds
 > typeDecl m tcEnv tyEnv (ExportTypeWith tc cs) ds =
->   case qualLookupTC tc tcEnv of
+>   case qualLookupTopEnv tc tcEnv of
 >     [DataType _ n cs'] -> iTypeDecl IDataDecl m tc n constrs : ds
 >       where constrs tvs
 >               | null cs = []

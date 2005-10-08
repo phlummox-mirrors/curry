@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 1785 2005-10-07 11:13:16Z wlux $
+% $Id: TypeTrans.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -18,6 +18,7 @@ external type representations.
 > import List
 > import Map
 > import Pretty
+> import TopEnv
 > import TypeSubst
 
 \end{verbatim}
@@ -124,7 +125,7 @@ but the expanded types refer to the original names.
 
 > expandType :: TCEnv -> Type -> Type
 > expandType tcEnv (TypeConstructor tc tys) =
->   case qualLookupTC tc tcEnv of
+>   case qualLookupTopEnv tc tcEnv of
 >     [DataType tc' _ _] -> TypeConstructor tc' tys'
 >     [RenamingType tc' _ _] -> TypeConstructor tc' tys'
 >     [AliasType _ _ ty] -> expandAliasType tys' ty

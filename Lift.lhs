@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: Lift.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -166,7 +166,7 @@ in the type environment.
 >         fvsRhs = unionSets
 >           [fromListSet (maybe [v] (qfv m) (lookupEnv v env)) | v <- qfv m fds]
 >         bindF fvs f = bindEnv f (apply (mkFun m pre f) fvs)
->         isLifted tyEnv f = null (lookupValue f tyEnv)
+>         isLifted tyEnv f = null (lookupTopEnv f tyEnv)
 
 \end{verbatim}
 When the free variables of a function are abstracted, the type of the

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
+% $Id: IntfSyntaxCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -77,7 +77,7 @@ during syntax checking of type expressions.
 >         Linear -> return ()
 >         NonLinear tv -> errorAt p (nonLinear tv)
 >     tv:_ -> errorAt p (noVariable tv)
->   where isTypeConstr tv = not (null (lookupType tv env))
+>   where isTypeConstr tv = not (null (lookupTopEnv tv env))
 
 > checkConstrDecl :: TypeEnv -> [Ident] -> ConstrDecl -> Error ConstrDecl
 > checkConstrDecl env tvs (ConstrDecl p evs c tys) =
@@ -112,7 +112,7 @@ during syntax checking of type expressions.
 
 > checkType :: TypeEnv -> Position -> TypeExpr -> Error TypeExpr
 > checkType env p (ConstructorType tc tys) =
->   case qualLookupType tc env of
+>   case qualLookupTopEnv tc env of
 >     []
 >       | not (isQualified tc) && null tys ->
 >           return (VariableType (unqualify tc))

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: Base.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -25,8 +25,8 @@ in various phases of the compiler.
 
 \end{verbatim}
 \paragraph{Interfaces}
-The compiler maintains a global environment holding all (directly or
-indirectly) imported interfaces.
+The compiler maintains a global environment containing all interfaces
+imported directly or indirectly into the current module.
 \begin{verbatim}
 
 > type ModuleEnv = Env ModuleIdent Interface
@@ -34,20 +34,15 @@ indirectly) imported interfaces.
 > bindModule :: Interface -> ModuleEnv -> ModuleEnv
 > bindModule (Interface m is ds) = bindEnv m (Interface m is ds)
 
-> lookupModule :: ModuleIdent -> ModuleEnv -> Maybe Interface
-> lookupModule = lookupEnv
-
 \end{verbatim}
 \paragraph{Type constructors}
 For all defined types, the compiler must maintain kind information. At
 present, Curry does not support type classes. Therefore, its type
 language is first order and the only information that must be recorded
-is the arity of each type. For algebraic data types and renaming types
-the compiler also records all data constructors belonging to that
-type, for alias types the expanded type expression is saved. In order
-to manage the import and export of types, the names of the original
-definitions are also recorded. On import, two types are considered
-equal if their original names match.
+is the arity of each type. For algebraic data types and renaming
+types, the compiler also records all data constructors belonging to
+that type, for alias types the expanded right hand side type
+expression is saved.
 
 Importing and exporting algebraic data types and renaming types is
 complicated by the fact that the constructors of the type may be
@@ -58,6 +53,8 @@ it is defined as a data type or as a renaming type. When only some
 constructors of a data type are hidden, those constructors are
 replaced by underscores in the interface.
 \begin{verbatim}
+
+> type TCEnv = TopEnv TypeInfo
 
 > data TypeInfo = DataType QualIdent Int [Maybe Ident]
 >               | RenamingType QualIdent Int Ident
@@ -85,24 +82,6 @@ replaced by underscores in the interface.
 >   merge _ _ = Nothing
 
 \end{verbatim}
-Types can only be defined at the top-level; no nested environments are
-needed for them.
-\begin{verbatim}
-
-> type TCEnv = TopEnv TypeInfo
-
-> bindTypeInfo :: (QualIdent -> Int -> a -> TypeInfo) -> ModuleIdent
->              -> Ident -> [Ident] -> a -> TCEnv -> TCEnv
-> bindTypeInfo f m tc tvs =
->   globalBindTopEnv m tc . f (qualifyWith m tc) (length tvs)
-
-> lookupTC :: Ident -> TCEnv -> [TypeInfo]
-> lookupTC = lookupTopEnv
-
-> qualLookupTC :: QualIdent -> TCEnv -> [TypeInfo]
-> qualLookupTC = qualLookupTopEnv
-
-\end{verbatim}
 The function \texttt{constrKind} returns the arity of a type
 constructor from the type constructor environment. It is supposed to
 be used only after checking for undefined and ambiguous type
@@ -111,7 +90,7 @@ identifiers and therefore should not fail.
 
 > constrKind :: QualIdent -> TCEnv -> Int
 > constrKind tc tcEnv =
->   case qualLookupTC tc tcEnv of
+>   case qualLookupTopEnv tc tcEnv of
 >     [DataType _ n _] -> n
 >     [RenamingType _ n _] -> n
 >     [AliasType _ n _] -> n
@@ -126,6 +105,7 @@ renaming types on one side and synonym types on the other side.
 \begin{verbatim}
 
 > type TypeEnv = TopEnv TypeKind
+
 > data TypeKind =
 >     Data QualIdent [Ident]
 >   | Alias QualIdent
@@ -136,24 +116,21 @@ renaming types on one side and synonym types on the other side.
 > typeKind (RenamingType tc _ c) = Data tc [c]
 > typeKind (AliasType tc _ _) = Alias tc
 
-> bindTop :: ModuleIdent -> Ident -> TypeKind -> TypeEnv -> TypeEnv
-> bindTop = globalBindTopEnv
-
-> lookupType :: Ident -> TypeEnv -> [TypeKind]
-> lookupType = lookupTopEnv
-
-> qualLookupType :: QualIdent -> TypeEnv -> [TypeKind]
-> qualLookupType = qualLookupTopEnv
-
 \end{verbatim}
 \paragraph{Function and constructor types}
-In order to test the type correctness of a module, the compiler needs
-to determine the type of every data constructor, function, and
-variable in the module. For the purpose of type checking, there is no
-need to distinguish variables and functions. For all objects, their
-original names and their types are saved. On import, two values are
-considered equal if their original names match.
+In order to test type correctness of a module, the compiler needs to
+determine the type of every data constructor, function, and variable
+in the module. For the purpose of type checking, there is no need to
+distinguish variables and functions. For all objects, their original
+names and their types are saved.
+
+Even though value declarations may be nested, the compiler uses a flat
+environment for saving type information. This is possible because all
+identifiers are renamed by the compiler before it starts computing type
+information.
 \begin{verbatim}
+
+> type ValueEnv = TopEnv ValueInfo
 
 > data ValueInfo = DataConstructor QualIdent ExistTypeScheme
 >                | NewtypeConstructor QualIdent ExistTypeScheme
@@ -165,30 +142,11 @@ considered equal if their original names match.
 >   origName (NewtypeConstructor origName _) = origName
 >   origName (Value origName _) = origName
 
-\end{verbatim}
-Even though value declarations may be nested, the compiler uses a flat
-environment for saving type information. This is possible because all
-identifiers are renamed by the compiler before it starts computing type
-information.
-\begin{verbatim}
-
-> type ValueEnv = TopEnv ValueInfo
-
-> bindGlobalInfo :: (QualIdent -> a -> ValueInfo) -> ModuleIdent -> Ident -> a
->                -> ValueEnv -> ValueEnv
-> bindGlobalInfo f m c ty = globalBindTopEnv m c (f (qualifyWith m c) ty)
-
 > bindFun :: ModuleIdent -> Ident -> TypeScheme -> ValueEnv -> ValueEnv
 > bindFun m f ty = bindTopEnv m f (Value (qualifyWith m f) ty)
 
 > rebindFun :: ModuleIdent -> Ident -> TypeScheme -> ValueEnv -> ValueEnv
 > rebindFun m f ty = rebindTopEnv m f (Value (qualifyWith m f) ty)
-
-> lookupValue :: Ident -> ValueEnv -> [ValueInfo]
-> lookupValue = lookupTopEnv
-
-> qualLookupValue :: QualIdent -> ValueEnv -> [ValueInfo]
-> qualLookupValue = qualLookupTopEnv
 
 \end{verbatim}
 The functions \texttt{conType}, \texttt{varType}, and \texttt{funType}
@@ -205,20 +163,20 @@ function even though the function's name may be ambiguous.
 
 > conType :: QualIdent -> ValueEnv -> ExistTypeScheme
 > conType c tyEnv =
->   case qualLookupValue c tyEnv of
+>   case qualLookupTopEnv c tyEnv of
 >     [DataConstructor _ ty] -> ty
 >     [NewtypeConstructor _ ty] -> ty
 >     _ -> internalError ("conType " ++ show c)
 
 > varType :: Ident -> ValueEnv -> TypeScheme
 > varType v tyEnv =
->   case lookupValue v tyEnv of
+>   case lookupTopEnv v tyEnv of
 >     Value _ ty : _ -> ty
 >     _ -> internalError ("varType " ++ show v)
 
 > funType :: QualIdent -> ValueEnv -> TypeScheme
 > funType f tyEnv =
->   case qualLookupValue f tyEnv of
+>   case qualLookupTopEnv f tyEnv of
 >     [Value _ ty] -> ty
 >     _ -> internalError ("funType " ++ show f)
 
@@ -229,7 +187,7 @@ in order to distinguish data and newtype constructors.
 
 > isNewtypeConstr :: ValueEnv -> QualIdent -> Bool
 > isNewtypeConstr tyEnv c =
->   case qualLookupValue c tyEnv of
+>   case qualLookupTopEnv c tyEnv of
 >     [DataConstructor _ _] -> False
 >     [NewtypeConstructor _ _] -> True
 >     _ -> internalError ("isNewtypeConstr: " ++ show c)
@@ -244,27 +202,13 @@ used in order to check the export list of a module.
 
 > type FunEnv = TopEnv ValueKind
 > type VarEnv = NestEnv ValueKind
+
 > data ValueKind = Constr QualIdent | Var QualIdent deriving (Eq,Show)
 
 > valueKind :: ValueInfo -> ValueKind
 > valueKind (DataConstructor c _) = Constr c
 > valueKind (NewtypeConstructor c _) = Constr c
 > valueKind (Value v _) = Var v
-
-> bindGlobal :: ModuleIdent -> Ident -> ValueKind -> VarEnv -> VarEnv
-> bindGlobal m c v = globalBindNestEnv m c v
-
-> bindLocal :: Ident -> ValueKind -> VarEnv -> VarEnv
-> bindLocal = localBindNestEnv
-
-> lookupVar :: Ident -> VarEnv -> [ValueKind]
-> lookupVar = lookupNestEnv
-
-> qualLookupVar :: QualIdent -> VarEnv -> [ValueKind]
-> qualLookupVar = qualLookupNestEnv
-
-> qualLookupFun :: QualIdent -> FunEnv -> [ValueKind]
-> qualLookupFun = qualLookupTopEnv
 
 \end{verbatim}
 \paragraph{Operator precedences}
@@ -296,21 +240,12 @@ in the precedence environment. A top-level environment is sufficient
 because precedences are checked after renaming.
 \begin{verbatim}
 
+> type PEnv = TopEnv PrecInfo
+
 > data PrecInfo = PrecInfo QualIdent OpPrec deriving (Eq,Show)
 
 > instance Entity PrecInfo where
 >   origName (PrecInfo op _) = op
-
-> type PEnv = TopEnv PrecInfo
-
-> bindP :: ModuleIdent -> Ident -> OpPrec -> PEnv -> PEnv
-> bindP m op p = bindTopEnv m op (PrecInfo (qualifyWith m op) p)
-
-> lookupP :: Ident -> PEnv -> [PrecInfo]
-> lookupP = lookupTopEnv
-
-> qualLookupP :: QualIdent -> PEnv -> [PrecInfo]
-> qualLookupP = qualLookupTopEnv
 
 \end{verbatim}
 \paragraph{Evaluation modes}
@@ -321,12 +256,6 @@ annotations is sufficient.
 \begin{verbatim}
 
 > type EvalEnv = Env Ident EvalAnnotation
-
-> bindEval :: Ident -> EvalAnnotation -> EvalEnv -> EvalEnv
-> bindEval = bindEnv
-
-> lookupEval :: Ident -> EvalEnv -> Maybe EvalAnnotation
-> lookupEval = lookupEnv
 
 \end{verbatim}
 \paragraph{Predefined types}

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: TypeCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -109,9 +109,9 @@ in the left hand side by \texttt{anonId} before passing them to
 >            -> TCEnv -> [Ident] -> [Ident] -> Ident -> [TypeExpr] -> Type
 >            -> ValueEnv -> ValueEnv
 > bindConstr f m tcEnv tvs evs c tys ty0 =
->   bindGlobalInfo f m c
->     (ForAllExist (length tvs) (length evs) (foldr TypeArrow ty0 tys'))
->   where tys' = expandMonoTypes tcEnv (cleanTVars tvs evs) tys
+>   globalBindTopEnv m c (f (qualifyWith m c) ty')
+>   where ty' = ForAllExist (length tvs) (length evs) (foldr TypeArrow ty0 tys')
+>         tys' = expandMonoTypes tcEnv (cleanTVars tvs evs) tys
 
 > constrType :: ModuleIdent -> Ident -> [Ident] -> Type
 > constrType m tc tvs =

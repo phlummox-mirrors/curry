@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: ILTrans.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -174,7 +174,7 @@ uses flexible matching.
 >                   (match ev vs (map (translEquation tyEnv vs vs'') eqs))
 >   where f' = qualifyWith m f
 >         ty = rawType (funType f' tyEnv)
->         ev = maybe IL.Flex evalMode (lookupEval f evEnv)
+>         ev = maybe IL.Flex evalMode (lookupEnv f evEnv)
 >         vs = if isSelectorId f then translArgs eqs vs' else vs'
 >         (vs',vs'') = splitAt (arrowArity ty) (argNames (mkIdent ""))
 

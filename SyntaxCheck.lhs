@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1781 2005-10-03 20:26:58Z wlux $
+% $Id: SyntaxCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -51,13 +51,13 @@ declarations are checked within the resulting environment.
 > syntaxCheckGoal tyEnv g = checkGoal (globalEnv (fmap valueKind tyEnv)) g
 
 > bindConstr :: ModuleIdent -> P Ident -> VarEnv -> VarEnv
-> bindConstr m (P _ c) = bindGlobal m c (Constr (qualifyWith m c))
+> bindConstr m (P _ c) = globalBindNestEnv m c (Constr (qualifyWith m c))
 
 > bindFunc :: ModuleIdent -> P Ident -> VarEnv -> VarEnv
-> bindFunc m (P _ f) = bindGlobal m f (Var (qualifyWith m f))
+> bindFunc m (P _ f) = globalBindNestEnv m f (Var (qualifyWith m f))
 
 > bindVar :: P Ident -> VarEnv -> VarEnv
-> bindVar (P _ v) = bindLocal v (Var (qualify v))
+> bindVar (P _ v) = localBindNestEnv v (Var (qualify v))
 
 \end{verbatim}
 When a module is checked, the global declaration group is checked. A
@@ -324,7 +324,7 @@ callbacks into Curry are not yet supported by the runtime system.
 >   | v == anonId = return (VariablePattern v)
 >   | otherwise = checkConstrTerm p env (ConstructorPattern (qualify v) [])
 > checkConstrTerm p env (ConstructorPattern c ts) =
->   case qualLookupVar c env of
+>   case qualLookupNestEnv c env of
 >     [Constr _] ->
 >       liftM (ConstructorPattern c) (mapM (checkConstrTerm p env) ts)
 >     rs
@@ -333,7 +333,7 @@ callbacks into Curry are not yet supported by the runtime system.
 >           return (VariablePattern (unqualify c))
 >       | otherwise -> errorAt p (undefinedData c)
 > checkConstrTerm p env (InfixPattern t1 op t2) =
->   case qualLookupVar op env of
+>   case qualLookupNestEnv op env of
 >     [Constr _] ->
 >       liftM2 (flip InfixPattern op)
 >              (checkConstrTerm p env t1)
@@ -373,7 +373,7 @@ callbacks into Curry are not yet supported by the runtime system.
 > checkExpr :: Position -> VarEnv -> Expression -> Error Expression
 > checkExpr _ _ (Literal l) = return (Literal l)
 > checkExpr p env (Variable v) =
->   case qualLookupVar v env of
+>   case qualLookupNestEnv v env of
 >     [] -> errorAt p (undefinedVariable v)
 >     [Constr _] -> return (Constructor v)
 >     [Var _] -> return (Variable v)
@@ -457,7 +457,7 @@ callbacks into Curry are not yet supported by the runtime system.
 
 > checkOp :: Position -> VarEnv -> InfixOp -> Error InfixOp
 > checkOp p env op =
->   case qualLookupVar v env of
+>   case qualLookupNestEnv v env of
 >     [] -> errorAt p (undefinedVariable v)
 >     [Constr _] -> return (InfixConstr v)
 >     [Var _] -> return (InfixOp v)
@@ -504,7 +504,8 @@ name.
 \begin{verbatim}
 
 > isDataConstr :: VarEnv -> Ident -> Bool
-> isDataConstr env v = any isConstr (lookupVar v (globalEnv (toplevelEnv env)))
+> isDataConstr env v =
+>   any isConstr (lookupNestEnv v (globalEnv (toplevelEnv env)))
 
 > isConstr :: ValueKind -> Bool
 > isConstr (Constr _) = True

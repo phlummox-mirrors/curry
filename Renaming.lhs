@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 1775 2005-09-29 09:24:56Z wlux $
+% $Id: Renaming.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -23,7 +23,7 @@ after type checking was performed.
 \begin{verbatim}
 
 > module Renaming(rename,renameGoal) where
-> import Base hiding(lookupVar)
+> import Base
 > import Combined
 > import Env
 > import Maybe

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1779 2005-10-03 14:55:35Z wlux $
+% $Id: IntfCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -50,6 +50,7 @@ interface module only. However, this has not been implemented yet.
 > import Error
 > import Maybe
 > import Monad
+> import TopEnv
 > import TypeTrans
 
 > intfCheck :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> [IDecl] -> Error ()
@@ -127,7 +128,7 @@ interface module only. However, this has not been implemented yet.
 >               -> QualIdent -> Error ()
 > checkPrecInfo check pEnv p op = checkImported checkInfo op
 >   where checkInfo m op' =
->           case qualLookupP op pEnv of
+>           case qualLookupTopEnv op pEnv of
 >             [] -> errorAt p (noPrecedence m op')
 >             [pi] ->
 >               unless (check pi)
@@ -138,7 +139,7 @@ interface module only. However, this has not been implemented yet.
 >               -> QualIdent -> Error ()
 > checkTypeInfo what check tcEnv p tc = checkImported checkInfo tc
 >   where checkInfo m tc' =
->           case qualLookupTC tc tcEnv of
+>           case qualLookupTopEnv tc tcEnv of
 >             [] -> errorAt p (notExported what m tc')
 >             [ti] ->
 >               fromMaybe (errorAt p (importConflict what m tc')) (check ti)
@@ -148,7 +149,7 @@ interface module only. However, this has not been implemented yet.
 >                -> QualIdent -> Error ()
 > checkValueInfo what check tyEnv p x = checkImported checkInfo x
 >   where checkInfo m x' =
->           case qualLookupValue x tyEnv of
+>           case qualLookupTopEnv x tyEnv of
 >             [] -> errorAt p (notExported what m x')
 >             [vi] -> unless (check vi) (errorAt p (importConflict what m x'))
 >             _ -> internalError "checkValueInfo"

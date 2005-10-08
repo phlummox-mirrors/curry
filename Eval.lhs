@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Eval.lhs 1758 2005-09-03 10:06:41Z wlux $
+% $Id: Eval.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -28,7 +28,7 @@ the module by traversing the syntax tree.
 >   collectAnnotsExpr e (foldr collectAnnotsDecl emptyEnv ds)
 
 > collectAnnotsDecl :: Decl -> EvalEnv -> EvalEnv
-> collectAnnotsDecl (EvalAnnot _ fs ev) env = foldr (flip bindEval ev) env fs
+> collectAnnotsDecl (EvalAnnot _ fs ev) env = foldr (flip bindEnv ev) env fs
 > collectAnnotsDecl (FunctionDecl _ _ eqs) env = foldr collectAnnotsEqn env eqs
 > collectAnnotsDecl (PatternDecl _ _ rhs) env = collectAnnotsRhs rhs env
 > collectAnnotsDecl _ env = env

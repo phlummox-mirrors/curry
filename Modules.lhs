@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1786 2005-10-07 15:33:33Z wlux $
+% $Id: Modules.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -301,7 +301,7 @@ imported modules into scope in the current module.
 
 > moduleInterface :: ModuleIdent -> ModuleEnv -> Interface
 > moduleInterface m mEnv =
->   fromMaybe (internalError "moduleInterface") (lookupModule m mEnv)
+>   fromMaybe (internalError "moduleInterface") (lookupEnv m mEnv)
 
 > initEnvs :: (PEnv,TCEnv,ValueEnv)
 > initEnvs = (initPEnv,initTCEnv,initDCEnv)
@@ -351,7 +351,7 @@ it is found.
 >               -> ErrorT IO ModuleEnv
 > loadInterface paths ctxt mEnv (P p m)
 >   | m `elem` ctxt = errorAt p (cyclicImport m (takeWhile (/= m) ctxt))
->   | isJust (lookupModule m mEnv) = return mEnv
+>   | isJust (lookupEnv m mEnv) = return mEnv
 >   | otherwise =
 >       liftErr (lookupInterface paths m) >>=
 >       maybe (errorAt p (interfaceNotFound m))
@@ -389,7 +389,7 @@ that are imported directly from that module.}
 >     return (Interface m is ds')
 >   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs is
 >         importModule envs (IImportDecl p m) =
->           case lookupModule m mEnv of
+>           case lookupEnv m mEnv of
 >             Just i -> importInterfaceIntf envs i
 >             Nothing -> internalError "checkInterface"
 

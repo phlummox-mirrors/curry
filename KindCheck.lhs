@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: KindCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -66,11 +66,12 @@ function in any particular order.
 
 > bindTC :: ModuleIdent -> TCEnv -> TopDecl -> TCEnv -> TCEnv
 > bindTC m tcEnv (DataDecl _ tc tvs cs) =
->   bindTypeInfo DataType m tc tvs (map (Just . constr) cs)
+>   globalBindTopEnv m tc (typeCon DataType m tc tvs (map (Just . constr) cs))
 > bindTC m tcEnv (NewtypeDecl _ tc tvs (NewConstrDecl _ _ c _)) =
->   bindTypeInfo RenamingType m tc tvs c
+>   globalBindTopEnv m tc (typeCon RenamingType m tc tvs c)
 > bindTC m tcEnv (TypeDecl _ tc tvs ty) =
->   bindTypeInfo AliasType m tc tvs (expandMonoType tcEnv tvs ty)
+>   globalBindTopEnv m tc
+>                    (typeCon AliasType m tc tvs (expandMonoType tcEnv tvs ty))
 > bindTC _ _ (BlockDecl _) = id
 
 > checkSynonynms :: ModuleIdent -> [TopDecl] -> Error ()
@@ -192,6 +193,13 @@ Kind checking is applied to all type expressions in the program.
 > checkType tcEnv p (ListType ty) = checkType tcEnv p ty
 > checkType tcEnv p (ArrowType ty1 ty2) =
 >   checkType tcEnv p ty1 >> checkType tcEnv p ty2
+
+\end{verbatim}
+Auxiliary functions.
+\begin{verbatim}
+
+> typeCon :: (QualIdent -> Int -> a) -> ModuleIdent -> Ident -> [Ident] -> a
+> typeCon f m tc tvs = f (qualifyWith m tc) (length tvs)
 
 \end{verbatim}
 Error messages.

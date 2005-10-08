@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1781 2005-10-03 20:26:58Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -77,7 +77,7 @@ export a type constructor \texttt{x} \emph{and} a global function
 
 > expandThing :: Position -> TypeEnv -> FunEnv -> QualIdent -> Error [Export]
 > expandThing p tEnv fEnv tc =
->   case qualLookupType tc tEnv of
+>   case qualLookupTopEnv tc tEnv of
 >     [] -> expandThing' p fEnv tc Nothing
 >     [t] -> expandThing' p fEnv tc (Just [exportType (abstract t)])
 >       where abstract (Data tc _) = Data tc []
@@ -87,7 +87,7 @@ export a type constructor \texttt{x} \emph{and} a global function
 > expandThing' :: Position -> FunEnv -> QualIdent -> Maybe [Export]
 >              -> Error [Export]
 > expandThing' p fEnv f tcExport =
->   case qualLookupFun f fEnv of
+>   case qualLookupTopEnv f fEnv of
 >     [] -> maybe (errorAt p (undefinedEntity f)) return tcExport
 >     [Var f'] -> return (Export f' : fromMaybe [] tcExport)
 >     [Constr _] -> maybe (errorAt p (exportDataConstr f)) return tcExport
@@ -96,7 +96,7 @@ export a type constructor \texttt{x} \emph{and} a global function
 > expandTypeWith :: Position -> TypeEnv -> QualIdent -> [Ident]
 >                -> Error [Export]
 > expandTypeWith p tEnv tc cs =
->   case qualLookupType tc tEnv of
+>   case qualLookupTopEnv tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
 >     [Data tc' cs'] ->
 >       do
@@ -112,7 +112,7 @@ export a type constructor \texttt{x} \emph{and} a global function
 
 > expandTypeAll :: Position -> TypeEnv -> QualIdent -> Error [Export]
 > expandTypeAll p tEnv tc =
->   case qualLookupType tc tEnv of
+>   case qualLookupTopEnv tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
 >     [Data tc' cs'] -> return [ExportTypeWith tc' cs']
 >     [Alias _] -> errorAt p (nonDataType tc)
