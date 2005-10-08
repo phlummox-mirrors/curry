@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1786 2005-10-07 15:33:33Z wlux $
+% $Id: Imports.lhs 1787 2005-10-08 08:19:02Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -142,8 +142,8 @@ all references to a data type use the same list of constructors.
 
 > importUnifyData :: TCEnv -> TCEnv
 > importUnifyData tcEnv =
->   fmap (setInfo (foldr (mergeData . snd) zeroFM (allImports tcEnv))) tcEnv
->   where setInfo tcs t = fromJust (lookupFM (origName t) tcs)
+>   fmap (updWith (foldr (mergeData . snd) zeroFM (allImports tcEnv))) tcEnv
+>   where updWith tcs t = fromMaybe t (lookupFM (origName t) tcs)
 >         mergeData t tcs =
 >           addToFM tc (maybe t (fromJust . merge t) (lookupFM tc tcs)) tcs
 >           where tc = origName t

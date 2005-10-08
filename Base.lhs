@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1786 2005-10-07 15:33:33Z wlux $
+% $Id: Base.lhs 1787 2005-10-08 08:19:02Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -22,7 +22,6 @@ in various phases of the compiler.
 > import Maybe
 > import Monad
 > import Set
-> import Utils
 
 \end{verbatim}
 \paragraph{Interfaces}
@@ -87,9 +86,7 @@ replaced by underscores in the interface.
 
 \end{verbatim}
 Types can only be defined at the top-level; no nested environments are
-needed for them. Tuple types must be handled as a special case because
-there is an infinite number of potential tuple types making it
-impossible to insert them into the environment in advance.
+needed for them.
 \begin{verbatim}
 
 > type TCEnv = TopEnv TypeInfo
@@ -100,19 +97,10 @@ impossible to insert them into the environment in advance.
 >   globalBindTopEnv m tc . f (qualifyWith m tc) (length tvs)
 
 > lookupTC :: Ident -> TCEnv -> [TypeInfo]
-> lookupTC tc tcEnv = lookupTopEnv tc tcEnv ++! lookupTupleTC tc
+> lookupTC = lookupTopEnv
 
 > qualLookupTC :: QualIdent -> TCEnv -> [TypeInfo]
-> qualLookupTC tc tcEnv =
->   qualLookupTopEnv tc tcEnv ++! lookupTupleTC (unqualify tc)
-
-> lookupTupleTC :: Ident -> [TypeInfo]
-> lookupTupleTC tc = [tupleTCs !! (tupleArity tc - 2) | isTupleId tc]
-
-> tupleTCs :: [TypeInfo]
-> tupleTCs = map typeInfo [2..]
->   where typeInfo n = DataType (qualify c) n [Just c]
->           where c = tupleId n
+> qualLookupTC = qualLookupTopEnv
 
 \end{verbatim}
 A simpler environment is used for checking the syntax of type
@@ -166,8 +154,7 @@ considered equal if their original names match.
 Even though value declarations may be nested, the compiler uses a flat
 environment for saving type information. This is possible because all
 identifiers are renamed by the compiler before it starts computing type
-information. Again, we need special cases for handling tuple
-constructors.
+information.
 \begin{verbatim}
 
 > type ValueEnv = TopEnv ValueInfo
@@ -183,21 +170,10 @@ constructors.
 > rebindFun m f ty = rebindTopEnv m f (Value (qualifyWith m f) ty)
 
 > lookupValue :: Ident -> ValueEnv -> [ValueInfo]
-> lookupValue x tyEnv = lookupTopEnv x tyEnv ++! lookupTuple x
+> lookupValue = lookupTopEnv
 
 > qualLookupValue :: QualIdent -> ValueEnv -> [ValueInfo]
-> qualLookupValue x tyEnv =
->   qualLookupTopEnv x tyEnv ++! lookupTuple (unqualify x)
-
-> lookupTuple :: Ident -> [ValueInfo]
-> lookupTuple c = [tupleDCs !! (tupleArity c - 2) | isTupleId c]
-
-> tupleDCs :: [ValueInfo]
-> tupleDCs = map dataInfo tupleTCs
->   where tvs = map typeVar [0..]
->         dataInfo (DataType c n _) =
->           DataConstructor c (ForAllExist n 0 (tupleConstrType (take n tvs)))
->         tupleConstrType tys = foldr TypeArrow (tupleType tys) tys
+> qualLookupValue = qualLookupTopEnv
 
 \end{verbatim}
 A simpler kind of environment is used for syntax checking of
@@ -223,21 +199,13 @@ used in order to check the export list of a module.
 > bindLocal = localBindNestEnv
 
 > lookupVar :: Ident -> VarEnv -> [ValueKind]
-> lookupVar v env = lookupNestEnv v env ++! lookupTupleConstr v
+> lookupVar = lookupNestEnv
 
 > qualLookupVar :: QualIdent -> VarEnv -> [ValueKind]
-> qualLookupVar v env =
->   qualLookupNestEnv v env ++! lookupTupleConstr (unqualify v)
+> qualLookupVar = qualLookupNestEnv
 
 > qualLookupFun :: QualIdent -> FunEnv -> [ValueKind]
-> qualLookupFun f env =
->   qualLookupTopEnv f env ++! lookupTupleConstr (unqualify f)
-
-> lookupTupleConstr :: Ident -> [ValueKind]
-> lookupTupleConstr c = [tupleConstrs !! (tupleArity c - 2) | isTupleId c]
-
-> tupleConstrs :: [ValueKind]
-> tupleConstrs = map valueKind tupleDCs
+> qualLookupFun = qualLookupTopEnv
 
 \end{verbatim}
 \paragraph{Operator precedences}
@@ -264,9 +232,9 @@ precedence 9 and assumed to be a left-associative operator.
 > defaultP = OpPrec InfixL 9
 
 \end{verbatim}
-The lookup functions for the environment, which maintains the operator
-precedences, are simpler than for the type and value environments
-because they do not need to handle tuple constructors.
+Operator precedences that are different from the default are recorded
+in the precedence environment. A top-level environment is sufficient
+because precedences are checked after renaming.
 \begin{verbatim}
 
 > data PrecInfo = PrecInfo QualIdent OpPrec deriving (Eq,Show)
@@ -289,7 +257,7 @@ because they do not need to handle tuple constructors.
 \paragraph{Evaluation modes}
 The compiler collects the evaluation annotations for all functions in
 an environment. As these annotations affect only declarations from the
-current module, a flat environment mapping unqualified names onto
+current module, a simple environment mapping unqualified names onto
 annotations is sufficient.
 \begin{verbatim}
 
@@ -299,7 +267,7 @@ annotations is sufficient.
 > bindEval = bindEnv
 
 > lookupEval :: Ident -> EvalEnv -> Maybe EvalAnnotation
-> lookupEval f evEnv = lookupEnv f evEnv
+> lookupEval = lookupEnv
 
 \end{verbatim}
 \paragraph{Predefined types}
@@ -309,25 +277,27 @@ declarations
 data () = ()
 data [] a = [] | a : [a]
 \end{verbatim}
-are not valid in Curry. The corresponding types
-are available in the environments \texttt{initTCEnv} and
-\texttt{initDCEnv}. In addition, the precedence of the infix list
-constructor is available in the environment \texttt{initPEnv}.
+are not valid in Curry. The same is true for the -- potentially --
+infinite number of tuple types. The corresponding types are available
+in the environments \texttt{initTCEnv} and \texttt{initDCEnv}. In
+addition, the precedence of the infix list constructor is available in
+the environment \texttt{initPEnv}.
 \begin{verbatim}
 
 > initPEnv :: PEnv
-> initPEnv =
->   predefTopEnv qConsId (PrecInfo qConsId (OpPrec InfixR 5)) emptyTopEnv
+> initPEnv = predefTopEnv qConsId (PrecInfo qConsId (OpPrec InfixR 5)) emptyPEnv
+>   where emptyPEnv = emptyTopEnv Nothing
 
 > initTCEnv :: TCEnv
-> initTCEnv = foldr (uncurry predefTC) emptyTopEnv predefTypes
->   where predefTC (TypeConstructor tc tys) cs =
+> initTCEnv = foldr (uncurry predefTC) emptyTCEnv predefTypes
+>   where emptyTCEnv = emptyTopEnv (Just (map fst tuples))
+>         predefTC (TypeConstructor tc tys) cs =
 >           predefTopEnv tc (DataType tc (length tys) (map (Just . fst) cs))
 
 > initDCEnv :: ValueEnv
-> initDCEnv =
->   foldr (uncurry predefDC) emptyTopEnv (concatMap snd predefTypes)
->   where predefDC c ty =
+> initDCEnv = foldr (uncurry predefDC) emptyDCEnv (concatMap snd predefTypes)
+>   where emptyDCEnv = emptyTopEnv (Just (map snd tuples))
+>         predefDC c ty =
 >           predefTopEnv c' (DataConstructor c' (constrType (polyType ty)))
 >           where c' = qualify c
 >         constrType (ForAll n ty) = ForAllExist n 0 ty
@@ -340,6 +310,15 @@ constructor is available in the environment \texttt{initPEnv}.
 >   ]
 >   where nilType a = listType a
 >         consType a = TypeArrow a (TypeArrow (listType a) (listType a))
+
+> tuples :: [(TypeInfo,ValueInfo)]
+> tuples = map tupleInfo [2..]
+>   where tvs = map typeVar [0..]
+>         tupleInfo n =
+>           (DataType c n [Just (unqualify c)],
+>            DataConstructor c (ForAllExist n 0 (tupleConstrType (take n tvs))))
+>           where c = qTupleId n
+>         tupleConstrType tys = foldr TypeArrow (tupleType tys) tys
 
 \end{verbatim}
 \paragraph{Free and bound variables}
