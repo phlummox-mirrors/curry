@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1785 2005-10-07 11:13:16Z wlux $
+% $Id: Desugar.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -572,13 +572,6 @@ Prelude entities
 \end{verbatim}
 Auxiliary definitions
 \begin{verbatim}
-
-> isNewtypeConstr :: ValueEnv -> QualIdent -> Bool
-> isNewtypeConstr tyEnv c =
->   case qualLookupValue c tyEnv of
->     [DataConstructor _ _] -> False
->     [NewtypeConstructor _ _] -> True
->     _ -> internalError "isNewtypeConstr"
 
 > isVarPattern :: ConstrTerm -> Bool
 > isVarPattern (VariablePattern _) = True

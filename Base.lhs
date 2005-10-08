@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1787 2005-10-08 08:19:02Z wlux $
+% $Id: Base.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -103,6 +103,21 @@ needed for them.
 > qualLookupTC = qualLookupTopEnv
 
 \end{verbatim}
+The function \texttt{constrKind} returns the arity of a type
+constructor from the type constructor environment. It is supposed to
+be used only after checking for undefined and ambiguous type
+identifiers and therefore should not fail.
+\begin{verbatim}
+
+> constrKind :: QualIdent -> TCEnv -> Int
+> constrKind tc tcEnv =
+>   case qualLookupTC tc tcEnv of
+>     [DataType _ n _] -> n
+>     [RenamingType _ n _] -> n
+>     [AliasType _ n _] -> n
+>     _ -> internalError ("constrKind " ++ show tc)
+
+\end{verbatim}
 A simpler environment is used for checking the syntax of type
 expressions, where only the original names and the data constructors
 associated with each type are needed. Since synonym types are treated
@@ -174,6 +189,50 @@ information.
 
 > qualLookupValue :: QualIdent -> ValueEnv -> [ValueInfo]
 > qualLookupValue = qualLookupTopEnv
+
+\end{verbatim}
+The functions \texttt{conType}, \texttt{varType}, and \texttt{funType}
+return the type of constructors, pattern variables, and variables in
+expressions, respectively, from the type environment. They are
+supposed to be used only after checking for duplicate and ambiguous
+identifiers and therefore should not fail.
+
+The function \texttt{varType} can handle ambiguous identifiers and
+returns the first available type. This makes it possible to use
+\texttt{varType} in order to determine the type of a locally defined
+function even though the function's name may be ambiguous.
+\begin{verbatim}
+
+> conType :: QualIdent -> ValueEnv -> ExistTypeScheme
+> conType c tyEnv =
+>   case qualLookupValue c tyEnv of
+>     [DataConstructor _ ty] -> ty
+>     [NewtypeConstructor _ ty] -> ty
+>     _ -> internalError ("conType " ++ show c)
+
+> varType :: Ident -> ValueEnv -> TypeScheme
+> varType v tyEnv =
+>   case lookupValue v tyEnv of
+>     Value _ ty : _ -> ty
+>     _ -> internalError ("varType " ++ show v)
+
+> funType :: QualIdent -> ValueEnv -> TypeScheme
+> funType f tyEnv =
+>   case qualLookupValue f tyEnv of
+>     [Value _ ty] -> ty
+>     _ -> internalError ("funType " ++ show f)
+
+\end{verbatim}
+The function \texttt{isNewtypeConstr} uses the value type environment
+in order to distinguish data and newtype constructors.
+\begin{verbatim}
+
+> isNewtypeConstr :: ValueEnv -> QualIdent -> Bool
+> isNewtypeConstr tyEnv c =
+>   case qualLookupValue c tyEnv of
+>     [DataConstructor _ _] -> False
+>     [NewtypeConstructor _ _] -> True
+>     _ -> internalError ("isNewtypeConstr: " ++ show c)
 
 \end{verbatim}
 A simpler kind of environment is used for syntax checking of

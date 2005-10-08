@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 1780 2005-10-03 18:54:07Z wlux $
+% $Id: KindCheck.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -192,22 +192,6 @@ Kind checking is applied to all type expressions in the program.
 > checkType tcEnv p (ListType ty) = checkType tcEnv p ty
 > checkType tcEnv p (ArrowType ty1 ty2) =
 >   checkType tcEnv p ty1 >> checkType tcEnv p ty2
-
-\end{verbatim}
-The function \texttt{constrKind} returns the arity of a type
-constructor from the type constructor environment. Since the compiler
-has already performed the check for undefined and ambiguous type
-identifiers, this function cannot fail.
-\begin{verbatim}
-
-> constrKind :: QualIdent -> TCEnv -> Int
-> constrKind tc tcEnv =
->   case qualLookupTC tc tcEnv of
->     [t] -> kind t
->     _ -> internalError ("constrKind " ++ show tc)
->   where kind (DataType _ n _) = n
->         kind (RenamingType _ n _) = n
->         kind (AliasType _ n _) = n
 
 \end{verbatim}
 Error messages.

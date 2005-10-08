@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1785 2005-10-07 11:13:16Z wlux $
+% $Id: TypeCheck.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -767,38 +767,6 @@ We use negative offsets for fresh type variables.
 
 \end{verbatim}
 \paragraph{Auxiliary Functions}
-The functions \texttt{conType}, \texttt{varType}, and \texttt{funType}
-are used to retrieve the type of constructors, pattern variables, and
-variables in expressions, respectively, from the type environment.
-Because the syntactical correctness has already been verified by the
-syntax checker, none of these functions should fail.
-
-Note that \texttt{varType} can handle ambiguous identifiers and
-returns the first available type. This function is used for looking up
-the type of an identifier on the left hand side of a rule where it
-unambiguously refers to the local definition.
-\begin{verbatim}
-
-> conType :: QualIdent -> ValueEnv -> ExistTypeScheme
-> conType c tyEnv =
->   case qualLookupValue c tyEnv of
->     [DataConstructor _ sigma] -> sigma
->     [NewtypeConstructor _ sigma] -> sigma
->     _ -> internalError ("conType " ++ show c)
-
-> varType :: Ident -> ValueEnv -> TypeScheme
-> varType v tyEnv =
->   case lookupValue v tyEnv of
->     Value _ sigma : _ -> sigma
->     _ -> internalError ("varType " ++ show v)
-
-> funType :: QualIdent -> ValueEnv -> TypeScheme
-> funType f tyEnv =
->   case qualLookupValue f tyEnv of
->     [Value _ sigma] -> sigma
->     _ -> internalError ("funType " ++ show f)
-
-\end{verbatim}
 The functions \texttt{fvEnv} and \texttt{fsEnv} compute the set of
 free type variables and free skolems of a type environment,
 respectively. We ignore the types of data and newtype constructors

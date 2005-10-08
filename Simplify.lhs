@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 1759 2005-09-03 10:41:38Z wlux $
+% $Id: Simplify.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -142,7 +142,7 @@ explicitly in a Curry expression.
 > inlineFun m tyEnv evEnv p (FunLhs f ts)
 >           (SimpleRhs _ (Let [FunctionDecl _ f' eqs'] e) _)
 >   | f' `notElem` qfv m eqs' && e' == Variable (qualify f') &&
->     n == arrowArity (funType tyEnv (qualify f')) &&
+>     n == arrowArity (rawType (varType f' tyEnv)) &&
 >     (evMode evEnv f == evMode evEnv f' ||
 >      and [all isVarPattern ts | Equation _ (FunLhs _ ts) _ <- eqs']) =
 >     map (merge p f ts' vs') eqs'
@@ -292,7 +292,7 @@ functions to access the pattern variables.
 >   where canInline (Literal _) = True
 >         canInline (Constructor _) = True
 >         canInline (Variable v')
->           | isQualified v' = arrowArity (funType tyEnv v') > 0
+>           | isQualified v' = arrowArity (rawType (funType v' tyEnv)) > 0
 >           | otherwise = v /= unqualify v'
 >         canInline _ = False
 > inlineVars _ _ env = env
@@ -424,12 +424,6 @@ Auxiliary functions
 > isVarPattern (AsPattern _ t) = isVarPattern t
 > isVarPattern (ConstructorPattern _ _) = False
 > isVarPattern (LiteralPattern _) = False
-
-> funType :: ValueEnv -> QualIdent -> Type
-> funType tyEnv f =
->   case qualLookupValue f tyEnv of
->     [Value _ (ForAll _ ty)] -> ty
->     _ -> internalError ("funType " ++ show f)
 
 > evMode :: EvalEnv -> Ident -> Maybe EvalAnnotation
 > evMode evEnv f = lookupEnv f evEnv

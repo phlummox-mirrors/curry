@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1779 2005-10-03 14:55:35Z wlux $
+% $Id: ILTrans.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -68,18 +68,19 @@ alias types.
 >   IL.NewtypeDecl (qualifyWith m tc) (length tvs)
 >                  (IL.ConstrDecl c' (translType ty))
 >   where c' = qualifyWith m (nconstr nc)
->         TypeArrow ty _ = constrType tyEnv c'
+>         TypeArrow ty _ = rawExistType (conType c' tyEnv)
 
 > translConstrDecl :: ModuleIdent -> ValueEnv -> ConstrDecl
 >                  -> IL.ConstrDecl [IL.Type]
 > translConstrDecl m tyEnv d =
->   IL.ConstrDecl c' (map translType (arrowArgs (constrType tyEnv c')))
+>   IL.ConstrDecl c'
+>                 (map translType (arrowArgs (rawExistType (conType c' tyEnv))))
 >   where c' = qualifyWith m (constr d)
 
 > translForeign :: ModuleIdent -> ValueEnv -> Ident -> CallConv -> String
 >               -> IL.Decl
 > translForeign m tyEnv f cc ie =
->   IL.ForeignDecl f' (callConv cc) ie (translType (varType tyEnv f'))
+>   IL.ForeignDecl f' (callConv cc) ie (translType (rawType (funType f' tyEnv)))
 >   where f' = qualifyWith m f
 >         callConv CallConvPrimitive = IL.Primitive
 >         callConv CallConvCCall = IL.CCall
@@ -172,7 +173,7 @@ uses flexible matching.
 >   IL.FunctionDecl f' vs (translType ty)
 >                   (match ev vs (map (translEquation tyEnv vs vs'') eqs))
 >   where f' = qualifyWith m f
->         ty = varType tyEnv f'
+>         ty = rawType (funType f' tyEnv)
 >         ev = maybe IL.Flex evalMode (lookupEval f evEnv)
 >         vs = if isSelectorId f then translArgs eqs vs' else vs'
 >         (vs',vs'') = splitAt (arrowArity ty) (argNames (mkIdent ""))
@@ -366,12 +367,12 @@ further possibilities for this transformation.
 > translExpr tyEnv _ env (Variable v) =
 >   case lookupVar v env of
 >     Just v' -> IL.Variable v'
->     Nothing -> IL.Function v (arrowArity (varType tyEnv v))
+>     Nothing -> IL.Function v (arrowArity (rawType (funType v tyEnv)))
 >   where lookupVar v env
 >           | isQualified v = Nothing
 >           | otherwise = lookupEnv (unqualify v) env
 > translExpr tyEnv _ _ (Constructor c) =
->   IL.Constructor c (arrowArity (constrType tyEnv c))
+>   IL.Constructor c (arrowArity (rawExistType (conType c tyEnv)))
 > translExpr tyEnv vs env (Apply e1 e2) =
 >   case e1 of
 >     Constructor c | isNewtypeConstr tyEnv c -> translExpr tyEnv vs env e2
@@ -419,32 +420,6 @@ further possibilities for this transformation.
 
 \end{verbatim}
 \paragraph{Auxiliary Definitions}
-The functions \texttt{varType} and \texttt{constrType} return the type
-of variables and constructors, respectively. The quantifiers are
-stripped from the types.
-\begin{verbatim}
-
-> varType :: ValueEnv -> QualIdent -> Type
-> varType tyEnv f =
->   case qualLookupValue f tyEnv of
->     [Value _ (ForAll _ ty)] -> ty
->     _ -> internalError ("varType: " ++ show f)
-
-> constrType :: ValueEnv -> QualIdent -> Type
-> constrType tyEnv c =
->   case qualLookupValue c tyEnv of
->     [DataConstructor _ (ForAllExist _ _ ty)] -> ty
->     [NewtypeConstructor _ (ForAllExist _ _ ty)] -> ty
->     _ -> internalError ("constrType: " ++ show c)
-
-> isNewtypeConstr :: ValueEnv -> QualIdent -> Bool
-> isNewtypeConstr tyEnv c =
->   case qualLookupValue c tyEnv of
->     [DataConstructor _ _] -> False
->     [NewtypeConstructor _ _] -> True
->     _ -> internalError ("isNewtypeConstr: " ++ show c)
-
-\end{verbatim}
 The list of import declarations in the intermediate language code is
 determined by collecting all module qualifiers used in the current
 module.

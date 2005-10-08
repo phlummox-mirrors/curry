@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1786 2005-10-07 15:33:33Z wlux $
+% $Id: Lift.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -129,9 +129,9 @@ expressions. If some of the cases have guards, e.g.,
 \end{verbatim}
 the desugarer at present may duplicate code. While there is no problem
 with local variable declaration being duplicated, we must avoid to
-lift local function declarations more than once. Therefore
+lift local function declarations more than once. Therefore,
 \texttt{abstractFunDecls} transforms only those function declarations
-that have not been lifted and discards the other declarations. Note
+that have not been lifted and discards all other declarations. Note
 that it is easy to check whether a function has been lifted by
 checking whether an entry for its untransformed name is still present
 in the type environment.
@@ -168,14 +168,26 @@ in the type environment.
 >         bindF fvs f = bindEnv f (apply (mkFun m pre f) fvs)
 >         isLifted tyEnv f = null (lookupValue f tyEnv)
 
+\end{verbatim}
+When the free variables of a function are abstracted, the type of the
+function must be changed as well. Given a function $f$ with type
+$\forall\overline{\alpha} . \tau$ and free variables $x_1, \dots, x_n$
+with types $\tau'_1, \dots, \tau'_n$, the type of $f$ after
+abstraction will be $\forall\overline{\alpha'} . \tau'_1 \rightarrow
+\dots \rightarrow \tau'_n \rightarrow \tau$ where $\overline{\alpha'}
+= \emph{vars}(\tau'_1) \cup \dots \cup \emph{vars}(\tau'_n) \cup
+\emph{vars}(\tau)$. Since local variables must have monomorphic types,
+we do not need to rename $\tau$'s universally quantified type
+variables in order to avoid an inadvertent name capturing.
+\begin{verbatim}
+
 > abstractFunTypes :: ModuleIdent -> String -> [Ident] -> [Ident]
 >                  -> ValueEnv -> ValueEnv
 > abstractFunTypes m pre fvs fs tyEnv = foldr abstractFunType tyEnv fs
->   where tys = map (varType tyEnv) fvs
+>   where tys = map (rawType . flip varType tyEnv) fvs
 >         abstractFunType f tyEnv =
->           qualBindFun m (liftIdent pre f)
->                         (genType (foldr TypeArrow (varType tyEnv f) tys))
->                         (unbindFun f tyEnv)
+>           qualBindFun m (liftIdent pre f) (genType ty) (unbindFun f tyEnv)
+>           where ty = foldr TypeArrow (rawType (varType f tyEnv)) tys
 >         genType ty =
 >           ForAll (length tvs) (subst (foldr2 bindSubst idSubst tvs tvs') ty)
 >           where tvs = nub (typeVars ty)
@@ -314,12 +326,6 @@ to the top-level.
 
 > unbindFun :: Ident -> ValueEnv -> ValueEnv
 > unbindFun = localUnbindTopEnv
-
-> varType :: ValueEnv -> Ident -> Type
-> varType tyEnv v =
->   case lookupValue v tyEnv of
->     [Value _ (ForAll _ ty)] -> ty
->     _ -> internalError ("varType " ++ show v)
 
 > liftIdent :: String -> Ident -> Ident
 > liftIdent prefix x = renameIdent (mkIdent (prefix ++ name x)) (uniqueId x)

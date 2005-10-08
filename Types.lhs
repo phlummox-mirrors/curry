@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Types.lhs 1785 2005-10-07 11:13:16Z wlux $
+% $Id: Types.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -127,14 +127,25 @@ quantified variables.
 The functions \texttt{monoType} and \texttt{polyType} translate a type
 $\tau$ into a monomorphic type scheme $\forall.\tau$ and a polymorphic
 type scheme $\forall\overline{\alpha}.\tau$ where $\overline{\alpha} =
-\textrm{fv}(\tau)$, respectively. \texttt{polyType} assumes that all
+\emph{vars}(\tau)$, respectively. \texttt{polyType} assumes that all
 universally quantified variables in the type are assigned indices
-starting with 0 and does not renumber the variables.
+starting at 0 and does not renumber the variables.
 \begin{verbatim}
 
 > monoType, polyType :: Type -> TypeScheme
 > monoType ty = ForAll 0 ty
 > polyType ty = ForAll (maximum (-1 : typeVars ty) + 1) ty
+
+\end{verbatim}
+The functions \texttt{rawType} and \texttt{rawExistType} strip the
+quantifiers from type schemes.
+\begin{verbatim}
+
+> rawType :: TypeScheme -> Type
+> rawType (ForAll _ ty) = ty
+
+> rawExistType :: ExistTypeScheme -> Type
+> rawExistType (ForAllExist _ _ ty) = ty
 
 \end{verbatim}
 There are a few predefined types. Note that the identifiers of the

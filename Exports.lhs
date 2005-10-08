@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1785 2005-10-07 11:13:16Z wlux $
+% $Id: Exports.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -45,7 +45,7 @@ types.
 > typeDecl _ _ _ (Export _) ds = ds
 > typeDecl m tcEnv tyEnv (ExportTypeWith tc cs) ds =
 >   case qualLookupTC tc tcEnv of
->     [DataType tc n cs'] -> iTypeDecl IDataDecl m tc n constrs : ds
+>     [DataType _ n cs'] -> iTypeDecl IDataDecl m tc n constrs : ds
 >       where constrs tvs
 >               | null cs = []
 >               | otherwise =
@@ -53,11 +53,11 @@ types.
 >             hide cs c
 >               | c `elem` cs = Just c
 >               | otherwise = Nothing
->     [RenamingType tc n c]
+>     [RenamingType _ n c]
 >       | null cs -> iTypeDecl IDataDecl m tc n (const []) : ds
 >       | otherwise -> iTypeDecl INewtypeDecl m tc n newConstr : ds
 >       where newConstr tvs = newConstrDecl m tyEnv tc tvs c
->     [AliasType tc n ty] ->
+>     [AliasType _ n ty] ->
 >       iTypeDecl ITypeDecl m tc n (const (fromType m ty)) : ds
 >     _ -> internalError "typeDecl"
 
@@ -69,10 +69,8 @@ types.
 > constrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident] -> Ident
 >            -> ConstrDecl
 > constrDecl m tyEnv tc tvs c =
->   case qualLookupValue (qualifyLike tc c) tyEnv of
->     [DataConstructor _ (ForAllExist _ n ty)] ->
->       iConstrDecl (take n tvs) c (map (fromType m) (arrowArgs ty))
->     _ -> internalError "constrDecl"
+>   iConstrDecl (take n tvs) c (map (fromType m) (arrowArgs ty))
+>   where ForAllExist _ n ty = conType (qualifyLike tc c) tyEnv
 
 > iConstrDecl :: [Ident] -> Ident -> [TypeExpr] -> ConstrDecl
 > iConstrDecl tvs op [ty1,ty2]
@@ -82,17 +80,13 @@ types.
 > newConstrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident] -> Ident
 >               -> NewConstrDecl
 > newConstrDecl m tyEnv tc tvs c =
->   case qualLookupValue (qualifyLike tc c) tyEnv of
->     [NewtypeConstructor _ (ForAllExist _ n ty)] ->
->       NewConstrDecl noPos (take n tvs) c (fromType m (head (arrowArgs ty)))
->     _ -> internalError "newConstrDecl"
+>   NewConstrDecl noPos (take n tvs) c (fromType m (head (arrowArgs ty)))
+>   where ForAllExist _ n ty = conType (qualifyLike tc c) tyEnv
 
 > funDecl :: ModuleIdent -> ValueEnv -> Export -> [IDecl] -> [IDecl]
 > funDecl m tyEnv (Export f) ds =
->   case qualLookupValue f tyEnv of
->     [Value _ (ForAll _ ty)] ->
->       IFunctionDecl noPos (qualUnqualify m f) (fromType m ty) : ds
->     _ -> internalError "funDecl"
+>   IFunctionDecl noPos (qualUnqualify m f) (fromType m ty) : ds
+>   where ty = rawType (funType f tyEnv)
 > funDecl _ _ (ExportTypeWith _ _) ds = ds
 
 \end{verbatim}
@@ -160,12 +154,8 @@ compiler can check them without loading the imported modules.
 \begin{verbatim}
 
 > hiddenTypeDecl :: ModuleIdent -> TCEnv -> QualIdent -> IDecl
-> hiddenTypeDecl m tcEnv tc =
->   case qualLookupTC (qualQualify m tc) tcEnv of
->     [DataType _ n _] -> hidingDataDecl tc n
->     [RenamingType _ n _] -> hidingDataDecl tc n
->     _ ->  internalError "hiddenTypeDecl"
->   where hidingDataDecl tc n = HidingDataDecl noPos tc (take n nameSupply)
+> hiddenTypeDecl m tcEnv tc = HidingDataDecl noPos tc (take n nameSupply)
+>   where n = constrKind (qualQualify m tc) tcEnv
 
 > hiddenTypes :: [IDecl] -> [QualIdent]
 > hiddenTypes ds =

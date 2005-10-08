@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 1785 2005-10-07 11:13:16Z wlux $
+% $Id: Typing.lhs 1788 2005-10-08 15:34:26Z wlux $
 %
 % Copyright (c) 2003-2004, Wolfgang Lux
 % See LICENSE for the full license.
@@ -75,7 +75,7 @@ or we need access to the type constructor environment.}
 > argType tyEnv (VariablePattern v) = identType tyEnv v
 > argType tyEnv (ConstructorPattern c ts) =
 >   do
->     (tys,ty) <- liftM arrowUnapply (instUnivExist (constrType c tyEnv))
+>     (tys,ty) <- liftM arrowUnapply (instUnivExist (conType c tyEnv))
 >     tys' <- mapM (argType tyEnv) ts
 >     unifyList tys tys'
 >     return ty
@@ -95,7 +95,7 @@ or we need access to the type constructor environment.}
 > exprType :: ValueEnv -> Expression -> TyState Type
 > exprType tyEnv (Literal l) = litType tyEnv l
 > exprType tyEnv (Variable v) = instUniv (funType v tyEnv)
-> exprType tyEnv (Constructor c) = instUnivExist (constrType c tyEnv)
+> exprType tyEnv (Constructor c) = instUnivExist (conType c tyEnv)
 > exprType tyEnv (Typed e _) = exprType tyEnv e
 > exprType tyEnv (Paren e) = exprType tyEnv e
 > exprType tyEnv (Tuple es) = liftM tupleType (mapM (exprType tyEnv) es)
@@ -242,32 +242,5 @@ checker.
 > unifyTypeLists (ty1:tys1) (ty2:tys2) theta =
 >   unifyTypes (subst theta' ty1) (subst theta' ty2) theta'
 >   where theta' = unifyTypeLists tys1 tys2 theta
-
-\end{verbatim}
-The functions \texttt{constrType}, \texttt{varType}, and
-\texttt{funType} are used for computing the type of constructors,
-pattern variables, and variables.
-
-\ToDo{These functions should be shared with the type checker.}
-\begin{verbatim}
-
-> constrType :: QualIdent -> ValueEnv -> ExistTypeScheme
-> constrType c tyEnv =
->   case qualLookupValue c tyEnv of
->     [DataConstructor _ sigma] -> sigma
->     [NewtypeConstructor _ sigma] -> sigma
->     _ -> internalError ("constrType " ++ show c)
-
-> varType :: Ident -> ValueEnv -> TypeScheme
-> varType v tyEnv =
->   case lookupValue v tyEnv of
->     [Value _ sigma] -> sigma
->     _ -> internalError ("varType " ++ show v)
-
-> funType :: QualIdent -> ValueEnv -> TypeScheme
-> funType f tyEnv =
->   case qualLookupValue f tyEnv of
->     [Value _ sigma] -> sigma
->     _ -> internalError ("funType " ++ show f)
 
 \end{verbatim}
