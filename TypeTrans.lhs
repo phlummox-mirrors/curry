@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: TypeTrans.lhs 1791 2005-10-09 17:39:51Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -121,7 +121,7 @@ but the expanded types refer to the original names.
 >   map (expandType tcEnv . toType' (enumTypeVars tvs tys)) tys
 
 > expandPolyType :: TCEnv -> TypeExpr -> TypeScheme
-> expandPolyType tcEnv ty = polyType $ normalize $ expandMonoType tcEnv [] ty
+> expandPolyType tcEnv ty = polyType $ normalize 0 $ expandMonoType tcEnv [] ty
 
 > expandType :: TCEnv -> Type -> Type
 > expandType tcEnv (TypeConstructor tc tys) =

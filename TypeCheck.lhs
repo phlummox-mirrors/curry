@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1790 2005-10-09 16:48:16Z wlux $
+% $Id: TypeCheck.lhs 1791 2005-10-09 17:39:51Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -110,7 +110,7 @@ in the left hand side by \texttt{anonId} before passing them to
 >            -> ValueEnv -> ValueEnv
 > bindConstr f m tcEnv tvs evs c tys ty0 =
 >   globalBindTopEnv m c (f (qualifyWith m c) ty')
->   where ty' = polyType (foldr TypeArrow ty0 tys')
+>   where ty' = polyType (normalize (length tvs) (foldr TypeArrow ty0 tys'))
 >         tys' = expandMonoTypes tcEnv (cleanTVars tvs evs) tys
 
 > constrType :: ModuleIdent -> Ident -> [Ident] -> Type

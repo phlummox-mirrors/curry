@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 1790 2005-10-09 16:48:16Z wlux $
+% $Id: Typing.lhs 1791 2005-10-09 17:39:51Z wlux $
 %
 % Copyright (c) 2003-2004, Wolfgang Lux
 % See LICENSE for the full license.
@@ -53,7 +53,7 @@ or we need access to the type constructor environment.}
 >   typeOf = computeType rhsType
 
 > computeType :: (ValueEnv -> a -> TyState Type) -> ValueEnv -> a -> Type
-> computeType f tyEnv x = normalize (run doComputeType tyEnv)
+> computeType f tyEnv x = normalize 0 (run doComputeType tyEnv)
 >  where doComputeType =
 >          do
 >            ty <- f tyEnv x

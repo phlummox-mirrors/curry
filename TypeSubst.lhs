@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeSubst.lhs 1790 2005-10-09 16:48:16Z wlux $
+% $Id: TypeSubst.lhs 1791 2005-10-09 17:39:51Z wlux $
 %
-% Copyright (c) 2003, Wolfgang Lux
+% Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeSubst.lhs}
@@ -57,8 +57,10 @@ type synonym in a type. After the expansion we have to reassign the
 type indices for all type variables. Otherwise, expanding a type
 synonym like \verb|type Pair' a b = (b,a)| could break the invariant
 that the universally quantified type variables are assigned indices in
-the order of their occurrence. This is handled by the function
-\texttt{normalize}.
+the order of their occurrence. This is handled by function
+\texttt{normalize}. The function has a threshold parameter that allows
+preserving the indices of type variables bound on the left hand side
+of a type declaration.
 \begin{verbatim}
 
 > expandAliasType :: [Type] -> Type -> Type
@@ -72,9 +74,9 @@ the order of their occurrence. This is handled by the function
 >   TypeArrow (expandAliasType tys ty1) (expandAliasType tys ty2)
 > expandAliasType _ (TypeSkolem k) = TypeSkolem k
 
-> normalize :: Type -> Type
-> normalize ty = expandAliasType [TypeVariable (occur tv) | tv <- [0..]] ty
->   where tvs = zip (nub (filter (>= 0) (typeVars ty))) [0..]
->         occur tv = fromJust (lookup tv tvs)
+> normalize :: Int -> Type -> Type
+> normalize n ty = expandAliasType [TypeVariable (occur tv) | tv <- [0..]] ty
+>   where tvs' = zip (nub (filter (>= n) (typeVars ty))) [n..]
+>         occur tv = fromMaybe tv (lookup tv tvs')
 
 \end{verbatim}
