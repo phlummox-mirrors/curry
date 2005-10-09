@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Types.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: Types.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -107,29 +107,45 @@ type variables because they cannot be generalized.
 >         skolems (TypeSkolem k) sks = k : sks
 
 \end{verbatim}
-We support two kinds of quantifications of types here, universally
-quantified type schemes $\forall\overline{\alpha} .
-\tau(\overline{\alpha})$ and universally and existentially quantified
-type schemes $\forall\overline{\alpha} \exists\overline{\eta} .
-\tau(\overline{\alpha},\overline{\eta})$. In both, quantified type
-variables are assigned ascending indices starting with 0. Therefore, it
-is sufficient to record the numbers of quantified type variables in
-the \texttt{ForAll} and \texttt{ForAllExist} constructors. In case of
-the latter, the first of the two numbers is the number of universally
-quantified variables and the second the number of existentially
-quantified variables.
+Type schemes $\forall\overline{\alpha} . \tau(\overline{\alpha})$
+introduce (universal) quantification of type variables in types. The
+universally quantified type variables in a type are assigned
+increasing indices starting at 0. Therefore, it is sufficient to
+record only the number of quantified type variables in the
+\texttt{ForAll} constructor.
+
+In general, type variables are assigned indices from left to right in
+the order of their occurrence in a type. However, a slightly different
+scheme is used for types of data and newtype constructors. Here, the
+type variables occuring on the left hand side of a declaration are
+assigned indices $0, \dots, n-1$, where $n$ is the arity of the type
+constructor, regardless of the order of their occurrence in the type.
+Existentially quantified type variables that occur on the right hand
+side of a type declaration are assigned ascending indices starting at
+$n$ in the order of their occurrence. E.g., the type scheme $\forall 4
+. (2 \rightarrow 1) \rightarrow (0 \rightarrow 3) \rightarrow
+\texttt{T}\,0\,1$ is used for constructor \texttt{C} in the
+declaration
+\begin{verbatim}
+  data T a b = forall c d . C (d -> b) (a -> c)
+\end{verbatim}
+Thus, it is very easy to distinguish universally and existentially
+quantified type variables in the types of data and newtype
+constructors. Given type scheme $\forall m . \tau_1 \rightarrow \dots
+\tau_l \rightarrow T\,0\dots (n-1)$ for a constructor of type $T$, we
+know that the type variables with indices $0, \dots, n-1$ are
+universally quantified and the type variables with indices $n, \dots,
+m-1$ are existentially quantified.
 \begin{verbatim}
 
 > data TypeScheme = ForAll Int Type deriving (Eq,Show)
-> data ExistTypeScheme = ForAllExist Int Int Type deriving (Eq,Show)
 
 \end{verbatim}
 The functions \texttt{monoType} and \texttt{polyType} translate a type
 $\tau$ into a monomorphic type scheme $\forall.\tau$ and a polymorphic
 type scheme $\forall\overline{\alpha}.\tau$ where $\overline{\alpha} =
-\emph{vars}(\tau)$, respectively. \texttt{polyType} assumes that all
-universally quantified variables in the type are assigned indices
-starting at 0 and does not renumber the variables.
+\emph{vars}(\tau)$, respectively. Note that \texttt{polyType} does not
+renumber the type variables in its argument type.
 \begin{verbatim}
 
 > monoType, polyType :: Type -> TypeScheme
@@ -137,15 +153,12 @@ starting at 0 and does not renumber the variables.
 > polyType ty = ForAll (maximum (-1 : typeVars ty) + 1) ty
 
 \end{verbatim}
-The functions \texttt{rawType} and \texttt{rawExistType} strip the
-quantifiers from type schemes.
+The function \texttt{rawType} strips the quantifier from a type
+scheme.
 \begin{verbatim}
 
 > rawType :: TypeScheme -> Type
 > rawType (ForAll _ ty) = ty
-
-> rawExistType :: ExistTypeScheme -> Type
-> rawExistType (ForAllExist _ _ ty) = ty
 
 \end{verbatim}
 There are a few predefined types. Note that the identifiers of the

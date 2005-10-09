@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSubst.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: TypeSubst.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 2003, Wolfgang Lux
 % See LICENSE for the full license.
@@ -42,10 +42,6 @@ This module implements substitutions on types.
 > instance SubstType TypeScheme where
 >   subst sigma (ForAll n ty) =
 >     ForAll n (subst (foldr unbindSubst sigma [0..n-1]) ty)
-
-> instance SubstType ExistTypeScheme where
->   subst sigma (ForAllExist n n' ty) =
->     ForAllExist n n' (subst (foldr unbindSubst sigma [0..n+n'-1]) ty)
 
 > instance SubstType ValueInfo where
 >   subst theta (DataConstructor c ty) = DataConstructor c ty

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: IntfCheck.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -103,14 +103,15 @@ interface module only. However, this has not been implemented yet.
 > checkConstrImport m tyEnv tc tvs (ConstrDecl p evs c tys) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc c
->         checkConstr (DataConstructor c' (ForAllExist _ n' ty')) =
->           qc == c' && length evs == n' && toTypes m tvs tys == arrowArgs ty'
+>         checkConstr (DataConstructor c' (ForAll n' ty')) =
+>           qc == c' && length (tvs ++ evs) == n' &&
+>           toTypes m tvs tys == arrowArgs ty'
 >         checkConstr _ = False
 > checkConstrImport m tyEnv tc tvs (ConOpDecl p evs ty1 op ty2) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc op
->         checkConstr (DataConstructor c' (ForAllExist _ n' ty')) =
->           qc == c' && length evs == n' &&
+>         checkConstr (DataConstructor c' (ForAll n' ty')) =
+>           qc == c' && length (tvs ++ evs) == n' &&
 >           toTypes m tvs [ty1,ty2] == arrowArgs ty'
 >         checkConstr _ = False
 
@@ -119,8 +120,8 @@ interface module only. However, this has not been implemented yet.
 > checkNewConstrImport m tyEnv tc tvs (NewConstrDecl p evs c ty) =
 >   checkValueInfo "newtype constructor" checkNewConstr tyEnv p qc
 >   where qc = qualifyLike tc c
->         checkNewConstr (NewtypeConstructor c' (ForAllExist _ n' ty')) =
->           qc == c' && length evs == n' &&
+>         checkNewConstr (NewtypeConstructor c' (ForAll n' ty')) =
+>           qc == c' && length (tvs ++ evs) == n' &&
 >           toType m tvs ty == head (arrowArgs ty')
 >         checkNewConstr _ = False
 

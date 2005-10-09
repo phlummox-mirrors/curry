@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: TypeCheck.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -105,12 +105,12 @@ in the left hand side by \texttt{anonId} before passing them to
 > bindConstrs _ _ (TypeDecl _ _ _ _) tyEnv = tyEnv
 > bindConstrs _ _ (BlockDecl _) tyEnv = tyEnv
 
-> bindConstr :: (QualIdent -> ExistTypeScheme -> ValueInfo) -> ModuleIdent
+> bindConstr :: (QualIdent -> TypeScheme -> ValueInfo) -> ModuleIdent
 >            -> TCEnv -> [Ident] -> [Ident] -> Ident -> [TypeExpr] -> Type
 >            -> ValueEnv -> ValueEnv
 > bindConstr f m tcEnv tvs evs c tys ty0 =
 >   globalBindTopEnv m c (f (qualifyWith m c) ty')
->   where ty' = ForAllExist (length tvs) (length evs) (foldr TypeArrow ty0 tys')
+>   where ty' = polyType (foldr TypeArrow ty0 tys')
 >         tys' = expandMonoTypes tcEnv (cleanTVars tvs evs) tys
 
 > constrType :: ModuleIdent -> Ident -> [Ident] -> Type
@@ -421,7 +421,7 @@ is checked in \texttt{tcVariable} below.
 > tcExpr :: ModuleIdent -> TCEnv -> Position -> Expression -> TcState Type
 > tcExpr m _ _ (Literal l) = tcLiteral m l
 > tcExpr m tcEnv p (Variable v) = fetchSt >>= inst . funType v
-> tcExpr m tcEnv p (Constructor c) = fetchSt >>= instExist . conType c
+> tcExpr m tcEnv p (Constructor c) = fetchSt >>= inst . conType c
 > tcExpr m tcEnv p (Typed e sig) =
 >   do
 >     tyEnv0 <- fetchSt
@@ -743,18 +743,21 @@ We use negative offsets for fresh type variables.
 >     tys <- replicateM n freshTypeVar
 >     return (expandAliasType tys ty)
 
-> instExist :: ExistTypeScheme -> TcState Type
-> instExist (ForAllExist n n' ty) =
->   do
->     tys <- replicateM (n + n') freshTypeVar
->     return (expandAliasType tys ty)
+\end{verbatim}
+The function \texttt{skol} instantiates the type of data and newtype
+constructors in patterns. All universally quantified type variables
+are instantiated with fresh type variables and all existentially
+quantified type variables are instantiated with fresh skolem types.
+\begin{verbatim}
 
-> skol :: ExistTypeScheme -> TcState Type
-> skol (ForAllExist n n' ty) =
+> skol :: TypeScheme -> TcState Type
+> skol (ForAll n ty) =
 >   do
->     tys <- replicateM n freshTypeVar
->     tys' <- replicateM n' freshSkolem
+>     tys <- replicateM m freshTypeVar
+>     tys' <- replicateM (n - m) freshSkolem
 >     return (expandAliasType (tys ++ tys') ty)
+>   where m = arity (arrowBase ty)
+>         arity (TypeConstructor _ tys) = length tys
 
 > gen :: Set Int -> Type -> TypeScheme
 > gen gvs ty =

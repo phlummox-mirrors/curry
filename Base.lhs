@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: Base.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -132,8 +132,8 @@ information.
 
 > type ValueEnv = TopEnv ValueInfo
 
-> data ValueInfo = DataConstructor QualIdent ExistTypeScheme
->                | NewtypeConstructor QualIdent ExistTypeScheme
+> data ValueInfo = DataConstructor QualIdent TypeScheme
+>                | NewtypeConstructor QualIdent TypeScheme
 >                | Value QualIdent TypeScheme
 >                deriving Show
 
@@ -161,7 +161,7 @@ returns the first available type. This makes it possible to use
 function even though the function's name may be ambiguous.
 \begin{verbatim}
 
-> conType :: QualIdent -> ValueEnv -> ExistTypeScheme
+> conType :: QualIdent -> ValueEnv -> TypeScheme
 > conType c tyEnv =
 >   case qualLookupTopEnv c tyEnv of
 >     [DataConstructor _ ty] -> ty
@@ -285,10 +285,8 @@ the environment \texttt{initPEnv}.
 > initDCEnv :: ValueEnv
 > initDCEnv = foldr (uncurry predefDC) emptyDCEnv (concatMap snd predefTypes)
 >   where emptyDCEnv = emptyTopEnv (Just (map snd tuples))
->         predefDC c ty =
->           predefTopEnv c' (DataConstructor c' (constrType (polyType ty)))
+>         predefDC c ty = predefTopEnv c' (DataConstructor c' (polyType ty))
 >           where c' = qualify c
->         constrType (ForAll n ty) = ForAllExist n 0 ty
 
 > predefTypes :: [(Type,[(Ident,Type)])]
 > predefTypes =
@@ -304,7 +302,7 @@ the environment \texttt{initPEnv}.
 >   where tvs = map typeVar [0..]
 >         tupleInfo n =
 >           (DataType c n [Just (unqualify c)],
->            DataConstructor c (ForAllExist n 0 (tupleConstrType (take n tvs))))
+>            DataConstructor c (ForAll n (tupleConstrType (take n tvs))))
 >           where c = qTupleId n
 >         tupleConstrType tys = foldr TypeArrow (tupleType tys) tys
 

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: Typing.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 2003-2004, Wolfgang Lux
 % See LICENSE for the full license.
@@ -75,7 +75,7 @@ or we need access to the type constructor environment.}
 > argType tyEnv (VariablePattern v) = identType tyEnv v
 > argType tyEnv (ConstructorPattern c ts) =
 >   do
->     (tys,ty) <- liftM arrowUnapply (instUnivExist (conType c tyEnv))
+>     (tys,ty) <- liftM arrowUnapply (instUniv (conType c tyEnv))
 >     tys' <- mapM (argType tyEnv) ts
 >     unifyList tys tys'
 >     return ty
@@ -95,7 +95,7 @@ or we need access to the type constructor environment.}
 > exprType :: ValueEnv -> Expression -> TyState Type
 > exprType tyEnv (Literal l) = litType tyEnv l
 > exprType tyEnv (Variable v) = instUniv (funType v tyEnv)
-> exprType tyEnv (Constructor c) = instUnivExist (conType c tyEnv)
+> exprType tyEnv (Constructor c) = instUniv (conType c tyEnv)
 > exprType tyEnv (Typed e _) = exprType tyEnv e
 > exprType tyEnv (Paren e) = exprType tyEnv e
 > exprType tyEnv (Tuple es) = liftM tupleType (mapM (exprType tyEnv) es)
@@ -179,9 +179,6 @@ offsets here.
 
 > instUniv :: TypeScheme -> TyState Type
 > instUniv (ForAll n ty) = instType n ty
-
-> instUnivExist :: ExistTypeScheme -> TyState Type
-> instUnivExist (ForAllExist n n' ty) = instType (n + n') ty
 
 \end{verbatim}
 When unifying two types, the non-generalized variables, i.e.,

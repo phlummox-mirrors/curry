@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: ILTrans.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -68,13 +68,12 @@ alias types.
 >   IL.NewtypeDecl (qualifyWith m tc) (length tvs)
 >                  (IL.ConstrDecl c' (translType ty))
 >   where c' = qualifyWith m (nconstr nc)
->         TypeArrow ty _ = rawExistType (conType c' tyEnv)
+>         TypeArrow ty _ = rawType (conType c' tyEnv)
 
 > translConstrDecl :: ModuleIdent -> ValueEnv -> ConstrDecl
 >                  -> IL.ConstrDecl [IL.Type]
 > translConstrDecl m tyEnv d =
->   IL.ConstrDecl c'
->                 (map translType (arrowArgs (rawExistType (conType c' tyEnv))))
+>   IL.ConstrDecl c' (map translType (arrowArgs (rawType (conType c' tyEnv))))
 >   where c' = qualifyWith m (constr d)
 
 > translForeign :: ModuleIdent -> ValueEnv -> Ident -> CallConv -> String
@@ -372,7 +371,7 @@ further possibilities for this transformation.
 >           | isQualified v = Nothing
 >           | otherwise = lookupEnv (unqualify v) env
 > translExpr tyEnv _ _ (Constructor c) =
->   IL.Constructor c (arrowArity (rawExistType (conType c tyEnv)))
+>   IL.Constructor c (arrowArity (rawType (conType c tyEnv)))
 > translExpr tyEnv vs env (Apply e1 e2) =
 >   case e1 of
 >     Constructor c | isNewtypeConstr tyEnv c -> translExpr tyEnv vs env e2

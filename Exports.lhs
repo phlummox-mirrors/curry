@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: Exports.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -47,17 +47,17 @@ types.
 > typeDecl m tcEnv tyEnv (ExportTypeWith tc cs) ds =
 >   case qualLookupTopEnv tc tcEnv of
 >     [DataType _ n cs'] -> iTypeDecl IDataDecl m tc n constrs : ds
->       where constrs tvs
+>       where constrs evs
 >               | null cs = []
 >               | otherwise =
->                   map (>>= fmap (constrDecl m tyEnv tc tvs) . hide cs) cs'
+>                   map (>>= fmap (constrDecl m tyEnv tc n evs) . hide cs) cs'
 >             hide cs c
 >               | c `elem` cs = Just c
 >               | otherwise = Nothing
 >     [RenamingType _ n c]
 >       | null cs -> iTypeDecl IDataDecl m tc n (const []) : ds
 >       | otherwise -> iTypeDecl INewtypeDecl m tc n newConstr : ds
->       where newConstr tvs = newConstrDecl m tyEnv tc tvs c
+>       where newConstr evs = newConstrDecl m tyEnv tc n evs c
 >     [AliasType _ n ty] ->
 >       iTypeDecl ITypeDecl m tc n (const (fromType m ty)) : ds
 >     _ -> internalError "typeDecl"
@@ -67,22 +67,23 @@ types.
 > iTypeDecl f m tc n g = f noPos (qualUnqualify m tc) tvs (g tvs')
 >   where (tvs,tvs') = splitAt n nameSupply
 
-> constrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident] -> Ident
->            -> ConstrDecl
-> constrDecl m tyEnv tc tvs c =
->   iConstrDecl (take n tvs) c (map (fromType m) (arrowArgs ty))
->   where ForAllExist _ n ty = conType (qualifyLike tc c) tyEnv
+> constrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> Int -> [Ident]
+>            -> Ident -> ConstrDecl
+> constrDecl m tyEnv tc n evs c =
+>   iConstrDecl (take (n' - n) evs) c (map (fromType m) (arrowArgs ty))
+>   where ForAll n' ty = conType (qualifyLike tc c) tyEnv
 
 > iConstrDecl :: [Ident] -> Ident -> [TypeExpr] -> ConstrDecl
 > iConstrDecl tvs op [ty1,ty2]
 >   | isInfixOp op = ConOpDecl noPos tvs ty1 op ty2
 > iConstrDecl tvs c tys = ConstrDecl noPos tvs c tys
 
-> newConstrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident] -> Ident
->               -> NewConstrDecl
-> newConstrDecl m tyEnv tc tvs c =
->   NewConstrDecl noPos (take n tvs) c (fromType m (head (arrowArgs ty)))
->   where ForAllExist _ n ty = conType (qualifyLike tc c) tyEnv
+> newConstrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> Int -> [Ident]
+>               -> Ident -> NewConstrDecl
+> newConstrDecl m tyEnv tc n evs c =
+>   NewConstrDecl noPos (take (n' - n) evs) c
+>                 (fromType m (head (arrowArgs ty)))
+>   where ForAll n' ty = conType (qualifyLike tc c) tyEnv
 
 > funDecl :: ModuleIdent -> ValueEnv -> Export -> [IDecl] -> [IDecl]
 > funDecl m tyEnv (Export f) ds =

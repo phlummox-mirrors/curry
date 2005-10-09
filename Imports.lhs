@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1787 2005-10-08 08:19:02Z wlux $
+% $Id: Imports.lhs 1790 2005-10-09 16:48:16Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -122,15 +122,15 @@ following functions.
 
 > dataConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> ConstrDecl
 >            -> I ValueInfo
-> dataConstr m tc tvs ty0 (ConstrDecl _ evs c tys) =
->   (c,con DataConstructor m tc tvs evs c (foldr ArrowType ty0 tys))
-> dataConstr m tc tvs ty0 (ConOpDecl _ evs ty1 op ty2) =
->   (op,con DataConstructor m tc tvs evs op (ArrowType ty1 (ArrowType ty2 ty0)))
+> dataConstr m tc tvs ty0 (ConstrDecl _ _ c tys) =
+>   (c,con DataConstructor m tc tvs c (foldr ArrowType ty0 tys))
+> dataConstr m tc tvs ty0 (ConOpDecl _ _ ty1 op ty2) =
+>   (op,con DataConstructor m tc tvs op (ArrowType ty1 (ArrowType ty2 ty0)))
 
 > newConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> NewConstrDecl
 >           -> I ValueInfo
-> newConstr m tc tvs ty0 (NewConstrDecl _ evs c ty1) =
->   (c,con NewtypeConstructor m tc tvs evs c (ArrowType ty1 ty0))
+> newConstr m tc tvs ty0 (NewConstrDecl _ _ c ty1) =
+>   (c,con NewtypeConstructor m tc tvs c (ArrowType ty1 ty0))
 
 > qual :: QualIdent -> a -> [I a] -> [I a]
 > qual x y = ((unqualify x,y) :)
@@ -165,11 +165,9 @@ Auxiliary functions:
 > typeCon :: (QualIdent -> Int -> a) -> ModuleIdent -> QualIdent -> [Ident] -> a
 > typeCon f m tc tvs = f (qualQualify m tc) (length tvs)
 
-> con :: (QualIdent -> ExistTypeScheme -> a) -> ModuleIdent -> QualIdent
->     -> [Ident] -> [Ident] -> Ident -> TypeExpr -> a
-> con f m tc tvs evs c ty =
->   f (qualifyLike tc c)
->     (ForAllExist (length tvs) (length evs) (toType m tvs ty))
+> con :: (QualIdent -> TypeScheme -> a) -> ModuleIdent -> QualIdent -> [Ident]
+>     -> Ident -> TypeExpr -> a
+> con f m tc tvs c ty = f (qualifyLike tc c) (polyType (toType m tvs ty))
 
 > constrType :: QualIdent -> [Ident] -> TypeExpr
 > constrType tc tvs = ConstructorType tc (map VariableType tvs)
