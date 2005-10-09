@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1791 2005-10-09 17:39:51Z wlux $
+% $Id: TypeCheck.lhs 1792 2005-10-09 22:48:18Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -80,53 +80,44 @@ which is used for generating fresh type variables.
 \paragraph{Defining Data Constructors}
 First, the types of all data and newtype constructors are entered into
 the type environment. All type synonyms occurring in their types are
-expanded.
-
-We have to be careful with existentially quantified type variables for
-data and newtype constructors. An existentially quantified type
-variable may shadow a universally quantified variable from the left
-hand side of the type declaration. In order to avoid wrong indices
-being assigned to these variables, we replace all shadowed variables
-in the left hand side by \texttt{anonId} before passing them to
-\texttt{expandMonoTypes}.
+expanded. We cannot use \texttt{expandPolyType} for expanding the type
+of a data or newtype constructor in function \texttt{bindConstr}
+because of the different normalization scheme used for constructor
+types and also because the name of the type could be ambiguous.
 \begin{verbatim}
 
 > bindConstrs :: ModuleIdent -> TCEnv -> TopDecl -> ValueEnv -> ValueEnv
 > bindConstrs m tcEnv (DataDecl _ tc tvs cs) tyEnv = foldr bind tyEnv cs
 >   where ty0 = constrType m tc tvs
->         bind (ConstrDecl _ evs c tys) =
->           bindConstr DataConstructor m tcEnv tvs evs c tys ty0
->         bind (ConOpDecl _ evs ty1 op ty2) =
->           bindConstr DataConstructor m tcEnv tvs evs op [ty1,ty2] ty0
+>         bind (ConstrDecl _ _ c tys) =
+>           bindConstr DataConstructor m tcEnv tvs c tys ty0
+>         bind (ConOpDecl _ _ ty1 op ty2) =
+>           bindConstr DataConstructor m tcEnv tvs op [ty1,ty2] ty0
 > bindConstrs m tcEnv (NewtypeDecl _ tc tvs nc) tyEnv = bind nc tyEnv
 >   where ty0 = constrType m tc tvs
->         bind (NewConstrDecl _ evs c ty) =
->           bindConstr NewtypeConstructor m tcEnv tvs evs c [ty] ty0
+>         bind (NewConstrDecl _ _ c ty) =
+>           bindConstr NewtypeConstructor m tcEnv tvs c [ty] ty0
 > bindConstrs _ _ (TypeDecl _ _ _ _) tyEnv = tyEnv
 > bindConstrs _ _ (BlockDecl _) tyEnv = tyEnv
 
 > bindConstr :: (QualIdent -> TypeScheme -> ValueInfo) -> ModuleIdent
->            -> TCEnv -> [Ident] -> [Ident] -> Ident -> [TypeExpr] -> Type
+>            -> TCEnv -> [Ident] -> Ident -> [TypeExpr] -> Type
 >            -> ValueEnv -> ValueEnv
-> bindConstr f m tcEnv tvs evs c tys ty0 =
+> bindConstr f m tcEnv tvs c tys ty0 =
 >   globalBindTopEnv m c (f (qualifyWith m c) ty')
 >   where ty' = polyType (normalize (length tvs) (foldr TypeArrow ty0 tys'))
->         tys' = expandMonoTypes tcEnv (cleanTVars tvs evs) tys
+>         tys' = expandMonoTypes tcEnv tvs tys
 
 > constrType :: ModuleIdent -> Ident -> [Ident] -> Type
 > constrType m tc tvs =
 >   TypeConstructor (qualifyWith m tc) (map TypeVariable [0..length tvs-1])
 
-> cleanTVars :: [Ident] -> [Ident] -> [Ident]
-> cleanTVars tvs evs = [if tv `elem` evs then anonId else tv | tv <- tvs]
-
 \end{verbatim}
 \paragraph{Type Signatures}
-The type checker collects type signatures in a flat environment. All
-anonymous variables occurring in a signature are replaced by fresh
-names. However, the types are not expanded so that the signatures can
-be used in the error messages, which are printed when an inferred type
-is less general than the signature.
+The type checker collects type signatures in a flat environment. The
+types are not expanded so that the signatures can be used in the error
+messages, which are printed when an inferred type is less general than
+the signature.
 \begin{verbatim}
 
 > type SigEnv = Env Ident TypeExpr
@@ -134,39 +125,9 @@ is less general than the signature.
 > noSigs :: SigEnv
 > noSigs = emptyEnv
 
-> bindTypeSig :: Ident -> TypeExpr -> SigEnv -> SigEnv
-> bindTypeSig = bindEnv
-
 > bindTypeSigs :: Decl -> SigEnv -> SigEnv
-> bindTypeSigs (TypeSig _ vs ty) env =
->   foldr (flip bindTypeSig (nameSigType ty)) env vs 
+> bindTypeSigs (TypeSig _ vs ty) env = foldr (flip bindEnv ty) env vs 
 > bindTypeSigs _ env = env
-
-> lookupTypeSig :: Ident -> SigEnv -> Maybe TypeExpr
-> lookupTypeSig = lookupEnv
-
-> nameSigType :: TypeExpr -> TypeExpr
-> nameSigType ty = fst (nameType ty (filter (`notElem` fv ty) nameSupply))
-
-> nameTypes :: [TypeExpr] -> [Ident] -> ([TypeExpr],[Ident])
-> nameTypes (ty:tys) tvs = (ty':tys',tvs'')
->   where (ty',tvs') = nameType ty tvs
->         (tys',tvs'') = nameTypes tys tvs'
-> nameTypes [] tvs = ([],tvs)
-
-> nameType :: TypeExpr -> [Ident] -> (TypeExpr,[Ident])
-> nameType (ConstructorType tc tys) tvs = (ConstructorType tc tys',tvs')
->   where (tys',tvs') = nameTypes tys tvs
-> nameType (VariableType tv) (tv':tvs)
->   | tv == anonId = (VariableType tv',tvs)
->   | otherwise = (VariableType tv,tv':tvs)
-> nameType (TupleType tys) tvs = (TupleType tys',tvs')
->   where (tys',tvs') = nameTypes tys tvs
-> nameType (ListType ty) tvs = (ListType ty',tvs')
->   where (ty',tvs') = nameType ty tvs
-> nameType (ArrowType ty1 ty2) tvs = (ArrowType ty1' ty2',tvs'')
->   where (ty1',tvs') = nameType ty1 tvs
->         (ty2',tvs'') = nameType ty2 tvs'
         
 \end{verbatim}
 \paragraph{Type Inference}
@@ -305,7 +266,7 @@ is checked in \texttt{tcVariable} below.
 
 > genDecl :: ModuleIdent -> TCEnv -> SigEnv -> TypeScheme -> Decl -> TcState ()
 > genDecl m tcEnv sigs sigma (FunctionDecl p f _) =
->   case lookupTypeSig f sigs of
+>   case lookupEnv f sigs of
 >     Just sigTy
 >       | sigma == expandPolyType tcEnv sigTy -> return ()
 >       | otherwise -> errorAt p (typeSigTooGeneral m what sigTy sigma)
@@ -336,7 +297,7 @@ is checked in \texttt{tcVariable} below.
 > tcVariable :: ModuleIdent -> TCEnv -> SigEnv -> Bool -> Position -> Ident
 >            -> TcState Type
 > tcVariable m tcEnv sigs poly p v =
->   case lookupTypeSig v sigs of
+>   case lookupEnv v sigs of
 >     Just ty -> sigType m poly p v (expandPolyType tcEnv ty)
 >     Nothing -> freshType m v
 >   where sigType m poly p v ty
@@ -432,10 +393,9 @@ is checked in \texttt{tcVariable} below.
 >     let sigma = gen (fvEnv (subst theta tyEnv0)) (subst theta ty)
 >     unless (sigma == sigma')
 >       (errorAt p (typeSigTooGeneral m (text "Expression:" <+> ppExpr 0 e)
->                                     sig' sigma))
+>                                     sig sigma))
 >     return ty
->   where sig' = nameSigType sig
->         sigma' = expandPolyType tcEnv sig'
+>   where sigma' = expandPolyType tcEnv sig
 > tcExpr m tcEnv p (Paren e) = tcExpr m tcEnv p e
 > tcExpr m tcEnv p (Tuple es) = liftM tupleType (mapM (tcExpr m tcEnv p) es)
 > tcExpr m tcEnv p e@(List es) =

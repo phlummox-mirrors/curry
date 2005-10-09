@@ -1,21 +1,21 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: Renaming.lhs 1792 2005-10-09 22:48:18Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Renaming.lhs}
 \section{Renaming}
-After checking for syntax errors, the compiler renames all local
-variables. This renaming allows the compiler to pass on type
-information to later phases in a flat environment, and also makes
-lifting of declarations simpler. Renaming is performed by adding a
-unique key to each \emph{local} variable. Global variables are not
-renamed so that no renamed variables occur in module interfaces.
-Since no name conflicts are possible within a declaration group, the
-same key can be used for all identifiers declared in that group.
-Nevertheless, a fresh key must be generated for each anonymous
-variable.
+After checking for syntax errors, the compiler renames all type
+variables and all \emph{local} variables in expressions. This renaming
+allows the compiler to pass on type information to later phases in a
+flat environment, and also makes lifting of declarations simpler.
+Renaming is performed by adding a unique key to each renamed variable.
+Global variables are not renamed so that no renamed variables occur in
+module interfaces. Since no name conflicts are possible within a
+declaration group, the same key can be used for all identifiers
+declared in that group. Nevertheless, a fresh key must be generated
+for each anonymous variable.
 
 Note that this pass deliberately \emph{does not} qualify the names of
 imported functions and constructors. This qualification will be done
@@ -31,8 +31,9 @@ after type checking was performed.
 > import Utils
 
 \end{verbatim}
-Since only local variables are renamed, it is sufficient to use an
-environment mapping unqualified identifiers onto their new names.
+Since only type and local variables are renamed, it is sufficient to
+use an environment mapping unqualified identifiers onto their new
+names.
 \begin{verbatim}
 
 > type RenameEnv = Env Ident Ident
@@ -61,8 +62,8 @@ New variable bindings are introduced at the level of declaration
 groups and argument lists.
 \begin{verbatim}
 
-> bindVars :: QuantExpr e => RenameEnv -> e -> RenameState RenameEnv
-> bindVars env e = liftM (\k -> foldr (bindVar k) env (bv e)) (updateSt (1 +))
+> bindVars :: RenameEnv -> [Ident] -> RenameState RenameEnv
+> bindVars env xs = liftM (\k -> foldr (bindVar k) env xs) (updateSt (1 +))
 
 \end{verbatim}
 The function \texttt{renameVar} renames an identifier. When applied to
@@ -90,7 +91,7 @@ module qualifier.
 
 \end{verbatim}
 The renaming pass simply descends into the structure of the abstract
-syntax tree and renames all expression variables.
+syntax tree and renames all type and expression variables.
 \begin{verbatim}
 
 > rename :: [TopDecl] -> [TopDecl]
@@ -99,20 +100,73 @@ syntax tree and renames all expression variables.
 > renameGoal :: Goal -> Goal
 > renameGoal (Goal p e ds) = run $
 >   do
->     env' <- bindVars emptyEnv ds
+>     env' <- bindVars emptyEnv (bv ds)
 >     ds' <- mapM (renameDecl env') ds
 >     e' <- renameExpr env' e
 >     return (Goal p e' ds')
 
 > renameTopDecl :: TopDecl -> RenameState TopDecl
+> renameTopDecl (DataDecl p tc tvs cs) =
+>   do
+>     env <- bindVars emptyEnv tvs
+>     liftM2 (DataDecl p tc)
+>            (mapM (renameVar env) tvs)
+>            (mapM (renameConstrDecl env) cs)
+> renameTopDecl (NewtypeDecl p tc tvs nc) =
+>   do
+>     env <- bindVars emptyEnv tvs
+>     liftM2 (NewtypeDecl p tc)
+>            (mapM (renameVar env) tvs)
+>            (renameNewConstrDecl env nc)
+> renameTopDecl (TypeDecl p tc tvs ty) =
+>   do
+>     env <- bindVars emptyEnv tvs
+>     liftM2 (TypeDecl p tc) (mapM (renameVar env) tvs) (renameType env ty)
 > renameTopDecl (BlockDecl d) = liftM BlockDecl (renameDecl emptyEnv d)
-> renameTopDecl d = return d
+
+> renameConstrDecl :: RenameEnv -> ConstrDecl -> RenameState ConstrDecl
+> renameConstrDecl env (ConstrDecl p evs c tys) =
+>   do
+>     env' <- bindVars env evs
+>     evs' <- mapM (renameVar env') evs
+>     tys' <- mapM (renameType env') tys
+>     return (ConstrDecl p evs' c tys')
+> renameConstrDecl env (ConOpDecl p evs ty1 op ty2) =
+>   do
+>     env' <- bindVars env evs
+>     evs' <- mapM (renameVar env') evs
+>     ty1' <- renameType env' ty1
+>     ty2' <- renameType env' ty2
+>     return (ConOpDecl p evs' ty1' op ty2')
+
+> renameNewConstrDecl :: RenameEnv -> NewConstrDecl -> RenameState NewConstrDecl
+> renameNewConstrDecl env (NewConstrDecl p evs c ty) =
+>   do
+>     env' <- bindVars env evs
+>     evs' <- mapM (renameVar env') evs
+>     ty' <- renameType env' ty
+>     return (NewConstrDecl p evs' c ty')
+
+> renameTypeSig :: TypeExpr -> RenameState TypeExpr
+> renameTypeSig ty =
+>   do
+>     env' <- bindVars emptyEnv (fv ty)
+>     renameType env' ty
+
+> renameType :: RenameEnv -> TypeExpr -> RenameState TypeExpr
+> renameType env (ConstructorType tc tys) =
+>   liftM (ConstructorType tc) (mapM (renameType env) tys)
+> renameType env (VariableType tv) = liftM VariableType (renameVar env tv)
+> renameType env (TupleType tys) = liftM TupleType (mapM (renameType env) tys)
+> renameType env (ListType ty) = liftM ListType (renameType env ty)
+> renameType env (ArrowType ty1 ty2) =
+>   liftM2 ArrowType (renameType env ty1) (renameType env ty2)
 
 > renameDecl :: RenameEnv -> Decl -> RenameState Decl
 > renameDecl env (InfixDecl p fix pr ops) =
 >   liftM (InfixDecl p fix pr) (mapM (renameVar env) ops)
 > renameDecl env (TypeSig p fs ty) =
->   liftM (flip (TypeSig p) ty) (mapM (renameVar env) fs)
+>   liftM2 (TypeSig p) (mapM (renameVar env) fs) (renameTypeSig ty)
 > renameDecl env (EvalAnnot p fs ev) =
 >   liftM (flip (EvalAnnot p) ev) (mapM (renameVar env) fs)
 > renameDecl env (FunctionDecl p f eqs) =
@@ -120,7 +174,7 @@ syntax tree and renames all expression variables.
 >     f' <- renameVar env f
 >     liftM (FunctionDecl p f') (mapM (renameEqn f' env) eqs)
 > renameDecl env (ForeignDecl p cc ie f ty) =
->   liftM (flip (ForeignDecl p cc ie) ty) (renameVar env f)
+>   liftM2 (ForeignDecl p cc ie) (renameVar env f) (renameTypeSig ty)
 > renameDecl env (PatternDecl p t rhs) =
 >   liftM2 (PatternDecl p) (renameConstrTerm env t) (renameRhs env rhs)
 > renameDecl env (FreeDecl p vs) =
@@ -135,7 +189,7 @@ not rename this identifier in the same environment as its arguments.
 > renameEqn :: Ident -> RenameEnv -> Equation -> RenameState Equation
 > renameEqn f env (Equation p lhs rhs) =
 >   do
->     env' <- bindVars env lhs
+>     env' <- bindVars env (bv lhs)
 >     liftM2 (Equation p) (renameLhs f env' lhs) (renameRhs env' rhs)
 
 > renameLhs :: Ident -> RenameEnv -> Lhs -> RenameState Lhs
@@ -149,13 +203,13 @@ not rename this identifier in the same environment as its arguments.
 > renameRhs :: RenameEnv -> Rhs -> RenameState Rhs
 > renameRhs env (SimpleRhs p e ds) =
 >   do
->     env' <- bindVars env ds
+>     env' <- bindVars env (bv ds)
 >     ds' <- mapM (renameDecl env') ds
 >     e' <- renameExpr env' e
 >     return (SimpleRhs p e' ds')
 > renameRhs env (GuardedRhs es ds) =
 >   do
->     env' <- bindVars env ds
+>     env' <- bindVars env (bv ds)
 >     ds' <- mapM (renameDecl env') ds
 >     es' <- mapM (renameCondExpr env') es
 >     return (GuardedRhs es' ds')
@@ -198,7 +252,8 @@ not rename this identifier in the same environment as its arguments.
 > renameExpr env (Variable x) = liftM Variable (renameQual env x)
 > renameExpr _ (Constructor c) = return (Constructor c)
 > renameExpr env (Paren e) = liftM Paren (renameExpr env e)
-> renameExpr env (Typed e ty) = liftM (flip Typed ty) (renameExpr env e)
+> renameExpr env (Typed e ty) =
+>   liftM2 Typed (renameExpr env e) (renameTypeSig ty)
 > renameExpr env (Tuple es) = liftM Tuple (mapM (renameExpr env) es)
 > renameExpr env (List es) = liftM List (mapM (renameExpr env) es)
 > renameExpr env (ListCompr e qs) =
@@ -226,11 +281,11 @@ not rename this identifier in the same environment as its arguments.
 >   liftM2 RightSection (renameOp env op) (renameExpr env e)
 > renameExpr env (Lambda ts e) =
 >   do
->     env' <- bindVars env ts
+>     env' <- bindVars env (bv ts)
 >     liftM2 Lambda (mapM (renameConstrTerm env') ts) (renameExpr env' e)
 > renameExpr env (Let ds e) =
 >   do
->     env' <- bindVars env ds
+>     env' <- bindVars env (bv ds)
 >     liftM2 Let (mapM (renameDecl env') ds) (renameExpr env' e)
 > renameExpr env (Do sts e) =
 >   do
@@ -255,20 +310,20 @@ not rename this identifier in the same environment as its arguments.
 >     return (env,StmtExpr e')
 > renameStmt env (StmtDecl ds) =
 >   do
->     env' <- bindVars env ds
+>     env' <- bindVars env (bv ds)
 >     ds' <- mapM (renameDecl env') ds
 >     return (env',StmtDecl ds')
 > renameStmt env (StmtBind t e) =
 >   do
 >     e' <- renameExpr env e
->     env' <- bindVars env t
+>     env' <- bindVars env (bv t)
 >     t' <- renameConstrTerm env' t
 >     return (env',StmtBind t' e')
 
 > renameAlt :: RenameEnv -> Alt -> RenameState Alt
 > renameAlt env (Alt p t rhs) =
 >   do
->     env' <- bindVars env t
+>     env' <- bindVars env (bv t)
 >     liftM2 (Alt p) (renameConstrTerm env' t) (renameRhs env' rhs)
 
 \end{verbatim}
