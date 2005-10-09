@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1790 2005-10-09 16:48:16Z wlux $
+% $Id: Exports.lhs 1793 2005-10-09 22:59:04Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -70,13 +70,8 @@ types.
 > constrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> Int -> [Ident]
 >            -> Ident -> ConstrDecl
 > constrDecl m tyEnv tc n evs c =
->   iConstrDecl (take (n' - n) evs) c (map (fromType m) (arrowArgs ty))
+>   ConstrDecl noPos (take (n' - n) evs) c (map (fromType m) (arrowArgs ty))
 >   where ForAll n' ty = conType (qualifyLike tc c) tyEnv
-
-> iConstrDecl :: [Ident] -> Ident -> [TypeExpr] -> ConstrDecl
-> iConstrDecl tvs op [ty1,ty2]
->   | isInfixOp op = ConOpDecl noPos tvs ty1 op ty2
-> iConstrDecl tvs c tys = ConstrDecl noPos tvs c tys
 
 > newConstrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> Int -> [Ident]
 >               -> Ident -> NewConstrDecl
