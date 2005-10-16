@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1790 2005-10-09 16:48:16Z wlux $
+% $Id: ILTrans.lhs 1794 2005-10-16 17:41:40Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILTrans.lhs}
-\section{Translating Curry into the Intermediate Language}
+\section{Translating Curry into the Intermediate Language}\label{sec:il-trans}
 After desugaring and lifting have been performed, the source code is
 translated into the intermediate language. Besides translating from
 source terms and expressions into intermediate language terms and
@@ -241,7 +241,7 @@ position in the remaining arguments. If one is found,
 >   NestedTerm (IL.LiteralPattern (translLiteral l)) []
 > translTerm v (VariablePattern _) = NestedTerm (IL.VariablePattern v) []
 > translTerm v (ConstructorPattern c ts) =
->   NestedTerm (IL.ConstructorPattern c (take (length ts) vs))
+>   NestedTerm (IL.ConstructorPattern c (zipWith const vs ts))
 >              (zipWith translTerm vs ts)
 >   where vs = argNames v
 > translTerm v (AsPattern _ t) = translTerm v t
@@ -307,53 +307,24 @@ position in the remaining arguments. If one is found,
 >         vars _ = []
 
 \end{verbatim}
-Matching in a \texttt{case}-expression works a little bit differently.
-In this case, the alternatives are matched from the first to the last
-alternative and the first matching alternative is chosen. All
-remaining alternatives are discarded.
+The translation of a \texttt{case}-expression, on the other hand, is
+very straight forward because the desugar module has expanded case
+expression such that nested patterns are matched with nested case
+expressions. The only thing that remains to be done here is to remove
+as-patterns that are still present in the code. This is done by
+introducing let expressions around the case expression.
 
-\ToDo{The case matching algorithm should use type information in order
-to detect total matches and immediately discard all alternatives which
-cannot be reached.}
+\ToDo{Extend the intermediate language to support as-patterns directly.}
 \begin{verbatim}
-
-> caseMatch :: ([Ident] -> [Ident]) -> [Ident] -> [Match'] -> IL.Expression
-> caseMatch prefix [] alts = thd3 (head alts)
-> caseMatch prefix (v:vs) alts
->   | isDefaultMatch (head alts') =
->       caseMatch (prefix . (v:)) vs (map skipArg alts)
->   | otherwise =
->       IL.Case IL.Rigid (IL.Variable v) (caseMatchAlts prefix vs alts')
->   where alts' = map tagAlt alts
->         tagAlt (prefix,t:ts,e) = (pattern t,(prefix,arguments t ++ ts,e))
->         skipArg (prefix,t:ts,e) = (prefix . (t:),ts,e)
-
-> caseMatchAlts ::
->     ([Ident] -> [Ident]) -> [Ident] -> [(IL.ConstrTerm,Match')] -> [IL.Alt]
-> caseMatchAlts prefix vs alts = map caseAlt (ts ++ ts')
->   where (ts',ts) = partition isDefaultPattern (nub (map fst alts))
->         caseAlt t =
->           IL.Alt t (caseMatch id (prefix (vars t ++ vs))
->                               (matchingCases t alts))
->         matchingCases t =
->           map (joinArgs (vars t)) . filter (matches t . fst)
->         matches t t' = t == t' || isDefaultPattern t'
->         joinArgs vs (IL.VariablePattern _,(prefix,ts,e)) =
->            (id,prefix (map varPattern vs ++ ts),e)
->         joinArgs _ (_,(prefix,ts,e)) = (id,prefix ts,e)
->         varPattern v = NestedTerm (IL.VariablePattern v) []
->         vars (IL.ConstructorPattern _ vs) = vs
->         vars _ = []
 
 \end{verbatim}
 \paragraph{Expressions}
-Note that the case matching algorithm assumes that the matched
-expression is accessible through a variable. The translation of case
-expressions therefore introduces a let binding for the scrutinized
-expression and immediately throws it away after the matching -- except
-if the matching algorithm has decided to use that variable in the
-right hand sides of the case expression. This may happen, for
-instance, if one of the alternatives contains an \texttt{@}-pattern.
+Unfortunately, the intermediate language does not support as-patterns.
+Therefore, if an as-pattern occurs in at least one left hand side of a
+case alternative and the variable is used in the corresponding right
+hand side, the compiler introduces a new let expression around the
+case expression and binds the scrutinized expression to a fresh
+variable.
 
 We also replace applications of newtype constructors by their
 arguments. This transformation was already performed during
@@ -387,19 +358,18 @@ further possibilities for this transformation.
 >         bvs = bv ds
 >         translBinding env (PatternDecl _ (VariablePattern v) rhs) =
 >           IL.Binding v (translRhs tyEnv vs env rhs)
-> translExpr tyEnv ~(v:vs) env (Case e alts) =
->   case caseMatch id [v] (map (translAlt v) alts) of
->     IL.Case mode (IL.Variable v') alts'
->       | v == v' && v `notElem` fv alts' -> IL.Case mode e' alts'
->     e''
->       | v `elem` fv e'' -> IL.Let (IL.Binding v e') e''
->       | otherwise -> e''
->   where e' = translExpr tyEnv vs env e
->         translAlt v (Alt _ t rhs) =
->           (id,
->            [translTerm v t],
->            translRhs tyEnv vs (bindRenameEnv v t env) rhs)
+> translExpr tyEnv (v:vs) env (Case e alts) =
+>   caseExpr (translExpr tyEnv vs env e) (map (translAlt tyEnv vs env v) alts)
+>   where caseExpr e alts
+>           | v `elem` fv alts =
+>               IL.Let (IL.Binding v e) (IL.Case IL.Rigid (IL.Variable v) alts)
+>           | otherwise = IL.Case IL.Rigid e alts
 > translExpr _ _ _ _ = internalError "translExpr"
+
+> translAlt :: ValueEnv -> [Ident] -> RenameEnv -> Ident -> Alt -> IL.Alt
+> translAlt tyEnv vs env v (Alt _ t rhs) =
+>   IL.Alt (pattern (translTerm v t))
+>          (translRhs tyEnv vs (bindRenameEnv v t env) rhs)
 
 > instance Expr IL.Expression where
 >   fv (IL.Variable v) = [v]
