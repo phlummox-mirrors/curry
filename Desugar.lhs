@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1794 2005-10-16 17:41:40Z wlux $
+% $Id: Desugar.lhs 1795 2005-10-18 09:31:29Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -66,10 +66,10 @@ type environment, which must be augmented with the types of these new
 variables.
 \begin{verbatim}
 
-> type DesugarState a = StateT ValueEnv (StateT Int Id) a
+> type DesugarState a = StateT ValueEnv (ReaderT TCEnv (StateT Int Id)) a
 
-> run :: DesugarState a -> ValueEnv -> a
-> run m tyEnv = runSt (callSt m tyEnv) 1
+> run :: DesugarState a -> TCEnv -> ValueEnv -> a
+> run m tcEnv tyEnv = runSt (callRt (callSt m tyEnv) tcEnv) 1
 
 \end{verbatim}
 The desugaring phase keeps only the type, function, and value
@@ -82,9 +82,9 @@ as it allows pattern and free variable declarations at the top-level
 of a module.
 \begin{verbatim}
 
-> desugar :: ValueEnv -> Module -> (Module,ValueEnv)
-> desugar tyEnv (Module m es is ds) = (Module m es is ds',tyEnv')
->   where (ds',tyEnv') = run (desugarModule m ds) tyEnv
+> desugar :: TCEnv -> ValueEnv -> Module -> (Module,ValueEnv)
+> desugar tcEnv tyEnv (Module m es is ds) = (Module m es is ds',tyEnv')
+>   where (ds',tyEnv') = run (desugarModule m ds) tcEnv tyEnv
 
 > desugarModule :: ModuleIdent -> [TopDecl] -> DesugarState ([TopDecl],ValueEnv)
 > desugarModule m ds =
@@ -126,33 +126,35 @@ if it really has a functional type.
 hack is no longer needed.}
 \begin{verbatim}
 
-> desugarGoal :: Bool -> ValueEnv -> ModuleIdent -> Ident -> Goal
+> desugarGoal :: Bool -> TCEnv -> ValueEnv -> ModuleIdent -> Ident -> Goal
 >             -> (Maybe [Ident],Module,ValueEnv)
-> desugarGoal debug tyEnv m g (Goal p e ds)
+> desugarGoal debug tcEnv tyEnv m g (Goal p e ds)
 >   | debug || isIO ty =
->       desugarGoalIO tyEnv p m g (Let ds e)
+>       desugarGoalIO tcEnv tyEnv p m g (Let ds e)
 >         (if debug && arrowArity ty > 0 then typeVar 0 else ty)
->   | otherwise = desugarGoal' tyEnv p m g vs e' ty
+>   | otherwise = desugarGoal' tcEnv tyEnv p m g vs e' ty
 >   where ty = typeOf tyEnv e
 >         (vs,e') = liftGoalVars (if null ds then e else Let ds e)
 >         isIO (TypeConstructor tc [_]) = tc == qIOId
 >         isIO _ = False
 
-> desugarGoalIO :: ValueEnv -> Position -> ModuleIdent -> Ident
->               -> Expression -> Type -> (Maybe [Ident],Module,ValueEnv)
-> desugarGoalIO tyEnv p m g e ty =
+> desugarGoalIO :: TCEnv -> ValueEnv -> Position -> ModuleIdent
+>               -> Ident -> Expression -> Type
+>               -> (Maybe [Ident],Module,ValueEnv)
+> desugarGoalIO tcEnv tyEnv p m g e ty =
 >   (Nothing,
 >    Module m Nothing [] [goalDecl p g [] e'],
 >    bindFun m g (polyType ty) tyEnv')
->   where (e',tyEnv') = run (desugarGoalExpr m e) tyEnv
+>   where (e',tyEnv') = run (desugarGoalExpr m e) tcEnv tyEnv
 
-> desugarGoal' :: ValueEnv -> Position -> ModuleIdent -> Ident -> [Ident]
->              -> Expression -> Type -> (Maybe [Ident],Module,ValueEnv)
-> desugarGoal' tyEnv p m g vs e ty =
+> desugarGoal' :: TCEnv -> ValueEnv -> Position -> ModuleIdent
+>              -> Ident -> [Ident] -> Expression -> Type
+>              -> (Maybe [Ident],Module,ValueEnv)
+> desugarGoal' tcEnv tyEnv p m g vs e ty =
 >   (Just vs',
 >    Module m Nothing [] [goalDecl p g (v0:vs') (apply prelUnif [mkVar v0,e'])],
 >    bindFun m v0 (monoType ty) (bindFun m g (polyType ty') tyEnv'))
->   where (e',tyEnv') = run (desugarGoalExpr m e) tyEnv
+>   where (e',tyEnv') = run (desugarGoalExpr m e) tcEnv tyEnv
 >         v0 = anonId
 >         vs' = filter (`elem` qfv m e') vs
 >         ty' = TypeArrow ty (foldr (TypeArrow . typeOf tyEnv) successType vs')
@@ -492,6 +494,45 @@ is found, the first alternative is selected and the remaining
 alternatives are used in order to define a default (case) expression
 when the selected alternative is defined with a list of boolean
 guards.
+
+The algorithm also removes redundant default alternatives in case
+expressions. As a simple example, consider the expression
+\begin{verbatim}
+  case x of
+    Left y -> y
+    Right z -> z
+    _ -> undefined
+\end{verbatim}
+In this expression, the last alternative is never selected because the
+first two alternatives already match all terms of type
+\texttt{Either}. Since alternatives are partitioned according to the
+roots of the terms at the selected position, we only need to compare
+the number of groups of alternatives with the number of constructors
+of the matched expression's type in order to check whether the default
+pattern is redundant. This works also for characters and numbers, as
+there are no constructors associated with the corresponding types and,
+therefore, default alternatives are never considered redundant when
+matching against literals.
+
+Note that the default case may no longer be redundant if there are
+guarded alternatives, e.g.
+\begin{verbatim}
+  case x of
+    Left y | y > 0 -> y
+    Right z | z > 0 -> z
+    _ -> 0
+\end{verbatim}
+Nevertheless, we do not need to treat such case expressions
+differently with respect to the completeness test because the default
+case is duplicated into the \texttt{Left} and \texttt{Right}
+alternatives. Thus, the example is effectively transformed into
+\begin{verbatim}
+  case x of
+    Left y -> if y > 0 then y else 0
+    Right z -> if z > 0 then z else 0
+    _ -> 0
+\end{verbatim}
+where the default alternative is redundant.
 \begin{verbatim}
 
 > type Match = (Position,[ConstrTerm] -> [ConstrTerm],[ConstrTerm],Rhs)
@@ -550,14 +591,23 @@ guards.
 >       else
 >         desugarCase m (prefix . (v:)) vs (map skipArg alts)
 >   | otherwise =
->       liftM (Case (mkVar v))
->             (mapM (desugarAlt m prefix vs alts') (ts ++ ts'))
+>       do
+>         tcEnv <- liftSt envRt
+>         tyEnv <- fetchSt
+>         liftM (Case (mkVar v))
+>               (mapM (desugarAlt m prefix vs alts')
+>                     (if allCases tcEnv tyEnv v ts then ts else ts ++ ts'))
 >   where alts' = map tagAlt alts
 >         (ts',ts) = partition isVarPattern (nub (map fst alts'))
 >         tagAlt (p,prefix,t:ts,rhs) =
 >           (pattern v t,(p,prefix,t:ts,bindVars p v t rhs))
 >         skipArg (p,prefix,t:ts,rhs) = (p,prefix . (t:),ts,rhs)
 >         dropArg (p,prefix,t:ts,rhs) = (p,prefix,ts,bindVars p v t rhs)
+>         allCases tcEnv tyEnv v ts = length cs == length ts
+>           where TypeConstructor tc _ = fixType (typeOf tyEnv v)
+>                 cs = constructors tc tcEnv
+>         fixType (TypeConstrained (ty:_) _) = ty
+>         fixType ty = ty
 
 > desugarAlt :: ModuleIdent -> ([Ident] -> [Ident]) -> [Ident]
 >            -> [(ConstrTerm,Match)] -> ConstrTerm -> DesugarState Alt
@@ -654,7 +704,7 @@ Generation of fresh names
 > freshIdent :: ModuleIdent -> String -> TypeScheme -> DesugarState Ident
 > freshIdent m prefix ty =
 >   do
->     x <- liftM (mkName prefix) (liftSt (updateSt (1 +)))
+>     x <- liftM (mkName prefix) (liftSt (liftRt (updateSt (1 +))))
 >     updateSt_ (bindFun m x ty)
 >     return x
 >   where mkName pre n = mkIdent (pre ++ show n)

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: Modules.lhs 1795 2005-10-18 09:31:29Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -70,9 +70,9 @@ declaration to the module.
 > compileModule :: Options -> FilePath -> ErrorT IO ()
 > compileModule opts fn =
 >   do
->     (mEnv,tyEnv,m,intf) <- loadModule id paths fn
+>     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule id paths fn
 >     mEnv' <- importDebugPrelude paths dbg fn mEnv
->     let (ccode,dumps) = transModule split dbg trust mEnv' tyEnv m
+>     let (ccode,dumps) = transModule split dbg trust mEnv' tcEnv tyEnv m
 >         ccode' = compileDefaultGoal dbg mEnv' intf
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               unless (noInterface opts) (updateInterface fn intf) >>
@@ -86,13 +86,13 @@ declaration to the module.
 >         merge' (Right cfs) = Right . (cfs ++) . return
 
 > loadModule :: (Module -> Module) -> [FilePath] -> FilePath
->            -> ErrorT IO (ModuleEnv,ValueEnv,Module,Interface)
+>            -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,Module,Interface)
 > loadModule f paths fn =
 >   do
 >     m <- liftM f $ liftErr (readFile fn) >>= okM . parseModule fn
 >     mEnv <- loadInterfaces paths m
->     (tyEnv,m',intf) <- okM $ checkModule mEnv m
->     return (bindModule intf mEnv,tyEnv,m',intf)
+>     (tcEnv,tyEnv,m',intf) <- okM $ checkModule mEnv m
+>     return (bindModule intf mEnv,tcEnv,tyEnv,m',intf)
 
 > parseModule :: FilePath -> String -> Error Module
 > parseModule fn s =
@@ -103,7 +103,7 @@ declaration to the module.
 >   foldM (loadInterface paths [m]) emptyEnv
 >         [P p m | ImportDecl p m _ _ _ <- is]
 
-> checkModule :: ModuleEnv -> Module -> Error (ValueEnv,Module,Interface)
+> checkModule :: ModuleEnv -> Module -> Error (TCEnv,ValueEnv,Module,Interface)
 > checkModule mEnv (Module m es is ds) =
 >   do
 >     (pEnv,tcEnv,tyEnv) <- importModules mEnv is
@@ -114,15 +114,16 @@ declaration to the module.
 >     tcEnv' <- kindCheck m tcEnv ds'''
 >     tyEnv' <- typeCheck m tcEnv' tyEnv ds'''
 >     let (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv pEnv' tcEnv' tyEnv'
->     return (tyEnv'',
+>     return (tcEnv'',tyEnv'',
 >             Module m (Just es') is (qual tyEnv' ds'''),
 >             exportInterface m es' pEnv'' tcEnv'' tyEnv'')
 
-> transModule :: Bool -> Bool -> Bool -> ModuleEnv -> ValueEnv -> Module
->             -> (Either CFile [CFile],[(Dump,Doc)])
-> transModule split debug trusted mEnv tyEnv (Module m es is ds) = (ccode,dumps)
+> transModule :: Bool -> Bool -> Bool -> ModuleEnv -> TCEnv -> ValueEnv
+>             -> Module -> (Either CFile [CFile],[(Dump,Doc)])
+> transModule split debug trusted mEnv tcEnv tyEnv (Module m es is ds) =
+>   (ccode,dumps)
 >   where evEnv = evalEnv ds
->         (desugared,tyEnv') = desugar tyEnv (Module m es is ds)
+>         (desugared,tyEnv') = desugar tcEnv tyEnv (Module m es is ds)
 >         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
 >         (lifted,tyEnv''',evEnv') = lift tyEnv'' evEnv simplified
 >         il = ilTrans tyEnv''' evEnv' lifted
@@ -187,9 +188,10 @@ compilation of a goal is similar to that of a module.
 > compileGoal :: Options -> Maybe String -> Maybe FilePath -> ErrorT IO ()
 > compileGoal opts (Just g) fn =
 >   do
->     (mEnv,tyEnv,_,g') <- loadGoal paths g fn
+>     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths g fn
 >     mEnv' <- importDebugPrelude paths dbg "" mEnv
->     let (ccode,dumps) = transGoal dbg run mEnv' tyEnv (mkIdent "goal") g'
+>     let (ccode,dumps) =
+>           transGoal dbg run mEnv' tcEnv tyEnv (mkIdent "goal") g'
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeGoalCode (output opts) (mergeCFile (genMain run) ccode)
 >   where run = "curry_goal"
@@ -201,22 +203,22 @@ compilation of a goal is similar to that of a module.
 > typeGoal :: Options -> String -> Maybe FilePath -> ErrorT IO ()
 > typeGoal opts g fn =
 >   do
->     (_,tyEnv,m,Goal _ e _) <- loadGoal (importPath opts) g fn
+>     (_,_,tyEnv,m,Goal _ e _) <- loadGoal (importPath opts) g fn
 >     liftErr $ print (ppType m (typeOf tyEnv e))
 
 > loadGoal :: [FilePath] -> String -> Maybe FilePath
->          -> ErrorT IO (ModuleEnv,ValueEnv,ModuleIdent,Goal)
+>          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,ModuleIdent,Goal)
 > loadGoal paths g fn =
 >   do
 >     (mEnv,m,is) <- loadGoalModule paths fn
->     (tyEnv,g') <- okM $ parseGoal g >>= checkGoal mEnv is
->     return (mEnv,tyEnv,m,g')
+>     (tcEnv,tyEnv,g') <- okM $ parseGoal g >>= checkGoal mEnv is
+>     return (mEnv,tcEnv,tyEnv,m,g')
 
 > loadGoalModule :: [FilePath] -> Maybe FilePath
 >                -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
 > loadGoalModule paths (Just fn) =
 >   do
->     (mEnv,_,Module m _ is _,_) <- loadModule transparent paths fn
+>     (mEnv,_,_,Module m _ is _,_) <- loadModule transparent paths fn
 >     return (mEnv,m,is ++ [importDecl (first "") m False])
 >   where transparent (Module m _ is ds) = Module m Nothing is ds
 > loadGoalModule paths Nothing =
@@ -226,7 +228,7 @@ compilation of a goal is similar to that of a module.
 >   where p = first ""
 >         m = preludeMIdent
 
-> checkGoal :: ModuleEnv -> [ImportDecl] -> Goal -> Error (ValueEnv,Goal)
+> checkGoal :: ModuleEnv -> [ImportDecl] -> Goal -> Error (TCEnv,ValueEnv,Goal)
 > checkGoal mEnv is g =
 >   do
 >     (pEnv,tcEnv,tyEnv) <- importModules mEnv is
@@ -235,15 +237,16 @@ compilation of a goal is similar to that of a module.
 >           precCheckGoal pEnv . renameGoal
 >     tyEnv' <- kindCheckGoal tcEnv g' >>
 >               typeCheckGoal tcEnv tyEnv g'
->     let (_,_,tyEnv'') = qualifyEnv mEnv pEnv tcEnv tyEnv'
->     return (tyEnv'',qualGoal tyEnv' g')
+>     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv pEnv tcEnv tyEnv'
+>     return (tcEnv',tyEnv'',qualGoal tyEnv' g')
 
-> transGoal :: Bool -> String -> ModuleEnv -> ValueEnv -> Ident -> Goal
->           -> (CFile,[(Dump,Doc)])
-> transGoal debug run mEnv tyEnv goalId g = (ccode,dumps)
+> transGoal :: Bool -> String -> ModuleEnv -> TCEnv -> ValueEnv -> Ident
+>           -> Goal -> (CFile,[(Dump,Doc)])
+> transGoal debug run mEnv tcEnv tyEnv goalId g = (ccode,dumps)
 >   where qGoalId = qualifyWith emptyMIdent goalId
 >         evEnv = evalEnvGoal g
->         (vs,desugared,tyEnv') = desugarGoal debug tyEnv emptyMIdent goalId g
+>         (vs,desugared,tyEnv') =
+>           desugarGoal debug tcEnv tyEnv emptyMIdent goalId g
 >         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
 >         (lifted,tyEnv''',evEnv') = lift tyEnv'' evEnv simplified
 >         il = ilTrans tyEnv''' evEnv' lifted
@@ -278,10 +281,10 @@ to determine the type of the goal when linking the program.
 >   | otherwise = Nothing
 >   where qMainId = qualify mainId
 >         mEnv' = bindModule (Interface m is ds) mEnv
->         (tyEnv,g) = ok $
+>         (tcEnv,tyEnv,g) = ok $
 >           checkGoal mEnv' [importDecl (first "") m False]
 >                     (Goal (first "") (Variable qMainId) [])
->         (ccode,_) = transGoal debug "curry_main" mEnv' tyEnv mainId g
+>         (ccode,_) = transGoal debug "curry_main" mEnv' tcEnv tyEnv mainId g
 
 \end{verbatim}
 The function \texttt{importModules} brings the declarations of all

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1790 2005-10-09 16:48:16Z wlux $
+% $Id: Base.lhs 1795 2005-10-18 09:31:29Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -83,9 +83,11 @@ replaced by underscores in the interface.
 
 \end{verbatim}
 The function \texttt{constrKind} returns the arity of a type
-constructor from the type constructor environment. It is supposed to
-be used only after checking for undefined and ambiguous type
-identifiers and therefore should not fail.
+constructor from the type constructor environment and the function
+\texttt{constructors} returns the names of the data and newtype
+constructors of a type. Both functions are supposed to be used only
+after checking for undefined and ambiguous type identifiers and
+therefore should not fail.
 \begin{verbatim}
 
 > constrKind :: QualIdent -> TCEnv -> Int
@@ -95,6 +97,14 @@ identifiers and therefore should not fail.
 >     [RenamingType _ n _] -> n
 >     [AliasType _ n _] -> n
 >     _ -> internalError ("constrKind " ++ show tc)
+
+> constructors :: QualIdent -> TCEnv -> [Maybe Ident]
+> constructors tc tcEnv =
+>   case qualLookupTopEnv tc tcEnv of
+>     [DataType _ _ cs] -> cs
+>     [RenamingType _ _ c] -> [Just c]
+>     [AliasType _ _ _] -> []
+>     _ -> internalError ("constructors " ++ show tc)
 
 \end{verbatim}
 A simpler environment is used for checking the syntax of type
