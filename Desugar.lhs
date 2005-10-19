@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1795 2005-10-18 09:31:29Z wlux $
+% $Id: Desugar.lhs 1796 2005-10-19 16:07:47Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -54,6 +54,7 @@ all names must be properly qualified before calling this module.}
 > import Combined
 > import List
 > import Monad
+> import TopEnv
 > import Typing
 > import Utils
 
@@ -72,6 +73,30 @@ variables.
 > run m tcEnv tyEnv = runSt (callRt (callSt m tyEnv) tcEnv) 1
 
 \end{verbatim}
+During desugaring, the compiler transforms constraint guards into case
+expressions matching the guards against the constructor
+\texttt{Success}, which is defined in the runtime system. Thus, the
+compiler assumes that the type \texttt{Success} is defined by
+\begin{verbatim}
+  data Success = Success
+\end{verbatim}
+Since the internal constructor \texttt{Success} occurs in the
+desugared code, its type is added to the type environment.
+
+Note that the definition of \texttt{Success} is not included in the
+prelude because the \texttt{Success} constructor would not be
+accessible in any module other than the prelude unless the constructor
+were also exported from the prelude. However, that would be
+incompatible with the Curry report, which deliberately defines
+\texttt{Success} as an abstract type.
+\begin{verbatim}
+
+> bindSuccess :: ValueEnv -> ValueEnv
+> bindSuccess = localBindTopEnv successId successCon
+>   where successCon =
+>           DataConstructor (qualify successId) (polyType successType)
+
+\end{verbatim}
 The desugaring phase keeps only the type, function, and value
 declarations of the module. As type declarations are not desugared and
 cannot occur in local declaration groups they are filtered out
@@ -84,7 +109,7 @@ of a module.
 
 > desugar :: TCEnv -> ValueEnv -> Module -> (Module,ValueEnv)
 > desugar tcEnv tyEnv (Module m es is ds) = (Module m es is ds',tyEnv')
->   where (ds',tyEnv') = run (desugarModule m ds) tcEnv tyEnv
+>   where (ds',tyEnv') = run (desugarModule m ds) tcEnv (bindSuccess tyEnv)
 
 > desugarModule :: ModuleIdent -> [TopDecl] -> DesugarState ([TopDecl],ValueEnv)
 > desugarModule m ds =
@@ -130,9 +155,9 @@ hack is no longer needed.}
 >             -> (Maybe [Ident],Module,ValueEnv)
 > desugarGoal debug tcEnv tyEnv m g (Goal p e ds)
 >   | debug || isIO ty =
->       desugarGoalIO tcEnv tyEnv p m g (Let ds e)
+>       desugarGoalIO tcEnv (bindSuccess tyEnv) p m g (Let ds e)
 >         (if debug && arrowArity ty > 0 then typeVar 0 else ty)
->   | otherwise = desugarGoal' tcEnv tyEnv p m g vs e' ty
+>   | otherwise = desugarGoal' tcEnv (bindSuccess tyEnv) p m g vs e' ty
 >   where ty = typeOf tyEnv e
 >         (vs,e') = liftGoalVars (if null ds then e else Let ds e)
 >         isIO (TypeConstructor tc [_]) = tc == qIOId
@@ -434,12 +459,13 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     return (Case e1' [caseAlt p truePattern e2',caseAlt p falsePattern e3'])
 > desugarExpr m p (Case e alts) =
 >   do
->     v <- fetchSt >>= freshIdent m "_#case" . monoType . flip typeOf e
+>     v <- fetchSt >>= freshIdent m "_#case" . monoType . flip typeOf (head ts)
 >     e' <- desugarExpr m p e
 >     liftM (mkCase m v e') 
 >           (mapM (liftM fromAlt . desugarAltLhs m) alts >>=
 >            desugarCase m id [v])
->   where fromAlt (Alt p t rhs) = (p,id,[t],rhs)
+>   where ts = [t | Alt p t rhs <- alts]
+>         fromAlt (Alt p t rhs) = (p,id,[t],rhs)
 >         mkCase m v e (Case e' alts)
 >           | mkVar v == e' && v `notElem` qfv m alts = Case e alts
 >         mkCase _ v e e' = Let [varDecl p v e] e'
