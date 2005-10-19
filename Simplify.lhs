@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 1788 2005-10-08 15:34:26Z wlux $
+% $Id: Simplify.lhs 1797 2005-10-19 19:48:57Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -242,8 +242,9 @@ functions in later phases of the compiler.
 > simplifyExpr m env (Case e alts) =
 >   do
 >     e' <- simplifyExpr m env e
->     alts' <- mapM (simplifyAlt m env) alts
->     return (Case e' alts')
+>     maybe (liftM (Case e') (mapM (simplifyAlt m env) alts))
+>           (simplifyExpr m env)
+>           (simplifyMatch e' alts)
 
 > simplifyAlt :: ModuleIdent -> InlineEnv -> Alt -> SimplifyState Alt
 > simplifyAlt m env (Alt p t rhs) = liftM (Alt p t) (simplifyRhs m env rhs)
@@ -276,7 +277,7 @@ functions to access the pattern variables.
 \begin{verbatim}
 
 > simplifyLet :: ModuleIdent -> InlineEnv -> [[Decl]] -> Expression
->               -> SimplifyState Expression
+>             -> SimplifyState Expression
 > simplifyLet m env [] e = simplifyExpr m env e
 > simplifyLet m env (ds:dss) e =
 >   do
@@ -307,6 +308,84 @@ functions to access the pattern variables.
 > mkLet m ds e
 >   | null (filter (`elem` qfv m e) (bv ds)) = e
 >   | otherwise = Let ds e
+
+\end{verbatim}
+When the scrutinized expression in a case expression is a literal or a
+constructor application, the compiler can perform the pattern matching
+already at compile time and simplify the case expression to the right
+hand side of the matching alternative or to \texttt{prelude.failed} if
+no alternative matches. When a case expression collapses to a matching
+alternative, the pattern variables are bound to the matching
+(sub)terms of the scrutinized expression. We have to be careful with
+as-patterns in order to avoid losing sharing by code duplication. For
+instance, the expression
+\begin{verbatim}
+  case (0?1) : undefined of
+    l@(x:_) -> (x,l)
+\end{verbatim}
+must be transformed into
+\begin{verbatim}
+  let { x = 0?1; xs = undefined } in
+  let { l = x:xs } in
+  (x,l)
+\end{verbatim}
+I.e., variables defined in an as-pattern must be bound to a fresh
+term, which is constructed from the matched pattern, instead of
+binding them to the scrutinized expression. The risk of code
+duplication is also the reason why the compiler currently does not
+inline variables bound to constructor applications. This would be safe
+in general only when the program were transformed into a normalized
+form where all arguments of applications are variables.
+\begin{verbatim}
+
+> simplifyMatch :: Expression -> [Alt] -> Maybe Expression
+> simplifyMatch e =
+>   case unapply e [] of
+>     (dss,Literal l,_) -> Just . match dss (Left l)
+>     (dss,Constructor c,es) -> Just . match dss (Right (c,es))
+>     (_,_,_) -> const Nothing
+
+> unapply :: Expression -> [Expression] -> ([[Decl]],Expression,[Expression])
+> unapply (Literal l) es = ([],Literal l,es)
+> unapply (Variable v) es = ([],Variable v,es)
+> unapply (Constructor c) es = ([],Constructor c,es)
+> unapply (Apply e1 e2) es = unapply e1 (e2:es)
+> unapply (Let ds e) es = (ds:dss',e',es')
+>   where (dss',e',es') = unapply e es
+> unapply (Case e alts) es = ([],Case e alts,es)
+
+> match :: [[Decl]] -> Either Literal (QualIdent,[Expression]) -> [Alt]
+>       -> Expression
+> match dss e alts =
+>   head ([expr p t rhs | Alt p t rhs <- alts, t `matches` e] ++ [prelFailed])
+>   where expr p t (SimpleRhs _ e' _) = foldr Let e' (dss ++ bindPattern p e t)
+
+> matches :: ConstrTerm -> Either Literal (QualIdent,[Expression]) -> Bool
+> matches (LiteralPattern l1) (Left l2) = sameLiteral l1 l2
+>   where sameLiteral (Int _ i1) (Int _ i2) = i1 == i2
+>         sameLiteral l1 l2 = l1 == l2
+> matches (ConstructorPattern c1 _) (Right (c2,_)) = c1 == c2
+> matches (VariablePattern _) _ = True
+> matches (AsPattern _ t) e = matches t e
+
+> bindPattern :: Position -> Either Literal (QualIdent,[Expression])
+>             -> ConstrTerm -> [[Decl]]
+> bindPattern _ (Left _) (LiteralPattern _) = []
+> bindPattern p (Right (c,es)) (ConstructorPattern _ ts) =
+>   [zipWith (\(VariablePattern v) e -> varDecl p v e) ts es]
+> bindPattern p e (VariablePattern v) =
+>   [[varDecl p v (either Literal (uncurry (apply . Constructor)) e)]]
+> bindPattern p e (AsPattern v t) = bindPattern p e t ++ [[bindAs p v t]]
+
+> bindAs :: Position -> Ident -> ConstrTerm -> Decl
+> bindAs p v (LiteralPattern l) = varDecl p v (Literal l)
+> bindAs p v (VariablePattern v') = varDecl p v (mkVar v')
+> bindAs p v (ConstructorPattern c ts) = varDecl p v e'
+>   where e' = apply (Constructor c) [mkVar v | VariablePattern v <- ts]
+> bindAs p v (AsPattern v' _) = varDecl p v (mkVar v')
+
+> prelFailed :: Expression
+> prelFailed = Variable (qualifyWith preludeMIdent (mkIdent "failed"))
 
 \end{verbatim}
 \label{pattern-binding}
