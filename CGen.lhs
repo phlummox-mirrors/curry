@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1800 2005-10-25 10:59:21Z wlux $
+% $Id: CGen.lhs 1801 2005-10-25 20:34:41Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -435,13 +435,12 @@ array is used in two functions when stability is enabled (see
 
 > cArrays :: CPSFunction -> [CTopDecl]
 > cArrays (CPSFunction f _ c vs st) = maybe (cArraysStmt st) (const []) c
->   where cArraysStmt (CPSYield _ st _) = cArraysStmt st
+>   where cArraysStmt (CPSDelayNonLocal _ _ st) = cArraysStmt st
+>         cArraysStmt (CPSYield _ _ st) = cArraysStmt st
 >         cArraysStmt (CPSSeq _ st) = cArraysStmt st
 >         cArraysStmt (CPSSwitch _ _ vcase cases) =
 >           maybe [] cArraysStmt vcase ++
 >           concat [cArraysStmt st | CaseBlock _ _ st <- cases]
->         cArraysStmt (CPSLocalSwitch _ st1 (CaseBlock _ _ st2)) =
->           cArraysStmt st1 ++ cArraysStmt st2
 >         cArraysStmt (CPSChoices ks) = [choicesArrayDecl ks]
 >         cArraysStmt _ = []
 
@@ -537,8 +536,7 @@ literal constants and character nodes.
 >   where allocs0 (Let ds) ~(tys,dss) = (tys,ds:dss)
 >         allocs0 (CCall _ (Just ty) _ _) ~(tys,dss) = (ty:tys,dss)
 >         allocs0 _ as = as
-> allocs (CPSYield _ st _) = allocs st
-> allocs (CPSLocalSwitch _ st _) = allocs st
+> allocs (CPSYield _ _ st) = allocs st
 > allocs _ = ([],[])
 
 > nodeSize :: Expr -> CExpr
@@ -586,10 +584,10 @@ performing a stack check.
 > stackDepth (CPSApply _ _) = 0
 > stackDepth (CPSUnify _ _ k) = length (contVars k)
 > stackDepth (CPSDelay _ k) = length (contVars k)
-> stackDepth (CPSYield _ st k) = max (stackDepth st) (length (contVars k))
+> stackDepth (CPSDelayNonLocal _ k _) = length (contVars k)
+> stackDepth (CPSYield _ k st) = max (stackDepth st) (length (contVars k))
 > stackDepth (CPSSeq _ st) = stackDepth st
 > stackDepth (CPSSwitch _ _ _ _) = 0
-> stackDepth (CPSLocalSwitch _ st _) = stackDepth st
 > stackDepth (CPSChoices (ChoicesList _ _ (k:_))) = length (contVars k)
 
 > stackDepthCont :: Maybe CPSCont -> Int
@@ -728,13 +726,13 @@ translation function.
 > cCode _ vs0 (CPSApply v vs) = apply vs0 v vs
 > cCode _ vs0 (CPSUnify v v' k) = unifyVar vs0 v v' k
 > cCode _ vs0 (CPSDelay v k) = delay vs0 v k
-> cCode consts vs0 (CPSYield v st k) = yield vs0 v k ++ cCode consts vs0 st
+> cCode _ vs0 (CPSDelayNonLocal v k st) =
+>   delayNonLocal vs0 v k ++ caseCode vs0 v DefaultCase st
+> cCode consts vs0 (CPSYield v k st) = yield vs0 v k ++ cCode consts vs0 st
 > cCode consts vs0 (CPSSeq st1 st2) = cCode0 consts st1 ++ cCode consts vs0 st2
 > cCode consts vs0 (CPSSwitch unboxed v vcase cases) =
 >   switchOnTerm unboxed vs0 v (maybe [CBreak] (cCode consts vs0) vcase)
 >                [(t,caseCode vs0 v t st) | CaseBlock _ t st <- cases]
-> cCode consts vs0 (CPSLocalSwitch v st1 (CaseBlock _ t st2)) =
->   localSwitch v (cCode consts vs0 st1) (caseCode vs0 v t st2)
 > cCode _ vs0 (CPSChoices ks) = choices vs0 ks
 
 > cCode0 :: FM Name CExpr -> Stmt0 -> [CStmt]
@@ -813,6 +811,12 @@ translation function.
 > delay vs0 v k =
 >   saveVars vs0 (contVars k) ++ [tailCall "delay_thread" [contName k,show v]]
 
+> delayNonLocal :: [Name] -> Name -> CPSCont -> [CStmt]
+> delayNonLocal vs0 v k =
+>   [CIf (CFunCall "!is_local_space" [field (show v) "v.spc"])
+>        (delay vs0 v k)
+>        []]
+
 > yield :: [Name] -> Maybe Name -> CPSCont -> [CStmt]
 > yield vs0 v k =
 >   [CppCondStmts "YIELD_NONDET"
@@ -822,11 +826,6 @@ translation function.
 >      []]
 >   where yieldCall k (Just v) = tailCall "yield_delay_thread" [k,show v]
 >         yieldCall k Nothing = tailCall "yield_thread" [k]
-
-> localSwitch :: Name -> [CStmt] -> [CStmt] -> [CStmt]
-> localSwitch v nonLocalCode localCode =
->   CIf (CFunCall "!is_local_space" [field (show v) "v.spc"]) nonLocalCode [] :
->   localCode
 
 > choices :: [Name] -> ChoicesList -> [CStmt]
 > choices vs0 ks@(ChoicesList _ _ (k:_)) =

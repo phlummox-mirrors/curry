@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1800 2005-10-25 10:59:21Z wlux $
+% $Id: CPS.lhs 1801 2005-10-25 20:34:41Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -59,10 +59,10 @@ C-preprocessor constant is defined.
 >   | CPSApply Name [Name]
 >   | CPSUnify Name Name CPSCont
 >   | CPSDelay Name CPSCont
->   | CPSYield (Maybe Name) CPSStmt CPSCont
+>   | CPSDelayNonLocal Name CPSCont CPSStmt
+>   | CPSYield (Maybe Name) CPSCont CPSStmt
 >   | CPSSeq Stmt0 CPSStmt
 >   | CPSSwitch Bool Name (Maybe CPSStmt) [CaseBlock]
->   | CPSLocalSwitch Name CPSStmt CaseBlock
 >   | CPSChoices ChoicesList
 >   deriving Show
 
@@ -182,9 +182,8 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 > cpsVarCase _ _ k n Rigid v _ = (n,Just (CPSDelay v k))
 > cpsVarCase ub f k n Flex v ts
 >   | null ts = (n,Nothing)
->   | otherwise = (n',Just st)
->   where st = CPSLocalSwitch v (CPSDelay v k) (CaseBlock n DefaultCase st')
->         (n',st') = cpsFlexCase ub f k (n + 1) v ts
+>   | otherwise = (n',Just (CPSDelayNonLocal v k st'))
+>   where (n',st') = cpsFlexCase ub f k (n + 1) v ts
 
 > cpsFlexCase :: Bool -> Name -> CPSCont -> Int -> Name -> [Tag]
 >             -> (Int,CPSStmt)
@@ -202,7 +201,7 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 
 > cpsChoose :: Name -> Int -> Maybe Name -> (CPSStmt -> CPSStmt)
 >           -> [CPSFunction] -> CPSStmt
-> cpsChoose f n v h ks = CPSYield v st (CPSCont k)
+> cpsChoose f n v h ks = CPSYield v (CPSCont k) st
 >   where k = CPSFunction f n (Just "YIELD_NONDET") (cpsVars (head ks)) (h st)
 >         st = CPSChoices (ChoicesList f (n - 1) (map CPSCont ks))
 
@@ -288,14 +287,14 @@ duplication of shared continuations.
 > linearizeStmt _ (CPSApply _ _) = []
 > linearizeStmt n (CPSUnify _ _ k) = linearizeCont n k
 > linearizeStmt n (CPSDelay _ k) = linearizeCont n k
-> linearizeStmt n (CPSYield _ st k) =
+> linearizeStmt n (CPSDelayNonLocal _ k st) =
+>   linMerge [linearizeCont n k,linearizeStmt n st]
+> linearizeStmt n (CPSYield _ k st) =
 >   linMerge [linearizeCont n k,linearizeStmt n st]
 > linearizeStmt n (CPSSeq _ st) = linearizeStmt n st
 > linearizeStmt n (CPSSwitch _ _ vcase cases) =
 >   linMerge (maybe [] (linearizeStmt n) vcase :
 >             [linearizeStmt n' st | CaseBlock n' _ st <- cases])
-> linearizeStmt n (CPSLocalSwitch _ st (CaseBlock n' _ st')) =
->   linMerge [linearizeStmt n st,linearizeStmt n' st']
 > linearizeStmt n (CPSChoices (ChoicesList _ _ ks)) =
 >   linMerge (map (linearizeCont n) ks)
 
