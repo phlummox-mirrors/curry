@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1801 2005-10-25 20:34:41Z wlux $
+% $Id: CPS.lhs 1802 2005-10-25 21:23:08Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -303,6 +303,7 @@ duplication of shared continuations.
 >   where merge [] = []
 >         merge [ks] = ks
 >         merge ([] : kss) = merge kss
->         merge ((k:ks) : kss) = k : merge (ks : filter ((k /=) . head) kss)
+>         merge ((k:ks) : kss) =
+>           k : merge (sort (ks : filter ((k /=) . head) kss))
 
 \end{verbatim}
