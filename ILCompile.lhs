@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: ILCompile.lhs 1803 2005-10-25 21:38:01Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -393,7 +393,15 @@ functions before compiling into abstract machine code.
 
 \end{verbatim}
 In a postprocessing step, all \texttt{Ref} bindings are removed from
-the generated code.
+the generated code. In determining all possible alias bindings, we
+make use of the following two equivalences.
+\begin{quote}\tt\def\lb{\char`\{}\def\rb{\char`\}}
+  \begin{tabular}{r@{$\null\equiv\null$}l}
+    \texttt{$x$ <- return $y$} & \texttt{let \lb{} $x$ = $y$ \rb} \\
+    \texttt{$x$ <- \lb{} \emph{st$_1$}; \emph{st$_2$} \rb} &
+    \texttt{\emph{st$_1$}; $x$ <- \emph{st$_2$}}
+  \end{tabular}
+\end{quote}
 \begin{verbatim}
 
 > type AliasMap = FM Cam.Name Cam.Name
@@ -405,6 +413,8 @@ the generated code.
 > unaliasStmt aliases (Cam.Enter v) = Cam.Enter (unaliasVar aliases v)
 > unaliasStmt aliases (Cam.Exec f vs) =
 >   Cam.Exec f (map (unaliasVar aliases) vs)
+> unaliasStmt aliases (Cam.Seq (Cam.Eval v (Cam.Seq st1 st2)) st3) =
+>   unaliasStmt aliases (Cam.Seq st1 (Cam.Seq (Cam.Eval v st2) st3))
 > unaliasStmt aliases (Cam.Seq st1 st2) = f (unaliasStmt aliases' st2)
 >   where (aliases',f) = unaliasStmt0 aliases st1
 > unaliasStmt aliases (Cam.Switch rf v cases) =
