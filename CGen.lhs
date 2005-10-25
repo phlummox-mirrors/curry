@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CGen.lhs 1800 2005-10-25 10:59:21Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -434,14 +434,14 @@ array is used in two functions when stability is enabled (see
 \begin{verbatim}
 
 > cArrays :: CPSFunction -> [CTopDecl]
-> cArrays k@(CPSFunction f _ c _ st) = maybe (cArraysStmt st) (const []) c
+> cArrays (CPSFunction f _ c vs st) = maybe (cArraysStmt st) (const []) c
 >   where cArraysStmt (CPSYield _ st _) = cArraysStmt st
 >         cArraysStmt (CPSSeq _ st) = cArraysStmt st
 >         cArraysStmt (CPSSwitch _ _ vcase cases) =
 >           maybe [] cArraysStmt vcase ++
->           concatMap (cArrays . fromCaseBlock f) cases
->         cArraysStmt (CPSLocalSwitch _ st cb) =
->           cArraysStmt st ++ cArrays (fromCaseBlock f cb)
+>           concat [cArraysStmt st | CaseBlock _ _ st <- cases]
+>         cArraysStmt (CPSLocalSwitch _ st1 (CaseBlock _ _ st2)) =
+>           cArraysStmt st1 ++ cArraysStmt st2
 >         cArraysStmt (CPSChoices ks) = [choicesArrayDecl ks]
 >         cArraysStmt _ = []
 
@@ -477,8 +477,8 @@ the Gnu C compiler does not detect such redundant save operations.
 >         (tys,dss) = allocs st
 >         consts = constants dss
 
-> caseCode :: Name -> CaseBlock -> [CStmt]
-> caseCode v (CaseBlock _ t vs st) =
+> caseCode :: [Name] -> Name -> Tag -> CPSStmt -> [CStmt]
+> caseCode vs v t st =
 >   [CBlock (stackCheck vs st ++ heapCheck' consts ds tys vs ++
 >            fetchArgs v t ++ constDefs consts ds ++ cCode consts vs st)]
 >   where ds = concat dss
@@ -732,9 +732,9 @@ translation function.
 > cCode consts vs0 (CPSSeq st1 st2) = cCode0 consts st1 ++ cCode consts vs0 st2
 > cCode consts vs0 (CPSSwitch unboxed v vcase cases) =
 >   switchOnTerm unboxed vs0 v (maybe [CBreak] (cCode consts vs0) vcase)
->                [(caseBlockTag cb,caseCode v cb) | cb <- cases]
-> cCode consts vs0 (CPSLocalSwitch v st cb) =
->   localSwitch v (cCode consts vs0 st) (caseCode v cb)
+>                [(t,caseCode vs0 v t st) | CaseBlock _ t st <- cases]
+> cCode consts vs0 (CPSLocalSwitch v st1 (CaseBlock _ t st2)) =
+>   localSwitch v (cCode consts vs0 st1) (caseCode vs0 v t st2)
 > cCode _ vs0 (CPSChoices ks) = choices vs0 ks
 
 > cCode0 :: FM Name CExpr -> Stmt0 -> [CStmt]

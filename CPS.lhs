@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1799 2005-10-25 09:04:11Z wlux $
+% $Id: CPS.lhs 1800 2005-10-25 10:59:21Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,8 +10,7 @@
 
 > module CPS(CPSFunction(..), CPSCont(..), CaseBlock(..),
 >            CPSStmt(..), ChoicesList(..),
->            cpsFunction, cpsApply, cpsVars, contVars,
->            fromCaseBlock, caseBlockTag, fresh) where
+>            cpsFunction, cpsApply, cpsVars, contVars, fresh) where
 > import Cam
 > import List
 > import Set
@@ -68,7 +67,7 @@ C-preprocessor constant is defined.
 >   deriving Show
 
 > newtype CPSCont = CPSCont CPSFunction
-> data CaseBlock = CaseBlock Int Tag [Name] CPSStmt deriving Show
+> data CaseBlock = CaseBlock Int Tag CPSStmt deriving Show
 > data ChoicesList = ChoicesList Name Int [CPSCont] deriving Show
 
 > instance Eq CPSFunction where
@@ -92,16 +91,10 @@ C-preprocessor constant is defined.
 >   where k0 = CPSFunction f 0 Nothing vs (CPSEnter v (Just (CPSCont k1)))
 >         k1 = CPSFunction f 1 Nothing vs
 >                (CPSSwitch False v (Just (CPSDelay v (CPSCont k1)))
->                   [CaseBlock 1 DefaultCase vs (CPSApply v vs')])
+>                   [CaseBlock 1 DefaultCase (CPSApply v vs')])
 
 > cpsVars :: CPSFunction -> [Name]
 > cpsVars (CPSFunction _ _ _ vs _) = vs
-
-> caseBlockTag :: CaseBlock -> Tag
-> caseBlockTag (CaseBlock _ t _ _) = t
-
-> fromCaseBlock :: Name -> CaseBlock -> CPSFunction
-> fromCaseBlock f (CaseBlock n _ vs st) = CPSFunction f n Nothing vs st
 
 \end{verbatim}
 The transformation into CPS is implemented by a top-down algorithm.
@@ -136,12 +129,11 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 
 > cps :: Name -> Maybe CPSCont -> [Name] -> Int -> Stmt -> (Int,CPSFunction)
 > cps f k ws n st = (n',f')
->   where f' = CPSFunction f n Nothing vs st'
->         vs = nub (ws ++ freeVars st k)
+>   where f' = CPSFunction f n Nothing (nub (ws ++ freeVars st k)) st'
 >         (n',st') = cpsStmt f (Just (CPSCont f')) k (n + 1) st
 
-> cpsCase :: Name -> Maybe CPSCont -> [Name] -> Int -> Case -> (Int,CaseBlock)
-> cpsCase f k ws n (Case t st) = (n',CaseBlock n t ws st')
+> cpsCase :: Name -> Maybe CPSCont -> Int -> Case -> (Int,CaseBlock)
+> cpsCase f k n (Case t st) = (n',CaseBlock n t st')
 >   where (n',st') = cpsStmt f Nothing k (n + 1) st
 
 > cpsStmt :: Name -> Maybe CPSCont -> Maybe CPSCont -> Int -> Stmt
@@ -166,7 +158,7 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 >       where (n',st2') = cpsStmt f Nothing k n st2
 > cpsStmt f k0 k n (Switch rf v cases) =
 >   maybe (cpsJumpSwitch f) (cpsSwitch f) k0 k n rf v cases
-> cpsStmt f _ k n (Choices alts) = (n',cpsChoose f vs n Nothing id ks)
+> cpsStmt f _ k n (Choices alts) = (n',cpsChoose f n Nothing id ks)
 >   where (n',ks) = mapAccumL (cps f k vs) (n + 1) alts
 >         vs = nub (freeVars (Choices alts) k)
 
@@ -180,38 +172,38 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 > cpsSwitch :: Name -> CPSCont -> Maybe CPSCont -> Int -> RF -> Name -> [Case]
 >           -> (Int,CPSStmt)
 > cpsSwitch f k0 k n rf v cases = (n'',CPSSwitch ub v vcase cases')
->   where (n',vcase) = cpsVarCase ub f k0 ws n rf v ts
->         (n'',cases') = mapAccumL (cpsCase f k ws) n' cases
->         ws = contVars k0
+>   where (n',vcase) = cpsVarCase ub f k0 n rf v ts
+>         (n'',cases') = mapAccumL (cpsCase f k) n' cases
 >         ts = [t | Case t _ <- cases, t /= DefaultCase]
 >         ub = unboxedSwitch ts
 
-> cpsVarCase :: Bool -> Name -> CPSCont -> [Name] -> Int -> RF -> Name -> [Tag]
+> cpsVarCase :: Bool -> Name -> CPSCont -> Int -> RF -> Name -> [Tag]
 >            -> (Int,Maybe CPSStmt)
-> cpsVarCase _ _ k _ n Rigid v _ = (n,Just (CPSDelay v k))
-> cpsVarCase ub f k ws n Flex v ts
+> cpsVarCase _ _ k n Rigid v _ = (n,Just (CPSDelay v k))
+> cpsVarCase ub f k n Flex v ts
 >   | null ts = (n,Nothing)
 >   | otherwise = (n',Just st)
->   where st = CPSLocalSwitch v (CPSDelay v k) (CaseBlock n DefaultCase ws st')
->         (n',st') = cpsFlexCase ub f k ws (n + 1) v ts
+>   where st = CPSLocalSwitch v (CPSDelay v k) (CaseBlock n DefaultCase st')
+>         (n',st') = cpsFlexCase ub f k (n + 1) v ts
 
-> cpsFlexCase :: Bool -> Name -> CPSCont -> [Name] -> Int -> Name -> [Tag]
+> cpsFlexCase :: Bool -> Name -> CPSCont -> Int -> Name -> [Tag]
 >             -> (Int,CPSStmt)
-> cpsFlexCase _ _ k _ n v [t] = (n,cpsFresh k v t)
-> cpsFlexCase ub f k ws n v ts = (n',cpsChoose f ws n (Just v) checkVar ks)
+> cpsFlexCase _ _ k n v [t] = (n,cpsFresh k v t)
+> cpsFlexCase ub f k n v ts = (n',cpsChoose f n (Just v) checkVar ks)
 >   where (n',ks) = mapAccumL fresh (n + 1) ts
->         fresh n t = (n + 1,CPSFunction f n Nothing ws (cpsFresh k v t))
->         checkVar st = CPSSwitch ub v (Just st)
->                                 [CaseBlock (n - 1) DefaultCase ws (CPSJump k)]
+>         fresh n t =
+>           (n + 1,CPSFunction f n Nothing (contVars k) (cpsFresh k v t))
+>         checkVar st =
+>           CPSSwitch ub v (Just st) [CaseBlock (n - 1) DefaultCase (CPSJump k)]
 
 > cpsFresh :: CPSCont -> Name -> Tag -> CPSStmt
 > cpsFresh k v t = foldr CPSSeq (CPSUnify v v' k) (fresh v' t)
 >   where v' = Name "_new"
 
-> cpsChoose :: Name -> [Name] -> Int -> Maybe Name -> (CPSStmt -> CPSStmt)
+> cpsChoose :: Name -> Int -> Maybe Name -> (CPSStmt -> CPSStmt)
 >           -> [CPSFunction] -> CPSStmt
-> cpsChoose f ws n v h ks = CPSYield v st (CPSCont k)
->   where k = CPSFunction f n (Just "YIELD_NONDET") ws (h st)
+> cpsChoose f n v h ks = CPSYield v st (CPSCont k)
+>   where k = CPSFunction f n (Just "YIELD_NONDET") (cpsVars (head ks)) (h st)
 >         st = CPSChoices (ChoicesList f (n - 1) (map CPSCont ks))
 
 > unboxedSwitch :: [Tag] -> Bool
@@ -301,8 +293,8 @@ duplication of shared continuations.
 > linearizeStmt n (CPSSeq _ st) = linearizeStmt n st
 > linearizeStmt n (CPSSwitch _ _ vcase cases) =
 >   linMerge (maybe [] (linearizeStmt n) vcase :
->             [linearizeStmt n' st | CaseBlock n' _ _ st <- cases])
-> linearizeStmt n (CPSLocalSwitch _ st (CaseBlock n' _ _ st')) =
+>             [linearizeStmt n' st | CaseBlock n' _ st <- cases])
+> linearizeStmt n (CPSLocalSwitch _ st (CaseBlock n' _ st')) =
 >   linMerge [linearizeStmt n st,linearizeStmt n' st']
 > linearizeStmt n (CPSChoices (ChoicesList _ _ ks)) =
 >   linMerge (map (linearizeCont n) ks)
