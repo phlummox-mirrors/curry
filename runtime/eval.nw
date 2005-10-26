@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: eval.nw 1805 2005-10-26 19:54:06Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -186,6 +186,56 @@ FUNCTION(update)
     /* return to the caller */
     GOTO(ret_ip);
 }
+
+@ 
+When stability is enabled, the current thread suspends before it
+instantiates an unbound variable non-deterministically. After the
+thread is resumed, it must check whether the variable was bound in the
+meantime. In this case, execution returns to the beginning of the
+switch, otherwise the variable is instantiated non-deterministically.
+This check is implemented in the [[flex_yield_resume]] code, which
+expects the variable node, an array with the continuations that
+instantiate the variable, and the entry point of the switch in that
+order on the stack.
+
+<<eval.h>>=
+#if YIELD_NONDET
+DECLARE_ENTRYPOINT(flex_yield_resume);
+#endif
+
+@ 
+<<eval.c>>=
+#if YIELD_NONDET
+FUNCTION(flex_yield_resume)
+{
+    Node  *node;
+    Label cont_ip;
+    EXPORT_LABEL(flex_yield_resume)
+ ENTRY_LABEL(flex_yield_resume)
+    node = sp[0];
+    for (;;)
+    {
+	if ( is_boxed(node) )
+	    switch ( node->info->tag )
+	    {
+	    case INDIR_TAG:
+		node = node->n.node;
+		continue;
+	    case VARIABLE_TAG:
+		sp   += 1;
+		sp[1] = node;
+		GOTO(nondet_handlers->choices);
+	    default:
+		break;
+	    }
+	break;
+    }
+    cont_ip = (Label)sp[2];
+    sp	   += 2;
+    sp[0]   = node;
+    GOTO(cont_ip);
+}
+#endif
 
 @ 
 The compiler translates uses of higher order functions into first

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1804 2005-10-26 13:21:33Z wlux $
+% $Id: CGen.lhs 1805 2005-10-26 19:54:06Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -428,20 +428,17 @@ the suspend node associated with the abstract machine code function.
 
 \end{verbatim}
 For each \texttt{choices} statement, the compiler generates a global
-array containing the entry points of its continuations. Note that each
-array is used in two functions when stability is enabled (see
-\texttt{cpsChoose} in Sect.~\ref{sec:cps}).
+array containing the entry points of its continuations.
 \begin{verbatim}
 
 > cArrays :: CPSFunction -> [CTopDecl]
 > cArrays (CPSFunction f _ c vs st) = maybe (cArraysStmt st) (const []) c
 >   where cArraysStmt (CPSDelayNonLocal _ _ st) = cArraysStmt st
->         cArraysStmt (CPSYield _ _ st) = cArraysStmt st
 >         cArraysStmt (CPSSeq _ st) = cArraysStmt st
 >         cArraysStmt (CPSSwitch _ _ vcase cases) =
 >           maybe [] cArraysStmt vcase ++
 >           concat [cArraysStmt st | CaseBlock _ _ st <- cases]
->         cArraysStmt (CPSChoices ks) = [choicesArrayDecl ks]
+>         cArraysStmt (CPSChoices _ ks) = [choicesArrayDecl ks]
 >         cArraysStmt _ = []
 
 > choicesArrayDecl :: ChoicesList -> CTopDecl
@@ -536,7 +533,6 @@ literal constants and character nodes.
 >   where allocs0 (Let ds) ~(tys,dss) = (tys,ds:dss)
 >         allocs0 (CCall _ (Just ty) _ _) ~(tys,dss) = (ty:tys,dss)
 >         allocs0 _ as = as
-> allocs (CPSYield _ _ st) = allocs st
 > allocs _ = ([],[])
 
 > nodeSize :: Expr -> CExpr
@@ -585,10 +581,10 @@ performing a stack check.
 > stackDepth (CPSUnify _ _ k) = length (contVars k)
 > stackDepth (CPSDelay _ k) = length (contVars k)
 > stackDepth (CPSDelayNonLocal _ k _) = length (contVars k)
-> stackDepth (CPSYield _ k st) = max (stackDepth st) (length (contVars k))
 > stackDepth (CPSSeq _ st) = stackDepth st
 > stackDepth (CPSSwitch _ _ _ _) = 0
-> stackDepth (CPSChoices (ChoicesList _ _ (k:_))) = 1 + length (contVars k)
+> stackDepth (CPSChoices vk (ChoicesList _ _ (k:_))) =
+>   maybe 1 (const 2) vk + length (contVars k)
 
 > stackDepthCont :: Maybe CPSCont -> Int
 > stackDepthCont = maybe 0 (length . contVars)
@@ -728,12 +724,11 @@ translation function.
 > cCode _ vs0 (CPSDelay v k) = delay vs0 v k
 > cCode _ vs0 (CPSDelayNonLocal v k st) =
 >   delayNonLocal vs0 v k ++ caseCode vs0 v DefaultCase st
-> cCode consts vs0 (CPSYield v k st) = yield vs0 v k ++ cCode consts vs0 st
 > cCode consts vs0 (CPSSeq st1 st2) = cCode0 consts st1 ++ cCode consts vs0 st2
 > cCode consts vs0 (CPSSwitch unboxed v vcase cases) =
 >   switchOnTerm unboxed vs0 v (maybe [CBreak] (cCode consts vs0) vcase)
 >                [(t,caseCode vs0 v t st) | CaseBlock _ t st <- cases]
-> cCode _ vs0 (CPSChoices ks) = choices vs0 ks
+> cCode _ vs0 (CPSChoices vk ks) = choices vs0 vk ks
 
 > cCode0 :: FM Name CExpr -> Stmt0 -> [CStmt]
 > cCode0 _ (Lock v) = lock v
@@ -817,22 +812,20 @@ translation function.
 >        (delay vs0 v k)
 >        []]
 
-> yield :: [Name] -> Maybe Name -> CPSCont -> [CStmt]
-> yield vs0 v k =
->   [CppCondStmts "YIELD_NONDET"
->      [CIf (CExpr "rq")
->           (saveVars vs0 (contVars k) ++ [yieldCall (contName k) v])
->           []]
->      []]
->   where yieldCall k (Just v) = tailCall "yield_delay_thread" [k,show v]
->         yieldCall k Nothing = tailCall "yield_thread" [k]
-
-> choices :: [Name] -> ChoicesList -> [CStmt]
-> choices vs0 ks@(ChoicesList _ _ (k:_)) =
+> choices :: [Name] -> Maybe (Name,CPSCont) -> ChoicesList -> [CStmt]
+> choices vs0 vk ks@(ChoicesList _ _ (k:_)) =
 >   CLocalVar nodePtrType ips (Just (asNode (CExpr (choicesArray ks)))) :
 >   saveVars vs0 (Name ips : contVars k) ++
->   [goto "nondet_handlers->choices"]
+>   [CppCondStmts "YIELD_NONDET"
+>      [CIf (CExpr "rq") (yieldCall vk) []]
+>      [],
+>    goto "nondet_handlers->choices"]
 >   where ips = "_choices"
+>         yieldCall (Just (v,k')) =
+>           saveCont (Name ips : contVars k) [v,Name ips] (Just k') ++
+>           [tailCall "yield_delay_thread" ["flex_yield_resume",show v]]
+>         yieldCall Nothing =
+>           [tailCall "yield_thread" ["nondet_handlers->choices"]]
 
 > failAndBacktrack :: [CStmt]
 > failAndBacktrack = [goto "nondet_handlers->fail"]
