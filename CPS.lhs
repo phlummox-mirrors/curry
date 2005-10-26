@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1805 2005-10-26 19:54:06Z wlux $
+% $Id: CPS.lhs 1806 2005-10-26 20:54:17Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -8,8 +8,7 @@
 \section{Continuation Passing Style}\label{sec:cps}
 \begin{verbatim}
 
-> module CPS(CPSFunction(..), CPSCont(..), CaseBlock(..),
->            CPSStmt(..), ChoicesList(..),
+> module CPS(CPSFunction(..), CPSCont(..), CaseBlock(..), CPSStmt(..),
 >            cpsFunction, cpsApply, cpsVars, contVars, fresh) where
 > import Cam
 > import List
@@ -62,12 +61,11 @@ C-preprocessor constant is defined.
 >   | CPSDelayNonLocal Name CPSCont CPSStmt
 >   | CPSSeq Stmt0 CPSStmt
 >   | CPSSwitch Bool Name (Maybe CPSStmt) [CaseBlock]
->   | CPSChoices (Maybe (Name,CPSCont)) ChoicesList
+>   | CPSChoices (Maybe (Name,CPSCont)) [CPSCont]
 >   deriving Show
 
 > newtype CPSCont = CPSCont CPSFunction
 > data CaseBlock = CaseBlock Int Tag CPSStmt deriving Show
-> data ChoicesList = ChoicesList Name Int [CPSCont] deriving Show
 
 > instance Eq CPSFunction where
 >   CPSFunction f1 n1 _ _ _ == CPSFunction f2 n2 _ _ _ = f1 == f2 && n1 == n2
@@ -157,8 +155,7 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 >       where (n',st2') = cpsStmt f Nothing k n st2
 > cpsStmt f k0 k n (Switch rf v cases) =
 >   maybe (cpsJumpSwitch f) (cpsSwitch f) k0 k n rf v cases
-> cpsStmt f _ k n (Choices alts) =
->   (n',CPSChoices Nothing (ChoicesList f (n - 1) (map CPSCont ks)))
+> cpsStmt f _ k n (Choices alts) = (n',CPSChoices Nothing (map CPSCont ks))
 >   where (n',ks) = mapAccumL (cps f k vs) n alts
 >         vs = nub (freeVars (Choices alts) k)
 
@@ -188,8 +185,7 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 > cpsFlexCase :: Bool -> Name -> CPSCont -> Int -> Name -> [Tag]
 >             -> (Int,CPSStmt)
 > cpsFlexCase _ _ k n v [t] = (n,cpsFresh k v t)
-> cpsFlexCase ub f k n v ts =
->   (n',CPSChoices (Just (v,k)) (ChoicesList f (n - 1) (map CPSCont ks)))
+> cpsFlexCase ub f k n v ts = (n',CPSChoices (Just (v,k)) (map CPSCont ks))
 >   where (n',ks) = mapAccumL fresh n ts
 >         fresh n t =
 >           (n + 1,CPSFunction f n Nothing (contVars k) (cpsFresh k v t))
@@ -286,7 +282,7 @@ duplication of shared continuations.
 > linearizeStmt n (CPSSwitch _ _ vcase cases) =
 >   linMerge (maybe [] (linearizeStmt n) vcase :
 >             [linearizeStmt n' st | CaseBlock n' _ st <- cases])
-> linearizeStmt n (CPSChoices vk (ChoicesList _ _ ks)) =
+> linearizeStmt n (CPSChoices vk ks) =
 >   linMerge (map (linearizeCont n) (maybe id ((:) . snd) vk ks))
 
 > linMerge :: [[CPSFunction]] -> [CPSFunction]

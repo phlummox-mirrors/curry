@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1805 2005-10-26 19:54:06Z wlux $
+% $Id: CGen.lhs 1806 2005-10-26 20:54:17Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -402,8 +402,7 @@ the suspend node associated with the abstract machine code function.
 
 > funcDefs :: CVisibility -> Name -> [Name] -> [CPSFunction] -> [CTopDecl]
 > funcDefs vb f vs (k:ks) =
->   map privFuncDecl ks ++ concatMap cArrays (k:ks) ++
->   entryDef vb f vs k : map funcDef ks
+>   map privFuncDecl ks ++ entryDef vb f vs k : map funcDef ks
 
 > privFuncDecl :: CPSFunction -> CTopDecl
 > privFuncDecl k = topDecl k (CFuncDecl CPrivate (cpsName k))
@@ -425,26 +424,6 @@ the suspend node associated with the abstract machine code function.
 > entryCode f n =
 >   CTrace "%I enter %s%V\n"
 >          [CString (undecorate (demangle f)),CInt n,CExpr "sp"]
-
-\end{verbatim}
-For each \texttt{choices} statement, the compiler generates a global
-array containing the entry points of its continuations.
-\begin{verbatim}
-
-> cArrays :: CPSFunction -> [CTopDecl]
-> cArrays (CPSFunction f _ c vs st) = maybe (cArraysStmt st) (const []) c
->   where cArraysStmt (CPSDelayNonLocal _ _ st) = cArraysStmt st
->         cArraysStmt (CPSSeq _ st) = cArraysStmt st
->         cArraysStmt (CPSSwitch _ _ vcase cases) =
->           maybe [] cArraysStmt vcase ++
->           concat [cArraysStmt st | CaseBlock _ _ st <- cases]
->         cArraysStmt (CPSChoices _ ks) = [choicesArrayDecl ks]
->         cArraysStmt _ = []
-
-> choicesArrayDecl :: ChoicesList -> CTopDecl
-> choicesArrayDecl ks@(ChoicesList _ _ ks') =
->   CArrayDef CPrivate constLabelType (choicesArray ks)
->             (map (CInit . CExpr . contName) ks' ++ [CInit CNull])
 
 \end{verbatim}
 The compiler generates a C function from every CPS function. At the
@@ -583,8 +562,7 @@ performing a stack check.
 > stackDepth (CPSDelayNonLocal _ k _) = length (contVars k)
 > stackDepth (CPSSeq _ st) = stackDepth st
 > stackDepth (CPSSwitch _ _ _ _) = 0
-> stackDepth (CPSChoices vk (ChoicesList _ _ (k:_))) =
->   maybe 1 (const 2) vk + length (contVars k)
+> stackDepth (CPSChoices vk (k:_)) = maybe 1 (const 2) vk + length (contVars k)
 
 > stackDepthCont :: Maybe CPSCont -> Int
 > stackDepthCont = maybe 0 (length . contVars)
@@ -812,15 +790,18 @@ translation function.
 >        (delay vs0 v k)
 >        []]
 
-> choices :: [Name] -> Maybe (Name,CPSCont) -> ChoicesList -> [CStmt]
-> choices vs0 vk ks@(ChoicesList _ _ (k:_)) =
->   CLocalVar nodePtrType ips (Just (asNode (CExpr (choicesArray ks)))) :
+> choices :: [Name] -> Maybe (Name,CPSCont) -> [CPSCont] -> [CStmt]
+> choices vs0 vk (k:ks) =
+>   CStaticArray constLabelType choices
+>                (map (CInit . CExpr . contName) (k:ks) ++ [CInit CNull]) :
+>   CLocalVar nodePtrType ips (Just (asNode (CExpr choices))) :
 >   saveVars vs0 (Name ips : contVars k) ++
 >   [CppCondStmts "YIELD_NONDET"
 >      [CIf (CExpr "rq") (yieldCall vk) []]
 >      [],
 >    goto "nondet_handlers->choices"]
->   where ips = "_choices"
+>   where ips = "_choice_ips"
+>         choices = "_choices"
 >         yieldCall (Just (v,k')) =
 >           saveCont (Name ips : contVars k) [v,Name ips] (Just k') ++
 >           [tailCall "yield_delay_thread" ["flex_yield_resume",show v]]
@@ -1129,9 +1110,6 @@ used for constant constructors and functions, respectively.
 
 > contName :: CPSCont -> String
 > contName (CPSCont f) = cpsName f
-
-> choicesArray :: ChoicesList -> String
-> choicesArray (ChoicesList f n _) = cPrivName f n ++ "_choices"
 
 > constArray, applyTable :: String
 > constArray = "constants"
