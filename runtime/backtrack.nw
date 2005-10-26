@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: backtrack.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: backtrack.nw 1804 2005-10-26 13:21:33Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -53,7 +53,9 @@ FUNCTION(choices)
 {
     Choicepoint	 *oldBp;
     unsigned int cp_sz, stk_sz;
+    const Label	 *choice_conts;
  ENTRY_LABEL(choices)
+    choice_conts = (const Label *)*sp++;
     ASSERT(choice_conts[1] != 0);
 
     TRACE(("%I try\n"));
@@ -117,16 +119,15 @@ FUNCTION(fail)
     ASSERT(choice_conts[0] != 0);
     if ( choice_conts[1] == 0 )
     {
-	TRACE(("%I trust\n"));
 	sp   = (Node **)bp + wordsof(Choicepoint);
 	bp   = bp->btBp;
 	hlim = bp ? bp->btHp : 0;
+	TRACE(("%I trust\n"));
     }
 
     /* otherwise update the choice point */
     else
     {
-	TRACE(("%I retry\n"));
 	bp->btAlts = choice_conts + 1;
 
 	/* copy the stack */
@@ -135,6 +136,7 @@ FUNCTION(fail)
 	sp       = (Node **)bp - stk_sz;
 	ds_base -= wordsof(Choicepoint) + stk_sz;
 	memcpy(sp, sp + wordsof(Choicepoint) + stk_sz, stk_sz * word_size);
+	TRACE(("%I retry\n"));
     }
 
     /* continue at the next alternative */

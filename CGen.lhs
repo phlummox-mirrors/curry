@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1801 2005-10-25 20:34:41Z wlux $
+% $Id: CGen.lhs 1804 2005-10-26 13:21:33Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -588,7 +588,7 @@ performing a stack check.
 > stackDepth (CPSYield _ k st) = max (stackDepth st) (length (contVars k))
 > stackDepth (CPSSeq _ st) = stackDepth st
 > stackDepth (CPSSwitch _ _ _ _) = 0
-> stackDepth (CPSChoices (ChoicesList _ _ (k:_))) = length (contVars k)
+> stackDepth (CPSChoices (ChoicesList _ _ (k:_))) = 1 + length (contVars k)
 
 > stackDepthCont :: Maybe CPSCont -> Int
 > stackDepthCont = maybe 0 (length . contVars)
@@ -777,7 +777,7 @@ translation function.
 > saveCont vs0 vs (Just k) =
 >   CLocalVar nodePtrType ip (Just (asNode (CExpr (contName k)))) :
 >   saveVars vs0 (vs ++ Name ip : tail (contVars k))
->   where ip = "cont_ip"
+>   where ip = "_cont_ip"
 
 > lock :: Name -> [CStmt]
 > lock v =
@@ -829,9 +829,10 @@ translation function.
 
 > choices :: [Name] -> ChoicesList -> [CStmt]
 > choices vs0 ks@(ChoicesList _ _ (k:_)) =
->   saveVars vs0 (contVars k) ++
->   [CAssign (LVar "choice_conts") (CExpr (choicesArray ks)),
->    goto "nondet_handlers->choices"]
+>   CLocalVar nodePtrType ips (Just (asNode (CExpr (choicesArray ks)))) :
+>   saveVars vs0 (Name ips : contVars k) ++
+>   [goto "nondet_handlers->choices"]
+>   where ips = "_choices"
 
 > failAndBacktrack :: [CStmt]
 > failAndBacktrack = [goto "nondet_handlers->fail"]

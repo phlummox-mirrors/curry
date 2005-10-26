@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: stack.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: stack.nw 1804 2005-10-26 13:21:33Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -143,12 +143,9 @@ machine enters or leaves an encapsulated search, this variable is
 updated appropriately.
 
 The [[choices]] handlers expect a pointer to a null-terminated array
-containing all continuation addresses in the global variable
-[[choice_conts]].
+containing all continuation addresses on the top of the stack.
 
 <<stack.h>>=
-extern const Label *choice_conts;
-
 extern const struct nondet_handlers {
     Label choices;
     Label deadlock;
@@ -157,8 +154,6 @@ extern const struct nondet_handlers {
 
 @
 <<stack.c>>=
-const Label *choice_conts;
-
 const struct nondet_handlers *nondet_handlers;
 
 @

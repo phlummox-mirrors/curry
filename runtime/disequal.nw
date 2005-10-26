@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: disequal.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: disequal.nw 1804 2005-10-26 13:21:33Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -48,11 +48,8 @@ DECLARE_LABEL(___61__47__61__1);
 DECLARE_LABEL(___61__47__61__2);
 DECLARE_LABEL(diseq_var);
 DECLARE_LABEL(diseq_args);
-#if YIELD_NONDET
 DECLARE_LABEL(diseq_args_1);
-#endif
 DECLARE_LABEL(diseq_args_2);
-DECLARE_LABEL(diseq_args_3);
 DECLARE_LABEL(diseq_papp_args);
 DECLARE_LABEL(diseq_papp_args_1);
 DECLARE_LABEL(check_diseq);
@@ -66,7 +63,6 @@ FUNCTION(___61__47__61_)
 {
     EXPORT_LABEL(___61__47__61_)
  ENTRY_LABEL(___61__47__61_)
-
     TRACE(("%I enter =/=%V\n", 2, sp));
     GOTO(___61__47__61__1);
 }
@@ -75,7 +71,6 @@ static
 FUNCTION(___61__47__61__1)
 {
     Node *aux;
-
  ENTRY_LABEL(___61__47__61__1)
     EVAL_FLEX_POLY(___61__47__61__1);
     aux	  = sp[0];
@@ -90,10 +85,8 @@ FUNCTION(___61__47__61__2)
     boolean	 is_papp;
     unsigned int n;
     Node	 *arg1, *arg2, *arglist;
-
  ENTRY_LABEL(___61__47__61__2)
     EVAL_FLEX_POLY(___61__47__61__2);
-
     arg1 = sp[1];
     arg2 = sp[0];
 
@@ -188,7 +181,6 @@ FUNCTION(diseq_var)
     boolean	nf;
     Node	*aux;
     Disequality *cstr;
-
  ENTRY_LABEL(diseq_var)
     if ( !is_local_space(sp[0]->v.spc) )
     {
@@ -252,38 +244,29 @@ where \texttt{|} denotes the disjunction operator.
   continuations in one step.}
 
 <<disequal.c>>=
-static const Label diseq_args_choices[] = { diseq_args_2, diseq_args_3, 0 };
-
 static
 FUNCTION(diseq_args)
 {
+    static const Label diseq_args_choices[] = { diseq_args_1, diseq_args_2, 0 };
  ENTRY_LABEL(diseq_args)
     if ( sp[0]->c.args[2] == nil )
-	GOTO(diseq_args_2);
+	GOTO(diseq_args_1);
 
+    CHECK_STACK(1);
+    sp -= 1;
+    sp[0] = (Node *)diseq_args_choices;
 #if YIELD_NONDET
     if ( rq )
-        GOTO(yield_thread(diseq_args_1));
+        GOTO(yield_thread(nondet_handlers->choices));
 #endif
-    choice_conts = diseq_args_choices;
     GOTO(nondet_handlers->choices);
 }
 
-#if YIELD_NONDET
 static
 FUNCTION(diseq_args_1)
 {
- ENTRY_LABEL(diseq_args_1)
-    choice_conts = diseq_args_choices;
-    GOTO(nondet_handlers->choices);
-}
-#endif
-
-static
-FUNCTION(diseq_args_2)
-{
     Node *arglist;
- ENTRY_LABEL(diseq_args_2)
+ ENTRY_LABEL(diseq_args_1)
     CHECK_STACK1();
     arglist = sp[0];
     sp	   -= 1;
@@ -293,9 +276,9 @@ FUNCTION(diseq_args_2)
 }
 
 static
-FUNCTION(diseq_args_3)
+FUNCTION(diseq_args_2)
 {
- ENTRY_LABEL(diseq_args_3)
+ ENTRY_LABEL(diseq_args_2)
     sp[0] = sp[0]->c.args[2];
     GOTO(diseq_args);
 }

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: search.nw 1804 2005-10-26 13:21:33Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -129,11 +129,9 @@ DECLARE_ENTRYPOINT(__try);
 FUNCTION(__try)
 {
     Node *susp, *list, *sc, *var;
-
     EXPORT_LABEL(__try)
  ENTRY_LABEL(__try)
     EVAL_RIGID(__try);
-
     ASSERT(is_papp_node(sp[0]) &&
 	   closure_argc(sp[0]) + 1 == sp[0]->info->arity);
 
@@ -233,7 +231,6 @@ FUNCTION(solved_goal_code)
 {
     Node  *cont, *res, *arg;
     Label ret_ip;
-
  ENTRY_LABEL(solved_goal_code)
     cont = sp[0];
     res	 = copy_graph(cont->sc.var, cont->sc.spc);
@@ -296,9 +293,7 @@ static
 FUNCTION(search_cont_code)
 {
     Node *arg, *cont;
-
  ENTRY_LABEL(search_cont_code)
-
     cont = sp[0];
     if ( !inject_search_space(cont->sc.spc) )
 	sp[0] = cont = copy_graph(cont, cont->sc.spc);
@@ -329,7 +324,6 @@ static
 FUNCTION(search_goal_proceed)
 {
     Node *susp;
-
  ENTRY_LABEL(search_goal_proceed)
     sp	+= 1;
     susp = sp[0];
@@ -359,9 +353,7 @@ FUNCTION(deadlock_search)
 	PAPPINFO("<solved goal>", 1, solved_goal_code, 2)
 	FUNINFO("<solved goal>",     solved_goal_code, 2)
     };
-
  ENTRY_LABEL(deadlock_search)
-
     /* check for successful computation or deadlock */
     ASSERT(sp == (Node **)bp - 2);
     for ( goal = sp[0]; ; )
@@ -505,7 +497,6 @@ FUNCTION(resume_search)
 {
     boolean do_resume;
     Node    *sc;
-
  ENTRY_LABEL(resume_search)
     sp += 1;
     sc	= sp[0];
@@ -532,8 +523,8 @@ FUNCTION(resume_search)
 @ 
 If a non-deterministic computation step must be performed in a local
 search space, the runtime system creates a search continuation node
-for each alternative continuation address in array [[choice_conts]],
-and returns those nodes as a list to the enclosing context.
+for each alternative in the continuation array on the top of the
+stack and returns those nodes as a list to the enclosing context.
 
 <<search.c>>=
 static
@@ -546,14 +537,12 @@ FUNCTION(choices_search)
 	PAPPINFO("<search goal>", 1, search_cont_code, 2)
 	FUNINFO("<search goal>",     search_cont_code, 2)
     };
-
  ENTRY_LABEL(choices_search)
-
     ASSERT(bp && is_search_context(bp));
 
     /* compute the number of alternative solutions */
     n_conts = 0;
-    for ( conts = choice_conts; *conts; conts++ )
+    for ( conts = (const Label *)*sp++; *conts; conts++ )
 	n_conts++;
     ASSERT(n_conts > 1);
     TRACE(("leaving encapsulated search with %u continuations\n", n_conts));
@@ -595,7 +584,6 @@ FUNCTION(choices_search)
 	hp	       += cons_node_size;
 	list		= cons;
     }
-    ASSERT(conts == choice_conts);
 
     /* leave the local space */
     BEGIN_LOCAL_ROOTS1(list)
@@ -617,7 +605,6 @@ static
 FUNCTION(fail_search)
 {
  ENTRY_LABEL(fail_search)
-
     ASSERT(is_search_context(bp));
 
     /* discard the current search space and context */
