@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1806 2005-10-26 20:54:17Z wlux $
+% $Id: CGen.lhs 1807 2005-10-26 21:17:01Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -405,20 +405,16 @@ the suspend node associated with the abstract machine code function.
 >   map privFuncDecl ks ++ entryDef vb f vs k : map funcDef ks
 
 > privFuncDecl :: CPSFunction -> CTopDecl
-> privFuncDecl k = topDecl k (CFuncDecl CPrivate (cpsName k))
+> privFuncDecl k = CFuncDecl CPrivate (cpsName k)
 
 > entryDef :: CVisibility -> Name -> [Name] -> CPSFunction -> CTopDecl
 > entryDef vb f vs k
->   | vs == cpsVars k = topDecl k (CFuncDef vb (cpsName k)
->                                    (entryCode f (length vs) : funCode k))
+>   | vs == cpsVars k =
+>       CFuncDef vb (cpsName k) (entryCode f (length vs) : funCode k)
 >   | otherwise = error ("internal error: entryDef " ++ demangle f)
 
 > funcDef :: CPSFunction -> CTopDecl
-> funcDef k = topDecl k (CFuncDef CPrivate (cpsName k) (funCode k))
-
-> topDecl :: CPSFunction -> CTopDecl -> CTopDecl
-> topDecl (CPSFunction _ _ c _ _) d = maybe d condDecl c
->   where condDecl c = CppCondDecls (CExpr c) [d] []
+> funcDef k = CFuncDef CPrivate (cpsName k) (funCode k)
 
 > entryCode :: Name -> Int -> CStmt
 > entryCode f n =
@@ -445,7 +441,7 @@ the Gnu C compiler does not detect such redundant save operations.
 \begin{verbatim}
 
 > funCode :: CPSFunction -> [CStmt]
-> funCode (CPSFunction _ _ _ vs st) =
+> funCode (CPSFunction _ _ vs st) =
 >   elimUnused (stackCheck vs st ++ heapCheck consts ds tys ++ loadVars vs ++
 >               constDefs consts ds ++ cCode consts vs st)
 >   where ds = concat dss
@@ -1106,7 +1102,7 @@ used for constant constructors and functions, respectively.
 >   | otherwise = cName f ++ '_' : show n
 
 > cpsName :: CPSFunction -> String
-> cpsName (CPSFunction f n _ _ _) = cPrivName f n
+> cpsName (CPSFunction f n _ _) = cPrivName f n
 
 > contName :: CPSCont -> String
 > contName (CPSCont f) = cpsName f
