@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1808 2005-10-27 15:20:37Z wlux $
+% $Id: CGen.lhs 1809 2005-10-27 22:11:41Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -379,7 +379,9 @@ the suspend node associated with the abstract machine code function.
 >   where lazyCode f n =
 >           CLocalVar nodePtrType "susp" (Just (CExpr "sp[0]")) :
 >           CIf (CFunCall "!is_local_space" [field "susp" "s.spc"])
->               [tailCall "suspend_thread" ["resume","susp"]]
+>               [CProcCall "suspend_search"
+>                          [CExpr "resume",CExpr "susp",field "susp" "s.spc"],
+>                CAssign (LVar "susp") (CExpr "sp[0]")]
 >               [] :
 >           CProcCall "CHECK_STACK" [CInt (n + 1)] :
 >           CDecrBy (LVar "sp") (CInt (n + 1)) :

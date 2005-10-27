@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1808 2005-10-27 15:20:37Z wlux $
+% $Id: eval.nw 1809 2005-10-27 22:11:41Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -23,6 +23,7 @@ evaluated on the top of the stack.
 #include "trail.h"
 #include "threads.h"
 #include "spaces.h"
+#include "search.h"
 #include "trace.h"
 #include "eval.h"
 #include "cam.h"
@@ -111,9 +112,20 @@ DECLARE_ENTRYPOINT(eval_queueMe);
 <<eval.c>>=
 FUNCTION(eval_queueMe)
 {
+    Node  *susp;
+    Label cont_ip;
     EXPORT_LABEL(eval_queueMe)
  ENTRY_LABEL(eval_queueMe)
-    GOTO(suspend_thread(resume, sp[0]));
+    susp    = sp[0];
+    cont_ip = resume;
+    if ( !is_local_space(susp->q.spc) )
+    {
+	suspend_search(cont_ip, susp, susp->q.spc);
+	susp	= sp[0];
+	cont_ip	= (Label)sp[1];
+	*++sp	= susp;
+    }
+    GOTO(suspend_thread(cont_ip, susp));
 }
 
 @
@@ -201,9 +213,20 @@ DECLARE_ENTRYPOINT(sync_var);
 <<eval.c>>=
 FUNCTION(sync_var)
 {
+    Node  *var;
+    Label cont_ip;
     EXPORT_LABEL(sync_var)
  ENTRY_LABEL(sync_var)
-    GOTO(delay_thread(resume, sp[0]));
+    var	    = sp[0];
+    cont_ip = resume;
+    if ( !is_local_space(var->v.spc) )
+    {
+	suspend_search(cont_ip, var, var->v.spc);
+	var	= sp[0];
+	cont_ip = (Label)sp[1];
+	*++sp	= var;
+    }
+    GOTO(delay_thread(cont_ip, var));
 }
 
 @ 
@@ -310,8 +333,12 @@ FUNCTION(___64__lazy)
     susp = sp[0];
 
     /* suspend the search if the node is not local */
+    /* NB reload susp -- suspend_search might invoke gc */
     if ( !is_local_space(susp->s.spc) )
-	GOTO(suspend_thread(resume, susp));
+    {
+	suspend_search(resume, susp, susp->s.spc);
+	susp = sp[0];
+    }
 
     /* create an update frame */
     CHECK_STACK(3);
@@ -545,8 +572,12 @@ FUNCTION(__ground_lazy)
     susp = sp[0];
 
     /* suspend the search if the node is not local */
+    /* NB reload susp -- suspend_search might invoke gc */
     if ( !is_local_space(susp->s.spc) )
-	GOTO(suspend_thread(resume, susp));
+    {
+	suspend_search(resume, susp, susp->s.spc);
+	susp = sp[0];
+    }
 
     /* create an update frame */
     CHECK_STACK(2);

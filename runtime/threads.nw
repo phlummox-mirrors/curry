@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: threads.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: threads.nw 1809 2005-10-27 22:11:41Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -38,7 +38,6 @@ extern Node	    **ds_base;
 #include "eval.h"
 #include "threads.h"
 #include "spaces.h"
-#include "search.h"
 #include "trail.h"
 #include "trace.h"
 
@@ -275,7 +274,6 @@ FUNCTION(stop_thread)
 {
     EXPORT_LABEL(stop_thread)
  ENTRY_LABEL(stop_thread)
-
     TRACE(("%I terminated\n"));
     terminate_thread();
     GOTO(activate_thread());
@@ -285,8 +283,8 @@ FUNCTION(stop_thread)
 The functions [[suspend_thread]] and [[delay_thread]] suspend the
 current thread and add it to the wait queue of the specified node.
 This node should be either a queue-me node ([[suspend_thread]]) or an
-unbound variable ([[delay_thread]]). If the node is not local to the
-current search space, the current encapsulated search is suspended.
+unbound variable ([[delay_thread]]). Both functions must be applied
+only to local nodes of the current search space.
 
 <<threads.c>>=
 Label
@@ -294,9 +292,8 @@ suspend_thread(Label l, Node *susp)
 {
     ThreadQueue thd;
 
-    ASSERT(is_boxed(susp) && (is_suspend_node(susp) || is_queueMe_node(susp)));
-    if ( !is_local_space(susp->q.spc) )
-	return suspend_search(l, susp, Eval);
+    ASSERT(is_boxed(susp) && is_queueMe_node(susp));
+    assert(is_local_space(susp->q.spc));
 
     BEGIN_LOCAL_ROOTS1(susp)
     thd = interrupt_thread(l, Eval);
@@ -315,8 +312,7 @@ delay_thread(Label l, Node *var)
     ThreadQueue thd;
 
     ASSERT(is_boxed(var) && is_variable_node(var));
-    if ( !is_local_space(var->v.spc) )
-	return suspend_search(l, var, Delay);
+    assert(is_local_space(var->v.spc));
 
     BEGIN_LOCAL_ROOTS1(var)
     thd = interrupt_thread(l, Delay);
@@ -356,8 +352,7 @@ yield_delay_thread(Label l, Node *var)
     ThreadQueue thd, thd1;
 
     ASSERT(is_boxed(var) && is_variable_node(var));
-    if ( !is_local_space(var->v.spc) )
-	return suspend_search(l, var, Delay);
+    assert(is_local_space(var->v.spc));
 
     if ( rq == 0 )
 	return l;

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1804 2005-10-26 13:21:33Z wlux $
+% $Id: search.nw 1809 2005-10-27 22:11:41Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -8,11 +8,11 @@
 The implementation of encapsulated search is mostly private to this
 module. The external entry points into this module are the external
 function [[try]], which starts a new encapsulated search, and the
-function [[suspend_search]], which suspends the current encapsulated
-search.
+function [[suspend_search]], which allows the program to temporarily
+suspend an encapsulated search.
 
 <<search.h>>=
-extern Label suspend_search(Label, Node *, enum suspend_reason);
+extern void suspend_search(Label, Node *, SearchSpace *);
 
 @ 
 <<search.c>>=
@@ -415,73 +415,68 @@ FUNCTION(deadlock_search)
 }
 
 @ 
-When a thread must evaluate a non-local shared application, the
-current search is suspended until the application is evaluated to head
-normal form. Similarly, if a thread detects a non-local variable
-during pattern matching, the current search is suspended until that
-variable is instantiated. After saving the current state, the calling
-thread starts evaluating the application or suspends until the
-variable is instantiated, and then resumes the search.
+The function [[suspend_search]] suspends the current search and
+eventually enclosing searches in order to make [[spc]] a local space.
+This is intended to allow evaluation of a non-local lazy application
+within an encapsulated search and in order to suspend a search until a
+non-local variable is instantiated. The return stack set up by
+[[suspend_search]] ensures that the suspended search is resumed at
+address [[retIp]] after [[node]] has been evaluated.
 
 <<search.c>>=
-Label
-suspend_search(Label retIp, Node *node, enum suspend_reason reason)
+void
+suspend_search(Label retIp, Node *node, SearchSpace *spc)
 {
     Node *sc;
 
-    TRACE(("suspending encapsulated search\n"));
-    if ( bp == 0 || !is_search_context(bp) )
-	curry_panic("local variable escaped its search space\n");
-
-    /* save the current state */
-    BEGIN_LOCAL_ROOTS1(node)
-    save_continuation();
-
-    /* dereference the goal nodes in order to avoid some garbage */
-    ASSERT(sp == (Node **)bp - 2);
-    while ( is_boxed(sp[0]) && sp[0]->info->tag == INDIR_TAG )
-	sp[0] = sp[0]->n.node;
-    while ( is_boxed(sp[1]) && sp[1]->info->tag == INDIR_TAG )
-	sp[1] = sp[1]->n.node;
-
-    /* allocate a search continuation */
-    CHECK_HEAP(search_cont_node_size);
-    sc		= (Node *)hp;
-    sc->info	= &search_cont_info;
-    sc->sc.spc  = ss;
-    sc->sc.susp = sp[0];
-    sc->sc.var  = sp[1];
-    sc->sc.code = retIp;
-    sc->sc.rq   = rq;
-    hp	       += search_cont_node_size;
-
-    /* leave the local space */
-    BEGIN_LOCAL_ROOTS1(sc)
-    save_search_space();
-    pop_search_context();
-    END_LOCAL_ROOTS
-    END_LOCAL_ROOTS
-
-    /* save the search continuation and the node causing the suspension */
-    CHECK_STACK(3);
-    sp   -= 2;
-    sp[0] = node;
-    sp[1] = sc;
-
-    /* either evaluate the node on the top of the stack or delay the thread */
-    switch ( reason )
+    BEGIN_LOCAL_ROOTS2(node, spc)
+    while ( !is_local_space(spc) )
     {
-    case Eval:
-	sp   -= 1;
-	sp[0] = node;
-	sp[1] = (Node *)resume_search;
-    	return node->info->eval;
-    case Delay:
-	return delay_thread(resume_search, node);
-    default:
-	fprintf(stderr, "suspend_search: unexpected reason %d\n", reason);
-	exit(1);
+	TRACE(("suspending encapsulated search\n"));
+	if ( bp == 0 || !is_search_context(bp) )
+	    curry_panic("local variable escaped its search space\n");
+
+	/* save the current state */
+	save_continuation();
+
+	/* dereference the goal nodes in order to avoid some garbage */
+	ASSERT(sp == (Node **)bp - 2);
+	while ( is_boxed(sp[0]) && sp[0]->info->tag == INDIR_TAG )
+	    sp[0] = sp[0]->n.node;
+	while ( is_boxed(sp[1]) && sp[1]->info->tag == INDIR_TAG )
+	    sp[1] = sp[1]->n.node;
+
+	/* allocate a search continuation */
+	CHECK_HEAP(search_cont_node_size);
+	sc	    = (Node *)hp;
+	sc->info    = &search_cont_info;
+	sc->sc.spc  = ss;
+	sc->sc.susp = sp[0];
+	sc->sc.var  = sp[1];
+	sc->sc.code = retIp;
+	sc->sc.rq   = rq;
+	hp	   += search_cont_node_size;
+
+	/* leave the local space */
+	BEGIN_LOCAL_ROOTS1(sc)
+	save_search_space();
+	pop_search_context();
+	END_LOCAL_ROOTS
+
+	/* save the search continuation and set up a return frame that
+	 * restores the suspended search; note that resume_search discards
+	 * its first argument */
+	CHECK_STACK(3);
+	retIp = resume_search;
+	sp   -= 2;
+	sp[0] = 0;
+	sp[1] = sc;
     }
+    END_LOCAL_ROOTS
+
+    sp	 -= 1;
+    sp[0] = node;
+    sp[1] = (Node *)retIp;
 }
 
 @ 

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1749 2005-08-29 09:40:13Z wlux $
+% $Id: files.nw 1809 2005-10-27 22:11:41Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -36,6 +36,7 @@ extern void init_files(int, long);
 #include "stack.h"
 #include "threads.h"
 #include "spaces.h"
+#include "search.h"
 #include "trail.h"
 #include "eval.h"
 #include "cstring.h"
@@ -791,8 +792,12 @@ FUNCTION(lazyRead_lazy)
     susp = sp[0];
 
     /* suspend the search if the node is not local */
+    /* NB reload susp -- suspend_search might invoke gc */
     if ( !is_local_space(susp->s.spc) )
-	GOTO(suspend_thread(resume, susp));
+    {
+	suspend_search(resume, susp, susp->s.spc);
+	susp = sp[0];
+    }
 
     /* create an update frame */
     CHECK_STACK(2);
