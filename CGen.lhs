@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1807 2005-10-26 21:17:01Z wlux $
+% $Id: CGen.lhs 1808 2005-10-27 15:20:37Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -508,6 +508,7 @@ literal constants and character nodes.
 >   where allocs0 (Let ds) ~(tys,dss) = (tys,ds:dss)
 >         allocs0 (CCall _ (Just ty) _ _) ~(tys,dss) = (ty:tys,dss)
 >         allocs0 _ as = as
+> allocs (CPSDelayNonLocal _ _ st) = allocs st
 > allocs _ = ([],[])
 
 > nodeSize :: Expr -> CExpr
@@ -554,8 +555,9 @@ performing a stack check.
 > stackDepth (CPSExec _ vs k) = length vs + stackDepthCont k
 > stackDepth (CPSApply _ _) = 0
 > stackDepth (CPSUnify _ _ k) = length (contVars k)
-> stackDepth (CPSDelay _ k) = length (contVars k)
-> stackDepth (CPSDelayNonLocal _ k _) = length (contVars k)
+> stackDepth (CPSDelay _ k) = 1 + length (contVars k)
+> stackDepth (CPSDelayNonLocal _ k st) =
+>   max (1 + length (contVars k)) (stackDepth st)
 > stackDepth (CPSSeq _ st) = stackDepth st
 > stackDepth (CPSSwitch _ _ _ _) = 0
 > stackDepth (CPSChoices vk (k:_)) = maybe 1 (const 2) vk + length (contVars k)
@@ -696,11 +698,12 @@ translation function.
 > cCode _ vs0 (CPSApply v vs) = apply vs0 v vs
 > cCode _ vs0 (CPSUnify v v' k) = unifyVar vs0 v v' k
 > cCode _ vs0 (CPSDelay v k) = delay vs0 v k
-> cCode _ vs0 (CPSDelayNonLocal v k st) =
->   delayNonLocal vs0 v k ++ caseCode vs0 v DefaultCase st
+> cCode consts vs0 (CPSDelayNonLocal v k st) =
+>   delayNonLocal vs0 v k ++ cCode consts vs0 st
 > cCode consts vs0 (CPSSeq st1 st2) = cCode0 consts st1 ++ cCode consts vs0 st2
 > cCode consts vs0 (CPSSwitch unboxed v vcase cases) =
->   switchOnTerm unboxed vs0 v (maybe [CBreak] (cCode consts vs0) vcase)
+>   switchOnTerm unboxed vs0 v
+>                (maybe [CBreak] (caseCode vs0 v DefaultCase) vcase)
 >                [(t,caseCode vs0 v t st) | CaseBlock _ t st <- cases]
 > cCode _ vs0 (CPSChoices vk ks) = choices vs0 vk ks
 
@@ -777,8 +780,7 @@ translation function.
 >   [tailCall "bind_var" [show v,show n,contName k]]
 
 > delay :: [Name] -> Name -> CPSCont -> [CStmt]
-> delay vs0 v k =
->   saveVars vs0 (contVars k) ++ [tailCall "delay_thread" [contName k,show v]]
+> delay vs0 v k = saveCont vs0 [v] (Just k) ++ [goto "sync_var"]
 
 > delayNonLocal :: [Name] -> Name -> CPSCont -> [CStmt]
 > delayNonLocal vs0 v k =

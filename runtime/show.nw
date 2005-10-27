@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1748 2005-08-29 09:33:31Z wlux $
+% $Id: show.nw 1808 2005-10-27 15:20:37Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -224,8 +224,11 @@ FUNCTION(showp_1)
 	case VARIABLE_TAG:
 	    if ( show != zero )
 	    {
+		CHECK_STACK1();
+		sp   -= 1;
 		sp[0] = node;
-		GOTO(delay_thread(showp_1, node));
+		sp[1] = (Node *)showp_1;
+		GOTO(sync_var);
 	    }
 	    str = lookup_name(node);
 	    break;
@@ -788,8 +791,11 @@ FUNCTION(showList)
 	    case VARIABLE_TAG:
 		if ( show != zero )
 		{
+		    CHECK_STACK1();
+		    sp	 -= 1;
 		    sp[0] = hd;
-		    GOTO(delay_thread(showList, hd));
+		    sp[1] = (Node *)showList;
+		    GOTO(sync_var);
 		}
 		break;
 	    case CHAR_TAG:
@@ -935,8 +941,11 @@ FUNCTION(showTail_1)
     case VARIABLE_TAG:
 	if ( show != zero )
 	{
+	    CHECK_STACK1();
+	    sp	 -= 1;
 	    sp[0] = list;
-	    GOTO(delay_thread(showTail_1, list));
+	    sp[1] = (Node *)showTail_1;
+	    GOTO(sync_var);
 	}
     make_tail:
 	sp[0] = list;

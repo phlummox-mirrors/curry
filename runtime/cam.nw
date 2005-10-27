@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cam.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: cam.nw 1808 2005-10-27 15:20:37Z wlux $
 %
-% Copyright (c) 2001-2004, Wolfgang Lux
+% Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Abstract Machine Instruction Macros}
@@ -58,7 +58,9 @@ for (;;) { \
     case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: GOTO(delay_thread(l, sp[0])); \
+    case VARIABLE_TAG: \
+	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	GOTO(sync_var); \
     default: break; \
     } \
     break; \
@@ -71,7 +73,9 @@ for (;;) { \
     case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: GOTO(delay_thread(l, sp[0])); \
+    case VARIABLE_TAG: \
+	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	GOTO(sync_var); \
     case CHAR_TAG: break; \
     default: invalid_arg(#l, sp[0]->info->tag); \
     } \
@@ -86,7 +90,9 @@ for (;;) { \
 	case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sp[0]->info->eval); \
-	case VARIABLE_TAG: GOTO(delay_thread(l, sp[0])); \
+	case VARIABLE_TAG: \
+	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	    GOTO(sync_var); \
 	case INT_TAG: break; \
 	default: invalid_arg(#l, sp[0]->info->tag); \
 	} \
@@ -100,7 +106,9 @@ for (;;) { \
     case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: GOTO(delay_thread(l, sp[0])); \
+    case VARIABLE_TAG: \
+	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	GOTO(sync_var); \
     case FLOAT_TAG: break; \
     default: invalid_arg(#l, sp[0]->info->tag); \
     } \
@@ -114,7 +122,9 @@ for (;;) { \
     case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: GOTO(delay_thread(l, sp[0])); \
+    case VARIABLE_TAG: \
+	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	GOTO(sync_var); \
     case PTR_TAG: break; \
     default: invalid_arg(#l, sp[0]->info->tag); \
     } \
@@ -128,7 +138,9 @@ for (;;) { \
     case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: GOTO(delay_thread(l, sp[0])); \
+    case VARIABLE_TAG: \
+	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	GOTO(sync_var); \
     case FOREIGN_PTR_TAG: break; \
     default: invalid_arg(#l, sp[0]->info->tag); \
     } \
@@ -156,7 +168,9 @@ for (;;) { \
 	case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sp[0]->info->eval); \
-	case VARIABLE_TAG: GOTO(delay_thread(l, sp[0])); \
+	case VARIABLE_TAG: \
+	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	    GOTO(sync_var); \
 	default: break; \
 	} \
     break; \

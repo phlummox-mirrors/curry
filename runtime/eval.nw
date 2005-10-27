@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1805 2005-10-26 19:54:06Z wlux $
+% $Id: eval.nw 1808 2005-10-27 15:20:37Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -185,6 +185,25 @@ FUNCTION(update)
 
     /* return to the caller */
     GOTO(ret_ip);
+}
+
+@ 
+When an unbound variable is matched in a rigid switch and when a
+non-local variable is matched in a flexible switch, the running thread
+is suspended until the variable is instantiated. This is handled by
+the runtime system code [[sync_var]], which also ensures that the
+bound variable node will be dereferenced after the thread is resumed.
+
+<<eval.h>>=
+DECLARE_ENTRYPOINT(sync_var);
+
+@ 
+<<eval.c>>=
+FUNCTION(sync_var)
+{
+    EXPORT_LABEL(sync_var)
+ ENTRY_LABEL(sync_var)
+    GOTO(delay_thread(resume, sp[0]));
 }
 
 @ 

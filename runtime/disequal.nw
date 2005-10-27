@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: disequal.nw 1804 2005-10-26 13:21:33Z wlux $
+% $Id: disequal.nw 1808 2005-10-27 15:20:37Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -192,7 +192,13 @@ FUNCTION(diseq_var)
 	    sp[1] = aux;
 	}
 	else
-	    GOTO(delay_thread(___61__47__61__1, sp[0]));
+	{
+	    CHECK_STACK1();
+	    sp	 -= 1;
+	    sp[0] = sp[1];
+	    sp[1] = (Node *)___61__47__61__1;
+	    GOTO(sync_var);
+	}
     }
 
     nf = true;

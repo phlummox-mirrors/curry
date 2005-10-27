@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: unify.nw 1808 2005-10-27 15:20:37Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -667,7 +667,13 @@ FUNCTION(unify_var)
 	    sp[1] = next;
 	}
 	else
-	    GOTO(delay_thread(___61__58__61__1, sp[0]));
+	{
+	    CHECK_STACK1();
+	    sp	 -= 1;
+	    sp[0] = sp[1];
+	    sp[1] = (Node *)___61__58__61__1;
+	    GOTO(sync_var);
+	}
     }
 
     nf	= true;
@@ -812,12 +818,13 @@ bind_var(Node *var, Node *node, Label cont)
 	    case VARIABLE_TAG:
 		if ( !is_local_space(node->v.spc) && (wq || cstrs) )
 		{
-		    CHECK_STACK(3);
-		    sp	-= 3;
-		    sp[0] = var;
-		    sp[1] = node;
-		    sp[2] = (Node *)cont;
-		    return delay_thread(resume_bind, node);
+		    CHECK_STACK(4);
+		    sp	-= 4;
+		    sp[0] = node;
+		    sp[1] = (Node *)resume_bind;
+		    sp[2] = var;
+		    sp[3] = (Node *)cont;
+		    return sync_var;
 		}
 		is_var = true;
 		break;
@@ -895,7 +902,6 @@ static
 FUNCTION(bind_var_1)
 {
     Label cont;
-
  ENTRY_LABEL(bind_var_1)
     cont = (Label)sp[1];
     sp	+= 2;
@@ -907,10 +913,9 @@ FUNCTION(resume_bind)
 {
     Node  *var, *node;
     Label cont;
-
  ENTRY_LABEL(resume_bind)
-    var	 = sp[0];
-    node = sp[1];
+    node = sp[0];
+    var	 = sp[1];
     cont = (Label)sp[2];
     sp  += 3;
     GOTO(bind_var(var, node, cont));
@@ -921,7 +926,6 @@ FUNCTION(check_constraints)
 {
     Node       *node;
     Constraint *cstrs;
-
  ENTRY_LABEL(check_constraints)
     cstrs = (Constraint *)sp[0];
     node  = sp[1];
@@ -941,7 +945,6 @@ FUNCTION(check_constraints_1)
 {
     Constraint *cstrs;
     Label      ret_ip;
-
  ENTRY_LABEL(check_constraints_1)
     /* XXX check for suspended constraints? */
     cstrs = (Constraint *)sp[1];
@@ -961,7 +964,6 @@ FUNCTION(wake)
 {
     Label	ret_ip;
     ThreadQueue	wq;
-
  ENTRY_LABEL(wake)
     /* handle the wait queue of the variable */
     wq	   = (ThreadQueue)sp[0];

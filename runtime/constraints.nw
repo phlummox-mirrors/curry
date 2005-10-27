@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: constraints.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: constraints.nw 1808 2005-10-27 15:20:37Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -159,9 +159,12 @@ FUNCTION(___38_)
 	    sp[2] = c1;
 	    GOTO(c2->info->eval);
 	case VARIABLE_TAG:
+	    CHECK_STACK1();
+	    sp   -= 1;
 	    sp[0] = c1;
-	    sp[1] = c2;
-	    GOTO(delay_thread(___38__2, c1));
+	    sp[1] = (Node *)___38__2;
+	    sp[2] = c2;
+	    GOTO(sync_var);
 	case SUCCESS_TAG:
 	    sp += 2;
 	    RETURN(c1);
@@ -241,9 +244,12 @@ FUNCTION(___38__1)
 	sp[2] = c1;
 	GOTO(c2->info->eval);
     case VARIABLE_TAG:
+	CHECK_STACK1();
+	sp   -= 1;
 	sp[0] = c1;
-	sp[1] = c2;
-	GOTO(delay_thread(___38__2, c1));
+	sp[1] = (Node *)___38__2;
+	sp[2] = c2;
+	GOTO(sync_var);
     case SUCCESS_TAG:
         break;
     }
