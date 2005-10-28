@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1807 2005-10-26 21:17:01Z wlux $
+% $Id: CPS.lhs 1810 2005-10-28 08:06:14Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -8,7 +8,8 @@
 \section{Continuation Passing Style}\label{sec:cps}
 \begin{verbatim}
 
-> module CPS(CPSFunction(..), CPSCont(..), CaseBlock(..), CPSStmt(..),
+> module CPS(CPSFunction(..), CPSCont(..),
+>            CaseBlock(..), CPSTag(..), CPSStmt(..),
 >            cpsFunction, cpsApply, cpsVars, contVars, fresh) where
 > import Cam
 > import List
@@ -55,12 +56,18 @@ declarations, e.g., \verb|let { xs=0:ys; ys=1:xs } in |\dots{}
 >   | CPSDelay Name CPSCont
 >   | CPSDelayNonLocal Name CPSCont CPSStmt
 >   | CPSSeq Stmt0 CPSStmt
->   | CPSSwitch Bool Name (Maybe CPSStmt) [CaseBlock]
+>   | CPSSwitch Bool Name [CaseBlock]
 >   | CPSChoices (Maybe (Name,CPSCont)) [CPSCont]
 >   deriving Show
 
 > newtype CPSCont = CPSCont CPSFunction
-> data CaseBlock = CaseBlock Int Tag CPSStmt deriving Show
+> data CaseBlock = CaseBlock CPSTag CPSStmt deriving Show
+> data CPSTag =
+>     CPSLitCase Literal
+>   | CPSConstrCase Name [Name]
+>   | CPSFreeCase
+>   | CPSDefaultCase
+>   deriving Show
 
 > instance Eq CPSFunction where
 >   CPSFunction f1 n1 _ _ == CPSFunction f2 n2 _ _ = f1 == f2 && n1 == n2
@@ -82,8 +89,9 @@ declarations, e.g., \verb|let { xs=0:ys; ys=1:xs } in |\dots{}
 > cpsApply f vs@(v:vs') = [k0,k1]
 >   where k0 = CPSFunction f 0 vs (CPSEnter v (Just (CPSCont k1)))
 >         k1 = CPSFunction f 1 vs
->                (CPSSwitch False v (Just (CPSDelay v (CPSCont k1)))
->                   [CaseBlock 1 DefaultCase (CPSApply v vs')])
+>                (CPSSwitch False v
+>                   [CaseBlock CPSFreeCase (CPSDelay v (CPSCont k1)),
+>                    CaseBlock CPSDefaultCase (CPSApply v vs')])
 
 > cpsVars :: CPSFunction -> [Name]
 > cpsVars (CPSFunction _ _ vs _) = vs
@@ -125,8 +133,13 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 >         (n',st') = cpsStmt f (Just (CPSCont f')) k (n + 1) st
 
 > cpsCase :: Name -> Maybe CPSCont -> Int -> Case -> (Int,CaseBlock)
-> cpsCase f k n (Case t st) = (n',CaseBlock n t st')
->   where (n',st') = cpsStmt f Nothing k (n + 1) st
+> cpsCase f k n (Case t st) = (n',CaseBlock (cpsTag t) st')
+>   where (n',st') = cpsStmt f Nothing k n st
+
+> cpsTag :: Tag -> CPSTag
+> cpsTag (LitCase l) = CPSLitCase l
+> cpsTag (ConstrCase c vs) = CPSConstrCase c vs
+> cpsTag DefaultCase = CPSDefaultCase
 
 > cpsStmt :: Name -> Maybe CPSCont -> Maybe CPSCont -> Int -> Stmt
 >         -> (Int,CPSStmt)
@@ -163,19 +176,19 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 
 > cpsSwitch :: Name -> CPSCont -> Maybe CPSCont -> Int -> RF -> Name -> [Case]
 >           -> (Int,CPSStmt)
-> cpsSwitch f k0 k n rf v cases = (n'',CPSSwitch ub v vcase cases')
+> cpsSwitch f k0 k n rf v cases = (n'',CPSSwitch ub v (vcase ++ cases'))
 >   where (n',vcase) = cpsVarCase ub f k0 n rf v ts
 >         (n'',cases') = mapAccumL (cpsCase f k) n' cases
 >         ts = [t | Case t _ <- cases, t /= DefaultCase]
 >         ub = unboxedSwitch ts
 
 > cpsVarCase :: Bool -> Name -> CPSCont -> Int -> RF -> Name -> [Tag]
->            -> (Int,Maybe CPSStmt)
-> cpsVarCase _ _ k n Rigid v _ = (n,Just (CPSDelay v k))
+>            -> (Int,[CaseBlock])
+> cpsVarCase _ _ k n Rigid v _ = (n,[CaseBlock CPSFreeCase (CPSDelay v k)])
 > cpsVarCase ub f k n Flex v ts
->   | null ts = (n,Nothing)
->   | otherwise = (n',Just (CPSDelayNonLocal v k st'))
->   where (n',st') = cpsFlexCase ub f k (n + 1) v ts
+>   | null ts = (n,[])
+>   | otherwise = (n',[CaseBlock CPSFreeCase (CPSDelayNonLocal v k st')])
+>   where (n',st') = cpsFlexCase ub f k n v ts
 
 > cpsFlexCase :: Bool -> Name -> CPSCont -> Int -> Name -> [Tag]
 >             -> (Int,CPSStmt)
@@ -273,9 +286,8 @@ duplication of shared continuations.
 > linearizeStmt n (CPSDelayNonLocal _ k st) =
 >   linMerge [linearizeCont n k,linearizeStmt n st]
 > linearizeStmt n (CPSSeq _ st) = linearizeStmt n st
-> linearizeStmt n (CPSSwitch _ _ vcase cases) =
->   linMerge (maybe [] (linearizeStmt n) vcase :
->             [linearizeStmt n' st | CaseBlock n' _ st <- cases])
+> linearizeStmt n (CPSSwitch _ _ cases) =
+>   linMerge [linearizeStmt n st | CaseBlock _ st <- cases]
 > linearizeStmt n (CPSChoices vk ks) =
 >   linMerge (map (linearizeCont n) (maybe id ((:) . snd) vk ks))
 

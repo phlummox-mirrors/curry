@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1809 2005-10-27 22:11:41Z wlux $
+% $Id: CGen.lhs 1810 2005-10-28 08:06:14Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -450,7 +450,7 @@ the Gnu C compiler does not detect such redundant save operations.
 >         (tys,dss) = allocs st
 >         consts = constants dss
 
-> caseCode :: [Name] -> Name -> Tag -> CPSStmt -> [CStmt]
+> caseCode :: [Name] -> Name -> CPSTag -> CPSStmt -> [CStmt]
 > caseCode vs v t st =
 >   [CBlock (stackCheck vs st ++ heapCheck' consts ds tys vs ++
 >            fetchArgs v t ++ constDefs consts ds ++ cCode consts vs st)]
@@ -467,14 +467,15 @@ the Gnu C compiler does not detect such redundant save operations.
 >   where loadVar v i =
 >           CLocalVar nodePtrType (show v) (Just (CElem (CExpr "sp") (CInt i)))
 
-> fetchArgs :: Name -> Tag -> [CStmt]
-> fetchArgs v (LitCase _) = []
-> fetchArgs v (ConstrCase _ vs) =
+> fetchArgs :: Name -> CPSTag -> [CStmt]
+> fetchArgs _ (CPSLitCase _) = []
+> fetchArgs v (CPSConstrCase _ vs) =
 >   assertRel (funCall "closure_argc" [show v]) "==" (CInt (length vs)) :
 >   zipWith (fetchArg (field (show v) "c.args")) vs [0..]
 >   where fetchArg v v' =
 >           CLocalVar nodePtrType (show v') . Just . CElem v . CInt
-> fetchArgs v DefaultCase = []
+> fetchArgs _ CPSFreeCase = []
+> fetchArgs _ CPSDefaultCase = []
 
 > saveVars :: [Name] -> [Name] -> [CStmt]
 > saveVars vs0 vs =
@@ -561,7 +562,7 @@ performing a stack check.
 > stackDepth (CPSDelayNonLocal _ k st) =
 >   max (1 + length (contVars k)) (stackDepth st)
 > stackDepth (CPSSeq _ st) = stackDepth st
-> stackDepth (CPSSwitch _ _ _ _) = 0
+> stackDepth (CPSSwitch _ _ _) = 0
 > stackDepth (CPSChoices vk (k:_)) = maybe 1 (const 2) vk + length (contVars k)
 
 > stackDepthCont :: Maybe CPSCont -> Int
@@ -703,10 +704,9 @@ translation function.
 > cCode consts vs0 (CPSDelayNonLocal v k st) =
 >   delayNonLocal vs0 v k ++ cCode consts vs0 st
 > cCode consts vs0 (CPSSeq st1 st2) = cCode0 consts st1 ++ cCode consts vs0 st2
-> cCode consts vs0 (CPSSwitch unboxed v vcase cases) =
+> cCode consts vs0 (CPSSwitch unboxed v cases) =
 >   switchOnTerm unboxed vs0 v
->                (maybe [CBreak] (caseCode vs0 v DefaultCase) vcase)
->                [(t,caseCode vs0 v t st) | CaseBlock _ t st <- cases]
+>                [(t,caseCode vs0 v t st) | CaseBlock t st <- cases]
 > cCode _ vs0 (CPSChoices vk ks) = choices vs0 vk ks
 
 > cCode0 :: FM Name CExpr -> Stmt0 -> [CStmt]
@@ -822,13 +822,12 @@ value and the setting of the preprocessor constant
 integer numbers when set to a non-zero value.
 \begin{verbatim}
 
-> switchOnTerm :: Bool -> [Name] -> Name -> [CStmt] -> [(Tag,[CStmt])]
->              -> [CStmt]
-> switchOnTerm maybeUnboxed vs0 v varCode cases =
+> switchOnTerm :: Bool -> [Name] -> Name -> [(CPSTag,[CStmt])] -> [CStmt]
+> switchOnTerm maybeUnboxed vs0 v cases =
 >   tagSwitch v [updVar vs0 v] unboxedCase otherCases :
 >   head (dflts ++ [failAndBacktrack])
 >   where v' = show v
->         (lits,constrs,dflts) = foldr partition ([],[],[]) cases
+>         (lits,constrs,vars,dflts) = foldr partition ([],[],[],[]) cases
 >         (chars,ints,floats) = foldr litPartition ([],[],[]) lits
 >         unboxedCase
 >           | maybeUnboxed =
@@ -840,21 +839,22 @@ integer numbers when set to a non-zero value.
 >                    | not (null ints)]
 >           | otherwise = Nothing
 >         otherCases =
->           varCase : [charCase | not (null chars)] ++
+>           map varCase vars ++ [charCase | not (null chars)] ++
 >           [intCase | not (null ints)] ++ [floatCase | not (null floats)] ++
 >           map constrCase constrs
->         varCase = CCase "VARIABLE_TAG" varCode
+>         varCase = CCase "VARIABLE_TAG"
 >         charCase = CCase "CHAR_TAG" [charSwitch v chars,CBreak]
 >         intCase =
 >           CCase "INT_TAG"
 >                 [intSwitch (CField (CExpr v') "i.i") ints,CBreak]
 >         floatCase = CCase "FLOAT_TAG" (floatSwitch v floats ++ [CBreak])
 >         constrCase (c,stmts) = CCase (dataTag c) stmts
->         partition (t,stmts) ~(lits,constrs,dflts) =
+>         partition (t,stmts) ~(lits,constrs,vars,dflts) =
 >           case t of
->              LitCase c -> ((c,stmts) : lits,constrs,dflts)
->              ConstrCase c _ -> (lits,(c,stmts) : constrs,dflts)
->              DefaultCase -> (lits,constrs,stmts : dflts)
+>              CPSLitCase l -> ((l,stmts) : lits,constrs,vars,dflts)
+>              CPSConstrCase c _ -> (lits,(c,stmts) : constrs,vars,dflts)
+>              CPSFreeCase -> (lits,constrs,stmts : vars,dflts)
+>              CPSDefaultCase -> (lits,constrs,vars,stmts : dflts)
 >         litPartition (Char c,stmts) ~(chars,ints,floats) =
 >           ((c,stmts):chars,ints,floats)
 >         litPartition (Int i,stmts) ~(chars,ints,floats) =
