@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: MachInterp.lhs 1811 2005-10-30 17:20:26Z wlux $
 %
-% Copyright (c) 1998-2004, Wolfgang Lux
+% Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{MachInterp.lhs}
@@ -32,9 +32,24 @@ interpreter function. All these function are based on a kind of
 
 \end{verbatim}
 \subsubsection{Creating Nodes}
-The \texttt{Let} statement allocates and initializes a group of
-nodes. In order to handle mutually recursive nodes allocation
-and initialization of nodes have to be separated.
+A \texttt{return} statement returns a fresh node to the calling
+context.
+\begin{verbatim}
+
+> returnNode :: (NodePtr -> MachStateT ()) -> Instruction
+> returnNode init =
+>   do
+>     ptr <- read'updateState (allocNode (error "Uninitialized result"))
+>     init ptr
+>     retNode ptr
+
+> retNode :: NodePtr -> Instruction
+> retNode ptr = updateState (pushNode ptr) >> ret
+
+\end{verbatim}
+A \texttt{let} statement allocates and initializes a group of nodes.
+In order to handle mutually recursive nodes, allocation and
+initialization of nodes have to be separated.
 \begin{verbatim}
 
 > letNodes :: [(String,NodePtr -> MachStateT ())] -> Instruction -> Instruction
@@ -88,14 +103,14 @@ and initialization of nodes have to be separated.
 >     space <- readState curSpace
 >     updateNode ptr (VarNode [] [] space)
 
-> initRef :: String -> NodePtr -> MachStateT ()
-> initRef v ptr =
+> initIndir :: String -> NodePtr -> MachStateT ()
+> initIndir v ptr =
 >   do
 >     ptr' <- readState (getVar v)
 >     updateNode ptr (IndirNode ptr')
 
 \end{verbatim}
-As a matter of convenience we provide also some allocator functions
+As a matter of convenience, we provide also some allocation functions,
 which initialize fresh nodes directly.
 \begin{verbatim}
 
@@ -133,22 +148,11 @@ which initialize fresh nodes directly.
 
 \end{verbatim}
 \subsubsection{Evaluation of Nodes}
-The \texttt{Return} statement returns a node without evaluation to
-the calling context. This is useful if a node is known to be in head
-normal form already.
-\begin{verbatim}
-
-> returnVar :: String -> Instruction
-> returnVar v = readState (getVar v) >>= returnNode
-
-> returnNode :: NodePtr -> Instruction
-> returnNode ptr = updateState (pushNode ptr) >> ret
-
-\end{verbatim}
-The \texttt{Enter} statement starts the evaluation of the specified
+An \texttt{enter} statement starts the evaluation of the referenced
 node to weak head normal form. When the node is already in weak head
 normal form it is returned to the caller. If the node is a suspended
-application it will be overwritten with the result of the evaluation.
+application, it will be overwritten with a queue-me node that is later
+overwritten with the result of the application.
 \begin{verbatim}
 
 > enter :: String -> Instruction
@@ -184,14 +188,14 @@ application it will be overwritten with the result of the evaluation.
 >           else
 >             suspendSearch ptr lazy (resume ptr)
 >         enterNode _ (IndirNode ptr) = deref ptr >>= enterNode ptr
->         enterNode ptr _ = returnNode ptr
+>         enterNode ptr _ = retNode ptr
 >         resume ptr = deref ptr >>= resumeNode ptr
 >         resumeNode _ (LazyNode _ _ _ _ _) =
 >           fail "Indirection to unevaluated lazy application node"
 >         resumeNode _ (QueueMeNode _ _) =
 >           fail "Indirection to locked lazy application node"
 >         resumeNode _ (IndirNode ptr) = deref ptr >>= resumeNode ptr
->         resumeNode ptr _ = returnNode ptr
+>         resumeNode ptr _ = retNode ptr
 >         update = read'updateState popNodes2 >>= uncurry update'
 >         update' ptr lptr = deref lptr >>= updateLazy ptr lptr
 >         updateLazy ptr lptr lazy@(QueueMeNode wq space) =
@@ -211,13 +215,13 @@ application it will be overwritten with the result of the evaluation.
 
 \end{verbatim}
 \subsubsection{Function Evaluation}
-The \texttt{Exec} statement pushes the specified nodes onto the
-data stack and enters the specified function. Upon entry, this
-functions initializes a fresh local environment with the nodes
-from the data stack and then executes its code. At the end, the
-function returns to the current context from (either) the
-return or update stack. If both stacks are empty, the current
-thread terminates, which may eventually cause a deadlock.
+An \texttt{exec} statement pushes the referenced nodes onto the data
+stack and enters the specified function. Upon entry, this functions
+initializes a fresh local environment with the nodes from the data
+stack and then executes its code. At the end, the function returns to
+the current context from either the return or the update stack. If
+both stacks are empty, the current thread terminates which eventually
+may cause a deadlock.
 \begin{verbatim}
 
 > exec :: Function -> [String] -> Instruction
@@ -246,19 +250,16 @@ thread terminates, which may eventually cause a deadlock.
 >         deadlock' _ = stoppedSearch
 
 \end{verbatim}
-The \texttt{CCall} statement is intended for implementing calls to
-foreign primitives written in C. We emulate such calls by mapping them
-onto a set of predefined functions (defined in
+\texttt{Ccall} statements are intended for implementing calls to
+foreign primitives written in C. We emulate such calls here by mapping
+them onto a set of predefined functions (defined in
 Sect.~\ref{sec:mach-arithmetic}).
 \begin{verbatim}
 
 > type Primitive = (String,[NodePtr] -> MachStateT NodePtr)
 
-> cCall :: String -> Primitive -> [String] -> Instruction -> Instruction
-> cCall v (_,code) vs next =
->   do
->     readState (getVars vs) >>= code >>= updateState . setVar v
->     next
+> cCall :: Primitive -> [String] -> Instruction
+> cCall (_,code) vs = readState (getVars vs) >>= code >>= retNode
 
 > prim1 ::  Monad m => (NodePtr -> m a) -> [NodePtr] -> m a
 > prim1 code [ptr] = code ptr
@@ -278,12 +279,12 @@ are overwritten with queue-me nodes when the selector is entered --
 this prevents any of the other selectors from being evaluated
 concurrently -- and updated with the nodes from the pattern when
 pattern matching in the selector function succeeds. The former task is
-handled by the \texttt{Lock} statement, the latter by the
-\texttt{Update} statement. Note that a selector function is entered
-only when the corresponding lazy application node is local to the
-current search space. As the applications for the other pattern
-variables are obviously created in the same space, neither
-\texttt{Lock} nor \texttt{Update} need to handle non-local nodes.
+handled by \texttt{lock} statements, the latter by the \texttt{update}
+statements. Note that a selector function is entered only when the
+corresponding lazy application node is local to the current search
+space. As the applications for the other pattern variables are
+obviously created in the same space, neither \texttt{lock} nor
+\texttt{update} need to handle non-local nodes.
 \begin{verbatim}
 
 > lock :: String -> Instruction -> Instruction
@@ -317,11 +318,11 @@ variables are obviously created in the same space, neither
 
 \end{verbatim}
 \subsubsection{Case Selection}
-The \texttt{Switch} statement selects the code branch matched by
+A \texttt{switch} statement selects the code branch matched by
 the tag of the specified node. Depending on the mode of the switch
 statement, an unbound variable either suspends the current thread
-until the variable is instantiated (\texttt{Rigid}) or instantiates
-the variable non-deterministically (\texttt{Flex}).  If no case
+until the variable is instantiated (\texttt{rigid}) or instantiates
+the variable non-deterministically (\texttt{flex}).  If no case
 matches, the default actions is chosen.
 
 After instantiating a variable, the abstract machine checks that all
@@ -497,7 +498,7 @@ application.
 
 \end{verbatim}
 \subsubsection{Non-deterministic Evaluation}
-The \texttt{Choices} statement executes its alternatives
+A \texttt{choices} statement executes its alternatives
 non-deterministically. If there are other threads which can proceed
 with a deterministic computation, the current thread is suspended
 until these threads either finish or suspend.
@@ -536,9 +537,9 @@ until these threads either finish or suspend.
 
 \end{verbatim}
 \subsubsection{Sequencing of Instructions}
-The \texttt{Seq} statement binds the result of its first statement
-to the given variable and executes the second statement in this
-extended environment.
+A statement sequence $x$ \texttt{<-} \emph{st$_1$}\texttt{;}
+\emph{st$_2$} binds $x$ to the result of \emph{st$_1$} and then
+executes \emph{st$_2$} in the extended environment.
 \begin{verbatim}
 
 > seqStmts :: String -> Instruction -> Instruction -> Instruction
@@ -610,7 +611,7 @@ historical reasons, the compiler uses \texttt{@} instead of
 >           applyClosure f code n (ptrs ++ ptrs')
 >         enterNode _ _ = fail "Type error in Exec: not a function"
 >         applyClosure f code n ptrs
->           | length ptrs < n = allocClosure (f,code,n) ptrs >>= returnNode
+>           | length ptrs < n = allocClosure (f,code,n) ptrs >>= retNode
 >           | otherwise =
 >               do
 >                 let (ptrs',ptrs'') = splitAt n ptrs
@@ -633,8 +634,8 @@ historical reasons, the compiler uses \texttt{@} instead of
 > chrFunction = ("chr", chrCode, 1)
 
 > ordCode,chrCode :: Instruction
-> ordCode = entry ["c"] $ evalRigid "c" (\c -> primOrd c >>= returnNode)
-> chrCode = entry ["i"] $ evalRigid "i" (\i -> primChr i >>= returnNode)
+> ordCode = entry ["c"] $ evalRigid "c" (\c -> primOrd c >>= retNode)
+> chrCode = entry ["i"] $ evalRigid "i" (\i -> primChr i >>= retNode)
 
 > ordPrimitive,chrPrimitive :: Primitive
 > ordPrimitive = ("primOrd",prim1 primOrd)
@@ -658,7 +659,7 @@ historical reasons, the compiler uses \texttt{@} instead of
 > intCode what op =
 >   entry ["x","y"] $ evalRigid "x"
 >                   $ \x -> evalRigid "y"
->                   $ \y -> primIntOp what op x y >>= returnNode
+>                   $ \y -> primIntOp what op x y >>= retNode
 
 > addIntPrimitive, subIntPrimitive, mulIntPrimitive :: Primitive
 > quotIntPrimitive, remIntPrimitive :: Primitive
@@ -687,7 +688,7 @@ historical reasons, the compiler uses \texttt{@} instead of
 > floatCode what op =
 >   entry ["x","y"] $ evalRigid "x"
 >                   $ \x -> evalRigid "y"
->                   $ \y -> primFloatOp what op x y >>= returnNode
+>                   $ \y -> primFloatOp what op x y >>= retNode
 
 > addFloatPrimitive, subFloatPrimitive :: Primitive
 > mulFloatPrimitive, divFloatPrimitive :: Primitive
@@ -706,7 +707,7 @@ historical reasons, the compiler uses \texttt{@} instead of
 
 > floatFromIntCode :: Instruction
 > floatFromIntCode =
->   entry ["x"] $ evalRigid "x" $ \i -> primFloat i >>= returnNode
+>   entry ["x"] $ evalRigid "x" $ \i -> primFloat i >>= retNode
 
 > floatPrimitive :: Primitive
 > floatPrimitive = ("primFloat", prim1 primFloat)
@@ -722,7 +723,7 @@ historical reasons, the compiler uses \texttt{@} instead of
 > intFromFloatCode :: String -> (Double -> Int) -> Instruction
 > intFromFloatCode what fromDouble =
 >   entry ["x"] $ evalRigid "x"
->               $ \f -> primFromFloat what fromDouble f >>= returnNode
+>               $ \f -> primFromFloat what fromDouble f >>= retNode
 
 > truncPrimitive, roundPrimitive :: Primitive
 > truncPrimitive = ("primTrunc", prim1 $ primFromFloat "truncateFloat" truncate)
@@ -783,17 +784,17 @@ of the values \texttt{LT}, \texttt{EQ}, \texttt{GT} defined in the
 >                (switchRigid "_y" [] (withNode (compareNodes node)))
 
 > compareNodes :: Node -> Node -> Instruction
-> compareNodes (CharNode c) (CharNode d) = order (compare c d) >>= returnNode
-> compareNodes (IntNode i) (IntNode j) = order (compare i j) >>= returnNode
-> compareNodes (FloatNode f) (FloatNode g) = order (compare f g) >>= returnNode
+> compareNodes (CharNode c) (CharNode d) = order (compare c d) >>= retNode
+> compareNodes (IntNode i) (IntNode j) = order (compare i j) >>= retNode
+> compareNodes (FloatNode f) (FloatNode g) = order (compare f g) >>= retNode
 > compareNodes (ConstructorNode t1 _ ptrs1) (ConstructorNode t2 _ ptrs2) =
 >   case compare t1 t2 of
 >     EQ -> compareArgs (zip ptrs1 ptrs2)
->     cmp -> order cmp >>= returnNode
+>     cmp -> order cmp >>= retNode
 > compareNodes _ _ = failAndBacktrack
 
 > compareArgs :: [(NodePtr,NodePtr)] -> Instruction
-> compareArgs [] = order EQ >>= returnNode
+> compareArgs [] = order EQ >>= retNode
 > compareArgs ((ptr1,ptr2):ptrs) =
 >   do
 >     updateState (pushNodes [ptr1,ptr2])
@@ -805,7 +806,7 @@ of the values \texttt{LT}, \texttt{EQ}, \texttt{GT} defined in the
 > compareRest ptrs ptr =
 >   do
 >     node <- deref ptr
->     if nodeTag node == eqTag then compareArgs ptrs else returnNode ptr
+>     if nodeTag node == eqTag then compareArgs ptrs else retNode ptr
 
 \end{verbatim}
 \subsubsection{Basic Constraint Functions}
@@ -820,7 +821,7 @@ is always satisfied.
 > successFunction = ("success",successCode,0)
 
 > successCode :: Instruction
-> successCode = entry [] (success >>= returnNode)
+> successCode = entry [] (success >>= retNode)
 
 \end{verbatim}
 The concurrent conjunction operator \texttt{\&} evaluates two
@@ -977,7 +978,7 @@ concurrently.
 >                        (const (unifyArgs ptrs))
 >         unifyRest' ptrs lazy =
 >           do
->             updateState (pushCont (returnNode lazy))
+>             updateState (pushCont (retNode lazy))
 >             unifyArgs ptrs
 
 > unifySuccess :: Instruction
@@ -1136,7 +1137,7 @@ for the disequality \texttt{(0:xs) =/= [0]}.}
 >                        (const (diseqArgs ptrs))
 >         diseqRest' ptrs lazy =
 >           do
->             updateState (pushCont (returnNode lazy))
+>             updateState (pushCont (retNode lazy))
 >             diseqArgs ptrs
 
 > diseqSuccess :: Instruction
@@ -1187,7 +1188,7 @@ returns an empty list.
 >   do
 >     updateState discardSearchSpace
 >     read'updateState popSearchContext
->     nil >>= returnNode
+>     nil >>= retNode
 
 \end{verbatim}
 When the ready queue inside the encapsulated search becomes empty,
@@ -1226,7 +1227,7 @@ evaluated.
 >       _ ->
 >         do
 >           conts <- derefPtr goalVar >>= flip closeSolvedContinuation space
->           list1 conts >>= returnNode
+>           list1 conts >>= retNode
 
 > closeSolvedContinuation :: NodePtr -> SearchSpace -> MachStateT NodePtr
 > closeSolvedContinuation goalVar space =
@@ -1253,7 +1254,7 @@ evaluated.
 \ToDo{Find a way to restore a search space within an arbitrary other
   search space.}
 
-If a \texttt{Choices} statement is executed in a local search space,
+If a \texttt{choices} statement is executed in a local search space,
 the current computation is interrupted and a list with one search
 continuation for each alternative is returned from \texttt{try}.
 \begin{verbatim}
@@ -1268,7 +1269,7 @@ continuation for each alternative is returned from \texttt{try}.
 >     rq <- readState saveContinuation
 >     spc <- read'updateState saveSearchSpace
 >     (goal,var) <- read'updateState popSearchContext
->     mapM (closeContinuation goal var rq spc) alts >>= list >>= returnNode
+>     mapM (closeContinuation goal var rq spc) alts >>= list >>= retNode
 
 > closeContinuation :: NodePtr -> NodePtr -> ThreadQueue -> SearchSpace ->
 >     Instruction -> MachStateT NodePtr
@@ -1433,10 +1434,10 @@ space.
 > bindFunction = (">>=",bindCode,3)
 
 > doneCode :: Instruction
-> doneCode = entry ["_"] (unit >>= returnNode)
+> doneCode = entry ["_"] (unit >>= retNode)
 
 > returnCode :: Instruction
-> returnCode = entry ["x","_"] (readState (getVar "x") >>= returnNode)
+> returnCode = entry ["x","_"] (readState (getVar "x") >>= retNode)
 
 > bind'Code :: Instruction
 > bind'Code = 
@@ -1472,7 +1473,7 @@ space.
 >   entry ["_"] $
 >   do
 >     c <- liftIO $ catch (liftM Just getChar) handleEOF
->     maybe (fail "End of file") allocChar c >>= returnNode
+>     maybe (fail "End of file") allocChar c >>= retNode
 >   where handleEOF e = if isEOFError e then return Nothing else ioError e
 
 > getLineCode :: Instruction
@@ -1480,7 +1481,7 @@ space.
 >   entry ["_"] $
 >   do
 >     cs <- liftIO $ catch getLine handleEOF
->     mapM allocChar cs >>= list >>= returnNode
+>     mapM allocChar cs >>= list >>= retNode
 >   where handleEOF e = if isEOFError e then return [] else ioError e
 
 > putCharCode :: Instruction
@@ -1488,7 +1489,7 @@ space.
 >   entry ["c","_"]
 >         (seqStmts "_c" (enter "c")
 >                   (switchRigid "_c" [] (withChar "putChar" putCharIO)))
->   where putCharIO c = liftIO (putChar c) >> unit >>= returnNode
+>   where putCharIO c = liftIO (putChar c) >> unit >>= retNode
 
 > putStrCode :: Instruction
 > putStrCode =

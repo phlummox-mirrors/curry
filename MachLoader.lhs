@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: MachLoader.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: MachLoader.lhs 1811 2005-10-30 17:20:26Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{MachLoader.lhs}
-\subsection{Loading a Program}
+\subsection{Loading Programs}
 The purpose of the loader is to convert an abstract machine program
 into a state transformer monad and to construct the global constructor
 and function environments from the declarations of the program. This
@@ -62,9 +62,10 @@ in order to allow mutual recursion between functions.
 >   (f,length vs,entry (map show vs) (transl st))
 >   where transl = maybe translStmt translInstrumented instrument
 >         translInstrumented instrument st = instrument st (translStmt st)
->         translStmt (Return v) = returnVar (show v)
+>         translStmt (Return e) = returnNode (translExpr e)
 >         translStmt (Enter v) = enter (show v)
 >         translStmt (Exec f vs) = exec (lookupFun f fEnv) (map show vs)
+>         translStmt (CCall _ _ cc) = translCCall cc
 >         translStmt (Seq st1 st2) = translStmt0 st1 (transl st2)
 >         translStmt (Switch rf v cases) =
 >           uncurry (switch rf (show v)) (translCases cases)
@@ -73,15 +74,14 @@ in order to allow mutual recursion between functions.
 >         translStmt (Choices alts) = choices (map transl alts)
 >         translStmt0 (Lock v) = lock (show v)
 >         translStmt0 (Update v1 v2) = update (show v1) (show v2)
->         translStmt0 (Eval v st) = seqStmts (show v) (transl st)
+>         translStmt0 (v :<- st) = seqStmts (show v) (transl st)
 >         translStmt0 (Let bds) =
 >           letNodes [(show v,translExpr n) | Bind v n <- bds]
->         translStmt0 (CCall _ _ v cc) = translCCall v cc
->         translCCall v (StaticCall f vs) =
->           cCall (show v) (lookupPrim f primEnv) (map (show . snd) vs)
->         translCCall _ (DynamicCall _ _) =
+>         translCCall (StaticCall f vs) =
+>           cCall (lookupPrim f primEnv) (map (show . snd) vs)
+>         translCCall (DynamicCall _ _) =
 >           error "Foreign dynamic calls are not supported"
->         translCCall _ (StaticAddr _) =
+>         translCCall (StaticAddr _) =
 >           error "Foreign static addresses are not supported"
 >         translCases cases =
 >           (map translCase nonDflts,
@@ -98,7 +98,7 @@ in order to allow mutual recursion between functions.
 >           initClosure (lookupFun f fEnv) (map show vs)
 >         translExpr (Lazy f vs) = initLazy (lookupFun f fEnv) (map show vs)
 >         translExpr Free = initFree
->         translExpr (Ref v) = initRef (show v)
+>         translExpr (Var v) = initIndir (show v)
 >         translLiteral (Char c) = initChar c
 >         translLiteral (Int i) = initInt i
 >         translLiteral (Float f) = initFloat f

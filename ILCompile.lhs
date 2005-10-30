@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 1803 2005-10-25 21:38:01Z wlux $
+% $Id: ILCompile.lhs 1811 2005-10-30 17:20:26Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -85,7 +85,7 @@ reader monad for the type \texttt{IO}.
 > compileForeign :: QualIdent -> CallConv -> String -> Type -> [Cam.Decl]
 > compileForeign f cc fExt ty
 >   | isIO ty' = let (vs,vs') = splitAt (length tys + 1) (nameSupply "_") in
->                [ioFun f' f'_io vs,extFun f'_io vs vs']
+>                [ioFun f' f'_io (init vs),extFun f'_io vs vs']
 >   | otherwise = let (vs,vs') = splitAt (length tys) (nameSupply "_") in
 >                 [extFun f' vs vs']
 >   where f' = fun f
@@ -94,9 +94,8 @@ reader monad for the type \texttt{IO}.
 >         ty' = resultType ty
 >         extFun f vs vs' =
 >           Cam.FunctionDecl f vs (foreignCall cc fExt vs tys ty' vs')
->         ioFun f f_io (v:vs) =
->           Cam.FunctionDecl f vs
->             (Cam.Seq (bindVar v (Cam.Closure f_io vs)) (Cam.Return v))
+>         ioFun f f_io vs =
+>           Cam.FunctionDecl f vs (Cam.Return (Cam.Closure f_io vs))
 >         isIO (TypeConstructor tc tys) = tc == qIOId && length tys == 1
 >         isIO _ = False
 >         argTypes (TypeArrow ty1 ty2) = ty1 : argTypes ty2
@@ -108,20 +107,19 @@ reader monad for the type \texttt{IO}.
 >             -> [Cam.Name] -> Cam.Stmt
 > foreignCall Primitive f vs _ _ _ = Cam.Exec (Cam.mangle f) vs
 > foreignCall CCall f vs tys ty ws =
->   foldr2 rigidArg (foreignCCall v (resultType ty) f tys vs') vs vs'
->   where n = length tys
->         (vs',v:_) = splitAt (length tys) ws
+>   foldr2 rigidArg (foreignCCall (resultType ty) f tys vs') vs vs'
+>   where vs' = take (length tys) ws
 >         resultType (TypeConstructor tc tys)
 >           | tc == qIOId && length tys == 1 = head tys
 >         resultType ty = ty
 
 > rigidArg :: Cam.Name -> Cam.Name -> Cam.Stmt -> Cam.Stmt
 > rigidArg v1 v2 st =
->   Cam.Seq (Cam.Eval v2 (Cam.Enter v1))
+>   Cam.Seq (v2 Cam.:<- Cam.Enter v1)
 >           (Cam.Switch Cam.Rigid v2 [Cam.Case Cam.DefaultCase st])
 
-> foreignCCall :: Cam.Name -> Type -> String -> [Type] -> [Cam.Name] -> Cam.Stmt
-> foreignCCall v ty ie tys vs
+> foreignCCall :: Type -> String -> [Type] -> [Cam.Name] -> Cam.Stmt
+> foreignCCall ty ie tys vs
 >   | "static" `isPrefixOf` ie =
 >       case words (drop 6 ie) of                    {- 6 == length "static" -}
 >         [f] -> callStmt Nothing (Cam.StaticCall f xs)
@@ -137,8 +135,7 @@ reader monad for the type \texttt{IO}.
 >         _ -> internalError "foreignCCall (dynamic)"
 >   | otherwise = internalError "foreignCCall"
 >   where xs = zip (map cArgType tys) vs
->         callStmt h cc =
->           Cam.Seq (Cam.CCall h (cRetType ty) v cc) (Cam.Return v)
+>         callStmt h cc = Cam.CCall h (cRetType ty) cc
 
 > cArgType :: Type -> Cam.CArgType
 > cArgType ty =
@@ -194,7 +191,7 @@ expression whose innermost expression is the matched variable.
 >   do
 >     v' <- freshName
 >     st <- compileSelectorExpr vs e
->     return (Cam.Seq (Cam.Eval v' (Cam.Enter (var v)))
+>     return (Cam.Seq (v' Cam.:<- Cam.Enter (var v))
 >                     (Cam.Switch (rf ev) v' [caseTag noVar t st]))
 >   where noVar = internalError "invalid selector pattern"
 > compileSelectorExpr vs (Variable v) =
@@ -211,18 +208,26 @@ normal form, is passed as an additional argument to
 \begin{verbatim}
 
 > compileStrict :: [Ident] -> Expression -> [Cam.Name] -> CompState Cam.Stmt
-> compileStrict _ (Literal c) vs = returnWhnf (Literal c) vs
+> compileStrict _ (Literal l) vs
+>   | null vs = return (Cam.Return (Cam.Lit (literal l)))
+>   | otherwise = internalError ("compileStrict (" ++ show l ++ "): type error")
 > compileStrict hnfs (Variable v) vs
 >   | null vs =
->       return ((if v `elem` hnfs then Cam.Return else Cam.Enter) (var v))
+>       return ((if v `elem` hnfs then Cam.Return . Cam.Var else Cam.Enter)
+>               (var v))
 >   | otherwise = return (Cam.Exec (apFun (length vs)) (var v:vs))
 > compileStrict _ (Function f arity) vs
->   | n < arity = returnWhnf (Function f arity) vs
+>   | n < arity = return (Cam.Return (Cam.Closure (fun f) vs))
 >   | otherwise = applyStrict (Cam.Exec (fun f) vs') vs''
 >   where n = length vs
 >         (vs',vs'') = splitAt arity vs
-> compileStrict _ (Constructor c arity) vs =
->   returnWhnf (Constructor c arity) vs
+> compileStrict _ (Constructor c arity) vs = return (Cam.Return node)
+>   where n = length vs
+>         node
+>           | n < arity = Cam.Closure (fun c) vs
+>           | n == arity = Cam.Constr (con c) vs
+>           | otherwise =
+>               internalError ("compileStrict (" ++ show c ++ "): type error")
 > compileStrict hnfs (Apply e1 e2) vs =
 >   do
 >     v <- freshName
@@ -234,7 +239,7 @@ normal form, is passed as an additional argument to
 >     v <- freshName
 >     st <- compileStrict hnfs e []
 >     as' <- mapM (flip (compileCase hnfs v) vs) as
->     return (Cam.Seq (Cam.Eval v st) (Cam.Switch (rf ev) v as'))
+>     return (Cam.Seq (v Cam.:<- st) (Cam.Switch (rf ev) v as'))
 > compileStrict hnfs (Or e1 e2) vs =
 >   do
 >     sts <- mapM (flip (compileStrict hnfs) vs) (branches e1 ++ branches e2)
@@ -245,10 +250,10 @@ normal form, is passed as an additional argument to
 >   do
 >     st <- compileStrict (v:hnfs) e vs
 >     return (Cam.Seq (bindVar (var v) Cam.Free) st)
-> compileStrict hnfs (Let bd e2) vs =
+> compileStrict hnfs (Let bd e) vs =
 >   do
 >     sts <- compileBinding bd
->     st <- compileStrict (addHnfs [bd] hnfs) e2 vs
+>     st <- compileStrict (addHnfs [bd] hnfs) e vs
 >     return (foldr Cam.Seq st sts)
 > compileStrict hnfs (Letrec bds e) vs =
 >   do
@@ -256,20 +261,13 @@ normal form, is passed as an additional argument to
 >     st <- compileStrict (addHnfs bds hnfs) e vs
 >     return (foldr Cam.Seq st sts)
 
-> returnWhnf :: Expression -> [Cam.Name] -> CompState Cam.Stmt
-> returnWhnf e vs =
->   do
->     v <- freshName
->     sts <- compileLazy v e vs
->     return (foldr Cam.Seq (Cam.Return v) sts)
-
 > applyStrict :: Cam.Stmt -> [Cam.Name] -> CompState Cam.Stmt
 > applyStrict st vs
 >   | null vs = return st
 >   | otherwise =
 >       do
 >         v' <- freshName
->         return (Cam.Seq (Cam.Eval v' st)
+>         return (Cam.Seq (v' Cam.:<- st)
 >                         (Cam.Exec (apFun (length vs)) (v':vs)))
 
 > literal :: Literal -> Cam.Literal
@@ -314,7 +312,7 @@ normal form, is passed as an additional argument to
 > caseTag _ (ConstructorPattern c vs) =
 >   Cam.Case (Cam.ConstrCase (con c) (map var vs))
 > caseTag v (VariablePattern v') =
->   Cam.Case Cam.DefaultCase . Cam.Seq (bindVar (var v') (Cam.Ref v))
+>   Cam.Case Cam.DefaultCase . Cam.Seq (bindVar (var v') (Cam.Var v))
 
 \end{verbatim}
 When compiling expressions in lazy -- i.e., argument -- positions,
@@ -333,21 +331,15 @@ functions before compiling into abstract machine code.
 >   liftM (map Cam.Let . scc bound free . binds . concat) . mapM compileBinding
 >   where binds sts = concat [bds | Cam.Let bds <- sts]
 >         bound (Cam.Bind v _) = [v]
->         free (Cam.Bind _ n) = vars n
->         vars (Cam.Lit _) = []
->         vars (Cam.Constr _ vs) = vs
->         vars (Cam.Closure _ vs) = vs
->         vars (Cam.Lazy _ vs) = vs
->         vars Cam.Free = []
->         vars (Cam.Ref v) = [v]
+>         free (Cam.Bind _ e) = vars e
 
 > compileLazy :: Cam.Name -> Expression -> [Cam.Name] -> CompState [Cam.Stmt0]
 > compileLazy u (Literal l) vs
 >   | null vs = return [bindVar u (Cam.Lit (literal l))]
->   | otherwise = internalError "compileLazy(Literal): type error"
+>   | otherwise = internalError ("compileLazy(" ++ show l ++ "): type error")
 > compileLazy u (Variable v) vs = return [bindVar u node]
 >   where node
->          | null vs = Cam.Ref (var v)
+>          | null vs = Cam.Var (var v)
 >          | otherwise = Cam.Lazy (apFun (length vs)) (var v:vs)
 > compileLazy u (Function f arity) vs
 >   | n < arity = return [bindVar u (Cam.Closure (fun f) vs)]
@@ -389,17 +381,23 @@ functions before compiling into abstract machine code.
 > compileLazy _ e _ = internalError ("compileLazy: " ++ show e)
 
 > bindVar :: Cam.Name -> Cam.Expr -> Cam.Stmt0
-> bindVar v n = Cam.Let [Cam.Bind v n]
+> bindVar v e = Cam.Let [Cam.Bind v e]
 
 \end{verbatim}
-In a postprocessing step, all \texttt{Ref} bindings are removed from
-the generated code. In determining all possible alias bindings, we
-make use of the following two equivalences.
-\begin{quote}\tt\def\lb{\char`\{}\def\rb{\char`\}}
+In a post-processing step, the generated code is simplified by
+removing alias bindings and nested statement sequences. In addition,
+allocation of nodes is performed in \texttt{let} statements except for
+the final result of a function. The simplification uses the following
+equivalences.
+\begin{quote}\def\lb{\char`\{}\def\rb{\char`\}}
   \begin{tabular}{r@{$\null\equiv\null$}l}
-    \texttt{$x$ <- return $y$} & \texttt{let \lb{} $x$ = $y$ \rb} \\
-    \texttt{$x$ <- \lb{} \emph{st$_1$}; \emph{st$_2$} \rb} &
-    \texttt{\emph{st$_1$}; $x$ <- \emph{st$_2$}}
+    \texttt{let} \texttt{\lb} $x$ \texttt{=} $y$ \texttt{\rb;} \emph{st} &
+      $\emph{st}[y/x]$ \\
+    $x$ \texttt{<-} \emph{st}\texttt{;} \texttt{return} $x$ & \emph{st} \\
+    $x$ \texttt{<-} \texttt{return} $e$ &
+      \texttt{let} \texttt{\lb{}} $x$ \texttt{=} $e$ \texttt{\rb} \\
+    $x$ \texttt{<-} \texttt{\lb} \emph{st$_1$}\texttt{;} \emph{st$_2$} \texttt{\rb} &
+    \emph{st$_1$}; $x$ \texttt{<-} \emph{st$_2$}
   \end{tabular}
 \end{quote}
 \begin{verbatim}
@@ -409,13 +407,23 @@ make use of the following two equivalences.
 > unalias = unaliasStmt zeroFM
 
 > unaliasStmt :: AliasMap -> Cam.Stmt -> Cam.Stmt
-> unaliasStmt aliases (Cam.Return v) = Cam.Return (unaliasVar aliases v)
+> unaliasStmt aliases (Cam.Return e) = Cam.Return (unaliasExpr aliases e)
 > unaliasStmt aliases (Cam.Enter v) = Cam.Enter (unaliasVar aliases v)
 > unaliasStmt aliases (Cam.Exec f vs) =
 >   Cam.Exec f (map (unaliasVar aliases) vs)
-> unaliasStmt aliases (Cam.Seq (Cam.Eval v (Cam.Seq st1 st2)) st3) =
->   unaliasStmt aliases (Cam.Seq st1 (Cam.Seq (Cam.Eval v st2) st3))
-> unaliasStmt aliases (Cam.Seq st1 st2) = f (unaliasStmt aliases' st2)
+> unaliasStmt aliases (Cam.CCall h ty cc) =
+>   Cam.CCall h ty (unaliasCCall aliases cc)
+> unaliasStmt aliases (Cam.Seq (v Cam.:<- Cam.Seq st1 st2) st3) =
+>   unaliasStmt aliases (Cam.Seq st1 (Cam.Seq (v Cam.:<- st2) st3))
+> unaliasStmt aliases (Cam.Seq (v Cam.:<- Cam.Return e) st) =
+>   unaliasStmt aliases (Cam.Seq (Cam.Let [Cam.Bind v e]) st)
+> unaliasStmt aliases (Cam.Seq st1 st2) =
+>   case f (unaliasStmt aliases' st2) of
+>     Cam.Seq (v1' Cam.:<- st') (Cam.Return (Cam.Var v2'))
+>       | v1' == v2' -> st'
+>     Cam.Seq (Cam.Let [Cam.Bind v1' e']) (Cam.Return (Cam.Var v2'))
+>       | v1' == v2' && v1' `notElem` vars e' -> Cam.Return e'
+>     st' -> st'
 >   where (aliases',f) = unaliasStmt0 aliases st1
 > unaliasStmt aliases (Cam.Switch rf v cases) =
 >   Cam.Switch rf (unaliasVar aliases v) (map (unaliasCase aliases) cases)
@@ -428,30 +436,39 @@ make use of the following two equivalences.
 > unaliasStmt0 aliases (Cam.Update v1 v2) =
 >   (aliases,
 >    Cam.Seq (Cam.Update (unaliasVar aliases v1) (unaliasVar aliases v2)))
-> unaliasStmt0 aliases (Cam.Eval v st) =
+> unaliasStmt0 aliases (v Cam.:<- st) =
 >   case unaliasStmt aliases st of
->     Cam.Return v' -> (addToFM v v' aliases,id)
->     st'           -> (aliases,Cam.Seq (Cam.Eval v st'))
+>     Cam.Return (Cam.Var v') -> (addToFM v v' aliases,id)
+>     Cam.Return e'           -> (aliases,Cam.Seq (Cam.Let [Cam.Bind v e']))
+>     st'                     -> (aliases,Cam.Seq (v Cam.:<- st'))
 > unaliasStmt0 aliases (Cam.Let bds) =
 >   (aliases',
->    mkLet [Cam.Bind v (unaliasExpr aliases' n) | Cam.Bind v n <- bds''])
+>    mkLet [Cam.Bind v (unaliasExpr aliases' e) | Cam.Bind v e <- bds''])
 >   where (bds',bds'') = partition isAlias bds
 >         aliases' = foldr (uncurry addToFM) aliases
 >                          [(v,unaliasVar aliases' v')
->                          | Cam.Bind v (Cam.Ref v') <- bds']
+>                          | Cam.Bind v (Cam.Var v') <- bds']
 >         mkLet bds = if null bds then id else Cam.Seq (Cam.Let bds)
->         isAlias (Cam.Bind _ (Cam.Ref _)) = True
+>         isAlias (Cam.Bind _ (Cam.Var _)) = True
 >         isAlias (Cam.Bind _ _) = False
 
+> unaliasCCall :: AliasMap -> Cam.CCall -> Cam.CCall
+> unaliasCCall aliases (Cam.StaticCall f xs) =
+>   Cam.StaticCall f [(ty,unaliasVar aliases x) | (ty,x) <- xs]
+> unaliasCCall aliases (Cam.DynamicCall f xs) =
+>   Cam.DynamicCall f [(ty,unaliasVar aliases x) | (ty,x) <- xs]
+> unaliasCCall _liases (Cam.StaticAddr x) = Cam.StaticAddr x
+
 > unaliasExpr :: AliasMap -> Cam.Expr -> Cam.Expr
-> unaliasExpr aliases (Cam.Lit c) = Cam.Lit c
+> unaliasExpr _ (Cam.Lit l) = Cam.Lit l
 > unaliasExpr aliases (Cam.Constr c vs) =
 >   Cam.Constr c (map (unaliasVar aliases) vs)
 > unaliasExpr aliases (Cam.Closure f vs) =
 >   Cam.Closure f (map (unaliasVar aliases) vs)
 > unaliasExpr aliases (Cam.Lazy f vs) =
 >   Cam.Lazy f (map (unaliasVar aliases) vs)
-> unaliasExpr aliases Cam.Free = Cam.Free
+> unaliasExpr _ Cam.Free = Cam.Free
+> unaliasExpr aliases (Cam.Var v) = Cam.Var (unaliasVar aliases v)
 
 > unaliasCase :: AliasMap -> Cam.Case -> Cam.Case
 > unaliasCase aliases (Cam.Case t st) = Cam.Case t (unaliasStmt aliases st)
@@ -491,6 +508,14 @@ Auxiliary functions.
 
 > freshName :: CompState Cam.Name
 > freshName = liftM head (updateSt tail)
+
+> vars :: Cam.Expr -> [Cam.Name]
+> vars (Cam.Lit _) = []
+> vars (Cam.Constr _ vs) = vs
+> vars (Cam.Closure _ vs) = vs
+> vars (Cam.Lazy _ vs) = vs
+> vars Cam.Free = []
+> vars (Cam.Var v) = [v]
 
 > internalError :: String -> a
 > internalError what = error ("internal error: " ++ what)

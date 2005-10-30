@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Cam.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Cam.lhs 1811 2005-10-30 17:20:26Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -38,74 +38,89 @@ comprises the function's name, arguments, and code.
 The instruction set of the abstract machine is a simple block
 structured language, which is related to that of the STG and JUMP
 machines~\cite{Peyton92:STG, ChakravartyLock97:Jump}. However, in
-contrast to these abstract machines, evaluation of nodes is made
-explicit in the Curry abstract machine, similar to the code used by
-the GRIN project~\cite{BoquistJohnsson96:GRIN, Boquist99:Thesis}.
+contrast to these abstract machines and similar to GRIN
+code~\cite{BoquistJohnsson96:GRIN, Boquist99:Thesis}, evaluation of
+nodes is made explicit in the Curry abstract machine.
 
 In our abstract machine language, we distinguish two kinds of
-statements. The statements \verb|Return|, \verb|Enter|, \verb|Exec|,
-\verb|Seq|, \verb|Switch|, and \verb|Choices| compute a value; the
-remaining statements do not compute a value. The body of a function is
-always a value computing statement.
+statements. The statements \texttt{return}, \texttt{enter},
+\texttt{exec}, \texttt{ccall}, \texttt{switch}, and \texttt{choices}
+compute a value. The remaining statements do not compute a value. The
+body of a function and the last statement of a statement sequence are
+always value computing statements.
 
-\verb|Return|~$x$ returns the address of the node bound to $x$.
+\texttt{Return} $e$ allocates a fresh node for the expression $e$ and
+returns its address. This is a convenient abbreviation for
+\texttt{let} \texttt{\lb}~$x$ \texttt{=} $e$~\texttt{\rb;}
+\texttt{enter}~$x$ when $e$ is in head normal form.
 
-\verb|Enter|~$x$ evaluates the node bound to $x$ to head normal form
+\texttt{Enter} $x$ evaluates the node bound to $x$ to head normal form
 and returns its address. If the node is already in head normal form,
-\verb|Enter|~$x$ is equivalent to \verb|Return|~$x$.
+\texttt{enter}~$x$ is equivalent to \texttt{return}~$x$.
 
-\verb|Exec|~$f(x_1,\dots,x_k)$, where $k$ is the arity of $f$, enters
-the global function $f$ and passes the nodes referenced by $x_1$,
-\dots, $x_k$ as arguments to it.
+\texttt{Exec} $f(x_1,\dots,x_n)$, where $n$ is the arity of $f$,
+enters the global function $f$ and passes the nodes referenced by
+$x_1,\dots,x_n$ as arguments to it.
 
-\verb|Seq|~\emph{stmt$_1$}~\emph{stmt$_2$} implements sequencing of
-statements. It executes \emph{stmt$_1$} and \emph{stmt$_2$} in that
-order. Note that \emph{stmt$_1$} must not compute a value. However, it
-may introduce new variables (see \verb|Eval| and \verb|Let| below).
+\texttt{Ccall} $h$ $(\emph{ty})$\emph{cc} evaluates the C code
+\emph{cc}, allocates a fresh node for its result, and returns the
+address of that node. \emph{Cc} is either a static function call
+$f((\emph{ty}_1)x_1,\dots,(\emph{ty}_k)x_k)$, a dynamic function call
+$(*x)((\emph{ty}_1)x_1,\dots,(\emph{ty}_k)x_k)$, or the address of a
+variable \texttt{\&}$x$. The type \emph{ty} specifies the type of
+\emph{cc}'s result and $\emph{ty}_1,\dots,\emph{ty}_k$ specify the
+types of the arguments $x_1,\dots,x_k$. \emph{Ty} should be either
+\texttt{TypePtr} or \texttt{TypeFunPtr} when computing the address of
+a variable. If \emph{ty} is omitted, the C function is assumed to
+return no result and the constant \texttt{()} is returned instead. The
+optional file name $h$ specifies the name of a C header file, which
+contains a prototype of $f$ or a declaration of $x$, respectively.
 
-\verb|Switch|~\emph{rf}~$x$~\emph{cases} analyzes the node bound to
-$x$ and executes the matching case from \emph{cases}. When $x$ is
-bound to a free variable, it is non-deterministically instantiated to
-the patterns of the \emph{cases} if \emph{rf} is \verb|Flex|, whereas
-the current thread is suspended until the variable is bound if
-\emph{rf} is \verb|Rigid|.
+\emph{St$_1$}\texttt{;} \emph{st$_2$} first executes \emph{st$_1$} and
+then executes \emph{st$_2$}. \emph{St$_1$} must not compute a value.
+However, it may introduce new variables (see \texttt{<-} and
+\texttt{let} below).
 
-\verb|Choices|~\emph{alts} non-deterministically executes the
-alternatives \emph{alts}.
+\texttt{Switch} \emph{rf} $x$
+\texttt{\lb}~$t_1$\texttt{:}\emph{st$_1$} \texttt{|} $\dots$
+\texttt{|} $t_n$\texttt{:}\emph{st$_n$}~\texttt{\rb} selects the
+(first) alternative $t_i$\texttt{:}\emph{st$_i$} whose pattern $t_i$
+matches the node bound to $x$ and executes the statement
+\emph{st$_i$}. When $x$ is bound to a free variable node and
+$\emph{rf}=\texttt{flex}$, an alternative is selected
+non-deterministically and the variable is instantiated to a fresh
+instance of its pattern. If $x$ is bound to a free variable node and
+$\emph{rf}=\texttt{rigid}$, the current thread is suspended until the
+variable is instantiated and then the matching alternative is
+selected.
 
-\verb|Eval|~$x$~\emph{stmt} executes the (value computing) statement
-\emph{stmt} and binds its result to the (fresh) variable $x$.
+\texttt{Choices} \texttt{\lb}~\emph{st$_1$} \texttt{|} $\dots$
+\texttt{|} \emph{st$_n$}~\texttt{\rb} non-deterministically executes a
+statement from $\emph{st$_1$},\dots,\emph{st$_n$}$.
 
-New nodes are allocated and bound with a \verb|Let|~\emph{binds}
-statement. The bindings in a \verb|Let| statement may be mutually
-recursive.
+$x$ \texttt{<-} \emph{st} executes the (value computing) statement
+\emph{st} and binds its result to the (fresh) variable $x$.
 
-The statements \verb|Lock|~$x$ and \verb|Update|~$x$~$y$ are used for
-implementing the pattern binding update strategy. \verb|Lock|~$x$
-overwrites the node bound to $x$ with a queue-me node, and
-\verb|Update|~$x$~$y$ overwrites the node bound to $x$ with a pointer
-to $y$. $x$ must be bound to a local, unevaluated suspension node when
-\verb|Lock| is executed, and to a local queue-me node when
-\verb|Update| is executed.
+\texttt{Let} \texttt{\lb}~$x_1$\texttt{=}$e_1$\texttt{;}
+\dots\texttt{;} $x_n$\texttt{=}$e_n$~\texttt{\rb} allocates new nodes
+for the expressions $e_1,\dots,e_n$ and binds them to the variables
+$x_1,\dots,x_n$. The bindings in a \texttt{let} statement may be
+mutually recursive.
 
-\verb|CCall|~$h$~\emph{ty}~$x$~\emph{cc} binds the variable $x$ to the
-result of evaluating the C code \emph{cc}. \emph{cc} is either a
-static function call $f((\emph{ty}_1)x_1,\dots,(\emph{ty}_k)x_k)$, a
-dynamic function call $(*x)((\emph{ty}_1)x_1,\dots,(\emph{ty}_k)x_k)$,
-or the address of a variable \verb|&|$y$. The type \emph{ty} specifies
-the type of \emph{cc} and $\emph{ty}_1$, \dots, $\emph{ty}_k$ specify
-the types of the arguments $x_1$, \dots, $x_k$. \emph{ty} should be
-either \verb|TypePtr| or \verb|TypeFunPtr| when computing the address
-of a variable. If \emph{ty} is omitted, the C function is assumed to
-return no result and $x$ is bound to \verb|()| after the call. $h$
-optionally specifies the name of a C header file, which contains a
-prototype of $f$ and a declaration of $y$, respectively.
+The statements \texttt{lock}~$x$ and \texttt{update}~$x$~$y$ are used
+for implementing the pattern binding update strategy.
+\texttt{Lock}~$x$ overwrites the node bound to $x$ with a queue-me
+node, and \texttt{update}~$x$~$y$ overwrites the node bound to $x$
+with a pointer to $y$. The variable $x$ must be bound to a local,
+unevaluated suspension node when \texttt{lock} is executed, and to a
+local queue-me node when \texttt{update} is executed.
 \begin{verbatim}
 
 > data Stmt =
->     Return Name
+>     Return Expr
 >   | Enter Name
 >   | Exec Name [Name]
+>   | CCall (Maybe String) CRetType CCall
 >   | Seq Stmt0 Stmt
 >   | Switch RF Name [Case]
 >   | Choices [Alt]
@@ -113,9 +128,8 @@ prototype of $f$ and a declaration of $y$, respectively.
 > data Stmt0 =
 >     Lock Name
 >   | Update Name Name
->   | Eval Name Stmt
+>   | Name :<- Stmt
 >   | Let [Bind]
->   | CCall (Maybe String) CRetType Name CCall
 >   deriving (Eq,Show)
 
 > type Alt = Stmt
@@ -129,15 +143,11 @@ prototype of $f$ and a declaration of $y$, respectively.
 
 \end{verbatim}
 The abstract machine supports literal constants, data constructors,
-function closures (including partial applications), and logic
-variables as nodes. As in the STG machine, we distinguish
-non-updatable \verb|Closure| and updatable \verb|Lazy| application
-nodes.
-
-The \verb|Ref|~$x$ expression does not denote a fresh node, but a
-reference to the node bound to $x$. An abstract machine program can
-always be translated into an equivalent program which does not use
-\verb|Ref|s. They are useful during the compilation, though.
+function closures (including partial applications), and logical
+variables as nodes. Similar to the STG machine~\cite{Peyton92:STG}, we
+distinguish non-updatable \texttt{Closure} and updatable \texttt{Lazy}
+application nodes. An expression \texttt{Var}~$x$ does not denote a
+fresh node, but a reference to the node bound to $x$.
 \begin{verbatim}
 
 > data Literal = Char Char | Int Int | Float Double deriving (Eq,Show)
@@ -148,7 +158,7 @@ always be translated into an equivalent program which does not use
 >   | Closure Name [Name]
 >   | Lazy Name [Name]
 >   | Free
->   | Ref Name
+>   | Var Name
 >   deriving (Eq,Show)
 
 \end{verbatim}
@@ -170,7 +180,7 @@ characters, integer numbers, floating-point numbers, and (untyped)
 pointers and function pointers at present. The result type of a C
 function may be omitted when the function is called only for its side
 effect. In this case, the abstract machine will use the unit
-constructor \verb|()| as result of the call.
+constructor \texttt{()} as result of the call.
 \begin{verbatim}
 
 > type CRetType = Maybe CArgType

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1810 2005-10-28 08:06:14Z wlux $
+% $Id: CGen.lhs 1811 2005-10-30 17:20:26Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -107,12 +107,12 @@ function because there is not much chance for them to be shared.
 
 > genModule :: [Decl] -> Module -> CFile
 > genModule impDs cam =
->   map CppInclude (nub ("curry.h" : [h | CCall (Just h) _ _ _ <- sts0])) ++
+>   map CppInclude (nub ("curry.h" : [h | CCall (Just h) _ _ <- sts])) ++
 >   genTypes impDs ds sts ns ++
 >   genFunctions ds fs sts ns
 >   where (_,ds,fs) = splitCam cam
 >         (sts0,sts) = foldr linStmts ([],[]) (map thd3 fs)
->         ns = nodes sts0 ++ ccallNodes sts0 ++ flexNodes sts
+>         ns = nodes sts ++ letNodes sts0 ++ ccallNodes sts ++ flexNodes sts
 
 > linStmts :: Stmt -> ([Stmt0],[Stmt]) -> ([Stmt0],[Stmt])
 > linStmts st sts = addStmt st (linStmts' st sts)
@@ -122,9 +122,10 @@ function because there is not much chance for them to be shared.
 > linStmts' (Return _) sts = sts
 > linStmts' (Enter _) sts = sts
 > linStmts' (Exec _ _) sts = sts
+> linStmts' (CCall _ _ _) sts = sts
 > linStmts' (Seq st1 st2) sts = addStmt st1 $ linStmts0 st1 $ linStmts st2 sts
 >   where addStmt st ~(sts0,sts) = (st:sts0,sts)
->         linStmts0 (Eval _ st) sts = linStmts st sts
+>         linStmts0 (_ :<- st) sts = linStmts st sts
 >         linStmts0 _ sts = sts
 > linStmts' (Switch rf x cs) sts = foldr linStmts sts [st | Case _ st <- cs]
 > linStmts' (Choices sts) sts' = foldr linStmts sts' sts
@@ -134,19 +135,22 @@ function because there is not much chance for them to be shared.
 >   [ConstrDecl c (length vs) | Switch _ _ cs <- sts,
 >                               Case (ConstrCase c vs) _ <- cs]
 
-> nodes :: [Stmt0] -> [Expr]
-> nodes sts0 = [n | Let bds <- sts0, Bind _ n <- bds]
+> nodes :: [Stmt] -> [Expr]
+> nodes sts = [n | Return n <- sts]
 
-> ccallNodes :: [Stmt0] -> [Expr]
-> ccallNodes sts0
->   | TypeBool `elem` [ty | CCall _ (Just ty) _ _ <- sts0] =
+> letNodes :: [Stmt0] -> [Expr]
+> letNodes sts0 = [n | Let bds <- sts0, Bind _ n <- bds]
+
+> ccallNodes :: [Stmt] -> [Expr]
+> ccallNodes sts
+>   | TypeBool `elem` [ty | CCall _ (Just ty) _ <- sts] =
 >       [Constr prelTrue [],Constr prelFalse []]
 >   | otherwise = []
 
 > flexNodes :: [Stmt] -> [Expr]
-> flexNodes sts =
->   [n | Switch Flex _ cs <- sts, Case t _ <- cs, Let ds <- fresh undefined t,
->        Bind _ n <- ds]
+> flexNodes sts = [node t | Switch Flex _ cs <- sts, Case t _ <- cs]
+>   where node (LitCase l) = Lit l
+>         node (ConstrCase c vs) = Constr c vs
 
 \end{verbatim}
 The function \texttt{genSplitModule} generates separate C files for
@@ -393,10 +397,8 @@ the suspend node associated with the abstract machine code function.
 >                             (CElem (CExpr "susp->s.args") (CInt i))
 
 > tupleFunction :: Name -> [CTopDecl]
-> tupleFunction f = function CPrivate f vs (tuple v vs)
->   where n = tupleArity f
->         (v:vs) = [Name ('v' : show i) | i <- [0..n]]
->         tuple v vs = Seq (Let [Bind v (Constr f vs)]) (Return v)
+> tupleFunction f = function CPrivate f vs (Return (Constr f vs))
+>   where vs = [Name ('v' : show i) | i <- [1..tupleArity f]]
 
 > apFunction :: Name -> Int -> [CTopDecl]
 > apFunction f n = funcDefs CPrivate f vs (cpsApply f vs)
@@ -494,10 +496,14 @@ the Gnu C compiler does not detect such redundant save operations.
 
 \end{verbatim}
 When computing the heap requirements of a function, we have to take
-into account nodes that are allocated explicitly in \verb|let|
-statements and implicitly for the results of \verb|ccall| statements,
-but can ignore nodes which are allocated outside of the heap, i.e.,
-literal constants and character nodes.
+into account nodes that are allocated explicitly in \texttt{return}
+and \texttt{let} statements and implicitly for the results of
+\texttt{ccall} statements, but can ignore nodes which are allocated
+outside of the heap, i.e., literal constants and character nodes.
+
+Note that we use the same temporary name for the node allocated in
+\texttt{CPSReturn} and \texttt{CPSUnify} statements. This is save
+because constants are allocated per block, not per CPS function.
 \begin{verbatim}
 
 > heapCheck :: FM Name CExpr -> [Bind] -> [CArgType] -> [CStmt]
@@ -507,9 +513,11 @@ literal constants and character nodes.
 >                    [nodeSize n | Bind v n <- ds, not (isConstant consts v)])
  
 > allocs :: CPSStmt -> ([CArgType],[[Bind]])
+> allocs (CPSReturn e _) = ([],[[Bind resName e]])
+> allocs (CPSCCall (Just ty) _ _) = ([ty],[])
+> allocs (CPSUnify _ e _) = ([],[[Bind resName e]])
 > allocs (CPSSeq st1 st2) = allocs0 st1 (allocs st2)
 >   where allocs0 (Let ds) ~(tys,dss) = (tys,ds:dss)
->         allocs0 (CCall _ (Just ty) _ _) ~(tys,dss) = (ty:tys,dss)
 >         allocs0 _ as = as
 > allocs (CPSDelayNonLocal _ _ st) = allocs st
 > allocs _ = ([],[])
@@ -520,7 +528,7 @@ literal constants and character nodes.
 > nodeSize (Closure _ vs) = closureNodeSize (length vs)
 > nodeSize (Lazy f vs) = suspendNodeSize (length vs)
 > nodeSize Free = CExpr "variable_node_size"
-> nodeSize (Ref _) = error "internal error: nodeSize(Ref)"
+> nodeSize (Var _) = CInt 0
 
 > ctypeSize :: CArgType -> CExpr
 > ctypeSize TypeBool = CInt 0
@@ -556,6 +564,7 @@ performing a stack check.
 > stackDepth (CPSReturn _ k) = stackDepthCont k
 > stackDepth (CPSEnter _ k) = 1 + stackDepthCont k
 > stackDepth (CPSExec _ vs k) = length vs + stackDepthCont k
+> stackDepth (CPSCCall _ _ k) = stackDepthCont k
 > stackDepth (CPSApply _ _) = 0
 > stackDepth (CPSUnify _ _ k) = length (contVars k)
 > stackDepth (CPSDelay _ k) = 1 + length (contVars k)
@@ -577,10 +586,9 @@ Recall that literals as well as nullary data constructors and partial
 applications without arguments are allocated globally in order to
 improve sharing.
 
-In order to detect constants in recursive data definitions like
-\verb|let { xs=0:ys; ys=1:xs } in |\dots{} efficiently, the
-declarations in a let statement were split into minimal binding groups
-when the code was transformed into CPS.
+In order to detect constants in recursive data definitions
+effectively, the declarations in \texttt{let} statements should be
+split into minimal binding groups.
 \begin{verbatim}
 
 > isConstant :: FM Name CExpr -> Name -> Bool
@@ -597,7 +605,7 @@ when the code was transformed into CPS.
 >         init o (v,Closure f vs)
 >           | null vs = (o,(v,constRef (constFunc f)))
 >           | otherwise = (o + length vs + 1,(v,constant o))
->         init o (v,Ref v') = (o,(v,CExpr (show v')))
+>         init o (v,Var v') = (o,(v,CExpr (show v')))
 >         init _ (v,n) = error ("internal error: constants.init" ++ show n)
 >         constant = asNode . add (CExpr constArray) . CInt
 
@@ -611,7 +619,7 @@ when the code was transformed into CPS.
 >         isConst vs0 (Closure _ vs) = all (`elemSet` vs0) vs
 >         isConst _ (Lazy _ _) = False
 >         isConst _ Free = False
->         isConst vs0 (Ref v) = v `elemSet` vs0
+>         isConst vs0 (Var v) = v `elemSet` vs0
 
 > literal :: Literal -> CExpr
 > literal (Char c) = asNode (CAdd (CExpr "char_table") (CInt (ord c)))
@@ -634,6 +642,10 @@ when the code was transformed into CPS.
 >         constInit _ is = is
 >         arg v = fromJust (lookupFM v consts)
 
+> freshNode :: FM Name CExpr -> Name -> Expr -> [CStmt]
+> freshNode consts v n = allocNode consts d ++ initNode consts d
+>   where d = Bind v n
+
 > allocNode :: FM Name CExpr -> Bind -> [CStmt]
 > allocNode consts (Bind v n) =
 >   case lookupFM v consts of
@@ -641,7 +653,7 @@ when the code was transformed into CPS.
 >     Nothing ->
 >       case n of
 >         Lit c -> [CLocalVar nodePtrType v' (Just (literal c))]
->         Ref v'' -> [CLocalVar nodePtrType v' (Just (CExpr (show v'')))]
+>         Var v'' -> [CLocalVar nodePtrType v' (Just (CExpr (show v'')))]
 >         _ -> [CLocalVar nodePtrType v' (Just (asNode (CExpr "hp"))),
 >               CIncrBy (LVar "hp") (nodeSize n)]
 >   where v' = show v
@@ -656,7 +668,7 @@ when the code was transformed into CPS.
 >   | otherwise = initClosure (LVar (show v)) f (map show vs)
 > initNode _ (Bind v (Lazy f vs)) = initLazy (LVar (show v)) f (map show vs)
 > initNode _ (Bind v Free) = initFree (LVar (show v))
-> initNode _ (Bind v (Ref _)) = []
+> initNode _ (Bind v (Var _)) = []
 
 > initConstr :: LVar -> Name -> [String] -> [CStmt]
 > initConstr v c vs =
@@ -695,11 +707,14 @@ translation function.
 
 > cCode :: FM Name CExpr -> [Name] -> CPSStmt -> [CStmt]
 > cCode _ vs0 (CPSJump k) = jump vs0 k
-> cCode _ vs0 (CPSReturn v k) = ret vs0 v k
+> cCode consts vs0 (CPSReturn e k) =
+>   freshNode consts resName e ++ ret vs0 resName k
 > cCode _ vs0 (CPSEnter v k) = enter vs0 v k
 > cCode _ vs0 (CPSExec f vs k) = exec vs0 f vs k
+> cCode _ vs0 (CPSCCall ty cc k) = cCall ty resName cc ++ ret vs0 resName k
 > cCode _ vs0 (CPSApply v vs) = apply vs0 v vs
-> cCode _ vs0 (CPSUnify v v' k) = unifyVar vs0 v v' k
+> cCode consts vs0 (CPSUnify v e k) =
+>   freshNode consts resName e ++ unifyVar vs0 v resName k
 > cCode _ vs0 (CPSDelay v k) = delay vs0 v k
 > cCode consts vs0 (CPSDelayNonLocal v k st) =
 >   delayNonLocal vs0 v k ++ cCode consts vs0 st
@@ -712,10 +727,9 @@ translation function.
 > cCode0 :: FM Name CExpr -> Stmt0 -> [CStmt]
 > cCode0 _ (Lock v) = lock v
 > cCode0 _ (Update v1 v2) = update v1 v2
-> cCode0 _ (Eval _ _) = error "internal error: cCode0"
+> cCode0 _ (_ :<- _) = error "internal error: cCode0"
 > cCode0 consts (Let ds) =
 >   concatMap (allocNode consts) ds ++ concatMap (initNode consts) ds
-> cCode0 _ (CCall _ ty v cc) = cCall ty v cc
 
 > jump :: [Name] -> CPSCont -> [CStmt]
 > jump vs0 k = saveVars vs0 (contVars k) ++ [goto (contName k)]
@@ -893,7 +907,7 @@ integer numbers when set to a non-zero value.
 >   where match v (f,stmts) rest = [CIf (CRel v "==" (CFloat f)) stmts rest]
 
 \end{verbatim}
-The code for the \texttt{CPSApply} statement has to check the number
+The code for a \texttt{CPSApply} statement has to check the number
 of missing arguments of the closure being applied. If there are too
 few arguments, a new closure node is returned for the partial
 application. Otherwise, the application is evaluated by pushing the
@@ -1134,6 +1148,9 @@ used for constant constructors and functions, respectively.
 
 > closVar :: Name -> String
 > closVar v = show v ++ "_clos"
+
+> resName :: Name
+> resName = Name "_"
 
 \end{verbatim}
 The function \texttt{tupleArity} computes the arity of a tuple

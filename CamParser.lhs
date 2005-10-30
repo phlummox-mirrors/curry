@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CamParser.lhs 1782 2005-10-06 13:45:22Z wlux $
+% $Id: CamParser.lhs 1811 2005-10-30 17:20:26Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -318,9 +318,11 @@ in appendix~\ref{sec:ll-parsecomb}.
 > block = braces stmt
 
 > stmt :: Parser Token Stmt a
-> stmt = Return <$-> keyword KW_return <*> checkName
+> stmt = Return <$-> keyword KW_return <*> node
 >    <|> Enter <$-> keyword KW_enter <*> checkName
 >    <|> Exec <$-> keyword KW_exec <*> checkName <*> nameList
+>    <|> CCall <$-> keyword KW_ccall <*> (Just <$> string `opt` Nothing)
+>              <*> parens cRetType <*> cCall
 >    <|> Seq <$> stmt0 <*-> checkSemi <*> stmt
 >    <|> flip Switch <$-> keyword KW_switch <*> checkName <*> rf
 >                    <*> braces cases
@@ -331,10 +333,8 @@ in appendix~\ref{sec:ll-parsecomb}.
 > stmt0 :: Parser Token Stmt0 a
 > stmt0 = Lock <$-> keyword KW_lock <*> checkName
 >     <|> Update <$-> keyword KW_update <*> checkName <*> checkName
->     <|> Eval <$> name <*-> checkLeftArrow <*> stmt <\> stmt0
+>     <|> (:<-) <$> name <*-> checkLeftArrow <*> stmt <\> stmt0
 >     <|> Let <$-> keyword KW_let <*> braces (binding `sepBy1` semi)
->     <|> keyword KW_ccall <-*> (Just <$> string `opt` Nothing)
->                          <**> braces cCall
 
 > binding :: Parser Token Bind a
 > binding = Bind <$> name <*-> checkEquals <*> node
@@ -345,7 +345,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >    <|> Closure <$-> keyword KW_function <*> checkName <*> nameList
 >    <|> Lazy <$-> keyword KW_lazy <*> checkName <*> nameList
 >    <|> Free <$-> keyword KW_free
->    <|> Ref <$> name
+>    <|> Var <$> name
 
 > cases :: Parser Token [Case] a
 > cases = return <$> switchCase defaultTag
@@ -357,14 +357,12 @@ in appendix~\ref{sec:ll-parsecomb}.
 >       <|> Int <$-> keyword KW_int <*> checkInt
 >       <|> Float <$-> keyword KW_float <*> checkFloat
 
-> cCall :: Parser Token (Maybe String -> Stmt0) a
-> cCall = cCall <$> cRetType <*> checkName <*-> checkLeftArrow <*> call
->   where call = StaticCall <$> (show <$> name) <*> parenList arg
->            <|> DynamicCall <$> parens (checkAsterisk <-*> checkName)
->                            <*> parenList arg
->            <|> StaticAddr <$-> ampersand <*> (show <$> checkName)
->         arg = (,) <$> parens cArgType <*> checkName
->         cCall ty v cc h = CCall h ty v cc
+> cCall :: Parser Token CCall a
+> cCall = StaticCall <$> (show <$> name) <*> parenList arg
+>     <|> DynamicCall <$> parens (checkAsterisk <-*> checkName)
+>                     <*> parenList arg
+>     <|> StaticAddr <$-> ampersand <*> (show <$> checkName)
+>   where arg = (,) <$> parens cArgType <*> checkName
 
 > cRetType :: Parser Token CRetType a
 > cRetType = Nothing <$-> keyword KW_unit <|> Just <$> cArgType

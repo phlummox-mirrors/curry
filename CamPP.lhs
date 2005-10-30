@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CamPP.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CamPP.lhs 1811 2005-10-30 17:20:26Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -35,9 +35,13 @@
 > ppBlock prefix x = sep [prefix <+> lbrace,nest blockIndent x,rbrace]
 
 > ppStmt :: Stmt -> Doc
-> ppStmt (Return v) = ppKW "return" <+> ppName v
+> ppStmt (Return e) = ppKW "return" <+> ppExpr e
 > ppStmt (Enter v) = ppKW "enter" <+> ppName v
 > ppStmt (Exec f vs) = ppKW "exec" <+> ppName f <> ppNames vs
+> ppStmt (CCall h ty cc) =
+>   ppKW "ccall" <+> maybe empty ppHeader h
+>                <+> parens (ppCRetType ty) <> ppCCall cc
+>   where ppHeader h = char '"' <> text h <> char '"'
 > ppStmt (Seq st1 st2) = ppStmt0 st1 <> semi $$ ppStmt st2
 > ppStmt (Switch rf v cases) =
 >   ppBlock (ppKW "switch" <+> ppName v <+> ppRF rf) (ppAlts ppCase cases)
@@ -48,17 +52,13 @@
 > ppStmt0 :: Stmt0 -> Doc
 > ppStmt0 (Lock v) = ppKW "lock" <+> ppName v
 > ppStmt0 (Update v1 v2) = ppKW "update" <+> ppName v1 <+> ppName v2
-> ppStmt0 (Eval v st) =
+> ppStmt0 (v :<- st) =
 >   case st of
 >     Seq _ _ -> ppBlock prefix (ppStmt st)
 >     _       -> prefix <+> ppStmt st
 >   where prefix = ppName v <+> text "<-"
 > ppStmt0 (Let bds) = ppKW "let" <+> ppBindings (map ppBinding bds)
 >   where ppBinding (Bind v n) = ppName v <+> equals <+> ppExpr n
-> ppStmt0 (CCall h ty v cc) =
->   ppBlock (ppKW "ccall" <+> maybe empty ppHeader h)
->           (ppCRetType ty <+> ppName v <+> text "<-" <+> ppCCall cc)
->   where ppHeader h = char '"' <> text h <> char '"'
 
 > ppBindings :: [Doc] -> Doc
 > ppBindings bds = lbrace <+> vcat (punctuate semi bds) <+> rbrace
@@ -74,7 +74,7 @@
 > ppExpr (Closure f vs) = ppKW "function" <+> ppName f <> ppNames vs
 > ppExpr (Lazy f vs) = ppKW "lazy" <+> ppName f <> ppNames vs
 > ppExpr Free = ppKW "free"
-> ppExpr (Ref v) = ppName v
+> ppExpr (Var v) = ppName v
 
 > ppAlts :: (a -> Doc) -> [a] -> Doc
 > ppAlts ppAlt = vcat . zipWith (<+>) (space : repeat bar) . map ppAlt

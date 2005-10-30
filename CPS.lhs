@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1810 2005-10-28 08:06:14Z wlux $
+% $Id: CPS.lhs 1811 2005-10-30 17:20:26Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,7 +10,7 @@
 
 > module CPS(CPSFunction(..), CPSCont(..),
 >            CaseBlock(..), CPSTag(..), CPSStmt(..),
->            cpsFunction, cpsApply, cpsVars, contVars, fresh) where
+>            cpsFunction, cpsApply, cpsVars, contVars) where
 > import Cam
 > import List
 > import Set
@@ -31,28 +31,26 @@ Special code is generated for the private functions that implement
 partial applications of tuple constructors and for the functions
 \texttt{@}$_n$.
 
-An abstract machine code function can be transformed into more than
+An abstract machine code function may be transformed into more than
 one CPS function. In order to avoid name conflicts, the compiler
-assigns an integer number to each CPS function in addition to its
-name. By convention, the CPS function that corresponds to the entry
-point of an abstract machine code function is always assigned the key
-\texttt{0}.
+assigns distinct integer keys to all CPS functions generated from an
+abstract machine code function. By convention, the CPS function that
+corresponds to the entry point of an abstract machine code function is
+always assigned key 0.
 
-A CPS function has no free variables, i.e., its argument list must
-name all variables that are used in the body. The assignments within
-the body of a CPS function are split into minimal recursive groups, as
-this eases the detection of constants in recursive pattern
-declarations, e.g., \verb|let { xs=0:ys; ys=1:xs } in |\dots{}
+No free variables can occur in CPS functions, i.e., their argument
+lists must name all variables that are used in the bodies.
 \begin{verbatim}
 
 > data CPSFunction = CPSFunction Name Int [Name] CPSStmt deriving Show
 > data CPSStmt =
 >     CPSJump CPSCont
->   | CPSReturn Name (Maybe CPSCont)
+>   | CPSReturn Expr (Maybe CPSCont)
 >   | CPSEnter Name (Maybe CPSCont)
 >   | CPSExec Name [Name] (Maybe CPSCont)
+>   | CPSCCall CRetType CCall (Maybe CPSCont)
 >   | CPSApply Name [Name]
->   | CPSUnify Name Name CPSCont
+>   | CPSUnify Name Expr CPSCont
 >   | CPSDelay Name CPSCont
 >   | CPSDelayNonLocal Name CPSCont CPSStmt
 >   | CPSSeq Stmt0 CPSStmt
@@ -97,12 +95,13 @@ declarations, e.g., \verb|let { xs=0:ys; ys=1:xs } in |\dots{}
 > cpsVars (CPSFunction _ _ vs _) = vs
 
 \end{verbatim}
-The transformation into CPS is implemented by a top-down algorithm.
-The abstract machine code statements \texttt{return}, \texttt{enter},
-and \texttt{exec} are transformed directly into their CPS equivalents.
-In case of an \texttt{eval} statement, a new continuation is generated
-from the remaining statements, whose first input argument is the
-variable bound by the \texttt{eval} statement.
+The transformation into CPS code is implemented by a top-down
+algorithm. The abstract machine code statements \texttt{return},
+\texttt{enter}, \texttt{exec}, and \texttt{ccall} are transformed
+directly into their CPS equivalents. A statement sequence $x$
+\texttt{<-} \emph{st$_1$}\texttt{;} \emph{st$_2$} is transformed by
+creating a new continuation from \emph{st$_2$}, whose first input
+argument is $x$.
 
 The transformation of \texttt{switch} statements is more complicated
 because the code of the switch is entered again after an unbound
@@ -143,24 +142,23 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 
 > cpsStmt :: Name -> Maybe CPSCont -> Maybe CPSCont -> Int -> Stmt
 >         -> (Int,CPSStmt)
-> cpsStmt _ _ k n (Return v) = (n,CPSReturn v k)
+> cpsStmt _ _ k n (Return e) = (n,CPSReturn e k)
 > cpsStmt _ _ k n (Enter v) = (n,CPSEnter v k)
 > cpsStmt _ _ k n (Exec f vs) = (n,CPSExec f vs k)
+> cpsStmt _ _ k n (CCall _ ty cc) = (n,CPSCCall ty cc k)
 > cpsStmt f k0 k n (Seq st1 st2) =
 >   case st1 of
 >     Lock _ -> (n',CPSSeq st1 st2')
 >       where (n',st2') = cpsStmt f Nothing k n st2
 >     Update _ _ -> (n',CPSSeq st1 st2')
 >       where (n',st2') = cpsStmt f Nothing k n st2
->     Eval v st1' -> (n'',st1'')
+>     v :<- st1' -> (n'',st1'')
 >       where (n',st1'') = cpsStmt f k0 (Just (CPSCont f')) n st1'
 >             (n'',f') = cps f k [v] n' st2
 >     Let ds -> (n',foldr (CPSSeq . Let) st2' (scc bound free ds))
 >       where (n',st2') = cpsStmt f Nothing k n st2
 >             bound (Bind v _) = [v]
 >             free (Bind _ n) = exprVars n
->     CCall _ _ _ _ -> (n',CPSSeq st1 st2')
->       where (n',st2') = cpsStmt f Nothing k n st2
 > cpsStmt f k0 k n (Switch rf v cases) =
 >   maybe (cpsJumpSwitch f) (cpsSwitch f) k0 k n rf v cases
 > cpsStmt f _ k n (Choices alts) = (n',CPSChoices Nothing (map CPSCont ks))
@@ -198,8 +196,10 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 >         fresh n t = (n + 1,CPSFunction f n (contVars k) (cpsFresh k v t))
 
 > cpsFresh :: CPSCont -> Name -> Tag -> CPSStmt
-> cpsFresh k v t = foldr CPSSeq (CPSUnify v v' k) (fresh v' t)
->   where v' = Name "_new"
+> cpsFresh k v (LitCase l) = CPSUnify v (Lit l) k
+> cpsFresh k v (ConstrCase c vs) =
+>   foldr CPSSeq (CPSUnify v (Constr c vs) k) (map freshVar vs)
+>   where freshVar v = Let [Bind v Free]
 
 > unboxedSwitch :: [Tag] -> Bool
 > unboxedSwitch [] = True
@@ -211,26 +211,14 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 > contVars :: CPSCont -> [Name]
 > contVars (CPSCont k) = cpsVars k
 
-> tagVars :: Tag -> [Name]
-> tagVars (LitCase _) = []
-> tagVars (ConstrCase _ vs) = vs
-> tagVars DefaultCase = []
-
-> exprVars :: Expr -> [Name]
-> exprVars (Lit _) = []
-> exprVars (Constr _ vs) = vs
-> exprVars (Closure _ vs) = vs
-> exprVars (Lazy _ vs) = vs
-> exprVars Free = []
-> exprVars (Ref v) = [v]
-
 > freeVars :: Stmt -> Maybe CPSCont -> [Name]
 > freeVars st k = stmtVars st (maybe [] (tail . contVars) k)
 
 > stmtVars :: Stmt -> [Name] -> [Name]
-> stmtVars (Return v) vs = v : vs
+> stmtVars (Return e) vs = exprVars e ++ vs
 > stmtVars (Enter v) vs = v : vs
 > stmtVars (Exec _ vs) vs' = vs ++ vs'
+> stmtVars (CCall _ _ cc) vs = ccallVars cc ++ vs
 > stmtVars (Seq st1 st2) vs = stmt0Vars st1 (stmtVars st2 vs)
 > stmtVars (Switch _ v cases) vs = v : concatMap (flip caseVars vs) cases
 > stmtVars (Choices alts) vs = concatMap (flip stmtVars vs) alts
@@ -238,11 +226,10 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 > stmt0Vars :: Stmt0 -> [Name] -> [Name]
 > stmt0Vars (Lock v) vs = v : vs
 > stmt0Vars (Update v1 v2) vs = v1 : v2 : vs
-> stmt0Vars (Eval v st) vs = stmtVars st (filter (v /=) vs)
+> stmt0Vars (v :<- st) vs = stmtVars st (filter (v /=) vs)
 > stmt0Vars (Let ds) vs = filter (`notElemSet` bvs) (fvs ++ vs)
 >   where bvs = fromListSet [v | Bind v _ <- ds]
 >         fvs = concat [exprVars n | Bind _ n <- ds]
-> stmt0Vars (CCall _ _ v cc) vs = ccallVars cc ++ filter (v /=) vs
 
 > caseVars :: Case -> [Name] -> [Name]
 > caseVars (Case t st) vs =
@@ -253,10 +240,18 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 > ccallVars (DynamicCall v xs) = v : map snd xs
 > ccallVars (StaticAddr _) = []
 
-> fresh :: Name -> Tag -> [Stmt0]
-> fresh v (LitCase c) = [Let [Bind v (Lit c)]]
-> fresh v (ConstrCase c vs) = map freshVar vs ++ [Let [Bind v (Constr c vs)]]
->   where freshVar v = Let [Bind v Free]
+> exprVars :: Expr -> [Name]
+> exprVars (Lit _) = []
+> exprVars (Constr _ vs) = vs
+> exprVars (Closure _ vs) = vs
+> exprVars (Lazy _ vs) = vs
+> exprVars Free = []
+> exprVars (Var v) = [v]
+
+> tagVars :: Tag -> [Name]
+> tagVars (LitCase _) = []
+> tagVars (ConstrCase _ vs) = vs
+> tagVars DefaultCase = []
 
 \end{verbatim}
 After computing the CPS graph, the CPS functions are linearized in
@@ -280,6 +275,7 @@ duplication of shared continuations.
 > linearizeStmt n (CPSReturn _ k) = maybe [] (linearizeCont n) k
 > linearizeStmt n (CPSEnter _ k) = maybe [] (linearizeCont n) k
 > linearizeStmt n (CPSExec _ _ k) = maybe [] (linearizeCont n) k
+> linearizeStmt n (CPSCCall _ _ k) = maybe [] (linearizeCont n) k
 > linearizeStmt _ (CPSApply _ _) = []
 > linearizeStmt n (CPSUnify _ _ k) = linearizeCont n k
 > linearizeStmt n (CPSDelay _ k) = linearizeCont n k
