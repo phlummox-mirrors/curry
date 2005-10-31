@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1811 2005-10-30 17:20:26Z wlux $
+% $Id: CGen.lhs 1812 2005-10-31 13:25:56Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -517,7 +517,10 @@ because constants are allocated per block, not per CPS function.
 > allocs (CPSCCall (Just ty) _ _) = ([ty],[])
 > allocs (CPSUnify _ e _) = ([],[[Bind resName e]])
 > allocs (CPSSeq st1 st2) = allocs0 st1 (allocs st2)
->   where allocs0 (Let ds) ~(tys,dss) = (tys,ds:dss)
+>   where allocs0 (v :<- Return e) ~(tys,dss) = (tys,[Bind v e]:dss)
+>         allocs0 (_ :<- CCall _ (Just ty) _) ~(tys,dss) = (ty:tys,dss)
+>         allocs0 (v :<- Seq st1 st2) as = allocs0 st1 (allocs0 (v :<- st2) as)
+>         allocs0 (Let ds) ~(tys,dss) = (tys,ds:dss)
 >         allocs0 _ as = as
 > allocs (CPSDelayNonLocal _ _ st) = allocs st
 > allocs _ = ([],[])
@@ -727,7 +730,10 @@ translation function.
 > cCode0 :: FM Name CExpr -> Stmt0 -> [CStmt]
 > cCode0 _ (Lock v) = lock v
 > cCode0 _ (Update v1 v2) = update v1 v2
-> cCode0 _ (_ :<- _) = error "internal error: cCode0"
+> cCode0 consts (v :<- Return e) = freshNode consts v e
+> cCode0 consts (v :<- CCall _ ty cc) = cCall ty v cc
+> cCode0 consts (v :<- Seq st1 st2) =
+>   cCode0 consts st1 ++ cCode0 consts (v :<- st2)
 > cCode0 consts (Let ds) =
 >   concatMap (allocNode consts) ds ++ concatMap (initNode consts) ds
 
@@ -968,20 +974,20 @@ first loads this address into a temporary variable and then boxes it.
 
 > cCall :: CRetType -> Name -> CCall -> [CStmt]
 > cCall ty v cc = cEval ty v' cc ++ box ty (show v) v'
->   where v' = "_cret"
+>   where v' = cRetVar v
 
 > cEval :: CRetType -> String -> CCall -> [CStmt]
 > cEval ty v (StaticCall f xs) = cFunCall ty v f xs
 > cEval ty v1 (DynamicCall v2 xs) =
 >   unboxFunPtr ty (map fst xs) f (show v2) : cFunCall ty v1 f xs
->   where f = "_cfun"
+>   where f = cArgVar v2
 > cEval ty v (StaticAddr x) = cAddr ty v x
 
 > cFunCall :: CRetType -> String -> String -> [(CArgType,Name)] -> [CStmt]
 > cFunCall ty v f xs =
 >   concat [unbox ty v2 (show v1) | ((ty,v1),v2) <- zip xs vs] ++
 >   [callCFun ty v f vs]
->   where vs = ["_carg" ++ show i | i <- [1..length xs]]
+>   where vs = map (cArgVar . snd) xs
 
 > cAddr :: CRetType -> String -> String -> [CStmt]
 > cAddr Nothing v x = []
@@ -1148,6 +1154,12 @@ used for constant constructors and functions, respectively.
 
 > closVar :: Name -> String
 > closVar v = show v ++ "_clos"
+
+> cArgVar :: Name -> String
+> cArgVar v = "_carg" ++ "_" ++ show v
+
+> cRetVar :: Name -> String
+> cRetVar v = "_cret" ++ "_" ++ show v
 
 > resName :: Name
 > resName = Name "_"

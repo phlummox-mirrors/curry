@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Cam.lhs 1811 2005-10-30 17:20:26Z wlux $
+% $Id: Cam.lhs 1812 2005-10-31 13:25:56Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -50,9 +50,7 @@ body of a function and the last statement of a statement sequence are
 always value computing statements.
 
 \texttt{Return} $e$ allocates a fresh node for the expression $e$ and
-returns its address. This is a convenient abbreviation for
-\texttt{let} \texttt{\lb}~$x$ \texttt{=} $e$~\texttt{\rb;}
-\texttt{enter}~$x$ when $e$ is in head normal form.
+returns its address.
 
 \texttt{Enter} $x$ evaluates the node bound to $x$ to head normal form
 and returns its address. If the node is already in head normal form,
@@ -105,7 +103,11 @@ $x$ \texttt{<-} \emph{st} executes the (value computing) statement
 \dots\texttt{;} $x_n$\texttt{=}$e_n$~\texttt{\rb} allocates new nodes
 for the expressions $e_1,\dots,e_n$ and binds them to the variables
 $x_1,\dots,x_n$. The bindings in a \texttt{let} statement may be
-mutually recursive.
+mutually recursive. Note that the possibility to introduce mutually
+recursive bindings is the only raison d'\^etre for \texttt{let}
+statements. Non-recursive \texttt{let} bindings can be removed using
+\texttt{let} \texttt{\lb}~$x$ \texttt{=} $e$~\texttt{\rb}
+$\null\equiv\null$ $x$ \texttt{<-} \texttt{return} $e$.
 
 The statements \texttt{lock}~$x$ and \texttt{update}~$x$~$y$ are used
 for implementing the pattern binding update strategy.

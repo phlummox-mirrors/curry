@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1811 2005-10-30 17:20:26Z wlux $
+% $Id: CPS.lhs 1812 2005-10-31 13:25:56Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -98,10 +98,11 @@ lists must name all variables that are used in the bodies.
 The transformation into CPS code is implemented by a top-down
 algorithm. The abstract machine code statements \texttt{return},
 \texttt{enter}, \texttt{exec}, and \texttt{ccall} are transformed
-directly into their CPS equivalents. A statement sequence $x$
-\texttt{<-} \emph{st$_1$}\texttt{;} \emph{st$_2$} is transformed by
-creating a new continuation from \emph{st$_2$}, whose first input
-argument is $x$.
+directly into their CPS equivalents. Statement sequences $x$
+\texttt{<-} \emph{st$_1$}\texttt{;} \emph{st$_2$}, where \emph{st$_1$}
+is neither a \texttt{return} nor a \texttt{ccall} statement, are
+transformed by creating a new continuation from \emph{st$_2$}, whose
+first input argument is $x$.
 
 The transformation of \texttt{switch} statements is more complicated
 because the code of the switch is entered again after an unbound
@@ -152,8 +153,13 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 >       where (n',st2') = cpsStmt f Nothing k n st2
 >     Update _ _ -> (n',CPSSeq st1 st2')
 >       where (n',st2') = cpsStmt f Nothing k n st2
->     v :<- st1' -> (n'',st1'')
->       where (n',st1'') = cpsStmt f k0 (Just (CPSCont f')) n st1'
+>     v :<- Seq st1' st2' -> cpsStmt f k0 k n (Seq st1' (Seq (v :<- st2') st2))
+>     v :<- Return e -> (n',CPSSeq st1 st2')
+>       where (n',st2') = cpsStmt f Nothing k n st2
+>     v :<- CCall h ty cc -> (n',CPSSeq st1 st2')
+>       where (n',st2') = cpsStmt f Nothing k n st2
+>     v :<- st -> (n'',st1')
+>       where (n',st1') = cpsStmt f k0 (Just (CPSCont f')) n st
 >             (n'',f') = cps f k [v] n' st2
 >     Let ds -> (n',foldr (CPSSeq . Let) st2' (scc bound free ds))
 >       where (n',st2') = cpsStmt f Nothing k n st2
