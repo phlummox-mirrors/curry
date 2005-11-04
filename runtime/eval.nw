@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1809 2005-10-27 22:11:41Z wlux $
+% $Id: eval.nw 1813 2005-11-04 15:21:02Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -280,22 +280,22 @@ FUNCTION(flex_yield_resume)
 #endif
 
 @ 
-The compiler translates uses of higher order functions into first
-order applications by inserting applications of the (binary) primitive
-[[@]]. The code of this function first has to evaluate the function
-argument to a (ground) head normal form. If the result is a closure
-taking exactly one argument, a tail call to that function is
-performed. Otherwise, a new closure -- which is still in head normal
-form -- is returned to the caller. The info vector for this closure
-is computed by using the fact that all tag vectors are found in an
-array which is indexed by the number of arguments to which the
-function is applied.
+The compiler transforms applications of higher order functions into
+first order applications by inserting applications of the (binary)
+primitive [[@]]. The code of this function first evaluates the
+function argument to a (ground) head normal form. If the result is a
+closure taking exactly one argument, a tail call to that function is
+performed. Otherwise, a new partial application node is returned to
+the caller. The info vector of the new closure is computed by using
+the fact that the node descriptors for all partial applications of a
+function are allocated in an array which is indexed by the number of
+arguments to which the function is applied.
 
 Actually, the compiler generates a whole family of functions [[@]]$_n$
 for each module and number of arguments $n$ to which an unknown
 function is applied in that module. The function [[@]] is defined here
-for use in the runtime system itself, but it is also used by the
-compiler in place of [[@]]$_1$.
+because it is used in other runtime system functions. The compiler
+also uses this function in place of [[@]]$_1$.
 
 Note that we do not provide a function info table for [[@]] because
 this function is never applied partially.
@@ -377,7 +377,6 @@ FUNCTION(___64__1)
     unsigned int argc;
     Node	 *clos;
     NodeInfo	 *fInfo;
-
  ENTRY_LABEL(___64__1)
     /* evaluate the function argument to head normal form */
     EVAL_RIGID(___64__1);
@@ -387,8 +386,7 @@ FUNCTION(___64__1)
     /* check the number of missing arguments */
     fInfo = clos->info;
     argc  = closure_argc(clos);
-    ASSERT(fInfo->arity > argc);
-    if ( argc + 1 == fInfo->arity )
+    if ( fInfo->arity == 1 )
     {
 	ASSERT(fInfo[1].tag == FAPP_TAG);
 

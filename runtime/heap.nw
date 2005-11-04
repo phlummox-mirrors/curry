@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: heap.nw 1813 2005-11-04 15:21:02Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -100,16 +100,16 @@ In general, a node consists of a pointer to a node descriptor followed
 by a list of argument pointers. However, some kinds of nodes use
 different representations, e.g., a node representing a \verb|Float|
 expression consists of a descriptor and a [[double]] value.
-Therefore, the [[Node]] type is defined as a union type. The first field
-of all variants as well as of the union itself is the [[info]] field,
-which points to the node descriptor. This descriptor comprises the tag
-number, the length of the node in words, a pointer offset table, the
-evaluation code for the node, a name, and an optional finalization
-function. In addition, the descriptor includes [[entry]] and [[arity]]
-fields which are used only for partial applications. These fields
-denote the entry point and arity of the function being applied and
-allow the runtime system to efficiently determine the number of
-missing arguments and the function's code.                                   %'
+Therefore, the [[Node]] type is defined as a union type. The first
+field of all variants as well as of the union itself is the [[info]]
+field, which points to the node descriptor. This descriptor comprises
+the tag number, the length of the node in words, a pointer offset
+table, the evaluation code for the node, a name, and an optional
+finalization function. The [[arity]] field denotes the arity of a
+node, i.e., the number of missing arguments. This field is zero for
+all kinds of nodes except for partial applications where it is
+positive. The [[entry]] field of a node is used only for partial
+application nodes and denotes the entry point of the function.
 
 The length of the node includes the descriptor pointer; a valid size
 must therefore be greater than 0. If the length in the descriptor is
@@ -151,7 +151,7 @@ struct node_info
     const char	       *cname;		/* closure name */
     const Label	       eval;		/* entry point for evaluation */
     const Label	       entry;		/* PAPP only: function entry point */
-    const unsigned int arity;		/* PAPP only: function arity */
+    const unsigned int arity;		/* node arity (> 0 only for PAPPs) */
     const FinalFun     final_fun;	/* optional finalization function */
 };
 
@@ -635,11 +635,11 @@ adding the suffix [[_eval]] to the name of the function's entry point.       %'
 <<heap.h>>=
 #define FUNINFO(fname,entrypoint,arity) \
 { FAPP_TAG, closure_node_size(arity), 0, fname, \
-  entrypoint##_eval, entrypoint, arity, 0 }
+  entrypoint##_eval, 0, 0, 0 }
 
 #define PAPPINFO(fname,argc,entrypoint,arity) \
 { PAPP_TAG, closure_node_size(argc), 0, fname, \
-  eval_whnf, entrypoint, arity, 0 },
+  eval_whnf, entrypoint, (arity) - (argc), 0 },
 
 @ 
 In addition to the info table, a descriptor table for lazy

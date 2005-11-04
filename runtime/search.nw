@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1809 2005-10-27 22:11:41Z wlux $
+% $Id: search.nw 1813 2005-11-04 15:21:02Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -132,8 +132,7 @@ FUNCTION(__try)
     EXPORT_LABEL(__try)
  ENTRY_LABEL(__try)
     EVAL_RIGID(__try);
-    ASSERT(is_papp_node(sp[0]) &&
-	   closure_argc(sp[0]) + 1 == sp[0]->info->arity);
+    ASSERT(is_papp_node(sp[0]) && sp[0]->info->arity == 1);
 
     /* return immediately when applied to a solved search goal */
     if ( sp[0]->info->entry == solved_goal_code )
