@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachLoader.lhs 1811 2005-10-30 17:20:26Z wlux $
+% $Id: MachLoader.lhs 1814 2005-11-05 22:34:48Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -96,6 +96,7 @@ in order to allow mutual recursion between functions.
 >           initConstr (lookupConstr c cEnv) (map show vs)
 >         translExpr (Closure f vs) =
 >           initClosure (lookupFun f fEnv) (map show vs)
+>         translExpr (Papp f vs) = initClosure (lookupFun f fEnv) (map show vs)
 >         translExpr (Lazy f vs) = initLazy (lookupFun f fEnv) (map show vs)
 >         translExpr Free = initFree
 >         translExpr (Var v) = initIndir (show v)

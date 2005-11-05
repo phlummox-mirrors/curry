@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 1812 2005-10-31 13:25:56Z wlux $
+% $Id: ILCompile.lhs 1814 2005-11-05 22:34:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -95,7 +95,7 @@ reader monad for the type \texttt{IO}.
 >         extFun f vs vs' =
 >           Cam.FunctionDecl f vs (foreignCall cc fExt vs tys ty' vs')
 >         ioFun f f_io vs =
->           Cam.FunctionDecl f vs (Cam.Return (Cam.Closure f_io vs))
+>           Cam.FunctionDecl f vs (Cam.Return (Cam.Papp f_io vs))
 >         isIO (TypeConstructor tc tys) = tc == qIOId && length tys == 1
 >         isIO _ = False
 >         argTypes (TypeArrow ty1 ty2) = ty1 : argTypes ty2
@@ -339,7 +339,7 @@ functions before compiling into abstract machine code.
 >           | null vs = Cam.Var v
 >           | otherwise = Cam.Lazy (apFun (length vs)) (v:vs)
 > compileLazy (Function f arity) vs
->   | n < arity = return (Cam.Return (Cam.Closure (fun f) vs))
+>   | n < arity = return (Cam.Return (Cam.Papp (fun f) vs))
 >   | n == arity = return (Cam.Return (Cam.Lazy (fun f) vs))
 >   | otherwise =
 >       do
@@ -350,7 +350,7 @@ functions before compiling into abstract machine code.
 >         (vs',vs'') = splitAt arity vs
 > compileLazy (Constructor c arity) vs = return (Cam.Return (apply c vs))
 >   where apply c vs
->           | n < arity = Cam.Closure (fun c) vs
+>           | n < arity = Cam.Papp (fun c) vs
 >           | n == arity = Cam.Constr (con c) vs
 >           | otherwise =
 >               internalError ("compileLazy(" ++ show c ++ "): type error")
@@ -461,6 +461,8 @@ equivalences.
 > unaliasExpr _ (Cam.Lit l) = Cam.Lit l
 > unaliasExpr aliases (Cam.Constr c vs) =
 >   Cam.Constr c (map (unaliasVar aliases) vs)
+> unaliasExpr aliases (Cam.Papp f vs) =
+>   Cam.Papp f (map (unaliasVar aliases) vs)
 > unaliasExpr aliases (Cam.Closure f vs) =
 >   Cam.Closure f (map (unaliasVar aliases) vs)
 > unaliasExpr aliases (Cam.Lazy f vs) =
@@ -510,6 +512,7 @@ Auxiliary functions.
 > vars :: Cam.Expr -> [Cam.Name]
 > vars (Cam.Lit _) = []
 > vars (Cam.Constr _ vs) = vs
+> vars (Cam.Papp _ vs) = vs
 > vars (Cam.Closure _ vs) = vs
 > vars (Cam.Lazy _ vs) = vs
 > vars Cam.Free = []

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CamPP.lhs 1811 2005-10-30 17:20:26Z wlux $
+% $Id: CamPP.lhs 1814 2005-11-05 22:34:48Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -71,6 +71,7 @@
 > ppExpr :: Expr -> Doc
 > ppExpr (Lit c) = ppLiteral c
 > ppExpr (Constr c vs) = ppKW "data" <+> ppName c <> ppNames vs
+> ppExpr (Papp f vs) = ppKW "papp" <+> ppName f <> ppNames vs
 > ppExpr (Closure f vs) = ppKW "function" <+> ppName f <> ppNames vs
 > ppExpr (Lazy f vs) = ppKW "lazy" <+> ppName f <> ppNames vs
 > ppExpr Free = ppKW "free"

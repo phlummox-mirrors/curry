@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1812 2005-10-31 13:25:56Z wlux $
+% $Id: CPS.lhs 1814 2005-11-05 22:34:48Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -249,6 +249,7 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 > exprVars :: Expr -> [Name]
 > exprVars (Lit _) = []
 > exprVars (Constr _ vs) = vs
+> exprVars (Papp _ vs) = vs
 > exprVars (Closure _ vs) = vs
 > exprVars (Lazy _ vs) = vs
 > exprVars Free = []

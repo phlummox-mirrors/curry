@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Cam.lhs 1812 2005-10-31 13:25:56Z wlux $
+% $Id: Cam.lhs 1814 2005-11-05 22:34:48Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -145,11 +145,12 @@ local queue-me node when \texttt{update} is executed.
 
 \end{verbatim}
 The abstract machine supports literal constants, data constructors,
-function closures (including partial applications), and logical
-variables as nodes. Similar to the STG machine~\cite{Peyton92:STG}, we
-distinguish non-updatable \texttt{Closure} and updatable \texttt{Lazy}
-application nodes. An expression \texttt{Var}~$x$ does not denote a
-fresh node, but a reference to the node bound to $x$.
+partial applications (of data constructors and functions), function
+closures, and logical variables as nodes. Similar to the STG
+machine~\cite{Peyton92:STG}, we distinguish non-updatable
+\texttt{Closure} and updatable \texttt{Lazy} application nodes. An
+expression \texttt{Var}~$x$ does not denote a fresh node, but a
+reference to the node bound to $x$.
 \begin{verbatim}
 
 > data Literal = Char Char | Int Int | Float Double deriving (Eq,Show)
@@ -157,6 +158,7 @@ fresh node, but a reference to the node bound to $x$.
 > data Expr =
 >     Lit Literal
 >   | Constr Name [Name]
+>   | Papp Name [Name]
 >   | Closure Name [Name]
 >   | Lazy Name [Name]
 >   | Free

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1813 2005-11-04 15:21:02Z wlux $
+% $Id: CGen.lhs 1814 2005-11-05 22:34:48Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -203,7 +203,7 @@ option.
 >         (usedTts,usedTs) = partition isTupleConstr (nub (switchTags sts))
 >         (usedTcs',usedCs) = partition isTupleConstr (nub constrs)
 >         usedTcs = nub (usedTcs' ++ usedTfs)
->         usedTfs = [ConstrDecl f (tupleArity f) | Closure f _ <- ns, isTuple f]
+>         usedTfs = [ConstrDecl f (tupleArity f) | Papp f _ <- ns, isTuple f]
 >         isTupleConstr (ConstrDecl c _) = isTuple c
 
 > tagDecl :: Name -> [ConstrDecl] -> CTopDecl
@@ -283,9 +283,9 @@ functions that handle partial applications of data constructors.
 >   concat [lazyDef CPrivate f n | f <- apLazy, let n = apArity f, n > 2] ++
 >   concat [apFunction (apName n) n | n <- [3..maxApArity]] ++
 >   -- (private) tuple functions (for partial applications)
->   map (entryDecl CPrivate) tupleClos ++
->   concat [closDef CPrivate f (tupleArity f) | f <- tupleClos] ++
->   concatMap tupleFunction tupleClos ++
+>   map (entryDecl CPrivate) tuplePapp ++
+>   concat [closDef CPrivate f (tupleArity f) | f <- tuplePapp] ++
+>   concatMap tupleFunction tuplePapp ++
 >   -- local function declarations
 >   map (entryDecl CPublic . fst3) fs ++
 >   concat [closDecl f ++ closDef CPublic f (length vs) | (f,vs,_) <- fs] ++
@@ -293,7 +293,8 @@ functions that handle partial applications of data constructors.
 >                                                        f `notElem` cs] ++
 >   concat [function CPublic f vs st | (f,vs,st) <- fs]
 >   where nonLocal = filter (`notElem` map fst3 fs)
->         (tupleClos,clos) = partition isTuple clos'
+>         clos = nub (papp' ++ clos')
+>         (tuplePapp,papp') = partition isTuple (nub [f | Papp f _ <- ns])
 >         (apCall,call) = partition isAp (nub [f | Exec f _ <- sts])
 >         (apClos,clos') = partition isAp (nub [f | Closure f _ <- ns])
 >         (apLazy,lazy) = partition isAp (nub [f | Lazy f _ <- ns])
@@ -535,6 +536,7 @@ because constants are allocated per block, not per CPS function.
 > nodeSize :: Expr -> CExpr
 > nodeSize (Lit _) = CInt 0
 > nodeSize (Constr _ vs) = closureNodeSize (length vs)
+> nodeSize (Papp _ vs) = closureNodeSize (length vs)
 > nodeSize (Closure _ vs) = closureNodeSize (length vs)
 > nodeSize (Lazy f vs) = suspendNodeSize (length vs)
 > nodeSize Free = CExpr "variable_node_size"
@@ -612,6 +614,9 @@ split into minimal binding groups.
 >         init o (v,Constr c vs)
 >           | null vs = (o,(v,constRef (constNode c)))
 >           | otherwise = (o + length vs + 1,(v,constant o))
+>         init o (v,Papp f vs)
+>           | null vs = (o,(v,constRef (constFunc f)))
+>           | otherwise = (o + length vs + 1,(v,constant o))
 >         init o (v,Closure f vs)
 >           | null vs = (o,(v,constRef (constFunc f)))
 >           | otherwise = (o + length vs + 1,(v,constant o))
@@ -626,6 +631,7 @@ split into minimal binding groups.
 >                 (vs,ns) = unzip [(v,n) | Bind v n <- ds]
 >         isConst _ (Lit _) = True
 >         isConst vs0 (Constr _ vs) = all (`elemSet` vs0) vs
+>         isConst vs0 (Papp _ vs) = all (`elemSet` vs0) vs
 >         isConst vs0 (Closure _ vs) = all (`elemSet` vs0) vs
 >         isConst _ (Lazy _ _) = False
 >         isConst _ Free = False
@@ -646,6 +652,9 @@ split into minimal binding groups.
 >   where constInit (Bind v (Constr c vs)) is
 >           | not (null vs) && isConstant consts v =
 >               CAddr (CExpr (dataInfo c)) : map arg vs ++ is
+>         constInit (Bind v (Papp f vs)) is
+>           | not (null vs) && isConstant consts v =
+>               functionInfo f (length vs) : map arg vs ++ is
 >         constInit (Bind v (Closure f vs)) is
 >           | not (null vs) && isConstant consts v =
 >               functionInfo f (length vs) : map arg vs ++ is
@@ -673,6 +682,9 @@ split into minimal binding groups.
 > initNode consts (Bind v (Constr c vs))
 >   | isConstant consts v = []
 >   | otherwise = initConstr (LVar (show v)) c (map show vs)
+> initNode consts (Bind v (Papp f vs))
+>   | isConstant consts v = []
+>   | otherwise = initClosure (LVar (show v)) f (map show vs)
 > initNode consts (Bind v (Closure f vs))
 >   | isConstant consts v = []
 >   | otherwise = initClosure (LVar (show v)) f (map show vs)

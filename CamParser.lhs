@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CamParser.lhs 1811 2005-10-30 17:20:26Z wlux $
+% $Id: CamParser.lhs 1814 2005-11-05 22:34:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -84,6 +84,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >   | KW_lazy
 >   | KW_let
 >   | KW_lock
+>   | KW_papp
 >   | KW_pointer
 >   | KW_return
 >   | KW_rigid
@@ -140,6 +141,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >   showsPrec _ KW_lazy = showKeyword "lazy"
 >   showsPrec _ KW_let = showKeyword "let"
 >   showsPrec _ KW_lock = showKeyword "lock"
+>   showsPrec _ KW_papp = showKeyword "papp"
 >   showsPrec _ KW_pointer = showKeyword "pointer"
 >   showsPrec _ KW_return = showKeyword "return"
 >   showsPrec _ KW_rigid = showKeyword "rigid"
@@ -176,6 +178,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >     ("lazy",     KW_lazy),
 >     ("let",      KW_let),
 >     ("lock",     KW_lock),
+>     ("papp",     KW_papp),
 >     ("pointer",  KW_pointer),
 >     ("return",   KW_return),
 >     ("rigid",    KW_rigid),
@@ -342,6 +345,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 > node :: Parser Token Expr a
 > node = Lit <$> literal
 >    <|> Constr <$-> keyword KW_data <*> checkName <*> nameList
+>    <|> Papp <$-> keyword KW_papp <*> checkName <*> nameList
 >    <|> Closure <$-> keyword KW_function <*> checkName <*> nameList
 >    <|> Lazy <$-> keyword KW_lazy <*> checkName <*> nameList
 >    <|> Free <$-> keyword KW_free
