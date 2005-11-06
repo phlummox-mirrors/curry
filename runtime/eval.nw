@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1813 2005-11-04 15:21:02Z wlux $
+% $Id: eval.nw 1815 2005-11-06 12:00:19Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -388,8 +388,6 @@ FUNCTION(___64__1)
     argc  = closure_argc(clos);
     if ( fInfo->arity == 1 )
     {
-	ASSERT(fInfo[1].tag == FAPP_TAG);
-
 	/* push the arguments onto the stack */
 	switch ( argc )
 	{
@@ -434,26 +432,11 @@ function will never be called directly.
 
 <<eval.c>>=
 DECLARE_LABEL(___58_);
-DECLARE_LABEL(___58__eval);
-NodeInfo ___58__info_table[] = {
+NodeInfo ___58__papp_info_table[] = {
     PAPPINFO(":", 0, ___58_, 2)
     PAPPINFO(":", 1, ___58_, 2)
-    FUNINFO(":",     ___58_, 2)
 };
-const struct closure_node ___58__function = { ___58__info_table, { } };
-
-static
-FUNCTION(___58__eval)
-{
-    Node *clos;
- ENTRY_LABEL(___58__eval)
-    CHECK_STACK1();
-    clos  = sp[0];
-    sp	 -= 1;
-    sp[0] = clos->c.args[0];
-    sp[1] = clos->c.args[1];
-    GOTO(___58_);
-}
+const struct closure_node ___58__function = { ___58__papp_info_table, { } };
 
 static
 FUNCTION(___58_)

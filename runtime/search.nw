@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1813 2005-11-04 15:21:02Z wlux $
+% $Id: search.nw 1815 2005-11-06 12:00:19Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -24,10 +24,8 @@ extern void suspend_search(Label, Node *, SearchSpace *);
 static void push_search_context(void);
 static void pop_search_context(void);
 
-DECLARE_LABEL(solved_goal_code);
-DECLARE_LABEL(solved_goal_code_eval);
-DECLARE_LABEL(search_cont_code);
-DECLARE_LABEL(search_cont_code_eval);
+DECLARE_LABEL(solved_goal);
+DECLARE_LABEL(search_cont);
 DECLARE_LABEL(search_goal_proceed);
 DECLARE_LABEL(resume_search);
 DECLARE_LABEL(choices_search);
@@ -135,7 +133,7 @@ FUNCTION(__try)
     ASSERT(is_papp_node(sp[0]) && sp[0]->info->arity == 1);
 
     /* return immediately when applied to a solved search goal */
-    if ( sp[0]->info->entry == solved_goal_code )
+    if ( sp[0]->info->entry == solved_goal )
     {
 	CHECK_HEAP(cons_node_size);
 	list		= (Node *)hp;
@@ -151,7 +149,7 @@ FUNCTION(__try)
     push_search_context();
 
     /* when applied to a partially solved goal continue its evaluation */
-    if ( sp[0]->info->entry == search_cont_code )
+    if ( sp[0]->info->entry == search_cont )
     {
 	sc    = sp[0]->c.args[0];
 	sp[0] = sc;   
@@ -199,12 +197,12 @@ FUNCTION(__try)
 
 @ 
 A solved search goal is represented by a (partial) application of
-function [[solved_goal_code]] to a search continuation saving the
-state of the solved goal. When such a closure is applied to an
-argument, that argument is unified with a copy of the goal's %'
-solution. Copying ensures that multiple applications of a (partially)
-solved search goal to different arguments succeed, if the (partial)
-solution contains free variables. For instance, the expression
+function [[solved_goal]] to a search continuation saving the state of
+the solved goal. When such a closure is applied to an argument, this
+argument is unified with a copy of the goal's solution. Copying %'
+ensures that multiple applications of a (partially) solved search goal
+to different arguments succeed, if the (partial) solution contains
+free variables. For instance, the expression
 \begin{verbatim}
   let [g] = try (\x -> success) in g 0 & g 1
 \end{verbatim}
@@ -212,25 +210,16 @@ succeeds because \verb|try (\x -> success)| is equivalent to
 \verb|[\x -> success]|.
 
 <<search.c>>=
-static
-FUNCTION(solved_goal_code_eval)
-{
-    Node *clos;
- ENTRY_LABEL(solved_goal_code_eval)
-    CHECK_STACK1();
-    clos  = sp[0];
-    sp	 -= 1;
-    sp[0] = clos->c.args[0];
-    sp[1] = clos->c.args[1];
-    GOTO(solved_goal_code);
-}
+static NodeInfo solved_goal_papp_info_table[] = {
+    PAPPINFO("<solved goal>", 1, solved_goal, 2)
+};
 
 static
-FUNCTION(solved_goal_code)
+FUNCTION(solved_goal)
 {
     Node  *cont, *res, *arg;
     Label ret_ip;
- ENTRY_LABEL(solved_goal_code)
+ ENTRY_LABEL(solved_goal)
     cont = sp[0];
     res	 = copy_graph(cont->sc.var, cont->sc.spc);
 
@@ -253,18 +242,17 @@ FUNCTION(solved_goal_code)
 @ 
 A partially solved search goal is returned from an encapsulated search
 when a non-deterministic computation step has to be performed. In that
-case, the current state of the computation is saved in a list of search
-continuation nodes. For each alternative continuation, a (partial)
-application of function [[search_cont_code]] to the corresponding
+case, the current state of the computation is saved in a list of
+search continuation nodes. For each alternative continuation, a
+(partial) application of function [[search_cont]] to the corresponding
 search continuation node is created. When one of these closures is
 applied to an argument, the saved state is restored and a unification
 between the argument and the partial solution computed so far for the
-search goal is performed. Recall that [[try]] already performs the --
-trivial -- unification when it is applied to a partially solved search
-goal by sharing the goal variable and resuming the search goal
-directly. The unification is started before resuming the evaluation of
-the search goal in order to allow an effective implementation of
-pruning search strategies.
+search goal is performed. The unification is started before resuming
+the evaluation of the search goal in order to allow an effective
+implementation of pruning search strategies. Note that [[try]]
+implicitly performs this unification when it is applied to a partially
+solved search goal by sharing the goal variable.
 
 If the current search space is a root space, i.e., if no
 non-deterministic choice was performed for the current goal, the
@@ -275,24 +263,15 @@ unusual cases, e.g., continuing a partially solved goal in a global
 context -- expensive copying is avoided.
 
 <<search.c>>=
-static
-FUNCTION(search_cont_code_eval)
-{
-    Node *clos;
- ENTRY_LABEL(search_cont_code_eval)
-    CHECK_STACK1();
-    clos  = sp[0];
-    sp	 -= 1;
-    sp[0] = clos->c.args[0];
-    sp[1] = clos->c.args[1];
-    GOTO(search_cont_code);
-}
+static NodeInfo search_cont_papp_info_table[] = {
+    PAPPINFO("<search goal>", 1, search_cont, 2)
+};
 
 static
-FUNCTION(search_cont_code)
+FUNCTION(search_cont)
 {
     Node *arg, *cont;
- ENTRY_LABEL(search_cont_code)
+ ENTRY_LABEL(search_cont)
     cont = sp[0];
     if ( !inject_search_space(cont->sc.spc) )
 	sp[0] = cont = copy_graph(cont, cont->sc.spc);
@@ -348,10 +327,6 @@ static
 FUNCTION(deadlock_search)
 {
     Node *goal, *sc, *clos, *list;
-    static NodeInfo solved_goal_info_table[] = {
-	PAPPINFO("<solved goal>", 1, solved_goal_code, 2)
-	FUNINFO("<solved goal>",     solved_goal_code, 2)
-    };
  ENTRY_LABEL(deadlock_search)
     /* check for successful computation or deadlock */
     ASSERT(sp == (Node **)bp - 2);
@@ -393,7 +368,7 @@ FUNCTION(deadlock_search)
     hp	       += search_cont_node_size;
 
     clos	    = (Node *)hp;
-    clos->info	    = solved_goal_info_table;
+    clos->info	    = solved_goal_papp_info_table;
     clos->c.args[0] = sc;
     hp		   += closure_node_size(1);
 
@@ -527,10 +502,6 @@ FUNCTION(choices_search)
     unsigned int n_conts;
     Node	 *list, *cons, *clos, *sc;
     const Label	 *conts;
-    static NodeInfo search_cont_info_table[] = {
-	PAPPINFO("<search goal>", 1, search_cont_code, 2)
-	FUNINFO("<search goal>",     search_cont_code, 2)
-    };
  ENTRY_LABEL(choices_search)
     ASSERT(bp && is_search_context(bp));
 
@@ -567,7 +538,7 @@ FUNCTION(choices_search)
 	hp	   += search_cont_node_size;
 
 	clos		= (Node *)hp;
-	clos->info	= search_cont_info_table;
+	clos->info	= search_cont_papp_info_table;
 	clos->c.args[0] = sc;
 	hp	       += closure_node_size(1);
 

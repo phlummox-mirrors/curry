@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: io_monad.nw 1815 2005-11-06 12:00:19Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -37,6 +37,7 @@ DECLARE_ENTRYPOINT(__ioError);
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "debug.h"
 #include "run.h"
 #include "heap.h"
 #include "stack.h"
@@ -89,33 +90,33 @@ FUNCTION(fail_io)
 }
 
 @
-The global entrypoint [[start_io]] prepares the abstract machine to
-evaluate the monadic goal on the top of the stack. The IO monad is
+The global entry point [[start_io]] prepares the abstract machine for
+evaluating the monadic goal on the top of the stack. The IO monad is
 based on the type \texttt{IO}, which can be defined as
 \begin{equation}
   \mbox{\texttt{type IO a = World -> (a,World)}}\label{eq:monadic-io}
 \end{equation}
 where the type \texttt{World} represents the state of the external
-world. The state of the filesystem, etc. are managed implicitly in the
-runtime system. Therefore, we can simply use the constant \texttt{()}
-as a representation of the world. As this constant does not change we
-can use a simpler reader monad instead of a state monad to implement
-the \texttt{IO} type. Therefore, the runtime system really uses
+world. The state of the file system, etc. are managed implicitly in
+the runtime system. Therefore, we can simply use the constant
+\texttt{()} as representation of the world. Since the representation
+is constant, we can use a simpler reader monad instead of a state
+monad to implement the \texttt{IO} type. Therefore, the runtime system
+really uses
 \begin{equation}
   \mbox{\texttt{type IO a = () -> a}}\label{eq:our-io}
 \end{equation}
-Note that the IO monad in Curry is lazy, i.e., the result of a monadic
-action is computed only when it is used by the program. Thus, the
-program \verb|return undefined >> putStrLn "Hello world"| will print
-the string \verb|Hello world| on the standard output. While this is
+Note that the IO monad is lazy, i.e., the result of a monadic action
+is computed only when it is used by the program. Thus, the program
+\verb|return undefined >> putStrLn "Hello world"| will print the
+string \verb|Hello world| on the standard output. While this is
 straight forward to implement using
 representation~(\ref{eq:monadic-io}), we must be careful not to
 evaluate the returned node in our representation~(\ref{eq:our-io}).
 
-The program used for evaluating a monadic goal will compute the value
-(of type \texttt{IO a}) returned by the goal to head-normal form and
-terminate the program afterwards. The value computed by the monadic
-action itself is discarded. In fact it is not computed at all.
+The program used for executing a monadic goal evaluates the goal to
+head-normal form, but does not compute nor print the result of the
+monadic action itself.
 
 <<io_monad.c>>=
 static int  io_argc;
@@ -123,16 +124,16 @@ static char **io_argv;
 static int  curry_rc = 0;
 
 int
-curry_exec(NodeInfo *main_info_table, int argc, char **argv)
+curry_exec(NodeInfo *main_info, int argc, char **argv)
 {
-    struct closure_node main_function;
-
     io_argc = argc;
     io_argv = argv;
 
+    assert(main_info->tag == FAPP_TAG &&
+	   main_info->length == closure_node_size(0));
+
     CHECK_STACK1();
-    main_function.info = main_info_table;
-    *--sp = (Node *)&main_function;
+    *--sp = (Node *)&main_info;
 
     run(start_io);
     hlim = heap_base;

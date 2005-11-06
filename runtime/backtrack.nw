@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: backtrack.nw 1804 2005-10-26 13:21:33Z wlux $
+% $Id: backtrack.nw 1815 2005-11-06 12:00:19Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -20,7 +20,7 @@ passed as second argument to [[curry_eval]] in a [[0]]-terminated
 array.
 
 <<backtrack.h>>=
-extern int curry_eval(NodeInfo *goal_info_table, const char *fv_names[],
+extern int curry_eval(NodeInfo *goal_info, const char *fv_names[],
 		      int argc, char **argv);
 
 @ 
@@ -144,7 +144,7 @@ FUNCTION(fail)
 }
 
 @
-The [[curry_eval]] function is the main function for a program which
+The function [[curry_eval]] is the main function for a program which
 evaluates a (non-monadic) goal. It applies the goal function to a list
 of free variables and incrementally computes the non-deterministic
 solutions of this application. First, it calls [[eval_apply]] in order
@@ -199,8 +199,7 @@ bad_usage(const char *pname)
 }
 
 int
-curry_eval(NodeInfo *goal_info_table, const char *fv_names[],
-	   int argc, char **argv)
+curry_eval(NodeInfo *goal_info, const char *fv_names[], int argc, char **argv)
 {
     int	    opt;
     boolean first = true, interactive;
@@ -231,7 +230,7 @@ curry_eval(NodeInfo *goal_info_table, const char *fv_names[],
     }
 
     /* evaluate and display solutions of the goal */
-    goal = eval_apply(goal_info_table, fv_names);
+    goal = eval_apply(goal_info, fv_names);
     BEGIN_LOCAL_ROOTS1(goal)
     susp = eval_first(goal);
     if ( susp )
@@ -271,7 +270,7 @@ curry_eval(NodeInfo *goal_info_table, const char *fv_names[],
 }
 
 static Node *
-eval_apply(NodeInfo *goal_info_table, const char *fv_names[])
+eval_apply(NodeInfo *goal_info, const char *fv_names[])
 {
     unsigned int	 i, n;
     const char		 **fv;
@@ -280,7 +279,8 @@ eval_apply(NodeInfo *goal_info_table, const char *fv_names[])
 
     for ( n = 0, fv = fv_names; *fv; n++, fv++ )
 	;
-    ASSERT(goal_info_table[0].arity == n + 1);
+    assert(goal_info->tag == FAPP_TAG &&
+	   goal_info->length == closure_node_size(n + 1));
 
     CHECK_HEAP(closure_node_size(n + 1) + (n + 1) * variable_node_size);
     vars = (struct variable_node *)hp;
@@ -295,7 +295,7 @@ eval_apply(NodeInfo *goal_info_table, const char *fv_names[])
     }
 
     clos       = (Node *)hp;
-    clos->info = goal_info_table + n + 1;
+    clos->info = goal_info;
     for ( i = 0; i <= n; i++ )
 	clos->c.args[i] = (Node *)(vars + i);
     hp += closure_node_size(n + 1);

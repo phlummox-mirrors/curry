@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1814 2005-11-05 22:34:48Z wlux $
+% $Id: CGen.lhs 1815 2005-11-06 12:00:19Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -69,14 +69,16 @@ holding the names of the goal's free variables.
 > genEntry run f fvs =
 >   [CMainFunc run ["argc","argv"]
 >     (maybe [] (return . fvDecl "fv_names") fvs ++
->      [CReturn (curry_main fvs (infoTable f) "fv_names" ["argc","argv"])])]
+>      [CReturn (curry_main fvs (closInfo f) "fv_names" ["argc","argv"])])]
 >   where fvDecl v vs =
 >           CStaticArray (CPointerType (CConstType "char")) v
 >                        (map CInit (map CString vs ++ [CNull]))
 >         curry_main (Just _) = curry_eval
 >         curry_main Nothing = const . curry_exec
->         curry_exec g args = funCall "curry_exec" (g:args)
->         curry_eval g v args = funCall "curry_eval" (g:v:args)
+>         curry_exec g args =
+>           CFunCall "curry_exec" (CAddr (CExpr g) : map CExpr args)
+>         curry_eval g v args =
+>           CFunCall "curry_eval" (CAddr (CExpr g) : map CExpr (v:args))
 
 \end{verbatim}
 \subsection{Modules}
@@ -275,8 +277,10 @@ functions that handle partial applications of data constructors.
 > genFunctions ds fs sts ns =
 >   -- imported functions
 >   map (entryDecl CPublic) (nonLocal call) ++
->   concatMap closDecl (nonLocal clos) ++
+>   map pappDecl (nonLocal papp) ++
+>   map evalDecl (nonLocal clos) ++
 >   map lazyDecl (nonLocal lazy) ++
+>   map fun0Decl (nonLocal fun0) ++
 >   -- (private) @ functions
 >   [entryDecl CPrivate (apName n) | n <- [3..maxApArity]] ++
 >   concat [evalDef CPrivate f n | f <- apClos, let n = apArity f, n > 2] ++
@@ -284,22 +288,27 @@ functions that handle partial applications of data constructors.
 >   concat [apFunction (apName n) n | n <- [3..maxApArity]] ++
 >   -- (private) tuple functions (for partial applications)
 >   map (entryDecl CPrivate) tuplePapp ++
->   concat [closDef CPrivate f (tupleArity f) | f <- tuplePapp] ++
->   concatMap tupleFunction tuplePapp ++
+>   [pappDef CPrivate f (tupleArity f) | f <- tuplePapp] ++
+>   [fun0Def CPrivate f (tupleArity f) | f <- tupleFun0] ++
+>   concat [tupleFunction f (tupleArity f) | f <- tuplePapp] ++
 >   -- local function declarations
 >   map (entryDecl CPublic . fst3) fs ++
->   concat [closDecl f ++ closDef CPublic f (length vs) | (f,vs,_) <- fs] ++
->   concat [lazyDecl f : lazyDef CPublic f (length vs) | (f,vs,_) <- fs,
->                                                        f `notElem` cs] ++
+>   concat [[pappDecl f,pappDef CPublic f n] | (f,vs,_) <- fs,
+>                                              let n = length vs, n > 0] ++
+>   concat [evalDecl f : evalDef CPublic f n | (f,n) <- fs'] ++
+>   concat [lazyDecl f : lazyDef CPublic f n | (f,n) <- fs'] ++
+>   concat [[fun0Decl f,fun0Def CPublic f n] | (f,n) <- fs'] ++
 >   concat [function CPublic f vs st | (f,vs,st) <- fs]
 >   where nonLocal = filter (`notElem` map fst3 fs)
->         clos = nub (papp' ++ clos')
->         (tuplePapp,papp') = partition isTuple (nub [f | Papp f _ <- ns])
+>         (tuplePapp,papp) = partition isTuple (nub [f | Papp f _ <- ns])
 >         (apCall,call) = partition isAp (nub [f | Exec f _ <- sts])
->         (apClos,clos') = partition isAp (nub [f | Closure f _ <- ns])
+>         (apClos,clos) = partition isAp (nub [f | Closure f _ <- ns])
 >         (apLazy,lazy) = partition isAp (nub [f | Lazy f _ <- ns])
+>         (tupleFun0,fun0) = partition isTuple (nub ([f | Papp f [] <- ns] ++
+>                                                    [f | Closure f [] <- ns]))
 >         maxApArity = maximum (0 : map apArity (apCall ++ apClos ++ apLazy))
 >         cs = [c | ConstrDecl c _ <- concatMap snd ds]
+>         fs' = [(f,length vs) | (f,vs,_) <- fs, f `notElem` cs]
 
 > entryDecl :: CVisibility -> Name -> CTopDecl
 > entryDecl vb f = CFuncDecl vb (cName f)
@@ -310,27 +319,26 @@ functions that handle partial applications of data constructors.
 > lazyEntryDecl :: Name -> CTopDecl
 > lazyEntryDecl f = CFuncDecl CPrivate (lazyFunc f)
 
-> closDecl :: Name -> [CTopDecl]
-> closDecl f =
->   [CExternArrayDecl nodeInfoType (infoTable f),
->    CExternVarDecl (CConstType "struct closure_node") (constFunc f)]
+> pappDecl :: Name -> CTopDecl
+> pappDecl f = CExternArrayDecl nodeInfoType (pappInfoTable f)
+
+> evalDecl :: Name -> CTopDecl
+> evalDecl f = CExternVarDecl nodeInfoType (closInfo f)
 
 > lazyDecl :: Name -> CTopDecl
 > lazyDecl f = CExternArrayDecl nodeInfoType (lazyInfoTable f)
 
+> fun0Decl :: Name -> CTopDecl
+> fun0Decl f = CExternVarDecl (CConstType "struct closure_node") (constFunc f)
+
+> pappDef :: CVisibility -> Name -> Int -> CTopDecl
+> pappDef vb f n =
+>   CArrayDef vb nodeInfoType (pappInfoTable f) [pappInfo f i n | i <- [0..n-1]]
+
 > evalDef :: CVisibility -> Name -> Int -> [CTopDecl]
 > evalDef vb f n =
 >   [evalEntryDecl f,
->    CVarDef vb nodeInfoType (dataInfo f) (funInfo f n),
->    evalFunction f n]
-
-> closDef :: CVisibility -> Name -> Int -> [CTopDecl]
-> closDef vb f n =
->   [evalEntryDecl f,
->    CArrayDef vb nodeInfoType (infoTable f)
->              ([pappInfo f i n | i <- [0..n-1]] ++ [funInfo f n]),
->    CVarDef vb (CConstType "struct closure_node") (constFunc f)
->            (CStruct [CInit (CExpr (infoTable f)),CStruct [CInit CNull]]),
+>    CVarDef vb nodeInfoType (closInfo f) (funInfo f n),
 >    evalFunction f n]
 
 > lazyDef :: CVisibility -> Name -> Int -> [CTopDecl]
@@ -349,6 +357,14 @@ functions that handle partial applications of data constructors.
 >         indirinfo =
 >           [CExpr "INDIR_TAG",suspendNodeSize n,gcPointerTable,
 >            noName,CExpr "eval_indir",noEntry,CInt 0,notFinalized]
+
+> fun0Def :: CVisibility -> Name -> Int -> CTopDecl
+> fun0Def vb f n =
+>   CVarDef vb (CConstType "struct closure_node") (constFunc f)
+>           (CStruct [CInit (info f n),CStruct [CInit CNull]])
+>   where info f n
+>           | n == 0 = CAddr (CExpr (closInfo f))
+>           | otherwise = CExpr (pappInfoTable f)
 
 > pappInfo :: Name -> Int -> Int -> CInitializer
 > pappInfo f i n = CStruct (map CInit funinfo)
@@ -404,9 +420,9 @@ the suspend node associated with the abstract machine code function.
 >         saveArg i = CAssign (LElem (LVar "sp") (CInt i))
 >                             (CElem (CExpr "susp->s.args") (CInt i))
 
-> tupleFunction :: Name -> [CTopDecl]
-> tupleFunction f = function CPrivate f vs (Return (Constr f vs))
->   where vs = [Name ('v' : show i) | i <- [1..tupleArity f]]
+> tupleFunction :: Name -> Int -> [CTopDecl]
+> tupleFunction f n = function CPrivate f vs (Return (Constr f vs))
+>   where vs = [Name ('v' : show i) | i <- [1..n]]
 
 > apFunction :: Name -> Int -> [CTopDecl]
 > apFunction f n = funcDefs CPrivate f vs (cpsApply f vs)
@@ -654,10 +670,11 @@ split into minimal binding groups.
 >               CAddr (CExpr (dataInfo c)) : map arg vs ++ is
 >         constInit (Bind v (Papp f vs)) is
 >           | not (null vs) && isConstant consts v =
->               functionInfo f (length vs) : map arg vs ++ is
+>               CExpr (pappInfoTable f) `add` CInt (length vs) :
+>               map arg vs ++ is
 >         constInit (Bind v (Closure f vs)) is
 >           | not (null vs) && isConstant consts v =
->               functionInfo f (length vs) : map arg vs ++ is
+>               CAddr (CExpr (closInfo f)) : map arg vs ++ is
 >         constInit _ is = is
 >         arg v = fromJust (lookupFM v consts)
 
@@ -684,7 +701,7 @@ split into minimal binding groups.
 >   | otherwise = initConstr (LVar (show v)) c (map show vs)
 > initNode consts (Bind v (Papp f vs))
 >   | isConstant consts v = []
->   | otherwise = initClosure (LVar (show v)) f (map show vs)
+>   | otherwise = initPapp (LVar (show v)) f (map show vs)
 > initNode consts (Bind v (Closure f vs))
 >   | isConstant consts v = []
 >   | otherwise = initClosure (LVar (show v)) f (map show vs)
@@ -697,9 +714,14 @@ split into minimal binding groups.
 >   CAssign (LField v "info") (CAddr (CExpr (dataInfo c))) :
 >   initArgs (LField v "c.args") vs
 
+> initPapp :: LVar -> Name -> [String] -> [CStmt]
+> initPapp v f vs =
+>   CAssign (LField v "info") (CExpr (pappInfoTable f) `add` CInt (length vs)) :
+>   initArgs (LField v "c.args") vs
+
 > initClosure :: LVar -> Name -> [String] -> [CStmt]
 > initClosure v f vs =
->   CAssign (LField v "info") (functionInfo f (length vs)) :
+>   CAssign (LField v "info") (CAddr (CExpr (closInfo f))) :
 >   initArgs (LField v "c.args") vs
 
 > initLazy :: LVar -> Name -> [String] -> [CStmt]
@@ -1149,15 +1171,11 @@ used for constant constructors and functions, respectively.
 > evalFunc f = cName f ++ "_eval"
 > lazyFunc f = cName f ++ "_lazy"
 
-> dataInfo, infoTable, lazyInfoTable :: Name -> String
+> dataInfo, closInfo, pappInfoTable, lazyInfoTable :: Name -> String
 > dataInfo c = cName c ++ "_info"
-> infoTable f = cName f ++ "_info_table"
+> closInfo f = cName f ++ "_finfo"
+> pappInfoTable f = cName f ++ "_papp_info_table"
 > lazyInfoTable f = cName f ++ "_lazy_info_table"
-
-> functionInfo :: Name -> Int -> CExpr
-> functionInfo f n
->   | isAp f = CAddr (CExpr (dataInfo f))
->   | otherwise = add (CExpr (infoTable f)) (CInt n)
 
 > dataTag :: Name -> String
 > dataTag c = cName c ++ "_tag"
