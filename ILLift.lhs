@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILLift.lhs 1750 2005-08-29 15:26:26Z wlux $
+% $Id: ILLift.lhs 1816 2005-11-06 17:34:23Z wlux $
 %
 % Copyright (c) 2000-2003, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,10 +10,6 @@ Before the intermediate language code is translated into abstract
 machine code, all complex expressions in argument positions -- i.e.,
 everything which is not a constant, variable, function, or application
 -- are lifted into global functions.
-
-In addition, the compiler adds an auxiliary function for every
-(non-constant) data constructor. These functions are used to compile
-partial applications of data constructors.
 \begin{verbatim}
 
 > module ILLift where
@@ -34,26 +30,13 @@ partial applications of data constructors.
 >           [qualifyWith m (mkIdent ("_app#" ++ (show i))) | i <- [1..]]
 
 > lift :: Decl -> LiftState [Decl]
-> lift (DataDecl tc n cs) = return (liftData tc n cs)
+> lift (DataDecl tc n cs) = return [DataDecl tc n cs]
 > lift (NewtypeDecl tc n nc) = return [liftNewtype tc n nc]
 > lift (FunctionDecl f vs ty e) =
 >   do
 >     (e',ds') <- liftExpr e
 >     return (FunctionDecl f vs ty e' : ds')
 > lift d = return [d]
-
-> liftData :: QualIdent -> Int -> [ConstrDecl [Type]] -> [Decl]
-> liftData tc n cs =
->   DataDecl tc n cs : [liftConstr ty c | c <- cs, not (isConstant c)]
->   where ty = typeConstr tc n
->         isConstant (ConstrDecl _ tys) = null tys
-
-> liftConstr :: Type -> ConstrDecl [Type] -> Decl
-> liftConstr ty (ConstrDecl c tys) =
->   FunctionDecl c vs (normalize (foldr TypeArrow ty tys))
->                (foldl Apply (Constructor c arity) (map Variable vs))
->   where arity = length tys
->         vs = [mkIdent ("_" ++ show i) | i <- [1..arity]]
 
 > liftNewtype :: QualIdent -> Int -> ConstrDecl Type -> Decl
 > liftNewtype tc n (ConstrDecl c ty) =
@@ -114,11 +97,12 @@ partial applications of data constructors.
 >         ty = foldr1 TypeArrow $ map TypeVariable $ [0 .. length fvs]
 
 \end{verbatim}
-\ToDo{The type of lifted functions is too general
-($\forall\alpha_1\dots\alpha_n.\alpha_1\rightarrow\dots\rightarrow\alpha_n$,
-where $n$ is the arity of the function). In order to fix this bug we
-need more type information in the intermediate language so that we can
-compute the type of any expression in the module.}
+\ToDo{The type of lifted functions is too general ($\forall
+  \alpha_1\dots\alpha_{n+1} . \alpha_1 \rightarrow \dots \rightarrow
+  \alpha_n \rightarrow \alpha_{n+1}$, where $n$ is the arity of the
+  function). In order to fix this bug we need more type information in
+  the intermediate language so that we can compute the type of any
+  expression in the module.}
 \begin{verbatim}
 
 > liftAlt :: Alt -> LiftState (Alt,[Decl])

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1811 2005-10-30 17:20:26Z wlux $
+% $Id: MachInterp.lhs 1816 2005-11-06 17:34:23Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -620,6 +620,27 @@ historical reasons, the compiler uses \texttt{@} instead of
 >                         updateState (pushCont (applyCode (length ptrs''))))
 >                 updateState (pushNodes ptrs')
 >                 code
+
+\end{verbatim}
+In order to handle partial applications of data constructors, the
+compiler provides an auxiliary function for each data constructor,
+which returns a new constructor node from the supplied arguments.
+\begin{verbatim}
+
+> constrFunction :: Int -> String -> Int -> Function
+> constrFunction t c n = (c,constrCode t c n,n)
+
+> constrCode :: Int -> String -> Int -> Instruction
+> constrCode t c n =
+>   read'updateState (popNodes n) >>= allocData t c >>= retNode
+
+> tupleFunctions :: [Function]
+> tupleFunctions = map tupleFunction [0..]
+
+> tupleFunction :: Int -> Function
+> tupleFunction n
+>   | n >= 2 = constrFunction 0 ("(" ++ replicate (n - 1) ',' ++ ")") n
+>   | otherwise = error "tuples must have arity >= 2"
 
 \end{verbatim}
 \subsubsection{Arithmetic Operations}\label{sec:mach-arithmetic}

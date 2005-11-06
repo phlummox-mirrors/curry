@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachLoader.lhs 1814 2005-11-05 22:34:48Z wlux $
+% $Id: MachLoader.lhs 1816 2005-11-06 17:34:23Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -33,10 +33,15 @@ to the functions.
 
 > loadModule :: Maybe Instrument -> ConstrEnv -> FunEnv -> Module
 >            -> (ConstrEnv,FunEnv)
-> loadModule instrumentOpt cEnv fEnv cam = (cEnv',fEnv')
+> loadModule instrumentOpt cEnv fEnv cam = (cEnv',fEnv'')
 >   where (_,ds,fs) = splitCam cam
->         cEnv' = foldr bindConstrs cEnv ds
->         fEnv' = translate instrumentOpt cEnv' fEnv fs
+>         cs = concatMap constrs ds
+>         cEnv' = foldr bindConstr cEnv cs
+>         fEnv' = foldr bindConstrFun fEnv cs
+>         fEnv'' = translate instrumentOpt cEnv' fEnv' fs
+
+> constrs :: (Name,[ConstrDecl]) -> [(ConstrDecl,Int)]
+> constrs (_,ds) = zip ds [0..]
 
 > function :: String -> FunEnv -> Maybe Function
 > function = lookupEnv
@@ -94,9 +99,9 @@ in order to allow mutual recursion between functions.
 >         translExpr (Lit c) = translLiteral c
 >         translExpr (Constr c vs) =
 >           initConstr (lookupConstr c cEnv) (map show vs)
+>         translExpr (Papp f vs) = initClosure (lookupFun f fEnv) (map show vs)
 >         translExpr (Closure f vs) =
 >           initClosure (lookupFun f fEnv) (map show vs)
->         translExpr (Papp f vs) = initClosure (lookupFun f fEnv) (map show vs)
 >         translExpr (Lazy f vs) = initLazy (lookupFun f fEnv) (map show vs)
 >         translExpr Free = initFree
 >         translExpr (Var v) = initIndir (show v)
@@ -205,11 +210,8 @@ names to node tags and function names to function triples.
 >   foldr bindTag emptyEnv [nilTag,consTag,unitTag,successTag]
 >   where bindTag (ConstructorTag t c n) = bindEnv c (ConstructorTag t c n)
 
-> bindConstrs :: (Name,[ConstrDecl]) -> ConstrEnv -> ConstrEnv
-> bindConstrs (_,ds) env = foldr2 bindConstr env ds [0..]
-
-> bindConstr :: ConstrDecl -> Int -> ConstrEnv -> ConstrEnv
-> bindConstr (ConstrDecl c n) t =
+> bindConstr :: (ConstrDecl,Int) -> ConstrEnv -> ConstrEnv
+> bindConstr (ConstrDecl c n,t) =
 >   bindEnv c' (ConstructorTag t (snd $ splitQualified $ c') n)
 >   where c' = demangle c
 
@@ -259,17 +261,23 @@ names to node tags and function names to function triples.
 > bindFun (f,n,code) = bindEnv f' (f',code,n)
 >   where f' = demangle f
 
+> bindConstrFun :: (ConstrDecl,Int) -> FunEnv -> FunEnv
+> bindConstrFun (ConstrDecl c n,t) = bindEnv c' (constrFunction t c' n)
+>   where c' = demangle c
+
 > lookupFun :: Name -> FunEnv -> Function
-> lookupFun f env =
->   case lookupEnv f' env of
+> lookupFun f fEnv =
+>   case lookupEnv f' fEnv of
 >     Just f -> f
 >     Nothing
 >       | isApName f' -> applyFunctions !! (apArity f' - 1)
+>       | isTupleName f' -> tupleFunctions !! (tupleArity f')
 >       | otherwise -> error ("Undefined function: " ++ f')
 >   where f' = demangle f
 >         isApName ('@':cs) = all isDigit cs
 >         isApName _ = False
 >         apArity ('@':cs) = if null cs then 1 else read cs
+>         tupleArity f' = length f' - 1
 
 \end{verbatim}
 The environment holding the \verb|ccall|able primitives does not change.
