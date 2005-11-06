@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1794 2005-10-16 17:41:40Z wlux $
+% $Id: ILTrans.lhs 1817 2005-11-06 23:42:07Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -30,11 +30,12 @@ data structures, we can use only a qualified import for the
 \end{verbatim}
 \paragraph{Modules}
 At the top-level, the compiler has to translate data type, newtype,
-function, and foreign declarations. When translating a data type or
-newtype declaration, we ignore the types in the declaration and lookup
-the types of the constructors in the type environment instead because
-these types are already fully expanded, i.e., they do not include any
-alias types.
+function, and foreign declarations. When translating data type and
+newtype declarations, we ignore the types in the declarations and
+lookup the types of the constructors in the type environment instead
+because these types are already fully expanded, i.e., they do not
+include any alias types. On the other hand, we introduce new type
+synonyms in place of newtype declarations (see Sect.~\ref{sec:IL}).
 \begin{verbatim}
 
 > ilTrans :: ValueEnv -> EvalEnv -> Module -> IL.Module
@@ -45,7 +46,7 @@ alias types.
 > translTopDecl m tyEnv _ (DataDecl _ tc tvs cs) =
 >   [translData m tyEnv tc tvs cs]
 > translTopDecl m tyEnv _ (NewtypeDecl _ tc tvs nc) =
->   [translNewtype m tyEnv tc tvs nc]
+>   translNewtype m tyEnv tc tvs nc
 > translTopDecl _ _ _ (TypeDecl _ _ _ _) = []
 > translTopDecl m tyEnv evEnv (BlockDecl d) = translDecl m tyEnv evEnv d
 
@@ -63,18 +64,19 @@ alias types.
 >               (map (translConstrDecl m tyEnv) cs)
 
 > translNewtype :: ModuleIdent -> ValueEnv -> Ident -> [Ident] -> NewConstrDecl
->               -> IL.Decl
+>               -> [IL.Decl]
 > translNewtype m tyEnv tc tvs nc =
->   IL.NewtypeDecl (qualifyWith m tc) (length tvs)
->                  (IL.ConstrDecl c' (translType ty))
->   where c' = qualifyWith m (nconstr nc)
->         TypeArrow ty _ = rawType (conType c' tyEnv)
+>   [IL.TypeDecl (qualifyWith m tc) (length tvs) (translType (argType ty)),
+>    IL.FunctionDecl f [v] (translType ty) (IL.Variable v)]
+>   where f = qualifyWith m (nconstr nc)
+>         v = head (argNames (mkIdent ""))
+>         ty = rawType (conType f tyEnv)
+>         argType (TypeArrow ty _) = ty
 
-> translConstrDecl :: ModuleIdent -> ValueEnv -> ConstrDecl
->                  -> IL.ConstrDecl [IL.Type]
+> translConstrDecl :: ModuleIdent -> ValueEnv -> ConstrDecl -> IL.ConstrDecl
 > translConstrDecl m tyEnv d =
->   IL.ConstrDecl c' (map translType (arrowArgs (rawType (conType c' tyEnv))))
->   where c' = qualifyWith m (constr d)
+>   IL.ConstrDecl c (map translType (arrowArgs (rawType (conType c tyEnv))))
+>   where c = qualifyWith m (constr d)
 
 > translForeign :: ModuleIdent -> ValueEnv -> Ident -> CallConv -> String
 >               -> IL.Decl
@@ -87,12 +89,12 @@ alias types.
 \end{verbatim}
 \paragraph{Interfaces}
 In order to generate code, the compiler also needs to know the tags
-and arities of all imported data constructors. For that reason we
+and arities of all imported data constructors. For that reason, we
 compile the data type declarations of all interfaces into the
 intermediate language, too. In this case we do not lookup the
 types in the environment because the types in the interfaces are
 already fully expanded. Note that we do not translate data types
-which are imported into the interface from some other module.
+which are imported into the interface from another module.
 \begin{verbatim}
 
 > ilTransIntf :: Interface -> [IL.Decl]
@@ -111,8 +113,7 @@ which are imported into the interface from some other module.
 >   where hiddenConstr = IL.ConstrDecl qAnonId []
 >         qAnonId = qualify anonId
 
-> translIntfConstrDecl :: ModuleIdent -> [Ident] -> ConstrDecl
->                      -> IL.ConstrDecl [IL.Type]
+> translIntfConstrDecl :: ModuleIdent -> [Ident] -> ConstrDecl -> IL.ConstrDecl
 > translIntfConstrDecl m tvs (ConstrDecl _ _ c tys) =
 >   IL.ConstrDecl (qualifyWith m c) (map translType (toTypes m tvs tys))
 > translIntfConstrDecl m tvs (ConOpDecl _ _ ty1 op ty2) =
@@ -341,8 +342,9 @@ further possibilities for this transformation.
 >   where lookupVar v env
 >           | isQualified v = Nothing
 >           | otherwise = lookupEnv (unqualify v) env
-> translExpr tyEnv _ _ (Constructor c) =
->   IL.Constructor c (arrowArity (rawType (conType c tyEnv)))
+> translExpr tyEnv _ _ (Constructor c)
+>   | isNewtypeConstr tyEnv c = IL.Function c 1
+>   | otherwise = IL.Constructor c (arrowArity (rawType (conType c tyEnv)))
 > translExpr tyEnv vs env (Apply e1 e2) =
 >   case e1 of
 >     Constructor c | isNewtypeConstr tyEnv c -> translExpr tyEnv vs env e2
@@ -405,11 +407,11 @@ module.
 
 > instance HasModule IL.Decl where
 >   modules (IL.DataDecl _ _ cs) = modules cs
->   modules (IL.NewtypeDecl _ _ nc) = modules nc
+>   modules (IL.TypeDecl _ _ ty) = modules ty
 >   modules (IL.FunctionDecl _ _ ty e) = modules ty . modules e
 >   modules (IL.ForeignDecl _ _ _ ty) = modules ty
 
-> instance HasModule a => HasModule (IL.ConstrDecl a) where
+> instance HasModule IL.ConstrDecl where
 >   modules (IL.ConstrDecl _ tys) = modules tys
 
 > instance HasModule IL.Type where

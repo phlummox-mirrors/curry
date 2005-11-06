@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILLift.lhs 1816 2005-11-06 17:34:23Z wlux $
+% $Id: ILLift.lhs 1817 2005-11-06 23:42:07Z wlux $
 %
-% Copyright (c) 2000-2003, Wolfgang Lux
+% Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILLift.lhs}
@@ -31,17 +31,12 @@ everything which is not a constant, variable, function, or application
 
 > lift :: Decl -> LiftState [Decl]
 > lift (DataDecl tc n cs) = return [DataDecl tc n cs]
-> lift (NewtypeDecl tc n nc) = return [liftNewtype tc n nc]
+> lift (TypeDecl tc n ty) = return [TypeDecl tc n ty]
 > lift (FunctionDecl f vs ty e) =
 >   do
 >     (e',ds') <- liftExpr e
 >     return (FunctionDecl f vs ty e' : ds')
-> lift d = return [d]
-
-> liftNewtype :: QualIdent -> Int -> ConstrDecl Type -> Decl
-> liftNewtype tc n (ConstrDecl c ty) =
->   FunctionDecl c [v] (normalize (TypeArrow ty (typeConstr tc n))) (Variable v)
->   where v = mkIdent "_1"
+> lift (ForeignDecl f cc ie ty) = return [ForeignDecl f cc ie ty]
 
 > liftExpr :: Expression -> LiftState (Expression,[Decl])
 > liftExpr (Literal l) = return (Literal l,[])
@@ -122,9 +117,6 @@ everything which is not a constant, variable, function, or application
 
 > uniqueName :: LiftState QualIdent
 > uniqueName = liftM head (updateSt tail)
-
-> typeConstr :: QualIdent -> Int -> Type
-> typeConstr tc n = TypeConstructor tc (map TypeVariable (take n [0..]))
 
 > fv :: Expression -> [Ident]
 > fv (Literal _) = []

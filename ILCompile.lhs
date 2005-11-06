@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 1814 2005-11-05 22:34:48Z wlux $
+% $Id: ILCompile.lhs 1817 2005-11-06 23:42:07Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -35,14 +35,14 @@ language into abstract machine code.
 
 > compileDecl :: Decl -> [Cam.Decl]
 > compileDecl (DataDecl tc _ cs) = [compileData tc cs]
-> compileDecl (NewtypeDecl _ _ _) = []
+> compileDecl (TypeDecl _ _ _) = []
 > compileDecl (FunctionDecl f vs _ e) = [compileFun f vs e]
 > compileDecl (ForeignDecl f cc ie ty) = compileForeign f cc ie ty
 
-> compileData :: QualIdent -> [ConstrDecl [Type]] -> Cam.Decl
+> compileData :: QualIdent -> [ConstrDecl] -> Cam.Decl
 > compileData tc cs = Cam.DataDecl (con tc) (map compileConstr cs)
 
-> compileConstr :: ConstrDecl [Type] -> Cam.ConstrDecl
+> compileConstr :: ConstrDecl -> Cam.ConstrDecl
 > compileConstr (ConstrDecl c tys)
 >   | c == hidden = Cam.ConstrDecl hiddenCon 0
 >   | otherwise = Cam.ConstrDecl (con c) (length tys)

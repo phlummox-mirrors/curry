@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: ILPP.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: ILPP.lhs 1817 2005-11-06 23:42:07Z wlux $
 %
-% Copyright (c) 1999-2004 Wolfgang Lux
+% Copyright (c) 1999-2005 Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILPP.lhs}
-\section{A pretty printer for the intermediate language}
+\section{A Pretty Printer for the Intermediate Language}
 This module implements just another pretty printer, this time for the
 intermediate language. It was mainly adapted from the Curry pretty
 printer (see Sect.~\ref{sec:CurryPP}) which, in turn, is based on Simon
@@ -38,9 +38,9 @@ Marlow's pretty printer for Haskell.
 >   sep (text "data" <+> ppTypeLhs tc n :
 >        map (nest dataIndent)
 >            (zipWith (<+>) (equals : repeat (char '|')) (map ppConstr cs)))
-> ppDecl (NewtypeDecl tc n (ConstrDecl c ty)) =
->   sep [text "newtype" <+> ppTypeLhs tc n <+> equals,
->        nest dataIndent (ppConstr (ConstrDecl c [ty]))]
+> ppDecl (TypeDecl tc n ty) =
+>   sep [text "type" <+> ppTypeLhs tc n <+> equals,
+>        nest dataIndent (ppType 2 ty)]
 > ppDecl (FunctionDecl f vs ty exp) =
 >   ppTypeSig f ty $$
 >   sep [ppQIdent f <+> hsep (map ppIdent vs) <+> equals,
@@ -54,7 +54,7 @@ Marlow's pretty printer for Haskell.
 > ppTypeLhs :: QualIdent -> Int -> Doc
 > ppTypeLhs tc n = ppQIdent tc <+> hsep (map text (take n typeVars))
 
-> ppConstr :: ConstrDecl [Type] -> Doc
+> ppConstr :: ConstrDecl -> Doc
 > ppConstr (ConstrDecl c tys) = ppQIdent c <+> fsep (map (ppType 2) tys)
 
 > ppTypeSig :: QualIdent -> Type -> Doc

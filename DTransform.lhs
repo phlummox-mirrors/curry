@@ -1,10 +1,10 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 1750 2005-08-29 15:26:26Z wlux $
+% $Id: DTransform.lhs 1817 2005-11-06 23:42:07Z wlux $
 %
 % 2002/04/10 19:00:00 Added emptyNode as constructor in type cTree
 \nwfilename{DTransform.lhs}
 
-\section{Transforming intermediate representation for debugging}
+\section{Transforming Intermediate Representation for Debugging}\label{sec:dtrans}
 
 The purpose of this module is to convert the intermediate representation of 
 a program $P$, of type {\tt Module} into the intermediate representation of a 
@@ -236,7 +236,7 @@ list of declarations in three.
 > debugSplitDecls []     = ([],[],[])
 > debugSplitDecls (x:xs) = case x of
 >                      DataDecl     _ _ _   -> (x:types,functions,foreigns)
->                      NewtypeDecl  _ _ _   -> (x:types,functions,foreigns)
+>                      TypeDecl     _ _ _   -> (x:types,functions,foreigns)
 >                      FunctionDecl _ _ _ _ -> (types,x:functions,foreigns)
 >                      ForeignDecl  _ _ _ _ -> (types,functions,x:foreigns)
 >                   where
@@ -427,9 +427,7 @@ Next function  gets the current module identifier,
 >       varsId           = map (mkIdent.("_"++).show) [0..i]
 >       vars             = map Variable varsId
 >       fType'           = transformType (i+1)  fType
->       finalApp         = if sType==IsNewConstructor
->                          then head vars
->                          else if sType==IsConstructor
+>       finalApp         = if sType==IsConstructor
 >                          then createApply (Constructor qId (i+1)) vars
 >                          else createApply (Function qId' (i+2)) vars
 >       nextApp          = createApply (Function qIdent'' (i+2)) vars
@@ -494,7 +492,7 @@ is a module function.
 
 \begin{verbatim}
 
-> data SymbolType = IsFunction | IsConstructor | IsNewConstructor | IsForeign deriving (Eq,Show)
+> data SymbolType = IsFunction | IsConstructor | IsForeign deriving (Eq,Show)
 
 > type DebugTypeList = [(QualIdent,(SymbolType,Int,Type))]
 
@@ -518,16 +516,12 @@ is a module function.
 >       (qId,(IsFunction,length l,ftype)):env
 >
 > typesDatum (DataDecl qId n l) env  = foldr (typesConst qId n)  env l
-> typesDatum (NewtypeDecl newtypeId n (ConstrDecl qId lType)) env =
->       (qId,(IsNewConstructor, 1, normalizeType cType)):env
->       where
->       vars = map TypeVariable [0..n-1]
->       cType = TypeArrow lType (TypeConstructor newtypeId vars)
+> typesDatum (TypeDecl _ _ _) env = env
 >
 > typesForeign (ForeignDecl qId cc s ftype) env  = 
 >       (qId,(IsForeign, typeArity ftype,ftype)):env
 
-> typesConst:: QualIdent -> Int -> ConstrDecl [Type] -> DebugTypeList -> DebugTypeList
+> typesConst:: QualIdent -> Int -> ConstrDecl -> DebugTypeList -> DebugTypeList
 > typesConst dataId n (ConstrDecl qId lTypes) env  = 
 >       (qId,(IsConstructor, length lTypes, normalizeType cType)):env
 >       where
