@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1747 2005-08-29 09:26:33Z wlux $
+% $Id: spaces.nw 1819 2005-11-07 15:56:02Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -512,9 +512,12 @@ returns the original node if the node is allocated outside of the heap
 as well as for non-local variables and shared applications. Otherwise,
 the node is copied to the top of the heap and a forwarding pointer is
 left in the old node. As a special case, when [[copy_node]] is called
-with [[space == 0]], all shared applications are copied in order to
-support the [[getSearchTree]] implementation. Recall that [[space]]
-cannot be null when copying a search goal.
+with [[space == 0]], all variables and shared applications are copied
+into the current space. This is used in order to support the
+[[getSearchTree]] function, which implements encapsulated search with
+strong encapsulation (see \pageref{encapsulation} in
+Sect.~\ref{encapsulation}). Note that [[space]] cannot be null when
+copying a search goal that was returned from an encapsulated search.
 
 One has to be careful when the copied graph contains (local) search
 continuations. Since these continuations could contain references to
@@ -582,14 +585,9 @@ copy_node(Node *node, SearchSpace *space)
 		continue;
 
 	    case VARIABLE_TAG:
-		do_copy = node->v.spc && is_forwarded(node->v.spc);
-		break;
 	    case SUSPEND_TAG:
-		do_copy = space == 0
-		    || (node->s.spc && is_forwarded(node->s.spc));
-		break;
 	    case QUEUEME_TAG:
-		do_copy = node->q.spc && is_forwarded(node->q.spc);
+		do_copy = !space || (node->s.spc && is_forwarded(node->s.spc));
 		break;
 
 	    case SEARCH_CONT_TAG:
@@ -742,22 +740,16 @@ copy_graph(Node *graph, SearchSpace *space)
 			node_tag(node));
 
 	case INDIR_TAG:
-	case QUEUEME_TAG:
 	    ASSERT(node->n.spc && is_forwarded(node->n.spc));
+	case VARIABLE_TAG:
 	case SUSPEND_TAG:
+	case QUEUEME_TAG:
 	    if ( node->s.spc && is_forwarded(node->s.spc) )
 		node->s.spc = (SearchSpace *)get_forward(node->s.spc);
 	    else
 		node->s.spc = ss;
 	    for ( i = 0, n = suspend_argc(node); i < n; i++ )
 		node->s.args[i] = copy_node(node->s.args[i], space);
-	    break;
-
-	case VARIABLE_TAG:
-	    ASSERT(node->v.spc && is_forwarded(node->v.spc));
-	    node->v.spc	  = (SearchSpace *)get_forward(node->v.spc);
-	    node->v.wq	  = (ThreadQueue)copy_node((Node *)node->v.wq, space);
-	    node->v.cstrs = (Constraint *)copy_node((Node *)node->v.cstrs, space);
 	    break;
 
 	case SEARCH_CONT_TAG:

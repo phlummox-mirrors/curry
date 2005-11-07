@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1815 2005-11-06 12:00:19Z wlux $
+% $Id: search.nw 1819 2005-11-07 15:56:02Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -582,42 +582,127 @@ FUNCTION(fail_search)
 }
 
 @ 
-The (unsafe) function [[unshare]] creates a copy of its argument such
-that the result does not share its (local) lazy applications with the
-input argument. However, sharing within the argument is preserved. For
-instance, with
+\label{encapsulation}
+There is an inherent conflict between sharing (of logical variables
+and lazy applications) and non-deterministic evaluation, as was
+recently pointed out in~\cite{BrasselHanusHuch04:Encapsulating}. An
+implementation of encapsulated search can either preserve sharing at
+the cost of being unable to encapsulate some non-deterministic
+computations (\emph{weak encapsulation}) or encapsulate all
+non-deterministic computations at the cost of losing sharing of
+unevaluated applications (\emph{strong encapsulation}), which can make
+the result of a program depend on evaluation order. As a simple
+example, consider the program
 \begin{verbatim}
   coin = 0
   coin = 1
+  goal | xs =:= findall (\z -> z =:= y) & x =:= y = (x,xs)
+    where y = coin
+          x,xs free
 \end{verbatim}
-the expression
-\verb|let { x = coin; y = unshare (x+x) } in y `seq` (x+x) + y|             %'
-has results \verb|0|, \verb|2|, and \verb|4|, but never an odd number.
-Note that it is essential that \verb|y| is evaluated before \verb|x|.
-Otherwise, the result of \verb|coin|'s evaluation would be copied and
-therefore only the results \verb|0| and \verb|4| were possible.
+With weak encapsulation, which is used by our implementation of
+encapsulated search, the non-deterministic evaluation of \texttt{coin}
+is not encapsulated, but \texttt{y} will have a consistent meaning in
+the program. In particular, \texttt{goal} has the two
+non-deterministic solutions \texttt{(0,[0])} and \texttt{(1,[1])}.
+With strong encapsulation, the result of \texttt{goal} depends on the
+order in which the equality constraints are evaluated. If the left
+constraint is evaluated first, \texttt{goal} has solutions
+\texttt{(0,[0,1])} and \texttt{(1,[0,1])}, i.e., there are two
+different interpretations for \texttt{y}. On the other hand, if the
+right constraint is evaluated first, \texttt{goal} has the same
+solutions as with weak encapsulation, i.e., \texttt{(0,[0])} and
+\texttt{(1,[1])}.
 
-This is used in order to implement the function [[getSearchTree]],
-which provides an alternative approach to encapsulated search and was
-proposed in~\cite{BrasselHanusHuch04:Encapsulating}. In contrast to
-the [[try]] primitive, [[getSearchTree]] allows encapsulating
-\emph{all} non-determinism during the evaluation of its argument,
-which is achieved by creating a copy of that argument using [[unshare]].
+Since both approaches are unsatisfactory in some way, the authors
+of~\cite{BrasselHanusHuch04:Encapsulating} propose a new primitive IO
+action [[getSearchTree]] for encapsulated search, which is based on
+strong encapsulation. As this primitive can be used only at the
+monadic top-level of a program, problematic examples like
+\texttt{goal} cannot occur.
+
+In order to implement [[getSearchTree]], we provide a primitive IO
+action [[encapsulate]] that is quite similar to [[try]], but uses a
+fresh copy of its input argument within the local search space, which
+is necessary in order to achieve strong encapsulation, and does not
+start the evaluation of the search goal so that no error is reported
+in the program
+\begin{verbatim}
+  main = do { getSearchTree (error "no computation"); return () }
+\end{verbatim}
 
 <<search.c>>=
-DECLARE_ENTRYPOINT(__unshare);
+DECLARE_ENTRYPOINT(__encapsulate);
 
-FUNCTION(__unshare)
+FUNCTION(__encapsulate)
 {
-    Node *r;
-    EXPORT_LABEL(__unshare)
- ENTRY_LABEL(__unshare)
-    r = copy_graph(sp[0], 0);
-    if ( !is_unboxed(r) )
-    {
-	sp[0] = r;
-	GOTO(r->info->eval);
-    }
-    sp += 1;
-    RETURN(r);
+    Node *susp, *var, *goal, *clos, *sc;
+    EXPORT_LABEL(__encapsulate)
+ ENTRY_LABEL(__encapsulate)
+    /* create a new search context for the goal */
+    TRACE(("starting encapsulated search\n"));
+    sp[1] = sp[0];
+    sp	 += 1;
+    push_search_context();
+    new_search_space(0);
+
+    /* copy the argument into the new search space */
+    sp[0] = copy_graph(sp[0], 0);
+
+    /* allocate new goal variable and suspension */
+    CHECK_HEAP(queueMe_node_size + variable_node_size);
+    var		 = (Node *)hp;
+    var->info	 = variable_info_table;
+    var->v.spc	 = ss;
+    var->v.wq	 = 0;
+    var->v.cstrs = 0;
+    hp		+= variable_node_size;
+
+    susp	= (Node *)hp;
+    susp->info	= queueMe_info_table;
+    susp->q.spc = ss;
+    susp->q.wq	= 0;
+    hp	       += queueMe_node_size;
+
+    /* prepare the initial thread that evaluates the argument via v=:=e */
+    CHECK_STACK(6);
+    goal = sp[0];
+    sp	 -= 6;
+    sp[0] = var;
+    sp[1] = goal;
+    sp[2] = (Node *)update;
+    sp[3] = susp;
+    sp[4] = 0;
+    sp[5] = susp;
+    sp[6] = var;
+    start_thread(5);
+
+    /* save the current state */
+    TRACE(("leaving encapsulated search with 1 continuation\n"));
+    save_continuation();
+
+    /* allocate a search continuation */
+    CHECK_HEAP(search_cont_node_size + closure_node_size(1));
+    sc		= (Node *)hp;
+    sc->info	= &search_cont_info;
+    sc->sc.spc	= ss;
+    sc->sc.susp = sp[0];
+    sc->sc.var	= sp[1];
+    sc->sc.code	= ___61__58__61_;
+    sc->sc.rq	= rq;
+    hp	       += search_cont_node_size;
+
+    clos	    = (Node *)hp;
+    clos->info	    = search_cont_papp_info_table;
+    clos->c.args[0] = sc;
+    hp		   += closure_node_size(1);
+
+    /* leave the local search space */
+    BEGIN_LOCAL_ROOTS1(clos)
+    save_search_space();
+    pop_search_context();
+    END_LOCAL_ROOTS
+
+    /* return the search goal */
+    RETURN(clos);
 }

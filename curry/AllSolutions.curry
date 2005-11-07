@@ -1,4 +1,4 @@
--- $Id: AllSolutions.curry 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: AllSolutions.curry 1819 2005-11-07 15:56:02Z wlux $
 --
 -- Copyright (c) 2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -8,17 +8,18 @@ module AllSolutions(SearchTree(..), getSearchTree, allValuesD, allValuesB,
                     getAllValues, getAllFailures) where
 import Maybe
 import Monad
-import Unsafe
 
 data SearchTree a = Fail | Val a | Or [SearchTree a]
 
+foreign import primitive encapsulate :: a -> IO (a -> Success)
+
 getSearchTree :: a -> IO (SearchTree a)
-getSearchTree x = return (search (\y -> y =:= Unsafe.unshare x))
-  where search g =
+getSearchTree x = encapsulate x >>= \g -> return (tree g)
+  where tree g =
           case try g of
             [] -> Fail
             [g] -> Val (unpack g)
-            gs -> Or (map search gs)
+            gs -> Or (map tree gs)
 
 allValuesD :: SearchTree a -> [a]
 allValuesD Fail    = []
