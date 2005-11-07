@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: foreign.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: foreign.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -23,7 +23,6 @@ garbage collected.
 #include "eval.h"
 #include "io_monad.h"
 #include "cam.h"
-#include "trace.h"
 
 static void finalize_foreign_ptr(Node *);
 

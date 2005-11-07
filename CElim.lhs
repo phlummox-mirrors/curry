@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CElim.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CElim.lhs 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -65,8 +65,6 @@ code and the C compiler does not have to parse it.
 > elimUnusedVars (CReturn e) ~(vs,sts) = (usedVars e vs,CReturn e : sts)
 > elimUnusedVars (CLabel l) ~(vs,sts) = (vs,CLabel l : sts)
 > elimUnusedVars (CGoto l) ~(vs,sts) = (vs,CGoto l : sts)
-> elimUnusedVars (CTrace fmt es) ~(vs,sts) =
->   (foldr usedVars vs es,CTrace fmt es : sts)
 
 > usedLVars :: LVar -> Set String -> Set String
 > usedLVars (LVar v) vs = addToSet v vs

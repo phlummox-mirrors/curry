@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1815 2005-11-06 12:00:19Z wlux $
+% $Id: eval.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -367,7 +367,7 @@ FUNCTION(___64_)
 {
     EXPORT_LABEL(___64_)
  ENTRY_LABEL(___64_)
-    TRACE(("%I enter @%V\n", 2, sp));
+    TRACE_FUN("@", 2);
     GOTO(___64__1);
 }
 
@@ -443,7 +443,7 @@ FUNCTION(___58_)
 {
     Node *cons;
  ENTRY_LABEL(___58_)
-    TRACE(("%I enter :%V\n", 2, sp));
+    TRACE_FUN(":", 2);
 
     CHECK_HEAP(cons_node_size);
     cons	    = (Node *)hp;
@@ -584,7 +584,7 @@ FUNCTION(__ground)
 {
     EXPORT_LABEL(__ground)
  ENTRY_LABEL(__ground)
-    TRACE(("%I enter ground%V\n", 1, sp));
+    TRACE_FUN("ground", 1);
     GOTO(__ground_1);
 }
 

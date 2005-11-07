@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: compare.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -46,7 +46,7 @@ FUNCTION(__compare)
 {
     EXPORT_LABEL(__compare)
  ENTRY_LABEL(__compare)
-    TRACE(("%I enter compare%V\n", 2, sp));
+    TRACE_FUN("compare", 2);
     GOTO(__compare_1);
 }
 

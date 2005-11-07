@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: vector.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: vector.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -27,7 +27,6 @@ this will make the printing code treat vectors as tuples.
 #include "eval.h"
 #include "threads.h"
 #include "io_monad.h"
-#include "trace.h"
 #include "cam.h"
 
 enum { VECTOR_TAG };

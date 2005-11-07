@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CCode.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CCode.lhs 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -95,7 +95,6 @@ are not used by the compiler.
 >   | CReturn CExpr
 >   | CLabel String
 >   | CGoto String
->   | CTrace String [CExpr]
 >   deriving Eq
 
 > data LVar = LVar String | LElem LVar CExpr | LField LVar String deriving Eq

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: trace.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: trace.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -26,19 +26,21 @@ following formatting directives are supported:
   single blank
 \end{itemize}
 
-By using the [[TRACE]] macro, tracing can be enabled or disabled under
-control of the global variable [[do_trace]].
+The function [[trace_fun]] is intended for tracing function
+applications. Besides printing the function arguments at the call
+site, it also prepares the machine to print the application's result
+after it has been computed. %'
 
-\ToDo{The code for the \texttt{\%I} is not bulletproof. It assumes
-that every address on the stack which is smaller than that of
-[[environ]] is a return address. In addition, it assumes that all
-return addresses on the stack are even.}
+By using the [[TRACE]] and [[TRACE_FUN]] macros, tracing can be
+enabled or disabled under control of the global variable [[do_trace]].
 
 <<trace.h>>=
 #define TRACE(x) do { if ( do_trace ) trace x; } while ( 0 )
+#define TRACE_FUN(f,n) do { if ( do_trace ) { trace_fun(f, n); } } while ( 0 )
 
 extern int do_trace;
-void trace(const char *fmt, ...);
+extern void trace(const char *fmt, ...);
+extern void trace_fun(const char *name, unsigned int arity);
 
 @
 <<trace.c>>=
@@ -63,6 +65,8 @@ static void trace_showaddr(Node *node);
 static void trace_shownode(int depth, Node *node);
 static void trace_showapp(int depth, Node *node, unsigned argc, Node **argv);
 
+DECLARE_LABEL(trace_return);
+
 void
 trace(const char *fmt, ...)
 {
@@ -71,7 +75,6 @@ trace(const char *fmt, ...)
     Node	 **fp, **argv;
     int		 depth = do_trace - 1;
     unsigned int i, argc;
-    extern char	 **environ;
 
     va_start(ap, fmt);
     for ( cp = fmt; *cp != '\0'; cp++ )
@@ -103,9 +106,7 @@ trace(const char *fmt, ...)
 	    case 'I':
 		fprintf(stderr, "[%u]", cid);
 		for ( fp = sp; fp < ds_base; fp++ )
-		    if ( *fp && is_boxed(*fp)
-			 && (char *)*fp < (char *)&environ
-			 && (Label)*fp != update )
+		    if ( (Label)*fp == trace_return )
 			fputc(' ', stderr);
 		break;
 	    case 'N':
@@ -235,4 +236,44 @@ trace_showapp(int depth, Node *node, unsigned argc, Node **argv)
 
     if ( argc > 0 )
 	fputc(')', stderr);
+}
+
+@ 
+Tracing for functions is implemented with [[trace_fun]]. This function
+prints the name of the called function and its arguments. In addition,
+[[trace_fun]] modifies the stack such that the calling function
+returns through the code [[trace_return]], which prints the result of
+the function. Because of this stack manipulation, [[trace_fun]] must
+be called before the calling function changes the stack itself.  Note
+that [[trace_fun]] carefully checks for tail calls in order to avoid
+growing the stack unnecessarily.
+
+<<trace.c>>=
+void
+trace_fun(const char *name, unsigned int arity)
+{
+    unsigned int i;
+
+    if ( sp[arity] != (Node *)trace_return )
+    {
+	CHECK_STACK1();
+	sp -= 1;
+	for ( i = 0; i < arity; i++ )
+	    sp[i] = sp[i+1];
+	sp[arity] = (Node *)trace_return;
+    }
+    trace("%Ienter %s%V\n", name, arity, sp);
+}
+
+static
+FUNCTION(trace_return)
+{
+    Node  *r;
+    Label ret_ip;
+ ENTRY_LABEL(trace_return)
+    r = *sp++;
+    trace("%I return %N\n", r);
+    ret_ip = (Label)sp[0];
+    sp[0]  = r;
+    GOTO(ret_ip);
 }

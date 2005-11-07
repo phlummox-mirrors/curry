@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: refs.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: refs.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2004, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -21,7 +21,6 @@ which are defined in this file.
 #include "trail.h"
 #include "eval.h"
 #include "threads.h"
-#include "trace.h"
 #include "cam.h"
 
 #define IOREF_TAG ABSTRACT_TAG

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1816 2005-11-06 17:34:23Z wlux $
+% $Id: CGen.lhs 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -450,8 +450,7 @@ the suspend node associated with the abstract machine code function.
 
 > entryCode :: Name -> Int -> CStmt
 > entryCode f n =
->   CTrace "%I enter %s%V\n"
->          [CString (undecorate (demangle f)),CInt n,CExpr "sp"]
+>   CProcCall "TRACE_FUN" [CString (undecorate (demangle f)),CInt n]
 
 \end{verbatim}
 The compiler generates a C function from every CPS function. At the
@@ -790,7 +789,6 @@ translation function.
 >   saveVars vs0 [] ++
 >   [CLocalVar labelType "_ret_ip" (Just (CCast labelType (CExpr "sp[0]"))),
 >    CAssign (LVar "sp[0]") result,
->    CTrace "%I return %N\n" [result],
 >    goto "_ret_ip"]
 >   where result = CExpr (show v)
 > ret vs0 v (Just k) =

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPretty.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: CPretty.lhs 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -162,8 +162,6 @@ checking for the current indentation.
 > ppStmt (CReturn e) = text "return" <+> ppExpr 0 e <> semi
 > ppStmt (CLabel l) = text l <> colon
 > ppStmt (CGoto l) = text "goto" <+> text l <> semi
-> ppStmt (CTrace fmt xs) = 
->   ppFunCall "TRACE" [ppArgList (ppExpr 0) (CString fmt : xs)] <> semi
 
 > ppLhs :: LVar -> Doc
 > ppLhs (LVar x) = text x

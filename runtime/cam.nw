@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cam.nw 1808 2005-10-27 15:20:37Z wlux $
+% $Id: cam.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -20,7 +20,6 @@ code.
 #define RETURN(_res) { \
     Label ret_ip = (Label)sp[0]; \
     sp[0] = (_res); \
-    TRACE(("%I return %N\n", (_res))); \
     GOTO(ret_ip); \
 }
 

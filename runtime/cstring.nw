@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cstring.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: cstring.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -114,7 +114,7 @@ FUNCTION(nf_string)
 {
     EXPORT_LABEL(nf_string)
  ENTRY_LABEL(nf_string)
-    TRACE(("%I enter nf_string%V\n", 1, sp));
+    TRACE_FUN("nf_string", 1);
     CHECK_STACK1();
     sp	 -= 1;
     sp[0] = sp[1];

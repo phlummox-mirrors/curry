@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: stable.nw 1808 2005-10-27 15:20:37Z wlux $
+% $Id: stable.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -27,7 +27,6 @@ pointers, respectively.
 #include "cstring.h"
 #include "io_monad.h"
 #include "cam.h"
-#include "trace.h"
 
 @ 
 The primitive [[__newStablePtr]] allocates and initializes a new

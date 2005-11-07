@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1809 2005-10-27 22:11:41Z wlux $
+% $Id: show.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -172,7 +172,7 @@ static
 FUNCTION(showp)
 {
  ENTRY_LABEL(showp)
-    TRACE(("%I enter showp%V\n", 4, sp));
+    TRACE_FUN("showp", 4);
     GOTO(showp_1);
 }
 
@@ -428,7 +428,8 @@ FUNCTION(showArgs)
 {
     Node *arglist, *susp, *susp2, *cons, *tail, *prec, *show;
  ENTRY_LABEL(showArgs)
-    TRACE(("%I enter showArgs%V\n", 4, sp));
+    TRACE_FUN("showArgs", 4);
+
     CHECK_HEAP(2 * suspend_node_size(4) + cons_node_size);
     arglist = sp[0];
     prec    = sp[1];
@@ -675,9 +676,9 @@ static
 FUNCTION(showTupleArgs)
 {
     Node *arglist, *susp, *susp2, *cons, *tail, *show;
-
  ENTRY_LABEL(showTupleArgs)
-    TRACE(("%I enter showTupleArgs%V\n", 3, sp));
+    TRACE_FUN("showTupleArgs", 3);
+
     CHECK_HEAP(suspend_node_size(3) + suspend_node_size(4) + cons_node_size);
     arglist = sp[0];
     tail    = sp[1];
@@ -923,7 +924,7 @@ static
 FUNCTION(showTail)
 {
  ENTRY_LABEL(showTail)
-    TRACE(("%I enter showTail%V\n", 3, sp));
+    TRACE_FUN("showTail", 3);
     GOTO(showTail_1);
 }
 

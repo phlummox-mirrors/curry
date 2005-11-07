@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1808 2005-10-27 15:20:37Z wlux $
+% $Id: unify.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -57,7 +57,7 @@ FUNCTION(___61__58__61_)
 {
     EXPORT_LABEL(___61__58__61_)
  ENTRY_LABEL(___61__58__61_)
-    TRACE(("%I enter =:=%V\n", 2, sp));
+    TRACE_FUN("=:=", 2);
     GOTO(___61__58__61__1);
 }
 

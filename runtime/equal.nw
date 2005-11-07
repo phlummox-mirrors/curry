@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: equal.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: equal.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2004, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -45,8 +45,7 @@ FUNCTION(___61__61_)
 {
     EXPORT_LABEL(___61__61_)
  ENTRY_LABEL(___61__61_)
-
-    TRACE(("%I enter ==%V\n", 2, sp));
+    TRACE_FUN("==", 2);
     GOTO(___61__61__1);
 }
 
@@ -54,7 +53,6 @@ static
 FUNCTION(___61__61__1)
 {
     Node *aux;
-
  ENTRY_LABEL(___61__61__1)
     EVAL_RIGID_POLY(___61__61__1);
     aux	  = sp[0];
@@ -71,7 +69,6 @@ FUNCTION(___61__61__2)
     Node	 *arg1, *arg2;
     Node	 *next, *arglist;
     Node	 **argp1, **argp2;
-
  ENTRY_LABEL(___61__61__2)
     EVAL_RIGID_POLY(___61__61__2);
 
@@ -127,9 +124,7 @@ static
 FUNCTION(___61__61__3)
 {
     Node *eq, *arg1, *arg2, *arglist;
-
  ENTRY_LABEL(___61__61__3)
-
     eq = sp[0];
     if ( eq != CONST(__prelude__True) )
     {

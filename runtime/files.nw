@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1821 2005-11-07 17:24:34Z wlux $
+% $Id: files.nw 1822 2005-11-07 22:50:22Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -226,7 +226,7 @@ FUNCTION(__openFile)
 {
     EXPORT_LABEL(__openFile)
  ENTRY_LABEL(__openFile)
-    TRACE(("%I enter openFile%V\n", 3, sp));
+    TRACE_FUN("openFile", 3);
     CHECK_STACK(1);
     sp	 -= 1;
     sp[0] = sp[1];
@@ -825,9 +825,9 @@ FUNCTION(lazyRead)
     int	   c;
     Node   *list, *tail;
     Handle *file;
-
  ENTRY_LABEL(lazyRead)
-    TRACE(("%I enter lazyRead %N\n", sp[0]));
+    TRACE_FUN("lazyRead", 1);
+
     file = (Handle *)sp[0];
     if ( file->fp == NULL )
 	list = nil;
