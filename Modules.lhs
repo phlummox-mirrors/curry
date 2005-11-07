@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1795 2005-10-18 09:31:29Z wlux $
+% $Id: Modules.lhs 1818 2005-11-07 00:26:21Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -127,7 +127,10 @@ declaration to the module.
 >         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
 >         (lifted,tyEnv''',evEnv') = lift tyEnv'' evEnv simplified
 >         il = ilTrans tyEnv''' evEnv' lifted
->         ilDbg = if debug then dTransform trusted il else il
+>         ilDbg = if debug then dTransform trustedFuns il else il
+>         trustedFuns
+>           | trusted = ilFunctions il
+>           | otherwise = newConstrs (Module m es is ds)
 >         ilNormal = liftProg ilDbg
 >         cam = camCompile ilNormal
 >         imports = camCompileData (ilImports mEnv ilNormal)
@@ -160,6 +163,13 @@ declaration to the module.
 > ilImports :: ModuleEnv -> IL.Module -> [IL.Decl]
 > ilImports mEnv (IL.Module _ is _) =
 >   concat [ilTransIntf i | (m,i) <- envToList mEnv, m `elem` is]
+
+> ilFunctions :: IL.Module -> [QualIdent]
+> ilFunctions (IL.Module _ _ ds) = [f | IL.FunctionDecl f _ _ _ <- ds]
+
+> newConstrs :: Module -> [QualIdent]
+> newConstrs (Module m _ _ ds) =
+>   [qualifyWith m c | NewtypeDecl _ _ _ (NewConstrDecl _ _ c _) <- ds]
 
 > writeCode :: Maybe FilePath -> FilePath -> Either CFile [CFile] -> IO ()
 > writeCode tfn sfn (Left cfile) = writeCCode ofn cfile
@@ -250,7 +260,7 @@ compilation of a goal is similar to that of a module.
 >         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
 >         (lifted,tyEnv''',evEnv') = lift tyEnv'' evEnv simplified
 >         il = ilTrans tyEnv''' evEnv' lifted
->         ilDbg = if debug then dAddMain goalId (dTransform False il) else il
+>         ilDbg = if debug then dAddMain goalId (dTransform [] il) else il
 >         ilNormal = liftProg ilDbg
 >         cam = camCompile ilNormal
 >         imports = camCompileData (ilImports mEnv ilNormal)

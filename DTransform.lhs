@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 1817 2005-11-06 23:42:07Z wlux $
+% $Id: DTransform.lhs 1818 2005-11-07 00:26:21Z wlux $
 %
 % 2002/04/10 19:00:00 Added emptyNode as constructor in type cTree
 \nwfilename{DTransform.lhs}
@@ -39,15 +39,15 @@ will be imported by all the transformed modules.
 
 \end{verbatim}
 
-Next is the principal  function of the module. The boolean parameter is 
-{\tt True} whenever the functions of the module must be trusted. In this case
-they will return empty nodes as computation trees, but still can 
+Next is the principal  function of the module. The list parameter 
+specifies the functions of the module that must be trusted. These
+functions will return empty nodes as computation trees, but still can 
 include some useful trees as children.
 
 \begin{verbatim}
 
-> dTransform :: Bool -> Module -> Module
-> dTransform trust (Module m is ds) = Module m (i:is) (debugDecls m trust ds)
+> dTransform :: [QualIdent] -> Module -> Module
+> dTransform trusted (Module m is ds) = Module m (i:is) (debugDecls m trusted ds)
 >       where 
 >       i   =  debugPreludeModule
 
@@ -71,8 +71,8 @@ groups:
 
 \begin{verbatim}
 
-> debugDecls :: ModuleIdent -> Bool -> [Decl] -> [Decl]
-> debugDecls m  trust lDecls = 
+> debugDecls :: ModuleIdent -> [QualIdent] -> [Decl] -> [Decl]
+> debugDecls m  trusted lDecls = 
 >       foreigns  ++
 >       types ++
 >       debugAuxiliary m lTypes ++ 
@@ -82,7 +82,7 @@ groups:
 >          lTypes = collectSymbolTypes types functions foreigns []
 >          lForeign = map (\(ForeignDecl id cc s t) -> id) foreigns
 >          firstPhase = debugFirstPhase  m lForeign functions
->          secondPhase =  map (debugFunction trust) firstPhase
+>          secondPhase =  map (debugFunction trusted) firstPhase
 
 
 \end{verbatim}
@@ -607,13 +607,14 @@ We only need:
 
 > ---------------------------------------------------------------------------
 
-> debugFunction ::   Bool -> Decl -> Decl
-> debugFunction trust (FunctionDecl qId lVars fType expr)
+> debugFunction ::   [QualIdent] -> Decl -> Decl
+> debugFunction trusted (FunctionDecl qId lVars fType expr)
 >   | isQSelectorId qId = FunctionDecl qId lVars fType expr
 >   | otherwise         = FunctionDecl qId' lVars fType expr'
 >   where
 >     expr' = newLocalDeclarations  qId trust expr lVars (length lVars)
 >     qId' = changeFunctionqId qId
+>     trust = qId `elem` trusted
         
 
 > newLocalDeclarations :: QualIdent -> Bool -> Expression -> [Ident] ->
