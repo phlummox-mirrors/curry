@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1809 2005-10-27 22:11:41Z wlux $
+% $Id: files.nw 1821 2005-11-07 17:24:34Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -1747,6 +1747,7 @@ FUNCTION(__openProcess_2)
     proc->pid	 = pid;
     proc->status = 0;
     hp		+= process_node_size;
+    register_final((Node *)proc);
 
     /* return the process node */
     RETURN((Node *)proc);
@@ -1951,6 +1952,7 @@ FUNCTION(__connectTcpSocket_3)
     sock->bsize	 = 0;
     sock->buffer = NULL;
     hp		+= file_node_size;
+    register_final((Node *)sock);
 
     /* return the socket */
     RETURN((Node *)sock);
