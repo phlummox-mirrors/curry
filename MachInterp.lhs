@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1816 2005-11-06 17:34:23Z wlux $
+% $Id: MachInterp.lhs 1823 2005-11-08 09:07:24Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -770,6 +770,67 @@ which returns a new constructor node from the supplied arguments.
 
 \end{verbatim}
 \subsubsection{Comparing Nodes}
+The operator \texttt{(==)} compares two data terms for equality and
+returns either \texttt{True} or \texttt{False}. In constrast to
+equality constraints, this function is rigid. In addition, we support
+equality checks only for literals and data terms, but not for partial
+applications.
+\begin{verbatim}
+
+> equalFunction :: Function
+> equalFunction = ("==",equalCode,2)
+
+> withNode :: (Node -> Instruction) -> NodePtr -> Instruction
+> withNode next ptr = deref ptr >>= next
+
+> falseTag, trueTag :: NodeTag
+> falseTag = ConstructorTag 0 "False" 0
+> trueTag = ConstructorTag 1 "True" 0
+
+> false, true :: MachStateT NodePtr
+> false = read'updateState (atom falseTag)
+> true = read'updateState (atom trueTag)
+
+> bool :: Bool -> MachStateT NodePtr
+> bool False = false
+> bool True = true
+
+> equalCode :: Instruction
+> equalCode =
+>   entry ["x","y"] $ seqStmts "_x" (enter "x")
+>                   $ switchRigid "_x" [] (withNode equalNode)
+>   where equalNode node =
+>           seqStmts "_y" (enter "y")
+>                (switchRigid "_y" [] (withNode (equalNodes node)))
+
+> equalNodes :: Node -> Node -> Instruction
+> equalNodes (CharNode c) (CharNode d) = bool (c == d) >>= retNode
+> equalNodes (IntNode i) (IntNode j) = bool (i == j) >>= retNode
+> equalNodes (FloatNode f) (FloatNode g) = bool (f == g) >>= retNode
+> equalNodes (ConstructorNode t1 _ ptrs1) (ConstructorNode t2 _ ptrs2)
+>   | t1 == t2 = equalArgs (zip ptrs1 ptrs2)
+>   | otherwise = false >>= retNode
+> equalNodes (ClosureNode f1 _ _ ptrs1) (ClosureNode f2 _ _ ptrs2)
+>   | f1 == f2 && length ptrs1 == length ptrs2 = equalArgs (zip ptrs1 ptrs2)
+>   | otherwise = false >>= retNode
+> equalNodes _ _ = failAndBacktrack
+
+> equalArgs :: [(NodePtr,NodePtr)] -> Instruction
+> equalArgs [] = true >>= retNode
+> equalArgs ((ptr1,ptr2):ptrs) =
+>   do
+>     updateState (pushNodes [ptr1,ptr2])
+>     unless (null ptrs)
+>       (updateState (pushCont (read'updateState popNode >>= equalRest ptrs)))
+>     equalCode
+
+> equalRest :: [(NodePtr,NodePtr)] -> NodePtr -> Instruction
+> equalRest ptrs ptr =
+>   do
+>     node <- deref ptr
+>     if nodeTag node == trueTag then equalArgs ptrs else retNode ptr
+
+\end{verbatim}
 The \texttt{compare} function compares two data terms and returns one
 of the values \texttt{LT}, \texttt{EQ}, \texttt{GT} defined in the
 \texttt{prelude}.
@@ -777,9 +838,6 @@ of the values \texttt{LT}, \texttt{EQ}, \texttt{GT} defined in the
 
 > compareFunction :: Function
 > compareFunction = ("compare",compareCode,2)
-
-> withNode :: (Node -> Instruction) -> NodePtr -> Instruction
-> withNode next ptr = deref ptr >>= next
 
 > ltTag, eqTag, gtTag :: NodeTag
 > ltTag = ConstructorTag 0 "LT" 0
