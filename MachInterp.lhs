@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1826 2005-11-08 16:33:15Z wlux $
+% $Id: MachInterp.lhs 1827 2005-11-08 18:53:18Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1470,19 +1470,19 @@ the bindings performed during copying.
 \end{verbatim}
 Inside an encapsulated search, non-local variables must not be bound
 and non-local lazy applications must not be evaluated. Otherwise,
-the program could become unsound. E.g., consider the program
+the program could become unsound. For instance, consider the program
 \begin{verbatim}
   coin = 0
   coin = 1
-  main = (x,map unpack (all (x =:=))) where x = coin
+  main = (x,map unpack (all (\y -> y =:= x))) where x = coin
 \end{verbatim}
-If the local search space were going to evaluate x, strange things
-might happen. Either the global choicepoint for the evaluation of coin
-would be lost (because it occurs inside the encapsulated search), or a
-pair (0,[0,1]) might be the result of the program. For that reason, an
-encapsulated search and its calling thread are suspended until the
-variable or lazy application in question becomes bound in the outer
-space.
+If \texttt{x} were evaluated in the local search space, either the
+global choicepoint for the evaluation of \texttt{coin} would be lost
+(because it occurs inside the encapsulated search), or the pair
+\texttt{(0,[0,1])} would be computed. For that reason, an
+encapsulated search and its calling thread are suspended until a
+non-local variable is instantiated and a non-local lazy application is
+evaluated outside the local search space, respectively.
 \begin{verbatim}
 
 > suspendSearch :: NodePtr -> Node -> Instruction -> Instruction
@@ -1496,7 +1496,7 @@ space.
 >     updateState initEnv
 >     updateState (setVar "x" ptr)
 >     suspend node
->   where suspend (VarNode _ _ _) = switchRigid "x" [] (const ret)
+>   where suspend (VarNode _ _ _) = switchRigid "x" [] retNode
 >         suspend (LazyNode _ _ _ _ _) = enter "x"
 >         suspend (QueueMeNode _ _) = enter "x"
 >         suspend _ = fail "Bad node in suspendSearch"
