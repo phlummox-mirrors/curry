@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1824 2005-11-08 12:45:30Z wlux $
+% $Id: MachInterp.lhs 1825 2005-11-08 13:19:21Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1212,39 +1212,21 @@ for the disequality \texttt{(0:xs) =/= [0]}.}
 >   | otherwise = failAndBacktrack
 > diseqNodes _ (ConstructorNode t1 _ ptrs1) _ (ConstructorNode t2 _ ptrs2)
 >   | t1 /= t2 = diseqSuccess
->   | not (null ptrs1) = diseqArgs (zip ptrs1 ptrs2)
->   | otherwise = failAndBacktrack
+>   | otherwise = diseqArgs (zip ptrs1 ptrs2)
 > diseqNodes _ (ClosureNode f1 _ _ ptrs1) _ (ClosureNode f2 _ _ ptrs2)
 >   | f1 /= f2 || length ptrs1 /= length ptrs2 = diseqSuccess
->   | not (null ptrs1) = diseqArgs (zip ptrs1 ptrs2)
->   | otherwise = failAndBacktrack
+>   | otherwise = diseqArgs (zip ptrs1 ptrs2)
 > diseqNodes ptr1 (SearchContinuation _ _ _ _) ptr2 (SearchContinuation _ _ _ _)
 >   | ptr1 /= ptr2 = diseqSuccess
 >   | otherwise = failAndBacktrack
 > diseqNodes _ _ _ _ = failAndBacktrack
 
 > diseqArgs :: [(NodePtr,NodePtr)] -> Instruction
-> diseqArgs [] = diseqSuccess
+> diseqArgs [] = failAndBacktrack
 > diseqArgs ((ptr1,ptr2) : ptrs)
 >   | null ptrs = diseqFirst
->   | otherwise = choices [diseqFirst,eqFirst]
+>   | otherwise = choices [diseqFirst,diseqArgs ptrs]
 >   where diseqFirst = updateState (pushNodes [ptr1,ptr2]) >> diseqCode
->         eqFirst =
->           do
->             lazy <- allocLazy unifyFunction [ptr1,ptr2]
->             updateState (interruptThread (diseqRest ptrs lazy))
->             updateState newThread
->             updateState (setVar "c" lazy)
->             enter "c"
->         diseqRest ptrs =
->           switchOnTerm [(LazyTag,const (fail "This cannot happen")),
->                         (QueueMeTag,diseqRest' ptrs),
->                         (VariableTag,const (fail "This cannot happen"))]
->                        (const (diseqArgs ptrs))
->         diseqRest' ptrs lazy =
->           do
->             updateState (pushCont (retNode lazy))
->             diseqArgs ptrs
 
 > diseqSuccess :: Instruction
 > diseqSuccess = successCode
