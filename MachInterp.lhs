@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1825 2005-11-08 13:19:21Z wlux $
+% $Id: MachInterp.lhs 1826 2005-11-08 16:33:15Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -949,39 +949,44 @@ new thread whenever this is possible. Note that the result of
 >                       (const (enter "c2")))
 >   where suspension ptr1 =
 >           readState (getVar "c2") >>=
->             switchOnTerm [(LazyTag,concurrent ptr1),
->                           (QueueMeTag,const (sequential "c1" "c2")),
->                           (VariableTag,const (sequential "c1" "c2"))]
+>             switchOnTerm [(LazyTag,const (concurrent ptr1)),
+>                           (QueueMeTag,const sequential),
+>                           (VariableTag,const sequential)]
 >                          (const (enter "c1"))
 >         queueMe ptr1 =
 >           readState (getVar "c2") >>=
->             switchOnTerm [(LazyTag,const (sequential "c2" "c1")),
->                           (QueueMeTag,const (sequential "c1" "c2")),
->                           (VariableTag,const (sequential "c1" "c2"))]
+>             switchOnTerm [(LazyTag,const (flipArguments >> sequential)),
+>                           (QueueMeTag,const sequential),
+>                           (VariableTag,const sequential)]
 >                          (const (enter "c1"))
 >         variable ptr1 =
 >           readState (getVar "c2") >>=
->             switchOnTerm [(LazyTag,const (sequential "c2" "c1")),
->                           (QueueMeTag,const (sequential "c2" "c1")),
->                           (VariableTag,const (sequential "c1" "c2"))]
->                          (wait ptr1)
->         concurrent ptr1 ptr2 =
+>             switchOnTerm [(LazyTag,const (flipArguments >> sequential)),
+>                           (QueueMeTag,const (flipArguments >> sequential)),
+>                           (VariableTag,wait ptr1)]
+>                          (const (retNode ptr1))
+>         concurrent ptr1 =
 >           do
->             updateState (interruptThread (sequential "c2" "c1"))
+>             updateState (interruptThread (flipArguments >> sequential))
 >             updateState newThread
->             updateState (setVar "c" ptr1)
->             enter "c"
->         sequential c1 c2 = seqStmts "_c" (enter c1) (sequentialCont c2)
->         sequentialCont c2 =
->           readState (getVar "_c") >>=
+>             updateState (setVar "c1" ptr1)
+>             enter "c1"
+>         sequential = seqStmts "_c1" (enter "c1") sequentialCont
+>         sequentialCont =
+>           readState (getVar "_c1") >>=
 >             switchOnTerm [(LazyTag,const (fail "This cannot happen")),
 >                           (QueueMeTag,const (fail "This cannot happen")),
 >                           (VariableTag,variable)]
->                          (const (enter c2))
+>                          (const (enter "c2"))
 >         wait ptr1 ptr2 =
 >           do
 >             updateState (setVars ["_c1","_c2"] [ptr1,ptr2])
 >             switchRigid "_c1" [] (const (enter "_c2"))
+>         flipArguments =
+>           do
+>             ptr1 <- readState (getVar "c1")
+>             ptr2 <- readState (getVar "c2")
+>             updateState (setVars ["c1","c2"] [ptr2,ptr1])
 
 \end{verbatim}
 \subsubsection{Equality Constraints}
