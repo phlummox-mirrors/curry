@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachLoader.lhs 1823 2005-11-08 09:07:24Z wlux $
+% $Id: MachLoader.lhs 1824 2005-11-08 12:45:30Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -245,7 +245,8 @@ names to node tags and function names to function triples.
 > initFunEnv :: FunEnv
 > initFunEnv = foldr bindFun emptyEnv [
 >       consFunction,failedFunction,successFunction,concConjFunction,
->       equalFunction,compareFunction,unifyFunction,diseqFunction,tryFunction,
+>       seqFunction,ensureNotFreeFunction,tryFunction,
+>       equalFunction,compareFunction,unifyFunction,diseqFunction,
 >       addIntFunction,subIntFunction,multIntFunction,
 >       quotIntFunction,remIntFunction,divIntFunction,modIntFunction,
 >       ordFunction,chrFunction,

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1823 2005-11-08 09:07:24Z wlux $
+% $Id: MachInterp.lhs 1824 2005-11-08 12:45:30Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -563,6 +563,37 @@ program.
 > failedFunction = ("failed",entry [] failAndBacktrack,0)
 
 \end{verbatim}
+The primitive \texttt{seq} evaluates both of its arguments
+sequentially to head normal form. The result of the first argument is
+discarded and the result of the second is returned.
+\begin{verbatim}
+
+> seqFunction :: Function
+> seqFunction = ("seq",seqCode,2)
+
+> seqCode :: Instruction
+> seqCode =
+>   entry ["x","y"] $
+>   seqStmts "_" (enter "x") (enter "y")
+
+\end{verbatim}
+The primitive \texttt{ensureNotFree} evaluates its argument to head
+normal form. If the result is an unbound variable, the current thread
+is suspended until the variable is instantiated.
+\begin{verbatim}
+
+> ensureNotFreeFunction :: Function
+> ensureNotFreeFunction = ("ensureNotFree",ensureNotFreeCode,1)
+
+> ensureNotFreeCode = 
+>   entry ["x"] $
+>   evalRigid "x" retNode
+
+> evalRigid :: String -> (NodePtr -> Instruction) -> Instruction
+> evalRigid x = seqStmts x' (enter x) . switchRigid x' []
+>   where x' = '_':x
+
+\end{verbatim}
 The operator \texttt{:} is implemented in order to handle partial
 applications of the \texttt{:} constructor.
 \begin{verbatim}
@@ -645,10 +676,6 @@ which returns a new constructor node from the supplied arguments.
 \end{verbatim}
 \subsubsection{Arithmetic Operations}\label{sec:mach-arithmetic}
 \begin{verbatim}
-
-> evalRigid :: String -> (NodePtr -> Instruction) -> Instruction
-> evalRigid x = seqStmts x' (enter x) . switchRigid x' []
->   where x' = '_':x
 
 > ordFunction, chrFunction :: Function
 > ordFunction = ("ord", ordCode, 1)
