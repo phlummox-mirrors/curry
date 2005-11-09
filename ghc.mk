@@ -1,7 +1,7 @@
 # Specific rules for building with ghc
-# $Id: ghc.mk 1746 2005-08-29 08:58:06Z wlux $
+# $Id: ghc.mk 1830 2005-11-09 17:09:12Z wlux $
 #
-# Copyright (c) 2002-2004, Wolfgang Lux
+# Copyright (c) 2002-2005, Wolfgang Lux
 # See LICENSE for the full license.
 #
 
@@ -20,14 +20,16 @@ GHC_HCFLAGS = -H12m # -Rghc-timing
 	 echo "Remove $< and run make again."; exit 1)
 
 # programs
-mach: $(mach_OBJS)
-	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -o $@ $(mach_OBJS)
 cycc: $(cycc_OBJS)
 	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -o $@ $(cycc_OBJS)
 cymk: $(cymk_OBJS)
 	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -o $@ $(cymk_OBJS)
 newer: $(newer_OBJS)
 	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -o $@ $(newer_OBJS)
+cam2c: $(cam2c_OBJS)
+	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -o $@ $(cam2c_OBJS)
+mach: $(mach_OBJS)
+	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -o $@ $(mach_OBJS)
 
 # additional cleanup rules
 mostlyclean-dir::
@@ -35,11 +37,12 @@ mostlyclean-dir::
 
 # compute the dependencies
 # NB: ./ prefixes stripped from dependencies for proper operation with BSD make
-depend-dir: $(mach_SRCS) $(cycc_SRCS) $(cymk_SRCS) $(newer_SRCS)
-	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.mach $(mach_SRCS)
+depend-dir: $(SRCS)
 	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.cycc $(cycc_SRCS)
 	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.cymk $(cymk_SRCS)
 	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.newer $(newer_SRCS)
-	sed 's,\./,,' .depend.mach .depend.cycc .depend.cymk .depend.newer > .depend
-	@rm -f -- .depend.mach .depend.cycc .depend.cymk .depend.newer
-	@rm -f -- .depend.mach.bak .depend.cycc.bak .depend.cymk.bak .depend.newer.bak
+	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.cam2c $(cam2c_SRCS)
+	$(HC) $(HCFLAGS) $(GHC_HCFLAGS) -M -optdep-f -optdep.depend.mach $(mach_SRCS)
+	sed 's,\./,,' .depend.cycc .depend.cymk .depend.newer .depend.mach .depend.cam2c > .depend
+	@rm -f -- .depend.cycc .depend.cymk .depend.newer .depend.cam2c .depend.mach
+	@rm -f -- .depend.cycc.bak .depend.cymk.bak .depend.newer.bak .depend.cam2c.bak .depend.mach.bak

@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 1780 2005-10-03 18:54:07Z wlux $
+# $Id: Makefile.in 1830 2005-11-09 17:09:12Z wlux $
 #
 # Copyright (c) 2000-2005 Wolfgang Lux
 # See LICENSE for the full license.
@@ -35,17 +35,155 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_DIR = @INSTALL_DIR@
 
 # file lists
-PROGRAMS = @MACH@ cycc cymk newer
+PROGRAMS = cycc cymk newer @CAM2C@ @MACH@
 SCRIPTS = cyc cymake cyi cyc-inplace cymake-inplace cyi-inplace
 man_MANS = cyc.1 cymake.1 cyi.1
 SUBDIRS = doc runtime curry
 
-mach_SRCS = mach.lhs MachInterp.lhs MachLoader.lhs MachNode.lhs \
-	    MachStack.lhs MachEnviron.lhs MachChoice.lhs MachSpace.lhs \
-	    MachThreads.lhs MachResult.lhs MachTypes.lhs Cam.lhs \
-	    CamParser.lhs LLParseComb.lhs LexComb.lhs Position.lhs \
-	    Error.lhs Combined.lhs GetOpt.hs Env.lhs Map.lhs Set.lhs \
-	    Utils.lhs $(@hc@_compat_SRCS)
+cycc_SRCS = \
+	cycc.hs \
+	Ident.lhs \
+	Types.lhs \
+	CurrySyntax.lhs \
+	CurryPP.lhs \
+	CurryLexer.lhs \
+	CurryParser.lhs \
+	Base.lhs \
+	ImportSyntaxCheck.lhs \
+	TypeSyntaxCheck.lhs \
+	SyntaxCheck.lhs \
+	ExportSyntaxCheck.lhs \
+	Renaming.lhs \
+	PrecCheck.lhs \
+	KindCheck.lhs \
+	TypeCheck.lhs \
+	IntfSyntaxCheck.lhs \
+	IntfCheck.lhs \
+	IntfEquiv.lhs \
+	Imports.lhs \
+	Exports.lhs \
+	TypeSubst.lhs \
+	TypeTrans.lhs \
+	Typing.lhs \
+	Eval.lhs \
+	Qual.lhs \
+	Desugar.lhs \
+	Simplify.lhs \
+	Lift.lhs \
+	IL.lhs \
+	ILPP.lhs \
+	ILTrans.lhs \
+	ILLift.lhs \
+	DTransform.lhs \
+	Cam.lhs \
+	CamPP.lhs \
+	ILCompile.lhs \
+	CCode.lhs \
+	CPretty.lhs \
+	CElim.lhs \
+	CPS.lhs \
+	CGen.lhs \
+	Modules.lhs \
+	Options.lhs \
+	Unlit.lhs \
+	LexComb.lhs \
+	LLParseComb.lhs \
+	Pretty.lhs \
+	Error.lhs \
+	Combined.lhs \
+	SCC.lhs \
+	NestEnv.lhs \
+	TopEnv.lhs \
+	Env.lhs \
+	Subst.lhs \
+	Map.lhs \
+	Set.lhs \
+	Position.lhs \
+	GetOpt.hs \
+	PathUtils.lhs \
+	Utils.lhs \
+	$(@hc@_compat_SRCS)
+cycc_XXX  = $(cycc_SRCS:.hs=.hi)
+cycc_INTF = $(cycc_XXX:.lhs=.hi)
+cycc_OBJS = $(cycc_INTF:.hi=.o)
+
+cymk_SRCS = \
+	cymk.hs \
+	Ident.lhs \
+	CurryDeps.lhs \
+	CurrySyntax.lhs \
+	CurryLexer.lhs \
+	CurryParser.lhs \
+	Unlit.lhs \
+	LexComb.lhs \
+	LLParseComb.lhs \
+	Error.lhs \
+	SCC.lhs \
+	Env.lhs \
+	Map.lhs \
+	Set.lhs \
+	Position.lhs \
+	GetOpt.hs \
+	PathUtils.lhs
+cymk_XXX  = $(cymk_SRCS:.hs=.hi)
+cymk_INTF = $(cymk_XXX:.lhs=.hi)
+cymk_OBJS = $(cymk_INTF:.hi=.o)
+
+newer_SRCS = \
+	newer.lhs
+newer_XXX  = $(newer_SRCS:.hs=.hi)
+newer_INTF = $(newer_XXX:.lhs=.hi)
+newer_OBJS = $(newer_INTF:.hi=.o)
+
+cam2c_SRCS = \
+	cam2c.lhs \
+	Cam.lhs \
+	CamParser.lhs \
+	CCode.lhs \
+	CPretty.lhs \
+	CElim.lhs \
+	CPS.lhs \
+	CGen.lhs \
+	LexComb.lhs \
+	LLParseComb.lhs \
+	Pretty.lhs \
+	Error.lhs \
+	GetOpt.hs \
+	SCC.lhs \
+	Map.lhs \
+	Set.lhs \
+	Position.lhs \
+	PathUtils.lhs \
+	Utils.lhs
+cam2c_XXX  = $(cam2c_SRCS:.hs=.hi)
+cam2c_INTF = $(cam2c_XXX:.lhs=.hi)
+cam2c_OBJS = $(cam2c_INTF:.hi=.o)
+
+mach_SRCS = \
+	mach.lhs \
+	MachInterp.lhs \
+	MachLoader.lhs \
+	MachNode.lhs \
+	MachStack.lhs \
+	MachEnviron.lhs \
+	MachChoice.lhs \
+	MachSpace.lhs \
+	MachThreads.lhs \
+	MachResult.lhs \
+	MachTypes.lhs \
+	Cam.lhs \
+	CamParser.lhs \
+	LLParseComb.lhs \
+	LexComb.lhs \
+	Position.lhs \
+	Error.lhs \
+	Combined.lhs \
+	GetOpt.hs \
+	Env.lhs \
+	Map.lhs \
+	Set.lhs \
+	Utils.lhs \
+	$(@hc@_compat_SRCS)
 mach_XXX  = $(mach_SRCS:.hs=.hi)
 mach_INTF = $(mach_XXX:.lhs=.hi)
 mach_OBJS = $(mach_INTF:.hi=.o)
@@ -55,44 +193,15 @@ hbc_compat_SRCS = hbc/IOExts.lhs
 nhc_compat_SRCS = nhc/IOExts.lhs
 compat_SRCS = $(ghc_compat_SRCS) $(hbc_compat_SRCS) $(nhc_compat_SRCS)
 
-cycc_SRCS = cycc.hs Ident.lhs Types.lhs CurrySyntax.lhs CurryPP.lhs \
-	    CurryLexer.lhs CurryParser.lhs Base.lhs ImportSyntaxCheck.lhs \
-	    TypeSyntaxCheck.lhs SyntaxCheck.lhs ExportSyntaxCheck.lhs \
-	    Renaming.lhs PrecCheck.lhs KindCheck.lhs TypeCheck.lhs \
-	    IntfSyntaxCheck.lhs IntfCheck.lhs IntfEquiv.lhs \
-	    Imports.lhs Exports.lhs TypeSubst.lhs TypeTrans.lhs Typing.lhs \
-	    Eval.lhs Qual.lhs Desugar.lhs Simplify.lhs Lift.lhs \
-	    IL.lhs ILPP.lhs ILTrans.lhs ILLift.lhs DTransform.lhs \
-	    Cam.lhs CamPP.lhs ILCompile.lhs CCode.lhs CPretty.lhs CElim.lhs \
-	    CPS.lhs CGen.lhs Modules.lhs Options.lhs Unlit.lhs \
-	    LexComb.lhs LLParseComb.lhs Pretty.lhs Error.lhs Combined.lhs \
-	    SCC.lhs NestEnv.lhs TopEnv.lhs Env.lhs Subst.lhs Map.lhs Set.lhs \
-	    Position.lhs GetOpt.hs PathUtils.lhs Utils.lhs $(@hc@_compat_SRCS)
-cycc_XXX  = $(cycc_SRCS:.hs=.hi)
-cycc_INTF = $(cycc_XXX:.lhs=.hi)
-cycc_OBJS = $(cycc_INTF:.hi=.o)
-
-cymk_SRCS = cymk.hs Ident.lhs CurryDeps.lhs CurrySyntax.lhs CurryLexer.lhs \
-	    CurryParser.lhs Unlit.lhs LexComb.lhs LLParseComb.lhs \
-	    Error.lhs SCC.lhs Env.lhs Map.lhs Set.lhs Position.lhs \
-	    GetOpt.hs PathUtils.lhs
-cymk_XXX  = $(cymk_SRCS:.hs=.hi)
-cymk_INTF = $(cymk_XXX:.lhs=.hi)
-cymk_OBJS = $(cymk_INTF:.hi=.o)
-
-newer_SRCS = newer.lhs
-newer_XXX  = $(newer_SRCS:.hs=.hi)
-newer_INTF = $(newer_XXX:.lhs=.hi)
-newer_OBJS = $(newer_INTF:.hi=.o)
+SRCS = $(cycc_SRCS) $(cymk_SRCS) $(newer_SRCS) $(cam2c_SRCS) $(mach_SRCS)
+INTF = $(cycc_INTF) $(cymk_INTF) $(newer_INTF) $(cam2c_INTF) $(mach_INTF)
+OBJS = $(cycc_OBJS) $(cymk_OBJS) $(newer_OBJS) $(cam2c_OBJS) $(mach_OBJS)
 
 DISTFILES = README LICENSE NEWS curry.tex curry.bib \
 	configure configure.in aclocal.m4 config.guess config.sub install-sh \
 	Makefile.in ghc.mk hbc.mk nhc.mk makedoc.in \
 	configure-bin.in Makefile-bin.in \
-	cyc.in cymake.in cyi.in \
-	cyc-inplace.in cymake-inplace.in cyi-inplace.in \
-	cyc.1.in cymake.1.in cyi.1.in \
-	$(cycc_SRCS) $(cymk_SRCS) $(newer_SRCS) $(mach_SRCS) $(compat_SRCS)
+	$(SCRIPTS:=.in) $(man_MANS:=.in) $(SRCS) $(compat_SRCS)
 
 # default target, build all programs and the library
 all: scripts programs runtime curry mans
@@ -270,17 +379,13 @@ config.status: $(srcdir)/configure
 # clean up
 mostlyclean: mostlyclean-subdirs mostlyclean-dir
 mostlyclean-dir::
-	rm -f $(mach_INTF) $(mach_OBJS) $(cycc_INTF) $(cycc_OBJS)
-	rm -f $(cymk_INTF) $(cymk_OBJS) $(newer_INTF) $(newer_OBJS)
-	rm -f $(PROGRAMS) $(man_MANS) core *.core
+	rm -f $(INTF) $(OBJS) $(PROGRAMS) $(man_MANS) core *.core
 
 clean: clean-subdirs clean-dir
 clean-dir:: mostlyclean-dir
 	rm -f curry.aux curry.toc curry.log runtime/runtime.aux
 	rm -f curry.bbl curry.blg curry.out curry.dvi curry.ps curry.pdf
-	for f in $(mach_SRCS) $(cycc_SRCS) $(cymk_SRCS) $(newer_SRCS); do \
-		if test -h $$f; then rm $$f; fi; \
-	done
+	for f in $(SRCS); do if test -h $$f; then rm $$f; fi; done
 
 distclean: distclean-subdirs distclean-dir
 	-rm -f config.status
