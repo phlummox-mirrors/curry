@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1827 2005-11-08 18:53:18Z wlux $
+% $Id: MachInterp.lhs 1828 2005-11-09 13:34:29Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -352,35 +352,34 @@ application.
 
 > switchRigid :: String -> [(NodeTag,NodePtr -> Instruction)]
 >             -> (NodePtr -> Instruction) -> Instruction
-> switchRigid v dispatchTable dflt = readState (getVar v) >>= switch
->   where switch =
->           switchOnTerm ((VariableTag,delay switch) : dispatchTable) dflt
+> switchRigid v dispatchTable dflt = rigidSwitch
+>   where rigidSwitch =
+>           switch v ((VariableTag,delay rigidSwitch) : dispatchTable) dflt
 
-> delay :: (NodePtr -> Instruction) -> NodePtr -> Instruction
-> delay switch vptr = deref vptr >>= delayNode vptr
+> delay :: Instruction -> NodePtr -> Instruction
+> delay cont vptr = deref vptr >>= delayNode vptr
 >   where delayNode vptr var@(VarNode cs wq space) =
 >           readState (isALocalSpace space) >>= \so ->
 >           if so then
 >             do
->               thd <- readState (suspendThread (switch vptr))
+>               thd <- readState (suspendThread cont)
 >               updateState (saveBinding vptr var)
 >               updateNode vptr (VarNode cs (thd:wq) space)
 >               switchContext
 >           else
->             suspendSearch vptr var (switch vptr)
+>             suspendSearch vptr var cont
 
 > switchFlex :: String -> [(NodeTag,NodePtr -> Instruction)]
 >            -> (NodePtr -> Instruction) -> Instruction
-> switchFlex v dispatchTable dflt = readState (getVar v) >>= switch
->   where switch = switchOnTerm dispatchTable' dflt
+> switchFlex v dispatchTable dflt = flexSwitch
+>   where flexSwitch = switch v dispatchTable' dflt
 >         dispatchTable'
 >           | null alts = dispatchTable
->           | otherwise = (VariableTag,tryBind alts switch) : dispatchTable
+>           | otherwise = (VariableTag,tryBind alts flexSwitch) : dispatchTable
 >         alts = map instantiate dispatchTable
 
-> tryBind :: [NodePtr -> Instruction] -> (NodePtr -> Instruction)
->         -> NodePtr -> Instruction
-> tryBind (alt:alts) switch vptr = deref vptr >>= tryBindNode vptr
+> tryBind :: [NodePtr -> Instruction] -> Instruction -> NodePtr -> Instruction
+> tryBind (alt:alts) cont vptr = deref vptr >>= tryBindNode vptr
 >   where tryBindNode vptr var@(VarNode cs wq space) =
 >           readState (isALocalSpace space) >>= \so ->
 >           if so then
@@ -397,11 +396,11 @@ application.
 >                       switchContext
 >                   Nothing -> choices vptr
 >           else
->             suspendSearch vptr var (switch vptr)
+>             suspendSearch vptr var cont
 >         resume ptr = deref ptr >>= resumeNode ptr
 >         resumeNode _ (IndirNode ptr) = resume ptr
 >         resumeNode ptr (VarNode _ _ _) = choices ptr
->         resumeNode ptr _ = switch ptr
+>         resumeNode _ _ = cont
 >         choices vptr = tryChoices (map ($ vptr) (alt:alts))
 
 > instantiate ::(NodeTag,NodePtr -> Instruction) -> NodePtr -> Instruction
@@ -469,16 +468,18 @@ application.
 >             updateState (wakeThreads tq)
 >             switchContext
 
-> switchOnTerm :: [(NodeTag,NodePtr -> Instruction)]
->              -> (NodePtr -> Instruction) -> NodePtr -> Instruction
-> switchOnTerm dispatchTable dflt ptr = deref ptr >>= switch ptr
+> switch :: String -> [(NodeTag,NodePtr -> Instruction)]
+>        -> (NodePtr -> Instruction) -> Instruction
+> switch v dispatchTable dflt = readState (getVar v) >>= switch
 >   where dispatchTable' = (IndirTag,switchIndir) : dispatchTable
->         switch ptr node =
+>         switch ptr = deref ptr >>= switchNode ptr
+>         switchNode ptr node =
 >           maybe dflt id (lookup (nodeTag node) dispatchTable') ptr
 >         switchIndir iptr =
 >           do
 >             IndirNode ptr <- deref iptr
->             deref ptr >>= switch ptr
+>             updateState (setVar v ptr)
+>             switch ptr
 
 > bindArgs :: (NodePtr -> MachStateT ()) -> Instruction
 >          -> NodePtr -> Instruction
@@ -941,30 +942,28 @@ new thread whenever this is possible. Note that the result of
 
 > concConjCode :: Instruction
 > concConjCode =
->   entry ["c1","c2"]
->         (readState (getVar "c1") >>=
->          switchOnTerm [(LazyTag,suspension),
->                        (QueueMeTag,queueMe),
->                        (VariableTag,variable)]
->                       (const (enter "c2")))
+>   entry ["c1","c2"] $
+>   switch "c1"
+>          [(LazyTag,suspension),(QueueMeTag,queueMe),(VariableTag,variable)]
+>          (const (enter "c2"))
 >   where suspension ptr1 =
->           readState (getVar "c2") >>=
->             switchOnTerm [(LazyTag,const (concurrent ptr1)),
->                           (QueueMeTag,const sequential),
->                           (VariableTag,const sequential)]
->                          (const (enter "c1"))
+>           switch "c2"
+>                  [(LazyTag,const (concurrent ptr1)),
+>                   (QueueMeTag,const sequential),
+>                   (VariableTag,const sequential)]
+>                  (const (enter "c1"))
 >         queueMe ptr1 =
->           readState (getVar "c2") >>=
->             switchOnTerm [(LazyTag,const (flipArguments >> sequential)),
->                           (QueueMeTag,const sequential),
->                           (VariableTag,const sequential)]
->                          (const (enter "c1"))
+>           switch "c2"
+>                  [(LazyTag,const (flipArguments >> sequential)),
+>                   (QueueMeTag,const sequential),
+>                   (VariableTag,const sequential)]
+>                  (const (enter "c1"))
 >         variable ptr1 =
->           readState (getVar "c2") >>=
->             switchOnTerm [(LazyTag,const (flipArguments >> sequential)),
->                           (QueueMeTag,const (flipArguments >> sequential)),
->                           (VariableTag,wait ptr1)]
->                          (const (retNode ptr1))
+>           switch "c2"
+>                  [(LazyTag,const (flipArguments >> sequential)),
+>                   (QueueMeTag,const (flipArguments >> sequential)),
+>                   (VariableTag,wait ptr1)]
+>                  (const (retNode ptr1))
 >         concurrent ptr1 =
 >           do
 >             updateState (interruptThread (flipArguments >> sequential))
@@ -973,11 +972,11 @@ new thread whenever this is possible. Note that the result of
 >             enter "c1"
 >         sequential = seqStmts "_c1" (enter "c1") sequentialCont
 >         sequentialCont =
->           readState (getVar "_c1") >>=
->             switchOnTerm [(LazyTag,const (fail "This cannot happen")),
->                           (QueueMeTag,const (fail "This cannot happen")),
->                           (VariableTag,variable)]
->                          (const (enter "c2"))
+>           switch "_c1"
+>                  [(LazyTag,const (fail "This cannot happen")),
+>                   (QueueMeTag,const (fail "This cannot happen")),
+>                   (VariableTag,variable)]
+>                  (const (enter "c2"))
 >         wait ptr1 ptr2 =
 >           do
 >             updateState (setVars ["_c1","_c2"] [ptr1,ptr2])
@@ -1078,15 +1077,17 @@ concurrently.
 >   | otherwise =
 >       do
 >         lazy <- allocLazy unifyFunction [ptr1,ptr2]
->         updateState (interruptThread (unifyRest ptrs lazy))
+>         updateState (setVar "c" lazy)
+>         updateState (interruptThread (unifyRest ptrs))
 >         updateState newThread
 >         updateState (setVar "c" lazy)
 >         enter "c"
 >   where unifyRest ptrs =
->           switchOnTerm [(LazyTag,const (fail "This cannot happen")),
->                         (QueueMeTag,unifyRest' ptrs),
->                         (VariableTag,const (fail "This cannot happen"))]
->                        (const (unifyArgs ptrs))
+>           switch "c"
+>                  [(LazyTag,const (fail "This cannot happen")),
+>                   (QueueMeTag,unifyRest' ptrs),
+>                   (VariableTag,const (fail "This cannot happen"))]
+>                  (const (unifyArgs ptrs))
 >         unifyRest' ptrs lazy =
 >           do
 >             updateState (pushCont (retNode lazy))
@@ -1724,6 +1725,7 @@ fake world.
 give the program a chance to compute all results of the goal and print
 them. Should the driver programs be moved into the loader?}
 
+\subsection{``Micro-code''}
 \subsubsection{Wrapper Functions}
 The following functions are used to convert the ``micro code'' state
 transformer functions into state monads.
@@ -1739,7 +1741,6 @@ transformer functions into state monads.
 > read'updateState = StateT
 
 \end{verbatim}
-\subsection{``Micro-code''}
 \input{MachNode.lhs} % \subsubsection{Nodes}
 \input{MachStack.lhs} % \subsubsection{Data Stack Management}
 \input{MachEnviron.lhs} %  \subsubsection{Environment Management}
