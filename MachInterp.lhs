@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1828 2005-11-09 13:34:29Z wlux $
+% $Id: MachInterp.lhs 1829 2005-11-09 14:24:25Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1090,8 +1090,12 @@ concurrently.
 >                  (const (unifyArgs ptrs))
 >         unifyRest' ptrs lazy =
 >           do
->             updateState (pushCont (retNode lazy))
+>             updateState (pushCont unifyCont)
 >             unifyArgs ptrs
+>         unifyCont =
+>           do
+>             read'updateState popNode
+>             enter "c"
 
 > unifySuccess :: Instruction
 > unifySuccess = successCode
@@ -1225,7 +1229,7 @@ for the disequality \texttt{(0:xs) =/= [0]}.}
 > diseqNodes ptr1 (SearchContinuation _ _ _ _) ptr2 (SearchContinuation _ _ _ _)
 >   | ptr1 /= ptr2 = diseqSuccess
 >   | otherwise = failAndBacktrack
-> diseqNodes _ _ _ _ = failAndBacktrack
+> diseqNodes _ _ _ _ = diseqSuccess
 
 > diseqArgs :: [(NodePtr,NodePtr)] -> Instruction
 > diseqArgs [] = failAndBacktrack
