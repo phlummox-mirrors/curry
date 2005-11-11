@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1831 2005-11-11 17:23:36Z wlux $
+# $Id: cyi.in 1832 2005-11-11 17:32:45Z wlux $
 #
 # Copyright (c) 2002-2005, Wolfgang Lux
 # See LICENSE for the full license.
@@ -280,9 +280,9 @@ load "$1"
 if tty -s; then
   if test -n "${BASH_VERSION+set}"; then
     do_read ( ) {
-      history -n ~/.cyi
+      history -n ~/.cyi_history
       read -e -p "$prompt" -r $1 || return $?
-      eval echo \"\$$1\" >> ~/.cyi
+      eval echo \"\$$1\" >> ~/.cyi_history
     }
   elif test -n "${ZSH_VERSION+set}"; then
     zmodload zsh/zle
@@ -292,7 +292,7 @@ if tty -s; then
     }
   elif test -n "${RANDOM+set}"; then
     # assume Korn Shell
-    HISTFILE=~/.cyi
+    HISTFILE=~/.cyi_history
     set -o emacs
     do_read ( ) {
       read -s -r $1?"$prompt"
