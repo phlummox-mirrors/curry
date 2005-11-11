@@ -1,4 +1,4 @@
-#!@RAW_SHELL@
+#!@CYI_SHELL@
 # @configure_input@
 
 # Call cyi in build directory

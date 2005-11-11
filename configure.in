@@ -1,4 +1,4 @@
-dnl $Id: configure.in 1830 2005-11-09 17:09:12Z wlux $
+dnl $Id: configure.in 1831 2005-11-11 17:23:36Z wlux $
 dnl
 dnl Copyright (c) 2002-2005, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -102,8 +102,8 @@ Please report back any additional CFLAGS needed for compilation.
 fi
 
 
-dnl Check for a shell the supports raw reads
-CURRY_RAW_SHELL
+dnl Check for a shell, which is suitable for cyi
+CURRY_CYI_SHELL
 
 
 dnl Check for Haskell compilers

@@ -1,4 +1,4 @@
-# $Id: aclocal.m4 1744 2005-08-23 16:17:12Z wlux $
+# $Id: aclocal.m4 1831 2005-11-11 17:23:36Z wlux $
 #
 # Copyright (c) 2002-2005, Wolfgang Lux
 #
@@ -7,8 +7,8 @@
 # shell stuff
 
 # CURRY_CHECK_RAW_READ(SHELL,ACTION-IF-TRUE,[ACTION-IF-FALSE])
-# Checks whether the specified shell suppports raw reads
-# If so execute ACTION-IF-TRUE, other ACTION-IF-FALSE
+# Checks whether the specified shell suppports raw reads.
+# If so execute ACTION-IF-TRUE, other ACTION-IF-FALSE.
 
 AC_DEFUN([CURRY_CHECK_RAW_READ],
 [AC_CACHE_CHECK([whether $$1 supports raw read],[curry_cv_prog_$1_read_r],
@@ -39,7 +39,7 @@ esac])
 # CURRY_RAW_SHELL
 # Check for a shell that supports raw reads set the variable
 # RAW_SHELL to the absolute path of this shell and AC_SUBST
-# this variable
+# this variable.
 
 AC_DEFUN([CURRY_RAW_SHELL_SH],
 [SH=/bin/sh; CURRY_CHECK_RAW_READ(SH,[RAW_SHELL=/bin/sh])])
@@ -84,6 +84,70 @@ case $RAW_SHELL in
 esac
 AC_SUBST(RAW_SHELL)])
 
+
+# CURRY_CYI_SHELL
+# Check for a shell that is suitable for cyi. Set the variable
+# CYI_SHELL to the absolute path of the selected shell program
+# and AC_SUBST this variable.
+#
+# At present, only GNU Bash, the AT&T Korn shell, and Z shell
+# support command line editing in read commands and therefore are
+# preferred for cyi.
+
+AC_DEFUN([CURRY_CYI_SHELL],[
+if test -n "${CYI_SHELL+set}"; then
+  # protect against bogus CYI_SHELL settings
+  if ! test -x $CYI_SHELL; then
+    AC_MSG_ERROR([$CYI_SHELL does not exist or is not executable])
+  elif ! $CYI_SHELL -c 'test -n "${HOME+set}"' >/dev/null 2>&1; then
+    AC_MSG_ERROR([$CYI_SHELL is not compatible with a Bourne shell])
+  fi
+else
+  AC_MSG_CHECKING([whether /bin/sh is suitable for cyi])
+  if /bin/sh -c 'test -n "${BASH_VERSION+set}"'; then
+    AC_MSG_RESULT([yes (GNU Bash)])
+    CYI_SHELL=/bin/sh
+  elif /bin/sh -c 'test -n "${ZSH_VERSION+set}"'; then
+    AC_MSG_RESULT([yes (Z shell)])
+    CYI_SHELL=/bin/sh
+  # Is there a better way to identify the AT&T Korn shell? Note that
+  # bash as well as zsh define RANDOM, too. In fact, any Posix-compliant
+  # shell will do so.
+  elif /bin/sh -c 'test -n "${RANDOM+set}" && test -z "${KSH_VERSION+set}"'; then
+    AC_MSG_RESULT([yes (Korn shell)])
+    CYI_SHELL=/bin/sh
+  else
+    AC_MSG_RESULT([no])
+    AC_PATH_PROGS(CYI_SHELL, [bash ksh zsh])
+    if test -z "$CYI_SHELL"; then
+      AC_MSG_NOTICE([falling back to /bin/sh])
+      CYI_SHELL=/bin/sh
+    fi
+  fi
+fi
+
+if $CYI_SHELL -c 'test -n "${ZSH_VERSION+set}"'; then
+  AC_MSG_WARN([Command line history will not work in cyi.])
+elif $CYI_SHELL -c 'test -z "${RANDOM+set}"'; then
+  AC_MSG_WARN([Command line editing will not work in cyi.
+
+You should consider installing GNU Bash or the AT&T Korn shell.
+])
+  CURRY_CHECK_RAW_READ(CYI_SHELL,,
+    AC_MSG_WARN([$CYI_SHELL does not support raw read
+
+You will have to escape backslashes when entering goals in cyi.
+]))
+elif $CYI_SHELL -c 'test -n "${KSH_VERSION+set}"'; then
+  AC_MSG_WARN([Command line editing may not work in cyi.
+
+You should consider installing GNU Bash or the AT&T Korn shell.
+Make sure that the latter is found in the path before $CYI_SHELL
+or set the environment variable CYI_SHELL.
+])
+fi
+
+AC_SUBST(CYI_SHELL)])
 
 ########################################################################
 # Haskell compiler

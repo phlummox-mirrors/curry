@@ -1,4 +1,4 @@
-dnl $Id: configure-bin.in 1744 2005-08-23 16:17:12Z wlux $
+dnl $Id: configure-bin.in 1831 2005-11-11 17:23:36Z wlux $
 dnl
 dnl Copyright (c) 2002-2005, Wolfgang Lux
 dnl
@@ -31,8 +31,8 @@ AC_SEARCH_LIBS(sin, lm)
 AC_SEARCH_LIBS(inet_addr, nsl)
 AC_SEARCH_LIBS(socket, socket)
 
-dnl Check for a shell that supports raw reads
-CURRY_RAW_SHELL
+dnl Check for a shell, which is suitable for cyi
+CURRY_CYI_SHELL
 
 AC_SUBST(ARCH_CFLAGS)
 AC_SUBST(INSTALL_DIR)

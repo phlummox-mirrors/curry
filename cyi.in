@@ -1,9 +1,9 @@
-#!@RAW_SHELL@
+#!@CYI_SHELL@
 # @configure_input@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1752 2005-08-30 06:53:23Z wlux $
+# $Id: cyi.in 1831 2005-11-11 17:23:36Z wlux $
 #
 # Copyright (c) 2002-2005, Wolfgang Lux
 # See LICENSE for the full license.
@@ -67,7 +67,8 @@ EOF
 # Some shells (e.g. Solaris /bin/sh, AIX /bin/bsh) terminate if read -r
 # is used with a here document, therefore check that read -r is accepted
 # before checking that it works. Note that some versions of GNU bash
-# (at least 2.05 on Mac OS X) fail to read from an input pipe.
+# (e.g. the one distributed with Mac OS X 10.2) fail to read from an
+# input pipe.
 
 rawread=no
 read_r=
@@ -289,9 +290,10 @@ if tty -s; then
       eval $1=
       vared -p"$prompt" $1
     }
-  elif set -o emacs >/dev/null 2>&1; then
+  elif test -n "${RANDOM+set}"; then
     # assume Korn Shell
     HISTFILE=~/.cyi
+    set -o emacs
     do_read ( ) {
       read -s -r $1?"$prompt"
     }
@@ -327,7 +329,7 @@ while do_read line; do
     :q | :quit ) break;;
     :d ) line=`expr "$line" : ':d\(.*\)'`; debug "  $line";;
     :debug ) line=`expr "$line" : ':debug\(.*\)'`; debug "      $line";;
-    :^* ) line=`expr "$line" : ':^\(.*\)'`; evaluate "  $line";;
+    ':^'* ) line=`expr "$line" : ':^\(.*\)'`; evaluate "  $line";;
     :* ) echo "unknown command, use :h for help";;
     * ) evaluate "$line";;
   esac
