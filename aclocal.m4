@@ -1,4 +1,4 @@
-# $Id: aclocal.m4 1831 2005-11-11 17:23:36Z wlux $
+# $Id: aclocal.m4 1833 2005-11-12 14:39:21Z wlux $
 #
 # Copyright (c) 2002-2005, Wolfgang Lux
 #
@@ -265,25 +265,50 @@ case $curry_hc_version in
 esac],
 [GHC= HBC= NHC=])])
 
+# CURRY_HC_HLIB(HC,[ACTION-IF-TRUE],[ACTION-IF-FALSE])
+# Checks whether HC supports the standard hierarchical libraries.
+# This should be true for ghc 5.x and later as well as nhc98 1.16 and later.
+AC_DEFUN([CURRY_HC_HLIB],
+[AC_CACHE_CHECK([whether $$1 supports the standard hierarchical libraries],
+[curry_cv_prog_$1_hlib],
+[curry_cv_prog_$1_hlib=no
+cat <<EOF >ConfTest.hs
+module ConfTest(module Data.IORef) where
+import Data.IORef
+EOF
+$$1 -c ConfTest.hs 2>/dev/null && curry_cv_prog_$1_hlib=yes
+rm -f ConfTest*])
+case $curry_cv_prog_$1_hlib in
+  yes ) $2;;
+  no ) $3;;
+esac])
+
 # CURRY_GHC_IOEXTS
 # Check how to import IOExts when compiling with ghc
-# Set the variable GHC_IOEXTS to the correct flags
+# and add the appropriate switches to the variable HCFLAGS
+# NB this should be used only for ghc version 4.x or earlier;
+#    on later versions of ghc Data.IORef should be used instead
+#    of IOExts
 AC_DEFUN([CURRY_GHC_IOEXTS],
 [AC_MSG_CHECKING([how to import IOExts])
 cat >conftest.hs <<EOF
 import IOExts
 main = newIORef () >>= flip writeIORef ()
 EOF
-GHC_IOEXTS=
+curry_ghc_ioexts_lib=
 for lib in exts lang; do
-  if $GHC -c -syslib $lib conftest.hs 2>/dev/null; then
-    GHC_IOEXTS="-syslib $lib"
-    break;
+  if $GHC $HCFLAGS -syslib $lib -c conftest.hs 2>/dev/null; then
+    curry_ghc_ioexts_lib="-syslib $lib"
+    break
   fi
 done
-case $GHC_IOEXTS in
-  "" ) AC_MSG_ERROR([import of IOExts does not work]);;
-  * ) AC_MSG_RESULT([$GHC_IOEXTS]);;
+rm -f conftest* Main.hi
+case $curry_ghc_ioexts_lib in
+  "" ) AC_MSG_ERROR([cannot determine how to import IOExts]);;
+  * )
+    AC_MSG_RESULT([$curry_ghc_ioexts_lib])
+    HCFLAGS="$HCFLAGS $curry_ghc_ioexts_lib"
+    ;;
 esac])
 
 # CURRY_HC_PATH_STYLE

@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 1830 2005-11-09 17:09:12Z wlux $
+# $Id: Makefile.in 1833 2005-11-12 14:39:21Z wlux $
 #
 # Copyright (c) 2000-2005 Wolfgang Lux
 # See LICENSE for the full license.
@@ -102,7 +102,7 @@ cycc_SRCS = \
 	GetOpt.hs \
 	PathUtils.lhs \
 	Utils.lhs \
-	$(@hc@_compat_SRCS)
+	$(IOEXTS_LHS)
 cycc_XXX  = $(cycc_SRCS:.hs=.hi)
 cycc_INTF = $(cycc_XXX:.lhs=.hi)
 cycc_OBJS = $(cycc_INTF:.hi=.o)
@@ -183,15 +183,13 @@ mach_SRCS = \
 	Map.lhs \
 	Set.lhs \
 	Utils.lhs \
-	$(@hc@_compat_SRCS)
+	$(IOEXTS_LHS)
 mach_XXX  = $(mach_SRCS:.hs=.hi)
 mach_INTF = $(mach_XXX:.lhs=.hi)
 mach_OBJS = $(mach_INTF:.hi=.o)
 
-ghc_compat_SRCS =
-hbc_compat_SRCS = hbc/IOExts.lhs
-nhc_compat_SRCS = nhc/IOExts.lhs
-compat_SRCS = $(ghc_compat_SRCS) $(hbc_compat_SRCS) $(nhc_compat_SRCS)
+IOEXTS_LHS = @IOExts_lhs@
+IOEXTS_SRCS = ghc/IOExts.lhs hbc/IOExts.lhs nhc/IOExts.lhs
 
 SRCS = $(cycc_SRCS) $(cymk_SRCS) $(newer_SRCS) $(cam2c_SRCS) $(mach_SRCS)
 INTF = $(cycc_INTF) $(cymk_INTF) $(newer_INTF) $(cam2c_INTF) $(mach_INTF)
@@ -201,7 +199,7 @@ DISTFILES = README LICENSE NEWS curry.tex curry.bib \
 	configure configure.in aclocal.m4 config.guess config.sub install-sh \
 	Makefile.in ghc.mk hbc.mk nhc.mk makedoc.in \
 	configure-bin.in Makefile-bin.in \
-	$(SCRIPTS:=.in) $(man_MANS:=.in) $(SRCS) $(compat_SRCS)
+	$(SCRIPTS:=.in) $(man_MANS:=.in) $(SRCS) $(IOEXTS_SRCS)
 
 # default target, build all programs and the library
 all: scripts programs runtime curry mans

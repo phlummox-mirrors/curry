@@ -1,4 +1,4 @@
-dnl $Id: configure.in 1831 2005-11-11 17:23:36Z wlux $
+dnl $Id: configure.in 1833 2005-11-12 14:39:21Z wlux $
 dnl
 dnl Copyright (c) 2002-2005, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -137,13 +137,17 @@ esac
 
 if test -n "$GHC"; then
   hc=ghc HC="$GHC"
-  CURRY_GHC_IOEXTS
-  HCFLAGS="$HCFLAGS $GHC_IOEXTS"
-  rm -f conftest* Main.hi
+  CURRY_HC_HLIB(GHC,
+    [HCFLAGS="$HCFLAGS -ighc"
+     IOExts_lhs=ghc/IOExts.lhs],
+    [CURRY_GHC_IOEXTS
+     IOExts_lhs=])
 elif test -n "$HBC"; then
   hc=hbc HC="$HBC"
+  IOExts_lhs=hbc/IOExts.lhs
 elif test -n "$NHC"; then
   hc=nhc HC="$NHC"
+  IOExts_lhs=nhc/IOExts.lhs
 else
   AC_MSG_ERROR([Sorry, you need a Haskell 98 compiler])
 fi
@@ -200,6 +204,7 @@ AC_SUBST(ARCH_CFLAGS)
 AC_SUBST(hc)
 AC_SUBST(HC)
 AC_SUBST(HCFLAGS)
+AC_SUBST(IOExts_lhs)
 AC_SUBST(INSTALL_DIR)
 AC_SUBST(STDLIB)
 AC_SUBST(DEBUG)
