@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 1833 2005-11-12 14:39:21Z wlux $
+# $Id: Makefile.in 1835 2005-11-12 15:15:46Z wlux $
 #
 # Copyright (c) 2000-2005 Wolfgang Lux
 # See LICENSE for the full license.
@@ -377,7 +377,9 @@ config.status: $(srcdir)/configure
 # clean up
 mostlyclean: mostlyclean-subdirs mostlyclean-dir
 mostlyclean-dir::
-	rm -f $(INTF) $(OBJS) $(PROGRAMS) $(man_MANS) core *.core
+	rm -f $(INTF) $(OBJS) 
+	rm -f cycc cymk newer cam2c mach 
+	rm -f $(man_MANS) core *.core
 
 clean: clean-subdirs clean-dir
 clean-dir:: mostlyclean-dir
