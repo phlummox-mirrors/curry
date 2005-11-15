@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: files.nw 1836 2005-11-15 17:43:41Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -1703,7 +1703,7 @@ FUNCTION(__openProcess_2)
 	close(fds[1]);
 
 	/* start the child process */
-	execl("/bin/sh", "sh", "-c", cmd, NULL);
+	execl("/bin/sh", "sh", "-c", cmd, (char *)0);
 	_exit(1);
     case -1:
 	close(fds[0]);
