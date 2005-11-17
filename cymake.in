@@ -3,7 +3,7 @@
 #
 # Shell script for building Curry programs
 #
-# $Id: cymake.in 1744 2005-08-23 16:17:12Z wlux $
+# $Id: cymake.in 1838 2005-11-17 08:03:45Z wlux $
 #
 # Copyright (c) 2002-2005, Wolfgang Lux
 # See LICENSE for the full license.
@@ -19,8 +19,10 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@
 : ${CURRY_PATH=@libdir@/curry}
-: ${CURRY_IMPORTS=$CURRY_PATH}
-export CURRY_IMPORTS
+: ${CURRY_IMPORT_PATH=$CURRY_PATH}
+: ${CURRY_INCLUDE_PATH=$CURRY_PATH}
+: ${CURRY_LIBRARY_PATH=$CURRY_PATH}
+export CURRY_IMPORT_PATH CURRY_INCLUDE_PATH CURRY_LIBRARY_PATH
 
 # Local variables
 echo=echo

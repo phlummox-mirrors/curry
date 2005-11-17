@@ -1,4 +1,4 @@
--- $Id: cymk.hs 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: cymk.hs 1838 2005-11-17 08:03:45Z wlux $
 --
 -- Copyright (c) 2002-2003, Wolfgang Lux
 -- See LICENSE for the full license.
@@ -71,18 +71,18 @@ main =
   do
     prog <- getProgName
     args <- getArgs
-    curryImports <- catch (getEnv "CURRY_IMPORTS" >>= return . pathList)
-                          (const (return []))
-    cymk prog args curryImports
+    importPath <- catch (getEnv "CURRY_IMPORT_PATH" >>= return . pathList)
+                        (const (return []))
+    cymk prog args importPath
 
 cymk :: String -> [String] -> [FilePath] -> IO ()
-cymk prog args curryImports
+cymk prog args curryImportPath
   | Help `elem` opts = printUsage prog
   | null errs = processFiles cymkOpts prog files
   | otherwise = badUsage prog errs
   where (opts,files,errs) = getOpt Permute options args
         cymkOpts =
-	  foldr selectOption defaultOptions{ libPaths = curryImports } opts
+	  foldr selectOption defaultOptions{ libPaths = curryImportPath } opts
 
 printUsage :: String -> IO ()
 printUsage prog =

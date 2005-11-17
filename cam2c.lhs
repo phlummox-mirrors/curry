@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: cam2c.lhs 1830 2005-11-09 17:09:12Z wlux $
+% $Id: cam2c.lhs 1838 2005-11-17 08:03:45Z wlux $
 %
 % Copyright (c) 2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -30,9 +30,9 @@ compiler.
 >   do
 >     prog <- getProgName
 >     args <- getArgs
->     curryImports <- catch (getEnv "CURRY_IMPORTS" >>= return . pathList)
->                           (const (return []))
->     cam2c prog args curryImports
+>     importPath <- catch (getEnv "CURRY_IMPORT_PATH" >>= return . pathList)
+>                         (const (return []))
+>     cam2c prog args importPath
 
 \end{verbatim}
 The main program acts as a traditional Unix filter program, i.e., it
@@ -45,7 +45,7 @@ on the command line, we use the last occurrence.
 \begin{verbatim}
 
 > cam2c :: String -> [String] -> [FilePath] -> IO ()
-> cam2c prog args curryImports
+> cam2c prog args curryImportPath
 >   | Help `elem` opts = printUsage prog
 >   | null errs =
 >       case goals opts of
@@ -54,7 +54,7 @@ on the command line, we use the last occurrence.
 >         _ -> badUsage prog ["Multiple goal options not allowed"]
 >   | otherwise = badUsage prog errs
 >   where (opts,files,errs) = getOpt Permute options args
->         importPath = importPaths opts ++ curryImports
+>         importPath = importPaths opts ++ curryImportPath
 
 > printUsage :: String -> IO ()
 > printUsage prog =

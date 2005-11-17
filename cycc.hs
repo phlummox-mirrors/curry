@@ -1,4 +1,4 @@
--- $Id: cycc.hs 1777 2005-09-30 14:56:48Z wlux $
+-- $Id: cycc.hs 1838 2005-11-17 08:03:45Z wlux $
 --
 -- Copyright (c) 1999-2005, Wolfgang Lux
 -- See LICENSE for the full license.
@@ -18,18 +18,18 @@ main =
   do
     prog <- getProgName
     args <- getArgs
-    curryImports <- catch (getEnv "CURRY_IMPORTS" >>= return . pathList)
-                          (const (return []))
-    cyc prog args curryImports
+    importPath <- catch (getEnv "CURRY_IMPORT_PATH" >>= return . pathList)
+                        (const (return []))
+    cyc prog args importPath
 
 cyc :: String -> [String] -> [FilePath] -> IO ()
-cyc prog args curryImports
+cyc prog args curryImportPath
   | Help `elem` opts = printUsage prog
   | null errs = processFiles cycOpts prog files
   | otherwise = badUsage prog errs
   where (opts,files,errs) = getOpt Permute options args
         cycOpts =
-	  foldr selectOption defaultOptions{ importPath = curryImports } opts
+	  foldr selectOption defaultOptions{ importPath = curryImportPath } opts
 
 printUsage :: String -> IO ()
 printUsage prog =

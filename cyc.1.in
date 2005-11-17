@@ -4,11 +4,12 @@
 .\"man mdoc for the short list of editing options
 .\"/usr/share/misc/mdoc.template
 .\"
-.\" $Id: cyc.1.in 1744 2005-08-23 16:17:12Z wlux $
-.\" Copyright (c) 2004, Wolfgang Lux
+.\" $Id: cyc.1.in 1838 2005-11-17 08:03:45Z wlux $
+.\"
+.\" Copyright (c) 2004-2005, Wolfgang Lux
 .\" See LICENSE for the full license.
 .\"
-.Dd 08.11.04               \" DATE 
+.Dd 17.11.05               \" DATE 
 .Dt cyc 1      \" Program name and manual section number 
 .Os
 .Sh NAME                 \" Section Header - required - don't modify 
@@ -434,18 +435,24 @@ that tracing can slow down program execution considerably and the
 output may be excessively large.
 .El
 .Sh ENVIRONMENT
-.Bl -tag -width "CURRY_IMPORTS"
+.Bl -tag -width -indent -compact
 .It Ev CURRY_PATH
 The environment variable
 .Ev CURRY_PATH
 is used to locate the compiler executables. The default value is
 .Pa @libdir@/curry .
-.It Ev CURRY_IMPORTS
-The environment variable
-.Ev CURRY_IMPORTS
-contains a colon-separated list of directories that are searched for
-imported interfaces, included header files, and library files. The
-default value is
+.Pp
+.It Ev CURRY_IMPORT_PATH
+.It Ev CURRY_INCLUDE_PATH
+.It Ev CURRY_LIBRARY_PATH
+The environment variables
+.Ev CURRY_IMPORT_PATH ,
+.Ev CURRY_INCLUDE_PATH ,
+and
+.Ev CURRY_LIBRARY_PATH
+contain colon-separated lists of directories that are searched for
+imported interfaces, included header files, and library files,
+respectively. Their default value is
 .Ev $CURRY_PATH .
 .El                      
 .Sh FILES                \" File used or created by the topic of the man page

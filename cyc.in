@@ -3,7 +3,7 @@
 #
 # Shell script for compiling Curry modules
 #
-# $Id: cyc.in 1744 2005-08-23 16:17:12Z wlux $
+# $Id: cyc.in 1838 2005-11-17 08:03:45Z wlux $
 #
 # Copyright (c) 2002-2005, Wolfgang Lux
 # See LICENSE for the full license.
@@ -18,9 +18,11 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@
 : ${CURRY_PATH=@libdir@/curry}
-: ${CURRY_IMPORTS=$CURRY_PATH}
+: ${CURRY_IMPORT_PATH=$CURRY_PATH}
+: ${CURRY_INCLUDE_PATH=$CURRY_PATH}
+: ${CURRY_LIBRARY_PATH=$CURRY_PATH}
 : ${CC="@CC@ @ARCH_CFLAGS@"}
-export CURRY_IMPORTS
+export CURRY_IMPORT_PATH
 
 # Local variables
 exec=
@@ -191,14 +193,17 @@ fi
 # Add all default include directories to the C compiler's flags
 ifs=$IFS
 IFS=:
-for d in $CURRY_IMPORTS; do 
-  ccopts="$ccopts -I$d"; ldopts="$ldopts -L$d"
+for d in $CURRY_INCLUDE_PATH; do 
+  ccopts="$ccopts -I$d"
+done
+for d in $CURRY_LIBRARY_PATH; do 
+  ldopts="$ldopts -L$d"
 done
 IFS=$ifs
 
 # Cygpath workaround: converts path to Windows-style
 if test -n "@USE_CYGPATH_WORKAROUND@"; then
-  CURRY_IMPORTS=`@CYGPATH@ -w -p $CURRY_IMPORTS`
+  CURRY_IMPORT_PATH=`@CYGPATH@ -w -p $CURRY_IMPORT_PATH`
 fi
 
 # Remove all temporary files upon exit

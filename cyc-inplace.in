@@ -11,8 +11,9 @@ case "$srcdir" in
 esac
 
 : ${CURRY_PATH=$builddir}
-: ${CURRY_IMPORTS=$CURRY_PATH/curry}
-export CURRY_PATH CURRY_IMPORTS
+: ${CURRY_IMPORT_PATH=$builddir/curry}
+: ${CURRY_INCLUDE_PATH=$builddir/runtime:$srcdir/runtime}
+: ${CURRY_LIBRARY_PATH=$builddir/curry}
+export CURRY_PATH CURRY_IMPORT_PATH CURRY_INCLUDE_PATH CURRY_LIBRARY_PATH
 
-exec $builddir/cyc -I$builddir/runtime -I$srcdir/runtime "$@"
-
+. $builddir/cyc

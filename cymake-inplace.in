@@ -12,7 +12,9 @@ esac
 
 : ${CYC=$builddir/cyc-inplace}
 : ${CURRY_PATH=$builddir}
-: ${CURRY_IMPORTS=$CURRY_PATH/curry}
-export CYC CURRY_PATH CURRY_IMPORTS
+: ${CURRY_IMPORT_PATH=$CURRY_PATH/curry}
+: ${CURRY_INCLUDE_PATH=$builddir/runtime:$srcdir/runtime}
+: ${CURRY_LIBRARY_PATH=$builddir/curry}
+export CYC CURRY_PATH CURRY_IMPORT_PATH CURRY_INCLUDE_PATH CURRY_LIBRARY_PATH
 
-exec $builddir/cymake "$@"
+. $builddir/cymake
