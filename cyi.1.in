@@ -4,11 +4,12 @@
 .\"man mdoc for the short list of editing options
 .\"/usr/share/misc/mdoc.template
 .\"
-.\" $Id: cyi.1.in 1744 2005-08-23 16:17:12Z wlux $
-.\" Copyright (c) 2004, Wolfgang Lux
+.\" $Id: cyi.1.in 1837 2005-11-17 07:49:28Z wlux $
+.\"
+.\" Copyright (c) 2004-2005, Wolfgang Lux
 .\" See LICENSE for the full license.
 .\"
-.Dd 08.11.04               \" DATE 
+.Dd 17.11.05               \" DATE 
 .Dt cyi 1
 .Os
 .Sh NAME                 \" Section Header - required - don't modify 
@@ -41,17 +42,17 @@ after successful evaluation unless the goal is of type
 At the prompt of the interactive environment, the following commands
 can be entered:
 .Bl -tag -width -indent -compact
-.It Ar  goal
+.It Ar goal
 Evaluate
 .Ar goal
 in the context of the current module.
-.It Cm :^ Op Ar goal
+.It Ic :^ Op Ar goal
 Evaluate
 .Ar goal
 in the context of the current module. If
 .Ar goal
 is omitted, the previous goal is evaluated again.
-.It Cm :debug Op Ar goal
+.It Ic :debug Op Ar goal
 Invoke the debugger for
 .Ar goal .
 It may take some time to recompile the source modules with debugging
@@ -59,13 +60,13 @@ information.
 If
 .Ar goal
 is omitted, the debugger is invoked for the previous goal.
-.It Cm :type Op Ar goal
+.It Ic :type Op Ar goal
 Print the type of
 .Ar goal
 instead of evaluating it. If
 .Ar goal
 is omitted, the type of the previous goal is shown.
-.It Cm :load Ar module
+.It Ic :load Ar module
 Set the current evaluation context to
 .Ar module .
 This command will compile
@@ -78,16 +79,16 @@ or
 or a plain module name.
 .Nm
 displays the name of the current module in its prompt.
-.It Cm :load
+.It Ic :load
 Reset the current evaluation context to the Curry prelude.
-.It Cm :reload
+.It Ic :reload
 Repeat the last load command.
-.It Cm :freshen
+.It Ic :freshen
 Recompile the current module and all imported source files.
-.It Cm :clean
+.It Ic :clean
 Remove all compiled files for the current module and all imported
 source files.
-.It Cm :edit Ar file
+.It Ic :edit Ar file
 Invoke the editor for
 .Ar file .
 The default editor is
@@ -98,37 +99,43 @@ and
 .Ev EDITOR
 to your preferred editor before starting
 .Nm .
-.It Cm :edit
+.It Ic :edit
 Edit the source file of the current module.
-.It Cm :set Ar option No ...
+.It Ic :set Ar option No ...
 Add
 .Ar option Ns No s
 to the list of compiler options.
-.It Cm :unset Ar word No ...
+.It Ic :unset Ar word No ...
 Remove
 .Ar word Ns No s
 from the list of compiler options.
-.It Cm :cd Ar dir
+.It Ic :cd Ar dir
 Change the current directory to
 .Ar dir .
-.It Cm :cd
+.It Ic :cd
 Print the current directory.
-.It Cm :! Ar command
+.It Ic :! Ar command
 Execute the shell command
 .Ar command .
-.It Cm :version
+.It Ic :version
 Display the compiler's version.
-.It Cm :help
+.It Ic :help
 Show the list of supported commands.
-.It Cm :quit
+.It Ic :quit
 Quit
 .Nm .
 .El
 All commands, except for
-.Cm :cd
+.Ic :cd
 and
-.Cm :clean ,
+.Ic :clean ,
 may be abbreviated to their first letter.
+.Sh FILES
+.Bl -tag -width -indent
+.It Pa ~/.cyi_history
+The command line history is stored in file
+.Pa ~/.cyi_history .
+.El
 .Sh SEE ALSO 
 .Xr cyc 1 , 
 .Xr cymake 1
@@ -140,13 +147,13 @@ and
 .Xr cyc 1
 for compiling modules and goals. Commands are read from the standard
 input using the shell's builtin
-.Li read
+.Ic read
 command. Some shells, e.g.
 .Pa /bin/sh
 on Solaris, cannot read raw input but apply backslash processing to
 the input. When
 .Nm
-is executed under such a shell, all backslash characters on the
+is executed by such a shell, all backslash characters on the
 command line must be escaped by another backslash character; i.e., you
 have to enter
 .Li \(rs\(rsx -> x
@@ -162,3 +169,11 @@ displays the following warning at startup when it is appropriate.
 .Dl Warning: Backslashes on the command line must be escaped
 .Dl \& \& For instance, use \(rs\(rsx -> x for a lambda abstraction
 .Dl \& \& and '\(rs\(rsn' for the linefeed character.
+.Pp
+Command line editing and history require support from the
+.Ic read
+command of the shell, which executes the
+.Nm
+script. This is available only for Gnu Bash and Korn shells except for
+the public domain version. Command line editing also works for the Z
+shell, but without history.
