@@ -1,8 +1,8 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 1744 2005-08-23 16:17:12Z wlux $
+# $Id: Makefile.in 1839 2006-01-07 12:14:21Z wlux $
 #
-# Copyright (c) 2004-2005, Wolfgang Lux
+# Copyright (c) 2004-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
 #
 
@@ -39,17 +39,47 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_DIR = @INSTALL_DIR@
 
 # file lists
-curry_prelude_SRCS = prelude.curry IO.curry
-curry_stdlib_SRCS  = AllSolutions.curry Array.curry Bits.curry CError.curry \
-		     CForeign.curry CString.curry CTypes.curry Char.curry \
-		     Combinatorial.curry Directory.curry FiniteMap.curry \
-		     Float.curry Foreign.curry ForeignPtr.curry IOExts.curry \
-		     IOVector.curry Ix.curry Integer.curry List.curry \
-		     MarshalAlloc.curry MarshalError.curry MarshalUtils.curry \
-		     Maybe.curry Monad.curry Numeric.curry Parser.curry \
-		     Ports.curry Ptr.curry Random.curry Read.curry Set.curry \
-		     StablePtr.curry Success.curry System.curry Time.curry \
-		     Trace.curry Unsafe.curry
+curry_prelude_SRCS = \
+	prelude.curry \
+	IO.curry
+curry_stdlib_SRCS  = \
+	AllSolutions.curry \
+	Array.curry \
+	Bits.curry \
+	CError.curry \
+	CForeign.curry \
+	CString.curry \
+	CTypes.curry \
+	Char.curry \
+	Combinatorial.curry \
+	Directory.curry \
+	FiniteMap.curry \
+	Float.curry \
+	Foreign.curry \
+	ForeignPtr.curry \
+	IOExts.curry \
+	IOVector.curry \
+	Ix.curry \
+	Integer.curry \
+	List.curry \
+	MarshalAlloc.curry \
+	MarshalError.curry \
+	MarshalUtils.curry \
+	Maybe.curry \
+	Monad.curry \
+	Numeric.curry \
+	Parser.curry \
+	Ports.curry \
+	Ptr.curry \
+	Random.curry \
+	Read.curry \
+	Set.curry \
+	StablePtr.curry \
+	Success.curry \
+	System.curry \
+	Time.curry \
+	Trace.curry \
+	Unsafe.curry
 curry_SRCS = $(curry_prelude_SRCS) $(curry_$(stdlib)_SRCS)
 curry_INTF = $(curry_SRCS:.curry=.icurry)
 curry_CSRC = $(curry_INTF:.icurry=.c)
@@ -177,6 +207,7 @@ distdir:
 	cp $(DISTFILES_PATH) $(distdir)
 bindistdir: $(BINDISTFILES)
 	cp $(BINDISTFILES) $(distdir)/lib
+	for a in $(distdir)/lib/*.a; do $(RANLIB) $$a; done
 
 # automatic reconfiguration
 $(top_srcdir)/configure: $(top_srcdir)/configure.in $(top_srcdir)/aclocal.m4

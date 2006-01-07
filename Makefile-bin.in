@@ -1,8 +1,8 @@
 # Makefile for the binary distribution of the Curry compiler -*- makefile -*-
 #
-# $Id: Makefile-bin.in 1744 2005-08-23 16:17:12Z wlux $
+# $Id: Makefile-bin.in 1839 2006-01-07 12:14:21Z wlux $
 #
-# Copyright (c) 2002-2004, Wolfgang Lux
+# Copyright (c) 2002-2006, Wolfgang Lux
 #
 
 # source directory
@@ -49,6 +49,12 @@ all:
 	@echo 'Man Pages: $$(mandir)/man/man1 = $(mandir)/man/man1'
 
 # install the distribution
+begin_config = ^\# DO NOT DELETE: Beginning of in-place configuration$$
+end_config   = ^\# DO NOT DELETE: End of in-place configuration$$
+install_edit = sed \
+	-e '/$(begin_config)/,/$(end_config)/d' \
+	-e "s/%BUILD_DATE%/`date`/"
+
 install: $(man1_MANS)
 	$(INSTALL_DIR) $(bindir)
 	$(INSTALL_DIR) $(libdir)
@@ -57,7 +63,12 @@ install: $(man1_MANS)
 	$(INSTALL_DIR) $(mandir)/man1
 	rm -f $(bindir)/cycc $(libdir)/curry/cyc
 	for f in $(bin_SCRIPTS); do \
-		$(INSTALL_PROGRAM) $$f $(bindir) || exit $$?; \
+		cmd=`basename $$f`; \
+		$(install_edit) $$f > /tmp/$$cmd && \
+			$(INSTALL_PROGRAM) /tmp/$$cmd $(bindir)/$$cmd; \
+		rc=$$?; \
+		rm -f /tmp/$$cmd; \
+		test $$rc = 0 || exit $$rc; \
 	done
 	for f in $(lib_PROGS); do \
 		$(INSTALL_PROGRAM) $$f $(libdir)/curry || exit $$?; \

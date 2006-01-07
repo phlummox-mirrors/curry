@@ -1,6 +1,6 @@
-dnl $Id: configure.in 1834 2005-11-12 15:13:00Z wlux $
+dnl $Id: configure.in 1839 2006-01-07 12:14:21Z wlux $
 dnl
-dnl Copyright (c) 2002-2005, Wolfgang Lux
+dnl Copyright (c) 2002-2006, Wolfgang Lux
 dnl See LICENSE for the full license.
 dnl
 
@@ -232,12 +232,10 @@ AC_CONFIG_FILES([runtime/Makefile],
 	        [test -f runtime/.depend || touch runtime/.depend])
 AC_CONFIG_FILES([curry/Makefile],
 		[test -f curry/.depend || touch curry/.depend])
+AC_CONFIG_FILES([inplace-config])
 AC_CONFIG_FILES([cyc], [chmod +x cyc])
-AC_CONFIG_FILES([cyc-inplace], [chmod +x cyc-inplace])
 AC_CONFIG_FILES([cymake], [chmod +x cymake])
-AC_CONFIG_FILES([cymake-inplace], [chmod +x cymake-inplace])
 AC_CONFIG_FILES([cyi], [chmod +x cyi])
-AC_CONFIG_FILES([cyi-inplace], [chmod +x cyi-inplace])
 AC_CONFIG_FILES([makedoc], [chmod +x makedoc])
 
 AC_CONFIG_COMMANDS([depend], [${MAKE-make} depend])

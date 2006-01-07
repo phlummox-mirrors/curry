@@ -1,11 +1,11 @@
-#!@CYI_SHELL@
+#! @CYI_SHELL@
 # @configure_input@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1832 2005-11-11 17:32:45Z wlux $
+# $Id: cyi.in 1839 2006-01-07 12:14:21Z wlux $
 #
-# Copyright (c) 2002-2005, Wolfgang Lux
+# Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
 #
 
@@ -20,8 +20,9 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@
-: ${cymake=@bindir@/cymake}
-: ${cyc=@bindir@/cyc}
+# DO NOT DELETE: Beginning of in-place configuration
+. @abs_top_builddir@/inplace-config
+# DO NOT DELETE: End of in-place configuration
 
 echo "    _____ __ __"
 echo "   / ___/ |  / _               Muenster Curry Compiler"
@@ -30,6 +31,8 @@ echo " / /___  / /  | |"
 echo " \____/ /_/   |_|              Type :h for help"
 echo 
 
+cyc=${CYC-$bindir/cyc}
+cymake=$bindir/cymake
 editor=${VISUAL-${EDITOR-/usr/bin/vi}}
 srcdir=
 source=
@@ -197,7 +200,7 @@ reload ( ) {
 
 clean ( ) {
   test -n "$target" || return
-  (cd "$srcdir" && $cymake -q --clean $cyopts $module $target)
+  (cd "$srcdir" && $cymake -q --clean $cyopts $target)
 }
 
 edit ( ) {

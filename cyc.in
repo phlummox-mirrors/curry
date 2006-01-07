@@ -1,11 +1,11 @@
-#!/bin/sh
+#! /bin/sh
 # @configure_input@
 #
 # Shell script for compiling Curry modules
 #
-# $Id: cyc.in 1838 2005-11-17 08:03:45Z wlux $
+# $Id: cyc.in 1839 2006-01-07 12:14:21Z wlux $
 #
-# Copyright (c) 2002-2005, Wolfgang Lux
+# Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
 #
 
@@ -17,7 +17,10 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@
-: ${CURRY_PATH=@libdir@/curry}
+# DO NOT DELETE: Beginning of in-place configuration
+. @abs_top_builddir@/inplace-config
+# DO NOT DELETE: End of in-place configuration
+: ${CURRY_PATH=$libdir/curry}
 : ${CURRY_IMPORT_PATH=$CURRY_PATH}
 : ${CURRY_INCLUDE_PATH=$CURRY_PATH}
 : ${CURRY_LIBRARY_PATH=$CURRY_PATH}
@@ -30,7 +33,7 @@ verbose=
 toC=
 toS=
 toO=
-cycc=${CURRY_PATH}/cycc
+cycc=$CURRY_PATH/cycc
 cyccopts=
 rtopts=
 debug=
@@ -130,7 +133,7 @@ while test $# -gt 0; do
     -I ) ccopts="$ccopts -I$2"; shift;;
     -I* ) ccopts="$ccopts $1";;
     -i ) ccopts="$ccopts -I$2"; imports="$imports -i $2"; shift;;
-    -i* ) ccopts="$ccopts -I`expr "$1" : '-i\(.*\)'`"; imports="$imports $1";;
+    -i* ) ccopts=$ccopts\ -I`expr "$1" : '-i\(.*\)'`; imports="$imports $1";;
 
     # Linker options
     -ldopt-* | --ldopt-* | -ldopts-* |--ldopts-* )

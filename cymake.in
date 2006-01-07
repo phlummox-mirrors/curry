@@ -1,11 +1,11 @@
-#!/bin/sh
+#! /bin/sh
 # @configure_input@
 #
 # Shell script for building Curry programs
 #
-# $Id: cymake.in 1838 2005-11-17 08:03:45Z wlux $
+# $Id: cymake.in 1839 2006-01-07 12:14:21Z wlux $
 #
-# Copyright (c) 2002-2005, Wolfgang Lux
+# Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
 #
 
@@ -18,23 +18,25 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@
-: ${CURRY_PATH=@libdir@/curry}
+# DO NOT DELETE: Beginning of in-place configuration
+. @abs_top_builddir@/inplace-config
+# DO NOT DELETE: End of in-place configuration
+: ${CYC=$bindir/cyc}
+: ${CURRY_PATH=$libdir/curry}
 : ${CURRY_IMPORT_PATH=$CURRY_PATH}
-: ${CURRY_INCLUDE_PATH=$CURRY_PATH}
-: ${CURRY_LIBRARY_PATH=$CURRY_PATH}
-export CURRY_IMPORT_PATH CURRY_INCLUDE_PATH CURRY_LIBRARY_PATH
 
 # Local variables
 echo=echo
 exec=
 verbose=
-cyc=${CYC=`dirname $0`/cyc}
-cymk=${CURRY_PATH}/cymk
+cyc=$CYC
+cymk=$CURRY_PATH/cymk
 mkopts=
 cyopts=
 ldopts=
 goal=
 typeIt=
+output=
 clean=
 depend=
 target=
@@ -110,8 +112,8 @@ while test $# -gt 0; do
 
     # Include files and imported modules
     -i | -P ) cyopts="$cyopts -i$2"; imports="$imports $1 $2"; shift;;
-    -i* ) cyopts="$cyopts -i`expr "$1" : '-i\(.*\)'`"; imports="$imports $1";;
-    -P* ) cyopts="$cyopts -i`expr "$1" : '-P\(.*\)'`"; imports="$imports $1";;
+    -i* ) cyopts=$cyopts\ -i`expr "$1" : '-i\(.*\)'`; imports="$imports $1";;
+    -P* ) cyopts=$cyopts\ -i`expr "$1" : '-P\(.*\)'`; imports="$imports $1";;
     
     # Linker options
     -ldopt-* | --ldopt-* | -ldopts-* | --ldopts-* ) ldopts="$ldopts $1";;
@@ -188,11 +190,11 @@ fi
 
 
 if test $# -eq 0; then
-  test -n "$output$" && output="-o $output"
+  test -n "$output" || output=a.out
   if test -n "$clean"; then
-    remove ${output=a.out}
+    remove $output
   else
-    link $output
+    link -o $output
   fi
   exit $?
 fi
