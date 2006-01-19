@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1796 2005-10-19 16:07:47Z wlux $
+% $Id: Desugar.lhs 1840 2006-01-19 19:31:41Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Desugar.lhs}
@@ -342,7 +342,7 @@ with a local declaration for $v$.
 >     LazyPattern t' -> desugarLazy m p ds t'
 >     _ ->
 >       do
->         v' <- fetchSt >>= freshIdent m "_#lazy" . monoType . flip typeOf t
+>         v' <- freshVar m "_#lazy" t
 >         return (patDecl p t (mkVar v') : ds,VariablePattern v')
 
 \end{verbatim}
@@ -439,8 +439,7 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     return (Apply (Apply prelFlip op') e')
 > desugarExpr m p (Lambda ts e) =
 >   do
->     f <- fetchSt >>=
->          freshIdent m "_#lambda" . polyType . flip typeOf (Lambda ts e)
+>     f <- freshFun m "_#lambda" (Lambda ts e)
 >     desugarExpr m p (Let [funDecl p f ts e] (mkVar f))
 > desugarExpr m p (Let ds e) =
 >   do
@@ -459,7 +458,7 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     return (Case e1' [caseAlt p truePattern e2',caseAlt p falsePattern e3'])
 > desugarExpr m p (Case e alts) =
 >   do
->     v <- fetchSt >>= freshIdent m "_#case" . monoType . flip typeOf (head ts)
+>     v <- freshVar m "_#case" (head ts)
 >     e' <- desugarExpr m p e
 >     liftM (mkCase m v e') 
 >           (mapM (liftM fromAlt . desugarAltLhs m) alts >>=
@@ -639,9 +638,7 @@ where the default alternative is redundant.
 >            -> [(ConstrTerm,Match)] -> ConstrTerm -> DesugarState Alt
 > desugarAlt m prefix vs alts t =
 >   do
->     tyEnv <- fetchSt
->     vs' <- mapM (freshIdent m "_#case" . monoType . typeOf tyEnv)
->                 (arguments t')
+>     vs' <- mapM (freshVar m "_#case") (arguments t')
 >     liftM (caseAlt (pos (snd (head alts')))
 >                    (renameArgs vs' (fixLiteralType t' t)))
 >           (desugarCase m id (prefix (vs' ++ vs))
@@ -709,8 +706,8 @@ instead of \texttt{(++)} and \texttt{map} in place of
 >   | otherwise =
 >       do
 >         tyEnv <- fetchSt
->         v <- freshIdent m "_#var" (monoType (typeOf tyEnv t))
->         l' <- freshIdent m "_#var" (monoType (typeOf tyEnv e))
+>         v <- freshVar m "_#var" t
+>         l' <- freshVar m "_#var" e
 >         desugarExpr m p (apply prelFoldr [foldFunct v l' e,List [],l])
 >   where qualExpr v (ListCompr e []) l = apply prelMap [Lambda [v] e,l]
 >         qualExpr v e l = apply prelConcatMap [Lambda [v] e,l]
@@ -734,6 +731,18 @@ Generation of fresh names
 >     updateSt_ (bindFun m x ty)
 >     return x
 >   where mkName pre n = mkIdent (pre ++ show n)
+
+> freshVar :: Typeable a => ModuleIdent -> String -> a -> DesugarState Ident
+> freshVar m prefix x =
+>   do
+>     tyEnv <- fetchSt
+>     freshIdent m prefix (monoType (typeOf tyEnv x))
+
+> freshFun :: Typeable a => ModuleIdent -> String -> a -> DesugarState Ident
+> freshFun m prefix x =
+>   do
+>     tyEnv <- fetchSt
+>     freshIdent m prefix (polyType (typeOf tyEnv x))
 
 \end{verbatim}
 Prelude entities

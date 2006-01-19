@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 1797 2005-10-19 19:48:57Z wlux $
+% $Id: Simplify.lhs 1840 2006-01-19 19:31:41Z wlux $
 %
-% Copyright (c) 2003-2005, Wolfgang Lux
+% Copyright (c) 2003-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Simplify.lhs}
@@ -193,8 +193,7 @@ declarations will be removed.
 >           | length as == 1 = return (Case e (map (applyToAlt es) as))
 >           | otherwise =
 >               do
->                 tyEnv <- fetchSt
->                 vs <- mapM (freshIdent m argId . monoType . typeOf tyEnv) es
+>                 vs <- mapM (freshVar m argId) es
 >                 return (foldr2 mkLet
 >                                (Case e (map (applyToAlt (map mkVar vs)) as))
 >                                vs es)
@@ -236,8 +235,7 @@ functions in later phases of the compiler.
 >     return (Apply e1' e2')
 > simplifyExpr m env (Let ds e) =
 >   do
->     tyEnv <- fetchSt
->     dss' <- mapM (sharePatternRhs m tyEnv) ds
+>     dss' <- mapM (sharePatternRhs m) ds
 >     simplifyLet m env (scc bv (qfv m) (foldr hoistDecls [] (concat dss'))) e
 > simplifyExpr m env (Case e alts) =
 >   do
@@ -461,17 +459,17 @@ this does not change the generated code, but only the types of the
 selector functions.
 \begin{verbatim}
 
-> sharePatternRhs :: ModuleIdent -> ValueEnv -> Decl -> SimplifyState [Decl]
-> sharePatternRhs m tyEnv (PatternDecl p t rhs) =
+> sharePatternRhs :: ModuleIdent -> Decl -> SimplifyState [Decl]
+> sharePatternRhs m (PatternDecl p t rhs) =
 >   case t of
 >     VariablePattern _ -> return [PatternDecl p t rhs]
 >     _ -> 
 >       do
->         v <- freshIdent m patternId (monoType (typeOf tyEnv t))
+>         v <- freshVar m patternId t
 >         return [PatternDecl p t (SimpleRhs p (mkVar v) []),
 >                 PatternDecl p (VariablePattern v) rhs]
 >   where patternId n = mkIdent ("_#pat" ++ show n)
-> sharePatternRhs _ _ d = return [d]
+> sharePatternRhs _ d = return [d]
 
 > expandPatternBindings :: ModuleIdent -> ValueEnv -> [Ident] -> Decl
 >                       -> SimplifyState [Decl]
@@ -514,6 +512,13 @@ Auxiliary functions
 >     x <- liftM f (liftSt (liftRt (updateSt (1 +))))
 >     updateSt_ (bindFun m x ty)
 >     return x
+
+> freshVar :: Typeable a => ModuleIdent -> (Int -> Ident) -> a
+>          -> SimplifyState Ident
+> freshVar m f x =
+>   do
+>     tyEnv <- fetchSt
+>     freshIdent m f (monoType (typeOf tyEnv x))
 
 > shuffle :: [a] -> [[a]]
 > shuffle xs = shuffle id xs
