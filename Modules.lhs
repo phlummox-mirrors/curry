@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1843 2006-01-31 19:22:48Z wlux $
+% $Id: Modules.lhs 1844 2006-01-31 19:29:19Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -486,12 +486,13 @@ from the type environment.
 \begin{verbatim}
 
 > ppTypes :: ModuleIdent -> [(Ident,ValueInfo)] -> Doc
-> ppTypes m = vcat . map (ppIDecl . mkDecl) . filter (isValue . snd)
->   where mkDecl (v,Value _ (ForAll _ ty)) =
->           IFunctionDecl undefined (qualify v) (fromType m ty)
->         isValue (DataConstructor _ _) = False
->         isValue (NewtypeConstructor _ _) = False
->         isValue (Value _ _) = True
+> ppTypes m = vcat . map ppInfo
+>   where ppInfo (c,DataConstructor _ (ForAll _ ty)) =
+>           ppIDecl (mkDecl c ty) <+> text "-- data constructor"
+>         ppInfo (c,NewtypeConstructor _ (ForAll _ ty)) =
+>           ppIDecl (mkDecl c ty) <+> text "-- newtype constructor"
+>         ppInfo (x,Value _ (ForAll _ ty)) = ppIDecl (mkDecl x ty)
+>         mkDecl f ty = IFunctionDecl undefined (qualify f) (fromType m ty)
 
 \end{verbatim}
 Various filename extensions.
