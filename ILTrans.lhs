@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1817 2005-11-06 23:42:07Z wlux $
+% $Id: ILTrans.lhs 1843 2006-01-31 19:22:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -81,9 +81,9 @@ synonyms in place of newtype declarations (see Sect.~\ref{sec:IL}).
 > translForeign :: ModuleIdent -> ValueEnv -> Ident -> CallConv -> String
 >               -> IL.Decl
 > translForeign m tyEnv f cc ie =
->   IL.ForeignDecl f' (callConv cc) ie (translType (rawType (funType f' tyEnv)))
->   where f' = qualifyWith m f
->         callConv CallConvPrimitive = IL.Primitive
+>   IL.ForeignDecl (qualifyWith m f) (callConv cc) ie
+>                  (translType (rawType (varType f tyEnv)))
+>   where callConv CallConvPrimitive = IL.Primitive
 >         callConv CallConvCCall = IL.CCall
 
 \end{verbatim}
@@ -170,10 +170,9 @@ uses flexible matching.
 > translFunction :: ModuleIdent -> ValueEnv -> EvalEnv
 >                -> Ident -> [Equation] -> IL.Decl
 > translFunction m tyEnv evEnv f eqs =
->   IL.FunctionDecl f' vs (translType ty)
+>   IL.FunctionDecl (qualifyWith m f) vs (translType ty)
 >                   (match ev vs (map (translEquation tyEnv vs vs'') eqs))
->   where f' = qualifyWith m f
->         ty = rawType (funType f' tyEnv)
+>   where ty = rawType (varType f tyEnv)
 >         ev = maybe IL.Flex evalMode (lookupEnv f evEnv)
 >         vs = if isSelectorId f then translArgs eqs vs' else vs'
 >         (vs',vs'') = splitAt (arrowArity ty) (argNames (mkIdent ""))

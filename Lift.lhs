@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1798 2005-10-21 08:08:21Z wlux $
+% $Id: Lift.lhs 1843 2006-01-31 19:22:48Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -128,8 +128,8 @@ expressions. If some of the cases have guards, e.g.,
     x -> let double y = y * y in double x
 \end{verbatim}
 the desugarer at present may duplicate code. While there is no problem
-with local variable declaration being duplicated, we must avoid to
-lift local function declarations more than once. Therefore,
+with local variable declarations being duplicated, we must avoid
+lifting a local function declaration more than once. Therefore,
 \texttt{abstractFunDecls} transforms only those function declarations
 that have not been lifted and discards all other declarations. Note
 that it is easy to check whether a function has been lifted by
@@ -222,7 +222,7 @@ variables in order to avoid an inadvertent name capturing.
 > abstractFunTypes m pre fvs fs tyEnv = foldr abstractFunType tyEnv fs
 >   where tys = map (rawType . flip varType tyEnv) fvs
 >         abstractFunType f tyEnv =
->           qualBindFun m (liftIdent pre f) (genType ty) (unbindFun f tyEnv)
+>           globalBindFun m (liftIdent pre f) (genType ty) (unbindFun f tyEnv)
 >           where ty = foldr TypeArrow (rawType (varType f tyEnv)) tys
 >         genType ty =
 >           ForAll (length tvs) (subst (foldr2 bindSubst idSubst tvs tvs') ty)
@@ -370,9 +370,8 @@ to the top-level.
 > unapply (Let ds e) es = (Let ds e,es)
 > unapply (Case e alts) es = (Case e alts,es)
 
-> qualBindFun :: ModuleIdent -> Ident -> TypeScheme -> ValueEnv -> ValueEnv
-> qualBindFun m f ty = qualBindTopEnv f' (Value f' ty)
->   where f' = qualifyWith m f
+> globalBindFun :: ModuleIdent -> Ident -> TypeScheme -> ValueEnv -> ValueEnv
+> globalBindFun m f ty = globalBindTopEnv m f (Value (qualifyWith m f) ty)
 
 > unbindFun :: Ident -> ValueEnv -> ValueEnv
 > unbindFun = localUnbindTopEnv

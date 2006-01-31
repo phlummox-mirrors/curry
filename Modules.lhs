@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1842 2006-01-31 14:22:53Z wlux $
+% $Id: Modules.lhs 1843 2006-01-31 19:22:48Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -113,7 +113,7 @@ declaration to the module.
 >     (pEnv',ds''') <- precCheck m pEnv $ rename ds''
 >     tcEnv' <- kindCheck m tcEnv ds'''
 >     tyEnv' <- typeCheck m tcEnv' tyEnv ds'''
->     let (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv pEnv' tcEnv' tyEnv'
+>     let (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv m pEnv' tcEnv' tyEnv'
 >     return (tcEnv'',tyEnv'',
 >             Module m (Just es') is (qual tyEnv' ds'''),
 >             exportInterface m es' pEnv'' tcEnv'' tyEnv'')
@@ -148,17 +148,14 @@ declaration to the module.
 >           [(DumpNormalized,ILPP.ppModule ilNormal),
 >            (DumpCam,CamPP.ppModule cam)]
 
-> qualifyEnv :: ModuleEnv -> PEnv -> TCEnv -> ValueEnv -> (PEnv,TCEnv,ValueEnv)
-> qualifyEnv mEnv pEnv tcEnv tyEnv =
->   (foldr bindQual pEnv' (localBindings pEnv),
->    foldr bindQual tcEnv' (localBindings tcEnv),
->    foldr bindGlobal tyEnv' (localBindings tyEnv))
+> qualifyEnv :: ModuleEnv -> ModuleIdent -> PEnv -> TCEnv -> ValueEnv
+>            -> (PEnv,TCEnv,ValueEnv)
+> qualifyEnv mEnv m pEnv tcEnv tyEnv =
+>   (foldr (uncurry (globalBindTopEnv m)) pEnv' (localBindings pEnv),
+>    foldr (uncurry (globalBindTopEnv m)) tcEnv' (localBindings tcEnv),
+>    foldr (uncurry (bindTopEnv m)) tyEnv' (localBindings tyEnv))
 >   where (pEnv',tcEnv',tyEnv') =
 >           foldl importInterfaceIntf initEnvs (map snd (envToList mEnv))
->         bindQual (_,y) = qualBindTopEnv (origName y) y
->         bindGlobal (x,y)
->           | isRenamed x = localBindTopEnv x y
->           | otherwise = bindQual (x,y)
 
 > ilImports :: ModuleEnv -> IL.Module -> [IL.Decl]
 > ilImports mEnv (IL.Module _ is _) =
@@ -247,7 +244,7 @@ compilation of a goal is similar to that of a module.
 >           precCheckGoal pEnv . renameGoal
 >     tyEnv' <- kindCheckGoal tcEnv g' >>
 >               typeCheckGoal tcEnv tyEnv g'
->     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv pEnv tcEnv tyEnv'
+>     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv emptyMIdent pEnv tcEnv tyEnv'
 >     return (tcEnv',tyEnv'',qualGoal tyEnv' g')
 
 > transGoal :: Bool -> String -> ModuleEnv -> TCEnv -> ValueEnv -> Ident
