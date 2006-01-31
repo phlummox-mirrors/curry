@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1795 2005-10-18 09:31:29Z wlux $
+% $Id: Base.lhs 1845 2006-01-31 23:09:47Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Base.lhs}
@@ -470,11 +470,13 @@ Here is a list of predicates identifying various kinds of
 declarations.
 \begin{verbatim}
 
-> isTypeDecl :: TopDecl -> Bool
+> isTypeDecl, isBlockDecl :: TopDecl -> Bool
 > isTypeDecl (DataDecl _ _ _ _) = True
 > isTypeDecl (NewtypeDecl _ _ _ _) = True
 > isTypeDecl (TypeDecl _ _ _ _) = True
 > isTypeDecl (BlockDecl _) = False
+> isBlockDecl (BlockDecl _) = True
+> isBlockDecl _ = False
 
 > isInfixDecl, isTypeSig, isEvalAnnot :: Decl -> Bool
 > isFreeDecl, isValueDecl :: Decl -> Bool

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: SyntaxCheck.lhs 1845 2006-01-31 23:09:47Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{SyntaxCheck.lhs}
@@ -40,12 +40,11 @@ declarations are checked within the resulting environment.
 >   case linear cs of
 >     Linear ->
 >       do
->         (env',vds') <- checkTopDecls m cs env [d | BlockDecl d <- vds]
->         return (toplevelEnv env',tds ++ map BlockDecl vds')
+>         (env',ds') <- checkTopDecls m cs env ds
+>         return (toplevelEnv env',ds')
 >     NonLinear (P p c) -> errorAt p (duplicateData c)
->   where (tds,vds) = partition isTypeDecl ds
->         env = foldr (bindConstr m) (globalEnv (fmap valueKind tyEnv)) cs
->         cs = concatMap constrs tds
+>   where env = foldr (bindConstr m) (globalEnv (fmap valueKind tyEnv)) cs
+>         cs = concatMap constrs ds
 
 > syntaxCheckGoal :: ValueEnv -> Goal -> Error Goal
 > syntaxCheckGoal tyEnv g = checkGoal (globalEnv (fmap valueKind tyEnv)) g
@@ -60,15 +59,51 @@ declarations are checked within the resulting environment.
 > bindVar (P _ v) = localBindNestEnv v (Var (qualify v))
 
 \end{verbatim}
-When a module is checked, the global declaration group is checked. A
-goal is checked similar to the right hand side of an equation. Thus,
-all of its declarations are considered as local declarations. The
-final environment can be discarded.
+When a module's global declaration group is checked, the compiler must
+preserve the order of type and value declarations. This is necessary
+in order to detect the error in the following code fragment.
+\begin{verbatim}
+  f = 0
+  data T = C
+  f = 1
+\end{verbatim}
+This error would go by unnoticed if the compiler would partition
+top-level declarations into type and value declarations.
+Unfortunately, this means that we cannot use \texttt{checkLocalDecls}
+in order to check the global declaration group.
 \begin{verbatim}
 
-> checkTopDecls :: ModuleIdent -> [P Ident] -> VarEnv -> [Decl]
->               -> Error (VarEnv,[Decl])
-> checkTopDecls m cs env ds = checkDeclGroup True (bindFunc m) cs env ds
+> checkTopDecls :: ModuleIdent -> [P Ident] -> VarEnv -> [TopDecl]
+>               -> Error (VarEnv,[TopDecl])
+> checkTopDecls m cs env ds =
+>   do
+>     ds' <- liftM joinTopEquations (mapM (checkTopDeclLhs env) ds)
+>     env' <- checkDeclVars (bindFunc m) cs env [d | BlockDecl d <- ds']
+>     ds'' <- mapM (checkTopDeclRhs env') ds'
+>     return (env',ds'')
+
+> checkTopDeclLhs :: VarEnv -> TopDecl -> Error TopDecl
+> checkTopDeclLhs env (BlockDecl d) = liftM BlockDecl (checkDeclLhs True env d)
+> checkTopDeclLhs _ d = return d
+
+> joinTopEquations :: [TopDecl] -> [TopDecl]
+> joinTopEquations [] = []
+> joinTopEquations (d : ds)
+>   | isBlockDecl d =
+>       map BlockDecl (joinEquations [d | BlockDecl d <- d:ds']) ++
+>       joinTopEquations ds''
+>   | otherwise = d : joinTopEquations ds
+>   where (ds',ds'') = span isBlockDecl ds
+
+> checkTopDeclRhs :: VarEnv -> TopDecl -> Error TopDecl
+> checkTopDeclRhs env (BlockDecl d) = liftM BlockDecl (checkDeclRhs env d)
+> checkTopDeclRhs _ d = return d
+
+\end{verbatim}
+A goal is checked like the right hand side of a pattern declaration.
+Thus, declarations in the goal's where clause are considered local
+declarations. The final environment can be discarded.
+\begin{verbatim}
 
 > checkGoal :: VarEnv -> Goal -> Error Goal
 > checkGoal env (Goal p e ds) =
@@ -95,16 +130,13 @@ top-level.
 \begin{verbatim}
 
 > checkLocalDecls :: VarEnv -> [Decl] -> Error (VarEnv,[Decl])
-> checkLocalDecls env ds = checkDeclGroup False bindVar [] (nestEnv env) ds
-
-> checkDeclGroup :: Bool -> (P Ident -> VarEnv -> VarEnv) -> [P Ident]
->                -> VarEnv -> [Decl] -> Error (VarEnv,[Decl])
-> checkDeclGroup top bindVar cs env ds =
+> checkLocalDecls env ds =
 >   do
->     ds' <- liftM joinEquations (mapM (checkDeclLhs top env) ds)
->     env' <- checkDeclVars bindVar cs env ds'
->     ds'' <- mapM (checkDeclRhs env') ds'
->     return (env',ds'')
+>     ds' <- liftM joinEquations (mapM (checkDeclLhs False env') ds)
+>     env'' <- checkDeclVars bindVar [] env' ds'
+>     ds'' <- mapM (checkDeclRhs env'') ds'
+>     return (env'',ds'')
+>   where env' = nestEnv env
 
 > checkDeclLhs :: Bool -> VarEnv -> Decl -> Error Decl
 > checkDeclLhs _ _ (InfixDecl p fix pr ops) = return (InfixDecl p fix pr ops)
@@ -541,14 +573,14 @@ Error messages.
 > duplicateData :: Ident -> String
 > duplicateData c = "More than one definition for data constructor " ++ name c
 
+> duplicatePrecedence :: Ident -> String
+> duplicatePrecedence op = "More than one fixity declaration for " ++ name op
+
 > duplicateTypeSig :: Ident -> String
 > duplicateTypeSig v = "More than one type signature for " ++ name v
 
 > duplicateEvalAnnot :: Ident -> String
 > duplicateEvalAnnot v = "More than one eval annotation for " ++ name v
-
-> duplicatePrecedence :: Ident -> String
-> duplicatePrecedence op = "More than one fixity declaration for " ++ name op
 
 > nonVariable :: String -> Ident -> String
 > nonVariable what c =
