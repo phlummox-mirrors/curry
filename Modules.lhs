@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1818 2005-11-07 00:26:21Z wlux $
+% $Id: Modules.lhs 1841 2006-01-31 08:12:32Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -229,12 +229,12 @@ compilation of a goal is similar to that of a module.
 > loadGoalModule paths (Just fn) =
 >   do
 >     (mEnv,_,_,Module m _ is _,_) <- loadModule transparent paths fn
->     return (mEnv,m,is ++ [importDecl (first "") m False])
+>     return (mEnv,m,is ++ [importDecl (first "") m])
 >   where transparent (Module m _ is ds) = Module m Nothing is ds
 > loadGoalModule paths Nothing =
 >   do
 >     mEnv <- loadInterface paths [] emptyEnv (P p m)
->     return (mEnv,emptyMIdent,[importDecl p m False])
+>     return (mEnv,emptyMIdent,[importDecl p m])
 >   where p = first ""
 >         m = preludeMIdent
 
@@ -253,10 +253,9 @@ compilation of a goal is similar to that of a module.
 > transGoal :: Bool -> String -> ModuleEnv -> TCEnv -> ValueEnv -> Ident
 >           -> Goal -> (CFile,[(Dump,Doc)])
 > transGoal debug run mEnv tcEnv tyEnv goalId g = (ccode,dumps)
->   where qGoalId = qualifyWith emptyMIdent goalId
+>   where m = emptyMIdent
 >         evEnv = evalEnvGoal g
->         (vs,desugared,tyEnv') =
->           desugarGoal debug tcEnv tyEnv emptyMIdent goalId g
+>         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
 >         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
 >         (lifted,tyEnv''',evEnv') = lift tyEnv'' evEnv simplified
 >         il = ilTrans tyEnv''' evEnv' lifted
@@ -266,10 +265,10 @@ compilation of a goal is similar to that of a module.
 >         imports = camCompileData (ilImports mEnv ilNormal)
 >         ccode =
 >           genModule imports cam ++
->           genEntry run (fun qGoalId) (fmap (map name) vs)
+>           genEntry run (fun (qualifyWith m goalId)) (fmap (map name) vs)
 >         dumps =
 >           [(DumpRenamed,ppGoal g),
->            (DumpTypes,ppTypes emptyMIdent (localBindings tyEnv)),
+>            (DumpTypes,ppTypes m (localBindings tyEnv)),
 >            (DumpDesugared,ppModule desugared),
 >            (DumpSimplified,ppModule simplified),
 >            (DumpLifted,ppModule lifted),
@@ -292,7 +291,7 @@ to determine the type of the goal when linking the program.
 >   where qMainId = qualify mainId
 >         mEnv' = bindModule (Interface m is ds) mEnv
 >         (tcEnv,tyEnv,g) = ok $
->           checkGoal mEnv' [importDecl (first "") m False]
+>           checkGoal mEnv' [importDecl (first "") m]
 >                     (Goal (first "") (Variable qMainId) [])
 >         (ccode,_) = transGoal debug "curry_main" mEnv' tcEnv tyEnv mainId g
 
@@ -320,21 +319,19 @@ imported modules into scope in the current module.
 > initEnvs = (initPEnv,initTCEnv,initDCEnv)
 
 \end{verbatim}
-An implicit import of the prelude is added to the declarations of
-every module, except for the prelude itself. If no explicit import for
-the prelude is present, an unqualified import is inserted, otherwise
-only a qualified import is added.
+The prelude is imported implicitly into every module that does not
+import the prelude explicitly with an import declaration. Obviously,
+no import declaration is added to the prelude itself.
 \begin{verbatim}
 
 > importPrelude :: FilePath -> Module -> Module
-> importPrelude fn (Module m es is ds) =
->   Module m es (if m == preludeMIdent then is else is') ds
->   where is' = importDecl (first fn) preludeMIdent q : is
->         q = preludeMIdent `elem` map importedModule is
->         importedModule (ImportDecl _ m _ asM _) = fromMaybe m asM
+> importPrelude fn (Module m es is ds) = Module m es is' ds
+>   where is'
+>           | preludeMIdent `elem` (m : [m | ImportDecl _ m _ _ _ <- is]) = is
+>           | otherwise = importDecl (first fn) preludeMIdent : is
 
-> importDecl :: Position -> ModuleIdent -> Bool -> ImportDecl
-> importDecl p m q = ImportDecl p m q Nothing Nothing
+> importDecl :: Position -> ModuleIdent -> ImportDecl
+> importDecl p m = ImportDecl p m False Nothing Nothing
 
 \end{verbatim}
 The module \texttt{DebugPrelude} is loaded automatically when the
