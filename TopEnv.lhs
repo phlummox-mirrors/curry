@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TopEnv.lhs 1787 2005-10-08 08:19:02Z wlux $
+% $Id: TopEnv.lhs 1842 2006-01-31 14:22:53Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -134,13 +134,10 @@ of their renaming key. This allows using \texttt{bindTopEnv} to
 introduce bindings for both global and local definitions.
 \begin{verbatim}
 
-> globalKey :: Int
-> globalKey = uniqueId (mkIdent "")
-
 > bindTopEnv :: ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
 > bindTopEnv m x
->   | uniqueId x == globalKey = globalBindTopEnv m x
->   | otherwise = localBindTopEnv x
+>   | isRenamed x = localBindTopEnv x
+>   | otherwise = globalBindTopEnv m x
 
 > globalBindTopEnv :: ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
 > globalBindTopEnv m x y =
@@ -158,8 +155,8 @@ introduce bindings for both global and local definitions.
 
 > rebindTopEnv :: ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
 > rebindTopEnv m x
->   | uniqueId x == globalKey = globalRebindTopEnv m x
->   | otherwise = localRebindTopEnv x
+>   | isRenamed x = localRebindTopEnv x
+>   | otherwise = globalRebindTopEnv m x
 
 > globalRebindTopEnv :: ModuleIdent -> Ident -> a -> TopEnv a -> TopEnv a
 > globalRebindTopEnv m x y =

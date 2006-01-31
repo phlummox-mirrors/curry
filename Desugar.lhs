@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1840 2006-01-19 19:31:41Z wlux $
+% $Id: Desugar.lhs 1842 2006-01-31 14:22:53Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -238,8 +238,8 @@ imported function.
 >     ty <- liftM (flip typeOf (Variable (qual f))) fetchSt
 >     liftM (FunctionDecl p f) (mapM (desugarEquation m (arrowArgs ty)) eqs)
 >   where qual f
->           | unRenameIdent f == f = qualifyWith m f
->           | otherwise = qualify f
+>           | isRenamed f = qualify f
+>           | otherwise = qualifyWith m f
 > desugarDeclRhs _ (ForeignDecl p cc ie f ty) =
 >   return (ForeignDecl p cc (desugarImpEnt cc ie) f ty)
 >   where desugarImpEnt CallConvPrimitive ie = ie `mplus` Just (name f)

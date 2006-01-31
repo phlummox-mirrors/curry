@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1842 2006-01-31 14:22:53Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -121,7 +121,7 @@ export a type constructor \texttt{x} \emph{and} a global function
 > expandLocalModule :: TypeEnv -> FunEnv -> [Export]
 > expandLocalModule tEnv fEnv =
 >   [exportType t | (_,t) <- localBindings tEnv] ++
->   [Export f' | (f,Var f') <- localBindings fEnv, f == unRenameIdent f]
+>   [Export f' | (f,Var f') <- localBindings fEnv, not (isRenamed f)]
 
 > expandModule :: TypeEnv -> FunEnv -> ModuleIdent -> [Export]
 > expandModule tEnv fEnv m =

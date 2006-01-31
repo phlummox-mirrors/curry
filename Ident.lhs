@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Ident.lhs 1764 2005-09-12 10:37:22Z wlux $
+% $Id: Ident.lhs 1842 2006-01-31 14:22:53Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -26,7 +26,8 @@ unqualified identifier.}
 \begin{verbatim}
 
 > module Ident(Ident,QualIdent,ModuleIdent,
->              mkIdent,name,qualName,uniqueId,renameIdent,unRenameIdent,
+>              mkIdent,name,qualName,uniqueId,
+>              renameIdent,unRenameIdent,isRenamed,
 >              mkMIdent,moduleName,moduleQualifiers,isInfixOp,isQInfixOp,
 >              qualify,qualifyWith,qualifyLike,qualQualify,isQualified,
 >              unqualify,qualUnqualify,localIdent,splitQualIdent,
@@ -77,6 +78,9 @@ unqualified identifier.}
 
 > unRenameIdent :: Ident -> Ident
 > unRenameIdent (Ident x _) = Ident x 0
+
+> isRenamed :: Ident -> Bool
+> isRenamed (Ident _ n) = n /= 0
 
 > mkMIdent :: [String] -> ModuleIdent
 > mkMIdent = ModuleIdent

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1841 2006-01-31 08:12:32Z wlux $
+% $Id: Modules.lhs 1842 2006-01-31 14:22:53Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -157,8 +157,8 @@ declaration to the module.
 >           foldl importInterfaceIntf initEnvs (map snd (envToList mEnv))
 >         bindQual (_,y) = qualBindTopEnv (origName y) y
 >         bindGlobal (x,y)
->           | uniqueId x == 0 = bindQual (x,y)
->           | otherwise = localBindTopEnv x y
+>           | isRenamed x = localBindTopEnv x y
+>           | otherwise = bindQual (x,y)
 
 > ilImports :: ModuleEnv -> IL.Module -> [IL.Decl]
 > ilImports mEnv (IL.Module _ is _) =

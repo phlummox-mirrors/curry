@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Qual.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: Qual.lhs 1842 2006-01-31 14:22:53Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -121,7 +121,7 @@ declarations groups as well as function arguments remain unchanged.
 
 > qualIdent :: ValueEnv -> QualIdent -> QualIdent
 > qualIdent tyEnv x
->   | not (isQualified x) && uniqueId (unqualify x) /= 0 = x
+>   | isRenamed (unqualify x) = x
 >   | otherwise =
 >       case qualLookupTopEnv x tyEnv of
 >         [y] -> origName y
