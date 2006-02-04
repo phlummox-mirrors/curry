@@ -1,4 +1,4 @@
-dnl $Id: configure.in 1839 2006-01-07 12:14:21Z wlux $
+dnl $Id: configure.in 1847 2006-02-04 10:11:04Z wlux $
 dnl
 dnl Copyright (c) 2002-2006, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -137,17 +137,24 @@ esac
 
 if test -n "$GHC"; then
   hc=ghc HC="$GHC"
-  AC_MSG_CHECKING([whether $GHC --make works])
-  cat <<eof >conftest.hs
+  AC_ARG_ENABLE(ghc_make,
+    [  --disable-ghc-make      ghc only: Do not use ghc --make])
+  case $enable_ghc_make in
+    no ) ;;
+    *  )
+      AC_MSG_CHECKING([whether $GHC --make works])
+      cat <<eof >conftest.hs
 main = return ()
 eof
-  if $GHC --make $HCFLAGS -o conftest conftest >/dev/null 2>&1 && test -f conftest; then
-    hc=ghc-make
-    AC_MSG_RESULT([yes])
-  else
-    AC_MSG_RESULT([no])
-  fi
-  rm -f conftest* a.out
+      if $GHC --make $HCFLAGS -o conftest conftest >/dev/null 2>&1 && test -f conftest; then
+        hc=ghc-make
+        AC_MSG_RESULT([yes])
+      else
+        AC_MSG_RESULT([no])
+      fi
+      rm -f conftest* a.out
+      ;;
+  esac
   CURRY_HC_HLIB(GHC,
     [HCFLAGS="$HCFLAGS -ighc"
      IOExts_lhs=ghc/IOExts.lhs],
