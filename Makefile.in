@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 1839 2006-01-07 12:14:21Z wlux $
+# $Id: Makefile.in 1846 2006-02-04 10:03:44Z wlux $
 #
 # Copyright (c) 2000-2006 Wolfgang Lux
 # See LICENSE for the full license.
@@ -197,7 +197,7 @@ OBJS = $(cycc_OBJS) $(cymk_OBJS) $(newer_OBJS) $(cam2c_OBJS) $(mach_OBJS)
 
 DISTFILES = README LICENSE NEWS curry.tex curry.bib \
 	configure configure.in aclocal.m4 config.guess config.sub install-sh \
-	Makefile.in ghc.mk hbc.mk nhc.mk makedoc.in \
+	Makefile.in ghc.mk ghc-make.mk hbc.mk nhc.mk makedoc.in \
 	configure-bin.in Makefile-bin.in inplace-config-bin.in \
 	$(SCRIPTS:=.in) $(man_MANS:=.in) $(SRCS) $(IOEXTS_SRCS)
 
