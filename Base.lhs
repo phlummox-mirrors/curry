@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1845 2006-01-31 23:09:47Z wlux $
+% $Id: Base.lhs 1848 2006-02-06 09:03:30Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -126,6 +126,10 @@ renaming types on one side and synonym types on the other side.
 > typeKind (RenamingType tc _ c) = Data tc [c]
 > typeKind (AliasType tc _ _) = Alias tc
 
+> instance Entity TypeKind where
+>   origName (Data tc _) = tc
+>   origName (Alias tc) = tc
+
 \end{verbatim}
 \paragraph{Function and constructor types}
 In order to test type correctness of a module, the compiler needs to
@@ -219,6 +223,10 @@ used in order to check the export list of a module.
 > valueKind (DataConstructor c _) = Constr c
 > valueKind (NewtypeConstructor c _) = Constr c
 > valueKind (Value v _) = Var v
+
+> instance Entity ValueKind where
+>   origName (Constr c) = c
+>   origName (Var x) = x
 
 \end{verbatim}
 \paragraph{Operator precedences}

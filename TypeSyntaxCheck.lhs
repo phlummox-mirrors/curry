@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: TypeSyntaxCheck.lhs 1848 2006-02-06 09:03:30Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeSyntaxCheck.lhs}
@@ -16,8 +16,10 @@ of a capitalization convention.
 
 > module TypeSyntaxCheck(typeSyntaxCheck,typeSyntaxCheckGoal) where
 > import Base
+> import CurryPP
 > import Error
 > import Monad
+> import Pretty
 > import TopEnv
 
 \end{verbatim}
@@ -217,7 +219,7 @@ interpret the identifier as such.
 >           return (VariableType (unqualify tc))
 >       | otherwise -> errorAt p (undefinedType tc)
 >     [_] -> liftM (ConstructorType tc) (mapM (checkType env p) tys)
->     _ -> errorAt p (ambiguousType tc)
+>     rs -> errorAt p (ambiguousType rs tc)
 > checkType env p (VariableType tv)
 >   | tv == anonId = return (VariableType tv)
 >   | otherwise = checkType env p (ConstructorType (qualify tv) [])
@@ -245,8 +247,11 @@ Error messages.
 > undefinedType :: QualIdent -> String
 > undefinedType tc = "Undefined type " ++ qualName tc
 
-> ambiguousType :: QualIdent -> String
-> ambiguousType tc = "Ambiguous type " ++ qualName tc
+> ambiguousType :: [TypeKind] -> QualIdent -> String
+> ambiguousType rs tc = show $
+>   text "Ambiguous type" <+> ppQIdent tc $$
+>   fsep (text "Could refer to:" :
+>               punctuate comma (map (ppQIdent . origName) rs))
 
 > duplicateType :: Ident -> String
 > duplicateType tc = "More than one definition for type " ++ name tc

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1845 2006-01-31 23:09:47Z wlux $
+% $Id: SyntaxCheck.lhs 1848 2006-02-06 09:03:30Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,11 +19,13 @@ single definition.
 > module SyntaxCheck(syntaxCheck,syntaxCheckGoal) where
 > import Base
 > import Char
+> import CurryPP
 > import Error
 > import List
 > import Maybe
 > import Monad
 > import NestEnv
+> import Pretty
 > import Utils
 
 \end{verbatim}
@@ -360,7 +362,7 @@ callbacks into Curry are not yet supported by the runtime system.
 >     [Constr _] ->
 >       liftM (ConstructorPattern c) (mapM (checkConstrTerm p env) ts)
 >     rs
->       | any isConstr rs -> errorAt p (ambiguousData c)
+>       | any isConstr rs -> errorAt p (ambiguousData rs c)
 >       | not (isQualified c) && null ts ->
 >           return (VariablePattern (unqualify c))
 >       | otherwise -> errorAt p (undefinedData c)
@@ -371,7 +373,7 @@ callbacks into Curry are not yet supported by the runtime system.
 >              (checkConstrTerm p env t1)
 >              (checkConstrTerm p env t2)
 >     rs
->       | any isConstr rs -> errorAt p (ambiguousData op)
+>       | any isConstr rs -> errorAt p (ambiguousData rs op)
 >       | otherwise -> errorAt p (undefinedData op)
 > checkConstrTerm p env (ParenPattern t) =
 >   liftM ParenPattern (checkConstrTerm p env t)
@@ -555,14 +557,20 @@ Error messages.
 
 > ambiguousIdent :: [ValueKind] -> QualIdent -> String
 > ambiguousIdent rs
->   | any isConstr rs = ambiguousData
->   | otherwise = ambiguousVariable
+>   | any isConstr rs = ambiguousData rs
+>   | otherwise = ambiguousVariable rs
 
-> ambiguousVariable :: QualIdent -> String
-> ambiguousVariable v = "Ambiguous variable " ++ qualName v
+> ambiguousVariable :: [ValueKind] -> QualIdent -> String
+> ambiguousVariable = ambiguous "variable"
 
-> ambiguousData :: QualIdent -> String
-> ambiguousData c = "Ambiguous data constructor " ++ qualName c
+> ambiguousData :: [ValueKind] -> QualIdent -> String
+> ambiguousData = ambiguous "data constructor"
+
+> ambiguous :: String -> [ValueKind] -> QualIdent -> String
+> ambiguous what rs x = show $
+>   text "Ambiguous" <+> text what <+> ppQIdent x $$
+>   fsep (text "Could refer to:" :
+>         punctuate comma (map (ppQIdent . origName) rs))
 
 > duplicateDefinition :: Ident -> String
 > duplicateDefinition v = "More than one definition for " ++ name v

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: NestEnv.lhs 1786 2005-10-07 15:33:33Z wlux $
+% $Id: NestEnv.lhs 1848 2006-02-06 09:03:30Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -14,7 +14,7 @@ For convenience, the type \texttt{TopEnv} is exported by the module
 \texttt{NestEnv}.
 \begin{verbatim}
 
-> module NestEnv(NestEnv, TopEnv,
+> module NestEnv(NestEnv, TopEnv, Entity(..),
 >                globalBindNestEnv, localBindNestEnv, qualBindNestEnv,
 >                lookupNestEnv, qualLookupNestEnv,
 >                toplevelEnv, globalEnv, nestEnv) where
