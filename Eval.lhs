@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Eval.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: Eval.lhs 1850 2006-02-07 14:19:24Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Eval.lhs}
@@ -21,71 +21,63 @@ the module by traversing the syntax tree.
 \begin{verbatim}
 
 > evalEnv :: [TopDecl] -> EvalEnv
-> evalEnv ds = foldr collectAnnotsDecl emptyEnv [d | BlockDecl d <- ds]
+> evalEnv ds = evals [d | BlockDecl d <- ds] emptyEnv
 
 > evalEnvGoal :: Goal -> EvalEnv
-> evalEnvGoal (Goal _ e ds) =
->   collectAnnotsExpr e (foldr collectAnnotsDecl emptyEnv ds)
+> evalEnvGoal (Goal _ e ds) = evals e (evals ds emptyEnv)
 
-> collectAnnotsDecl :: Decl -> EvalEnv -> EvalEnv
-> collectAnnotsDecl (EvalAnnot _ fs ev) env = foldr (flip bindEnv ev) env fs
-> collectAnnotsDecl (FunctionDecl _ _ eqs) env = foldr collectAnnotsEqn env eqs
-> collectAnnotsDecl (PatternDecl _ _ rhs) env = collectAnnotsRhs rhs env
-> collectAnnotsDecl _ env = env
+> class SyntaxTree a where
+>   evals :: a -> EvalEnv -> EvalEnv
 
-> collectAnnotsEqn :: Equation -> EvalEnv -> EvalEnv
-> collectAnnotsEqn (Equation _ _ rhs) env = collectAnnotsRhs rhs env
+> instance SyntaxTree a => SyntaxTree [a] where
+>   evals xs env = foldr evals env xs
 
-> collectAnnotsRhs :: Rhs -> EvalEnv -> EvalEnv
-> collectAnnotsRhs (SimpleRhs _ e ds) env =
->   collectAnnotsExpr e (foldr collectAnnotsDecl env ds)
-> collectAnnotsRhs (GuardedRhs es ds) env =
->   foldr collectAnnotsCondExpr (foldr collectAnnotsDecl env ds) es
+> instance SyntaxTree Decl where
+>   evals (EvalAnnot _ fs ev) env = foldr (flip bindEnv ev) env fs
+>   evals (FunctionDecl _ _ eqs) env = evals eqs env
+>   evals (PatternDecl _ _ rhs) env = evals rhs env
+>   evals _ env = env
 
-> collectAnnotsCondExpr :: CondExpr -> EvalEnv -> EvalEnv
-> collectAnnotsCondExpr (CondExpr _ g e) env =
->   collectAnnotsExpr g (collectAnnotsExpr e env)
+> instance SyntaxTree Equation where
+>   evals (Equation _ _ rhs) = evals rhs
 
-> collectAnnotsExpr :: Expression -> EvalEnv -> EvalEnv
-> collectAnnotsExpr (Literal _) env = env
-> collectAnnotsExpr (Variable _) env = env
-> collectAnnotsExpr (Constructor _) env = env
-> collectAnnotsExpr (Paren e) env = collectAnnotsExpr e env
-> collectAnnotsExpr (Typed e _) env = collectAnnotsExpr e env
-> collectAnnotsExpr (Tuple es) env = foldr collectAnnotsExpr env es
-> collectAnnotsExpr (List es) env = foldr collectAnnotsExpr env es
-> collectAnnotsExpr (ListCompr e qs) env =
->   collectAnnotsExpr e (foldr collectAnnotsStmt env qs)
-> collectAnnotsExpr (EnumFrom e) env = collectAnnotsExpr e env
-> collectAnnotsExpr (EnumFromThen e1 e2) env =
->   collectAnnotsExpr e1 (collectAnnotsExpr e2 env)
-> collectAnnotsExpr (EnumFromTo e1 e2) env =
->   collectAnnotsExpr e1 (collectAnnotsExpr e2 env)
-> collectAnnotsExpr (EnumFromThenTo e1 e2 e3) env =
->   collectAnnotsExpr e1 (collectAnnotsExpr e2 (collectAnnotsExpr e3 env))
-> collectAnnotsExpr (UnaryMinus _ e) env = collectAnnotsExpr e env
-> collectAnnotsExpr (Apply e1 e2) env =
->   collectAnnotsExpr e1 (collectAnnotsExpr e2 env)
-> collectAnnotsExpr (InfixApply e1 _ e2) env =
->   collectAnnotsExpr e1 (collectAnnotsExpr e2 env)
-> collectAnnotsExpr (LeftSection e _) env = collectAnnotsExpr e env
-> collectAnnotsExpr (RightSection _ e) env = collectAnnotsExpr e env
-> collectAnnotsExpr (Lambda _ e) env = collectAnnotsExpr e env
-> collectAnnotsExpr (Let ds e) env =
->   foldr collectAnnotsDecl (collectAnnotsExpr e env) ds
-> collectAnnotsExpr (Do sts e) env =
->   foldr collectAnnotsStmt (collectAnnotsExpr e env) sts
-> collectAnnotsExpr (IfThenElse e1 e2 e3) env =
->   collectAnnotsExpr e1 (collectAnnotsExpr e2 (collectAnnotsExpr e3 env))
-> collectAnnotsExpr (Case e alts) env =
->   collectAnnotsExpr e (foldr collectAnnotsAlt env alts)
+> instance SyntaxTree Rhs where
+>   evals (SimpleRhs _ e ds) = evals e . evals ds
+>   evals (GuardedRhs es ds) = evals es . evals ds
 
-> collectAnnotsStmt :: Statement -> EvalEnv -> EvalEnv
-> collectAnnotsStmt (StmtExpr e) env = collectAnnotsExpr e env
-> collectAnnotsStmt (StmtDecl ds) env = foldr collectAnnotsDecl env ds
-> collectAnnotsStmt (StmtBind _ e) env = collectAnnotsExpr e env
+> instance SyntaxTree CondExpr where
+>   evals (CondExpr _ g e) = evals g . evals e
 
-> collectAnnotsAlt :: Alt -> EvalEnv -> EvalEnv
-> collectAnnotsAlt (Alt _ _ rhs) env = collectAnnotsRhs rhs env
+> instance SyntaxTree Expression where
+>   evals (Literal _) = id
+>   evals (Variable _) = id
+>   evals (Constructor _) = id
+>   evals (Paren e) = evals e
+>   evals (Typed e _) = evals e
+>   evals (Tuple es) = evals es
+>   evals (List es) = evals es
+>   evals (ListCompr e qs) = evals e . evals qs
+>   evals (EnumFrom e) = evals e
+>   evals (EnumFromThen e1 e2) = evals e1 . evals e2
+>   evals (EnumFromTo e1 e2) = evals e1 . evals e2
+>   evals (EnumFromThenTo e1 e2 e3) = evals e1 . evals e2 . evals e3
+>   evals (UnaryMinus _ e) = evals e
+>   evals (Apply e1 e2) = evals e1 . evals e2
+>   evals (InfixApply e1 _ e2) = evals e1 . evals e2
+>   evals (LeftSection e _) = evals e
+>   evals (RightSection _ e) = evals e
+>   evals (Lambda _ e) = evals e
+>   evals (Let ds e) = evals ds . evals e
+>   evals (Do sts e) = evals sts . evals e
+>   evals (IfThenElse e1 e2 e3) = evals e1 . evals e2 . evals e3
+>   evals (Case e as) = evals e . evals as
+
+> instance SyntaxTree Statement where
+>   evals (StmtExpr e) = evals e
+>   evals (StmtDecl ds) = evals ds
+>   evals (StmtBind _ e) = evals e
+
+> instance SyntaxTree Alt where
+>   evals (Alt _ _ rhs) = evals rhs
 
 \end{verbatim}
