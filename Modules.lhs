@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1844 2006-01-31 19:29:19Z wlux $
+% $Id: Modules.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Modules.lhs}
@@ -27,6 +27,7 @@ This module controls the compilation of modules.
 > import Imports(importInterface,importInterfaceIntf,importUnifyData)
 > import Exports(exportInterface)
 > import Eval(evalEnv,evalEnvGoal)
+> import Trust(trustEnv,trustEnvGoal)
 > import Qual(qual,qualGoal)
 > import Desugar(desugar,desugarGoal)
 > import Simplify(simplify)
@@ -72,15 +73,15 @@ declaration to the module.
 >   do
 >     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule id paths fn
 >     mEnv' <- importDebugPrelude paths dbg fn mEnv
->     let (ccode,dumps) = transModule split dbg trust mEnv' tcEnv tyEnv m
->         ccode' = compileDefaultGoal dbg mEnv' intf
+>     let (ccode,dumps) = transModule split dbg tr mEnv' tcEnv tyEnv m
+>         ccode' = compileDefaultGoal dbg tr mEnv' intf
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               unless (noInterface opts) (updateInterface fn intf) >>
 >               writeCode (output opts) fn (merge ccode ccode')
 >   where paths = importPath opts
 >         split = splitCode opts
 >         dbg = debug opts
->         trust = trusted opts
+>         tr = if trusted opts then Trust else Suspect
 >         merge ccode = maybe ccode (merge' ccode)
 >         merge' (Left cf1) = Left . mergeCFile cf1
 >         merge' (Right cfs) = Right . (cfs ++) . return
@@ -118,19 +119,20 @@ declaration to the module.
 >             Module m (Just es') is (qual tyEnv' ds'''),
 >             exportInterface m es' pEnv'' tcEnv'' tyEnv'')
 
-> transModule :: Bool -> Bool -> Bool -> ModuleEnv -> TCEnv -> ValueEnv
+> transModule :: Bool -> Bool -> Trust -> ModuleEnv -> TCEnv -> ValueEnv
 >             -> Module -> (Either CFile [CFile],[(Dump,Doc)])
-> transModule split debug trusted mEnv tcEnv tyEnv (Module m es is ds) =
+> transModule split debug tr mEnv tcEnv tyEnv (Module m es is ds) =
 >   (ccode,dumps)
 >   where evEnv = evalEnv ds
+>         trEnv = trustEnv tr ds
 >         (desugared,tyEnv') = desugar tcEnv tyEnv (Module m es is ds)
 >         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
->         (lifted,tyEnv''',evEnv') = lift tyEnv'' evEnv simplified
+>         (lifted,tyEnv''',evEnv',trEnv') =
+>           lift tyEnv'' evEnv trEnv simplified
 >         il = ilTrans tyEnv''' evEnv' lifted
->         ilDbg = if debug then dTransform trustedFuns il else il
->         trustedFuns
->           | trusted = ilFunctions il
->           | otherwise = newConstrs (Module m es is ds)
+>         ilDbg
+>           | debug = dTransform (trustedFun trEnv') il
+>           | otherwise = il
 >         ilNormal = liftProg ilDbg
 >         cam = camCompile ilNormal
 >         imports = camCompileData (ilImports mEnv ilNormal)
@@ -161,12 +163,8 @@ declaration to the module.
 > ilImports mEnv (IL.Module _ is _) =
 >   concat [ilTransIntf i | (m,i) <- envToList mEnv, m `elem` is]
 
-> ilFunctions :: IL.Module -> [QualIdent]
-> ilFunctions (IL.Module _ _ ds) = [f | IL.FunctionDecl f _ _ _ <- ds]
-
-> newConstrs :: Module -> [QualIdent]
-> newConstrs (Module m _ _ ds) =
->   [qualifyWith m c | NewtypeDecl _ _ _ (NewConstrDecl _ _ c _) <- ds]
+> trustedFun :: TrustEnv -> QualIdent -> Bool
+> trustedFun trEnv f = maybe True (Trust ==) (lookupEnv (unqualify f) trEnv)
 
 > writeCode :: Maybe FilePath -> FilePath -> Either CFile [CFile] -> IO ()
 > writeCode tfn sfn (Left cfile) = writeCCode ofn cfile
@@ -198,11 +196,12 @@ compilation of a goal is similar to that of a module.
 >     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths g fn
 >     mEnv' <- importDebugPrelude paths dbg "" mEnv
 >     let (ccode,dumps) =
->           transGoal dbg run mEnv' tcEnv tyEnv (mkIdent "goal") g'
+>           transGoal dbg tr run mEnv' tcEnv tyEnv (mkIdent "goal") g'
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeGoalCode (output opts) (mergeCFile (genMain run) ccode)
 >   where run = "curry_goal"
 >         dbg = debug opts
+>         tr = if trusted opts then Trust else Suspect
 >         paths = importPath opts
 > compileGoal opts Nothing fn =
 >   liftErr $ writeGoalCode (output opts) (genMain "curry_main")
@@ -247,16 +246,20 @@ compilation of a goal is similar to that of a module.
 >     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv emptyMIdent pEnv tcEnv tyEnv'
 >     return (tcEnv',tyEnv'',qualGoal tyEnv' g')
 
-> transGoal :: Bool -> String -> ModuleEnv -> TCEnv -> ValueEnv -> Ident
->           -> Goal -> (CFile,[(Dump,Doc)])
-> transGoal debug run mEnv tcEnv tyEnv goalId g = (ccode,dumps)
+> transGoal :: Bool -> Trust -> String -> ModuleEnv -> TCEnv -> ValueEnv
+>           -> Ident -> Goal -> (CFile,[(Dump,Doc)])
+> transGoal debug tr run mEnv tcEnv tyEnv goalId g = (ccode,dumps)
 >   where m = emptyMIdent
 >         evEnv = evalEnvGoal g
+>         trEnv = bindEnv goalId Suspect (trustEnvGoal tr g)
 >         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
 >         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
->         (lifted,tyEnv''',evEnv') = lift tyEnv'' evEnv simplified
+>         (lifted,tyEnv''',evEnv',trEnv') =
+>           lift tyEnv'' evEnv trEnv simplified
 >         il = ilTrans tyEnv''' evEnv' lifted
->         ilDbg = if debug then dAddMain goalId (dTransform [] il) else il
+>         ilDbg
+>           | debug = dAddMain goalId (dTransform (trustedFun trEnv') il)
+>           | otherwise = il
 >         ilNormal = liftProg ilDbg
 >         cam = camCompile ilNormal
 >         imports = camCompileData (ilImports mEnv ilNormal)
@@ -280,8 +283,8 @@ The compiler adds a startup function for the default goal
 to determine the type of the goal when linking the program.
 \begin{verbatim}
 
-> compileDefaultGoal :: Bool -> ModuleEnv -> Interface -> Maybe CFile
-> compileDefaultGoal debug mEnv (Interface m is ds)
+> compileDefaultGoal :: Bool -> Trust -> ModuleEnv -> Interface -> Maybe CFile
+> compileDefaultGoal debug tr mEnv (Interface m is ds)
 >   | m == mainMIdent && any (qMainId ==) [f | IFunctionDecl _ f _ <- ds] =
 >       Just ccode
 >   | otherwise = Nothing
@@ -290,7 +293,7 @@ to determine the type of the goal when linking the program.
 >         (tcEnv,tyEnv,g) = ok $
 >           checkGoal mEnv' [importDecl (first "") m]
 >                     (Goal (first "") (Variable qMainId) [])
->         (ccode,_) = transGoal debug "curry_main" mEnv' tcEnv tyEnv mainId g
+>         (ccode,_) = transGoal debug tr "curry_main" mEnv' tcEnv tyEnv mainId g
 
 \end{verbatim}
 The function \texttt{importModules} brings the declarations of all

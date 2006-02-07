@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1848 2006-02-06 09:03:30Z wlux $
+% $Id: SyntaxCheck.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -164,6 +164,10 @@ top-level.
 >       do
 >         checkVars "free variables declaration" p env vs
 >         return (FreeDecl p vs)
+> checkDeclLhs top env (TrustAnnot p t fs) =
+>   do
+>     maybe (return ()) (checkVars "trust annotation" p env) fs
+>     return (TrustAnnot p t fs)
 
 > checkEquationLhs :: Bool -> VarEnv -> Position -> [Equation] -> Error Decl
 > checkEquationLhs top env p [Equation p' lhs rhs] =
@@ -219,10 +223,16 @@ top-level.
 >             Linear ->
 >               case linear evs of
 >                 Linear ->
->                   case filter (`notElem` cs ++ bvs) ops ++
->                        filter (`notElem` bvs) (tys ++ evs) of
->                     [] -> return (foldr bindVar env bvs)
->                     P p v : _ -> errorAt p (noBody v)
+>                   case linear trs of
+>                     Linear ->
+>                       case [p | TrustAnnot p _ Nothing <- ds] of
+>                         (p : _ : _) -> errorAt p duplicateDefaultTrustAnnot
+>                         _ ->
+>                           case filter (`notElem` cs ++ bvs) ops ++
+>                                filter (`notElem` bvs) (tys ++ evs ++ trs) of
+>                             [] -> return (foldr bindVar env bvs)
+>                             P p v : _ -> errorAt p (noBody v)
+>                     NonLinear (P p f) -> errorAt p (duplicateTrustAnnot f)
 >                 NonLinear (P p v) -> errorAt p (duplicateEvalAnnot v)
 >             NonLinear (P p v) -> errorAt p (duplicateTypeSig v)
 >         NonLinear (P p v) -> errorAt p (duplicateDefinition v)
@@ -230,7 +240,14 @@ top-level.
 >   where bvs = concatMap vars (filter isValueDecl ds)
 >         tys = concatMap vars (filter isTypeSig ds)
 >         evs = concatMap vars (filter isEvalAnnot ds)
+>         trs = concatMap vars (filter isTrustAnnot ds)
 >         ops = concatMap vars (filter isInfixDecl ds)
+
+\end{verbatim}
+\ToDo{The syntax checker might accept evaluation and trust annotations
+  only for defined functions because they have no effect on local
+  variables and foreign functions, respectively.}
+\begin{verbatim}
 
 > checkDeclRhs :: VarEnv -> Decl -> Error Decl
 > checkDeclRhs env (FunctionDecl p f eqs) =
@@ -518,6 +535,7 @@ Auxiliary definitions.
 > vars (ForeignDecl p _ _ f _) = [P p f]
 > vars (PatternDecl p t _) = map (P p) (bv t)
 > vars (FreeDecl p vs) = map (P p) vs
+> vars (TrustAnnot p _ fs) = maybe [] (map (P p)) fs
 
 \end{verbatim}
 Due to the lack of a capitalization convention in Curry, it is
@@ -589,6 +607,13 @@ Error messages.
 
 > duplicateEvalAnnot :: Ident -> String
 > duplicateEvalAnnot v = "More than one eval annotation for " ++ name v
+
+> duplicateDefaultTrustAnnot :: String
+> duplicateDefaultTrustAnnot =
+>   "More than one default trust annotation in this scope"
+
+> duplicateTrustAnnot :: Ident -> String
+> duplicateTrustAnnot f = "More than one trust annotation for " ++ name f
 
 > nonVariable :: String -> Ident -> String
 > nonVariable what c =

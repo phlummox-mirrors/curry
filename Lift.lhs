@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1843 2006-01-31 19:22:48Z wlux $
+% $Id: Lift.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Lift.lhs}
@@ -31,34 +31,41 @@ lifted to the top-level.
 > import Subst
 > import Utils
 
-> lift :: ValueEnv -> EvalEnv -> Module -> (Module,ValueEnv,EvalEnv)
-> lift tyEnv evEnv (Module m es is ds) =
->   (Module m es is (concatMap liftTopDecl ds'),tyEnv',evEnv')
->   where (ds',tyEnv',evEnv') =
->           runSt (callSt (abstractModule m ds) tyEnv) evEnv
+> lift :: ValueEnv -> EvalEnv -> TrustEnv -> Module
+>      -> (Module,ValueEnv,EvalEnv,TrustEnv)
+> lift tyEnv evEnv trEnv (Module m es is ds) =
+>   (Module m es is (concatMap liftTopDecl ds'),tyEnv',evEnv',trEnv')
+>   where (ds',tyEnv',evEnv',trEnv') =
+>           runSt (callSt (callSt (abstractModule m ds) tyEnv) evEnv) trEnv
 
 \end{verbatim}
 \paragraph{Abstraction}
 Besides adding the free variables to every (local) function, the
 abstraction pass also has to update the type environment in order to
-reflect the new types of the expanded functions. As usual we use a
-state monad transformer in order to pass the type environment
-through. The environment constructed in the abstraction phase maps
-each local function declaration onto its replacement expression,
-i.e. the function applied to its free variables.
+reflect the new types of the abstracted functions. Furthermore,
+functions are renamed during abstraction by adding the name of their
+enclosing function as prefix to their name. This is done in order to
+disambiguate local function names in debugging sessions, but means
+that the evaluation and trust annotation environments must be updated,
+too. As usual we use nested state monad transformers in order to pass
+the environments through. The abstraction phase also uses a local
+environment that maps each local function declaration onto its
+replacement expression, i.e. the function applied to its free
+variables.
 \begin{verbatim}
 
-> type AbstractState a = StateT ValueEnv (StateT EvalEnv Id) a
+> type AbstractState a = StateT ValueEnv (StateT EvalEnv (StateT TrustEnv Id)) a
 > type AbstractEnv = Env Ident Expression
 
 > abstractModule :: ModuleIdent -> [TopDecl]
->                -> AbstractState ([TopDecl],ValueEnv,EvalEnv)
+>                -> AbstractState ([TopDecl],ValueEnv,EvalEnv,TrustEnv)
 > abstractModule m ds =
 >   do
 >     ds' <- mapM (abstractTopDecl m) ds
 >     tyEnv' <- fetchSt
 >     evEnv' <- liftSt fetchSt
->     return (ds',tyEnv',evEnv')
+>     trEnv' <- liftSt (liftSt fetchSt)
+>     return (ds',tyEnv',evEnv',trEnv')
 
 > abstractTopDecl :: ModuleIdent -> TopDecl -> AbstractState TopDecl
 > abstractTopDecl m (BlockDecl d) =
@@ -187,8 +194,12 @@ is no need for reordering.
 >     _ ->
 >       do
 >         fs' <- liftM (\tyEnv -> filter (not . isLifted tyEnv) fs) fetchSt
+>         -- update type environment
 >         updateSt_ (abstractFunTypes m pre fvs fs')
+>         -- update evaluation annotation environment
 >         liftSt (updateSt_ (abstractFunAnnots m pre fs'))
+>         -- update trust annotation environment
+>         liftSt (liftSt (updateSt_ (abstractFunAnnots m pre fs')))
 >         fds' <- mapM (abstractFunDecl m pre fvs lvs env')
 >                      [d | d <- fds, any (`elem` fs') (bv d)]
 >         e' <- abstractFunDecls m pre lvs env' fdss vds e
@@ -229,12 +240,13 @@ variables in order to avoid an inadvertent name capturing.
 >           where tvs = nub (typeVars ty)
 >                 tvs' = map TypeVariable [0..]
 
-> abstractFunAnnots :: ModuleIdent -> String -> [Ident] -> EvalEnv -> EvalEnv
-> abstractFunAnnots m pre fs evEnv = foldr abstractFunAnnot evEnv fs
->   where abstractFunAnnot f evEnv =
->           case lookupEnv f evEnv of
->             Just ev -> bindEnv (liftIdent pre f) ev (unbindEnv f evEnv)
->             Nothing -> evEnv
+> abstractFunAnnots :: ModuleIdent -> String -> [Ident]
+>                   -> Env Ident a -> Env Ident a
+> abstractFunAnnots m pre fs env = foldr abstractFunAnnot env fs
+>   where abstractFunAnnot f env =
+>           case lookupEnv f env of
+>             Just ev -> bindEnv (liftIdent pre f) ev (unbindEnv f env)
+>             Nothing -> env
 
 > abstractFunDecl :: ModuleIdent -> String -> [Ident] -> [Ident]
 >                 -> AbstractEnv -> Decl -> AbstractState Decl

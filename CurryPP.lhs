@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 1773 2005-09-22 10:23:22Z wlux $
+% $Id: CurryPP.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryPP.lhs}
@@ -76,10 +76,8 @@ Declarations
 
 > ppDecl :: Decl -> Doc
 > ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
-> ppDecl (TypeSig _ fs ty) =
->   list (map ppIdent fs) <+> text "::" <+> ppTypeExpr 0 ty
-> ppDecl (EvalAnnot _ fs ev) =
->   list (map ppIdent fs) <+> text "eval" <+> ppEval ev
+> ppDecl (TypeSig _ fs ty) = ppIdentList fs <+> text "::" <+> ppTypeExpr 0 ty
+> ppDecl (EvalAnnot _ fs ev) = ppIdentList fs <+> text "eval" <+> ppEval ev
 >   where ppEval EvalRigid = text "rigid"
 >         ppEval EvalChoice = text "choice"
 > ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
@@ -89,7 +87,14 @@ Declarations
 >   where ppCallConv CallConvPrimitive = text "primitive"
 >         ppCallConv CallConvCCall = text "ccall"
 > ppDecl (PatternDecl _ t rhs) = ppRule (ppConstrTerm 0 t) equals rhs
-> ppDecl (FreeDecl _ vs) = list (map ppIdent vs) <+> text "free"
+> ppDecl (FreeDecl _ vs) = ppIdentList vs <+> text "free"
+> ppDecl (TrustAnnot _ t fs) =
+>   ppPragma (ppTrust t <+> maybe (char '_') ppIdentList fs)
+>   where ppTrust Suspect = text "SUSPECT"
+>         ppTrust Trust = text "TRUST"
+
+> ppPragma :: Doc -> Doc
+> ppPragma p = text "{-#" <+> p <+> text "#-}"
 
 > ppPrec :: Infix -> Int -> Doc
 > ppPrec fix p = ppAssoc fix <+> ppPrio p
@@ -312,6 +317,9 @@ Names
 
 > ppMIdent :: ModuleIdent -> Doc
 > ppMIdent m = text (moduleName m)
+
+> ppIdentList :: [Ident] -> Doc
+> ppIdentList = list . map ppIdent
 
 \end{verbatim}
 Print printing utilities

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryLexer.lhs 1782 2005-10-06 13:45:22Z wlux $
+% $Id: CurryLexer.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryLexer.lhs}
@@ -48,11 +48,15 @@ In this section a lexer for Curry is implemented.
 >   -- special identifiers
 >   | Id_as | Id_ccall | Id_choice | Id_forall | Id_hiding | Id_interface
 >   | Id_primitive | Id_qualified | Id_rigid | Id_safe | Id_unsafe
+>   -- pragmas
+>   | PragmaBegin Pragma | PragmaEnd
 >   -- special operators
 >   | Sym_Dot | Sym_Minus | Sym_MinusDot
 >   -- end-of-file token
 >   | EOF
 >   deriving (Eq,Ord)
+
+> data Pragma = SuspectPragma | TrustPragma deriving (Eq,Ord)
 
 \end{verbatim}
 There are different kinds of attributes associated with tokens.
@@ -177,10 +181,13 @@ all tokens in their source representation.
 >   showsPrec _ (Token Id_rigid _) = showString "identifier `rigid'"
 >   showsPrec _ (Token Id_safe _) = showString "identifier `safe'"
 >   showsPrec _ (Token Id_unsafe _) = showString "identifier `unsafe'"
+>   showsPrec _ (Token (PragmaBegin _) a) = shows a
+>   showsPrec _ (Token PragmaEnd _) = showString "`#-}'"
 >   showsPrec _ (Token EOF _) = showString "<end-of-file>"
 
 \end{verbatim}
-Tables for reserved operators and identifiers
+Tables for reserved operators, special identifiers, and supported
+pragmas.
 \begin{verbatim}
 
 > reserved_ops, reserved_and_special_ops :: FM String Category
@@ -239,6 +246,12 @@ Tables for reserved operators and identifiers
 >     ("unsafe",    Id_unsafe)
 >   ]
 
+> pragma_keywords :: FM String Pragma
+> pragma_keywords = fromListFM [
+>     ("SUSPECT", SuspectPragma),
+>     ("TRUST",   TrustPragma)
+>   ]
+
 \end{verbatim}
 Character classes
 \begin{verbatim}
@@ -267,9 +280,12 @@ Lexing functions
 >   where -- skipBlanks moves past whitespace and comments
 >         skipBlanks p [] bol = success p (tok EOF) p [] bol
 >         skipBlanks p ('\t':s) bol = skipBlanks (tab p) s bol
->         skipBlanks p ('\n':s) bol = skipBlanks (nl p) s True
->         skipBlanks p ('-':'-':s) bol =
+>         skipBlanks p ('\n':s) _ = skipBlanks (nl p) s True
+>         skipBlanks p ('-':'-':s) _ =
 >           skipBlanks (nl p) (tail' (dropWhile (/= '\n') s)) True
+>         skipBlanks p ('{':'-':'#':s) bol =
+>           (if bol then pragmaBOL p ('{':'-':'#':s) else pragma)
+>             (success p) (nestedComment p skipBlanks fail) (incr p 3) s bol
 >         skipBlanks p ('{':'-':s) bol =
 >           nestedComment p skipBlanks fail (incr p 2) s bol
 >         skipBlanks p (c:s) bol
@@ -280,7 +296,9 @@ Lexing functions
 >         tail' (_:tl) = tl
 
 > nestedComment :: Position -> L a -> FailL a -> L a
-> nestedComment p0 success fail p ('-':'}':s) = success (incr p 2) s
+> nestedComment p0 _ fail p [] =
+>   fail p0 "Unterminated nested comment at end-of-file" p []
+> nestedComment _ success _ p ('-':'}':s) = success (incr p 2) s
 > nestedComment p0 success fail p ('{':'-':s) =
 >   nestedComment p (nestedComment p0 success fail) fail (incr p 2) s
 > nestedComment p0 success fail p ('\t':s) =
@@ -289,8 +307,51 @@ Lexing functions
 >   nestedComment p0 success fail (nl p) s
 > nestedComment p0 success fail p (_:s) =
 >   nestedComment p0 success fail (next p) s
-> nestedComment p0 success fail p [] =
->   fail p0 "Unterminated nested comment at end-of-file" p []
+
+\end{verbatim}
+Lexing pragmas is a little bit complicated because lexically they
+appear as nested comments using \verb|{-#| and \verb|#-}| as
+delimiters. If \verb|{-#| is not followed by a known pragma keyword,
+the lexer has to treat it as an opening delimiter of a nested comment
+and skip input up to the matching \verb|-}| delimiter. On the other
+hand, if a known pragma keyword is recognized, the usual layout
+processing has to be applied, i.e., virtual closing braces and
+semicolons may have to be inserted \emph{before} the
+\texttt{PragmaBegin} token. This is achieved in the lexer
+\texttt{pragmaBOL} by invoking the \texttt{pragma} lexer with a
+success continuation that discards the \texttt{PragmaBegin} token and
+returns the appropriate layout token instead. In addition, the lexer
+backs up to the beginning of the pragma in that case so that
+\verb|{-#| is analyzed again when the parser requests the next token.
+
+\ToDo{Let the parsing combinators process layout instead of doing this
+  in the lexer.}
+\begin{verbatim}
+
+> pragmaBOL :: Position -> String -> (Token -> L a) -> L a -> L a
+> pragmaBOL _ _ success noPragma p s _ [] = pragma success noPragma p s False []
+> pragmaBOL p0 s0 success noPragma p s _ ctxt@(n:rest)
+>   | col < n = pragma insertRightBrace noPragma p s True ctxt
+>   | col == n = pragma insertSemicolon noPragma p s True ctxt
+>   | otherwise =
+>       pragma (\t p s _ -> success t p s False) noPragma p s True ctxt
+>   where col = column p0
+>         insertRightBrace _ _ _ _ _ = success (tok VRightBrace) p0 s0 True rest
+>         insertSemicolon _ _ _ _ = success (tok VSemicolon) p0 s0 False
+
+> pragma :: (Token -> L a) -> L a -> L a
+> pragma _ noPragma p [] = noPragma p []
+> pragma success noPragma p (c:s)
+>   | c == '\t' = pragma success noPragma (tab p) s
+>   | c == '\n' = pragma success noPragma (nl p) s
+>   | isSpace c = pragma success noPragma (next p) s
+>   | isAlpha c =
+>       maybe (noPragma (next p) s)
+>             (\t -> success (idTok (PragmaBegin t) [] ("{-# " ++ keyword))
+>                            (incr p (length keyword)) rest)
+>             (lookupFM keyword pragma_keywords)
+>   | otherwise = noPragma p (c:s)
+>   where (keyword,rest) = span isIdent (c:s)
 
 > lexBOL :: SuccessL a -> FailL a -> L a
 > lexBOL success fail p s _ [] = lexToken success fail p s False []
@@ -330,10 +391,14 @@ Lexing functions
 >         token t = idTok t [] ident
 
 > lexSym :: (Token -> L a) -> L a
-> lexSym cont p s =
->   cont (idTok (maybe Sym id (lookupFM sym reserved_and_special_ops)) [] sym)
->        (incr p (length sym)) rest
+> lexSym cont p s
+>   | "#-}" `isPrefixOf` s =            -- 3 == length "#-}"
+>       cont (idTok PragmaEnd [] "#-}") (incr p 3) (drop 3 s)
+>   | otherwise =
+>       cont (token (maybe Sym id (lookupFM sym reserved_and_special_ops)))
+>            (incr p (length sym)) rest
 >   where (sym,rest) = span isSym s
+>         token t = idTok t [] sym
 
 > lexOptQual :: (Token -> L a) -> Token -> [String] -> L a
 > lexOptQual cont token mIdent p ('.':c:s)

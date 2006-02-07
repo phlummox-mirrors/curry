@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1848 2006-02-06 09:03:30Z wlux $
+% $Id: Base.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -276,6 +276,18 @@ annotations is sufficient.
 > type EvalEnv = Env Ident EvalAnnotation
 
 \end{verbatim}
+\paragraph{Trusted functions}
+The compiler collects trust annotations from the source code in
+another environment. As for evaluation annotations, a simple
+environment mapping unqualified names onto annotations is sufficient
+because trust annotations control how function declarations are
+transformed when generating code for the declarative debugger (cf.
+Sect.~\ref{sec:dtrans}).
+\begin{verbatim}
+
+> type TrustEnv = Env Ident Trust
+
+\end{verbatim}
 \paragraph{Predefined types}
 The unit and list data types must be predefined because the
 declarations
@@ -487,7 +499,7 @@ declarations.
 > isBlockDecl _ = False
 
 > isInfixDecl, isTypeSig, isEvalAnnot :: Decl -> Bool
-> isFreeDecl, isValueDecl :: Decl -> Bool
+> isFreeDecl, isTrustAnnot, isValueDecl :: Decl -> Bool
 > isInfixDecl (InfixDecl _ _ _ _) = True
 > isInfixDecl _ = False
 > isTypeSig (TypeSig _ _ _) = True
@@ -497,6 +509,8 @@ declarations.
 > isEvalAnnot _ = False
 > isFreeDecl (FreeDecl _ _) = True
 > isFreeDecl _ = False
+> isTrustAnnot (TrustAnnot _ _ _) = True
+> isTrustAnnot _ = False
 > isValueDecl (FunctionDecl _ _ _) = True
 > isValueDecl (ForeignDecl _ _ _ _ _) = True
 > isValueDecl (PatternDecl _ _ _) = True

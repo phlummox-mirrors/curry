@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 1773 2005-09-22 10:23:22Z wlux $
+% $Id: CurrySyntax.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurrySyntax.lhs}
@@ -73,11 +73,13 @@ parsed representation of a Curry program.
 >   | ForeignDecl Position CallConv (Maybe String) Ident TypeExpr
 >   | PatternDecl Position ConstrTerm Rhs
 >   | FreeDecl Position [Ident]
+>   | TrustAnnot Position Trust (Maybe [Ident])
 >   deriving (Eq,Show)
 
 > data Infix = Infix | InfixL | InfixR deriving (Eq,Show)
 > data EvalAnnotation = EvalRigid | EvalChoice deriving (Eq,Show)
 > data CallConv = CallConvPrimitive | CallConvCCall deriving (Eq,Show)
+> data Trust = Suspect | Trust deriving (Eq,Show)
 
 > constr :: ConstrDecl -> Ident
 > constr (ConstrDecl _ _ c _) = c

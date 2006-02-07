@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1785 2005-10-07 11:13:16Z wlux $
+% $Id: CurryParser.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryParser.lhs}
@@ -117,15 +117,18 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 \begin{verbatim}
 
 > topDecl :: Parser Token TopDecl a
-> topDecl = dataDecl <|> newtypeDecl <|> typeDecl
->       <|> BlockDecl <$> (infixDecl <|> functionDecl <|> foreignDecl)
+> topDecl = dataDecl <|> newtypeDecl <|> typeDecl <|> BlockDecl <$> blockDecl
+>   where blockDecl = infixDecl <|> functionDecl <|> foreignDecl
+>                 <|> trustAnnotation
 
 > localDefs :: Parser Token [Decl] a
 > localDefs = token KW_where <-*> layout valueDecls
 >       `opt` []
 
 > valueDecls :: Parser Token [Decl] a
-> valueDecls = (infixDecl <|> valueDecl <|> foreignDecl) `sepBy` semicolon
+> valueDecls = localDecl `sepBy` semicolon
+>   where localDecl = infixDecl <|> valueDecl <|> foreignDecl
+>                 <|> trustAnnotation
 
 > dataDecl :: Parser Token TopDecl a
 > dataDecl = typeDeclLhs DataDecl KW_data <*> constrs
@@ -249,6 +252,15 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >         importEntity = (,) <$> (Just <$> string `opt` Nothing) <*> fun
 >         safety = tokens [Id_safe,Id_unsafe]
 >         safetyId x = (Nothing,mkIdent (sval x))
+
+> trustAnnotation :: Parser Token Decl a
+> trustAnnotation =
+>   TrustAnnot <$> position <*> tokenOps pragmaKW <*> funList
+>              <*-> token PragmaEnd
+>   where pragmaKW = [(PragmaBegin SuspectPragma,Suspect),
+>                     (PragmaBegin TrustPragma,Trust)]
+>         funList = Nothing <$-> token Underscore
+>               <|> Just <$> fun `sepBy1` comma
 
 \end{verbatim}
 \paragraph{Interface declarations}

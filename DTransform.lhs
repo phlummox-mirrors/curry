@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 1818 2005-11-07 00:26:21Z wlux $
+% $Id: DTransform.lhs 1849 2006-02-07 14:17:31Z wlux $
 %
 % 2002/04/10 19:00:00 Added emptyNode as constructor in type cTree
 \nwfilename{DTransform.lhs}
@@ -39,14 +39,15 @@ will be imported by all the transformed modules.
 
 \end{verbatim}
 
-Next is the principal  function of the module. The list parameter 
-specifies the functions of the module that must be trusted. These
-functions will return empty nodes as computation trees, but still can 
-include some useful trees as children.
+Next is the principal  function of the module. The argument function
+\texttt{trusted} returns \texttt{True} for all functions of the module
+that must be trusted. These functions will return empty nodes as
+computation trees, but still can include some useful trees as
+children.
 
 \begin{verbatim}
 
-> dTransform :: [QualIdent] -> Module -> Module
+> dTransform :: (QualIdent -> Bool) -> Module -> Module
 > dTransform trusted (Module m is ds) = Module m (i:is) (debugDecls m trusted ds)
 >       where 
 >       i   =  debugPreludeModule
@@ -71,7 +72,7 @@ groups:
 
 \begin{verbatim}
 
-> debugDecls :: ModuleIdent -> [QualIdent] -> [Decl] -> [Decl]
+> debugDecls :: ModuleIdent -> (QualIdent -> Bool) -> [Decl] -> [Decl]
 > debugDecls m  trusted lDecls = 
 >       foreigns  ++
 >       types ++
@@ -607,14 +608,14 @@ We only need:
 
 > ---------------------------------------------------------------------------
 
-> debugFunction ::   [QualIdent] -> Decl -> Decl
+> debugFunction ::   (QualIdent -> Bool) -> Decl -> Decl
 > debugFunction trusted (FunctionDecl qId lVars fType expr)
 >   | isQSelectorId qId = FunctionDecl qId lVars fType expr
 >   | otherwise         = FunctionDecl qId' lVars fType expr'
 >   where
 >     expr' = newLocalDeclarations  qId trust expr lVars (length lVars)
 >     qId' = changeFunctionqId qId
->     trust = qId `elem` trusted
+>     trust = trusted qId
         
 
 > newLocalDeclarations :: QualIdent -> Bool -> Expression -> [Ident] ->
