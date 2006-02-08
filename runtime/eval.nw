@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: eval.nw 1852 2006-02-08 23:24:37Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Evaluation}\label{sec:eval}
@@ -306,30 +306,31 @@ extern NodeInfo ___64__info, ___64__lazy_info_table[];
 
 @ 
 <<eval.c>>=
-DECLARE_LABEL(___64__eval);
-DECLARE_LABEL(___64__lazy);
+DECLARE_LABEL(eval_clos_2);
+DECLARE_LABEL(eval_lazy_2);
 
 NodeInfo ___64__info		  = FUNINFO("@", ___64_, 2);
 NodeInfo ___64__lazy_info_table[] = LAZYINFO("@", ___64_, 2);
 
 static
-FUNCTION(___64__eval)
+FUNCTION(eval_clos_2)
 {
     Node *clos;
- ENTRY_LABEL(___64__eval)
+ ENTRY_LABEL(eval_clos_2)
     CHECK_STACK1();
     clos  = sp[0];
     sp	 -= 1;
     sp[0] = clos->c.args[0];
     sp[1] = clos->c.args[1];
-    GOTO(___64_);
+    GOTO(clos->info->entry);
 }
 
 static
-FUNCTION(___64__lazy)
+FUNCTION(eval_lazy_2)
 {
-    Node *susp;
- ENTRY_LABEL(___64__lazy)
+    Node  *susp;
+    Label entry;
+ ENTRY_LABEL(eval_lazy_2)
     susp = sp[0];
 
     /* suspend the search if the node is not local */
@@ -348,6 +349,7 @@ FUNCTION(___64__lazy)
     sp[2] = (Node *)update;
 
     /* lock the suspension */
+    entry = susp->info->entry;
     if ( (word *)susp < hlim )
     {
 	DO_SAVE(susp, q.wq);
@@ -358,7 +360,7 @@ FUNCTION(___64__lazy)
     susp->q.wq = 0;
 
     /* enter the callee */
-    GOTO(___64_);
+    GOTO(entry);
 }
 
 DECLARE_LABEL(___64__1);
@@ -542,14 +544,16 @@ otherwise.
 
 <<eval.c>>=
 DECLARE_ENTRYPOINT(__ground);
-DECLARE_LABEL(__ground_lazy);
 DECLARE_LABEL(__ground_1);
 
+DECLARE_LABEL(eval_lazy_1);
+
 static
-FUNCTION(__ground_lazy)
+FUNCTION(eval_lazy_1)
 {
-    Node *susp;
- ENTRY_LABEL(__ground_lazy)
+    Node  *susp;
+    Label entry;
+ ENTRY_LABEL(eval_lazy_1)
     susp = sp[0];
 
     /* suspend the search if the node is not local */
@@ -567,6 +571,7 @@ FUNCTION(__ground_lazy)
     sp[1] = (Node *)update;
 
     /* lock the suspension */
+    entry = susp->info->entry;
     if ( (word *)susp < hlim )
     {
 	DO_SAVE(susp, q.wq);
@@ -577,7 +582,7 @@ FUNCTION(__ground_lazy)
     susp->q.wq = 0;
 
     /* enter the callee */
-    GOTO(__ground);
+    GOTO(entry);
 }
 
 FUNCTION(__ground)

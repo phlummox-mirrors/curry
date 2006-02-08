@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1822 2005-11-07 22:50:22Z wlux $
+% $Id: CGen.lhs 1852 2006-02-08 23:24:37Z wlux $
 %
-% Copyright (c) 1998-2005, Wolfgang Lux
+% Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CGen.lhs}
@@ -281,10 +281,13 @@ current module is generated.
 >   map evalDecl (nonLocal clos) ++
 >   map lazyDecl (nonLocal lazy) ++
 >   map fun0Decl (nonLocal fun0) ++
+>   -- (private) closure and suspend node evaluation entry points
+>   concat [[evalEntryDecl n,evalFunction n] | n <- closArities] ++
+>   concat [[lazyEntryDecl n,lazyFunction n] | n <- lazyArities] ++
 >   -- (private) @ functions
 >   [entryDecl CPrivate (apName n) | n <- [3..maxApArity]] ++
->   concat [evalDef CPrivate f n | f <- apClos, let n = apArity f, n > 2] ++
->   concat [lazyDef CPrivate f n | f <- apLazy, let n = apArity f, n > 2] ++
+>   [evalDef CPrivate f n | f <- apClos, let n = apArity f, n > 2] ++
+>   [lazyDef CPrivate f n | f <- apLazy, let n = apArity f, n > 2] ++
 >   concat [apFunction (apName n) n | n <- [3..maxApArity]] ++
 >   -- (private) auxiliary functions for partial applications of tuples
 >   map (entryDecl CPrivate) tuplePapp ++
@@ -299,8 +302,8 @@ current module is generated.
 >   -- local function declarations
 >   map (entryDecl CPublic . fst3) fs ++
 >   concat [[pappDecl f,pappDef CPublic f n] | (f,n) <- fs', n > 0] ++
->   concat [evalDecl f : evalDef CPublic f n | (f,n) <- fs'] ++
->   concat [lazyDecl f : lazyDef CPublic f n | (f,n) <- fs'] ++
+>   concat [[evalDecl f,evalDef CPublic f n] | (f,n) <- fs'] ++
+>   concat [[lazyDecl f,lazyDef CPublic f n] | (f,n) <- fs'] ++
 >   concat [[fun0Decl f,fun0Def CPublic f n] | (f,n) <- fs'] ++
 >   concat [function CPublic f vs st | (f,vs,st) <- fs]
 >   where nonLocal = filter (`notElem` map fst3 fs)
@@ -313,15 +316,18 @@ current module is generated.
 >         maxApArity = maximum (0 : map apArity (apCall ++ apClos ++ apLazy))
 >         cs = [(c,n) | ConstrDecl c n <- concatMap snd ds]
 >         fs' = [(f,n) | (f,vs,_) <- fs, let n = length vs, (f,n) `notElem` cs]
+>         closArities = nub $ filter (> 2) (map apArity apClos) ++ arities
+>         lazyArities = nub $ filter (> 2) (map apArity apLazy) ++ arities
+>         arities = map snd fs'
 
 > entryDecl :: CVisibility -> Name -> CTopDecl
 > entryDecl vb f = CFuncDecl vb (cName f)
 
-> evalEntryDecl :: Name -> CTopDecl
-> evalEntryDecl f = CFuncDecl CPrivate (evalFunc f)
+> evalEntryDecl :: Int -> CTopDecl
+> evalEntryDecl n = CFuncDecl CPrivate (evalFunc n)
 
-> lazyEntryDecl :: Name -> CTopDecl
-> lazyEntryDecl f = CFuncDecl CPrivate (lazyFunc f)
+> lazyEntryDecl :: Int -> CTopDecl
+> lazyEntryDecl n = CFuncDecl CPrivate (lazyFunc n)
 
 > pappDecl :: Name -> CTopDecl
 > pappDecl f = CExternArrayDecl nodeInfoType (pappInfoTable f)
@@ -339,22 +345,17 @@ current module is generated.
 > pappDef vb f n =
 >   CArrayDef vb nodeInfoType (pappInfoTable f) [pappInfo f i n | i <- [0..n-1]]
 
-> evalDef :: CVisibility -> Name -> Int -> [CTopDecl]
-> evalDef vb f n =
->   [evalEntryDecl f,
->    CVarDef vb nodeInfoType (nodeInfo f) (funInfo f n),
->    evalFunction f n]
+> evalDef :: CVisibility -> Name -> Int -> CTopDecl
+> evalDef vb f n = CVarDef vb nodeInfoType (nodeInfo f) (funInfo f n)
 
-> lazyDef :: CVisibility -> Name -> Int -> [CTopDecl]
+> lazyDef :: CVisibility -> Name -> Int -> CTopDecl
 > lazyDef vb f n =
->   [lazyEntryDecl f,
->    CArrayDef vb nodeInfoType (lazyInfoTable f)
->              (map (CStruct . map CInit) [suspinfo,queuemeinfo,indirinfo]),
->    lazyFunction f n]
+>   CArrayDef vb nodeInfoType (lazyInfoTable f)
+>             (map (CStruct . map CInit) [suspinfo,queuemeinfo,indirinfo])
 >   where suspinfo =
 >           [CExpr "SUSPEND_TAG",suspendNodeSize n,gcPointerTable,
->            CString (undecorate (demangle f)),CExpr (lazyFunc f),noEntry,
->            CInt 0,notFinalized]
+>            CString (undecorate (demangle f)),CExpr (lazyFunc n),
+>            CExpr (cName f),CInt 0,notFinalized]
 >         queuemeinfo =
 >           [CExpr "QUEUEME_TAG",suspendNodeSize n,gcPointerTable,
 >            noName,CExpr "eval_queueMe",noEntry,CInt 0,notFinalized]
@@ -381,8 +382,8 @@ current module is generated.
 > funInfo f n = CStruct (map CInit funinfo)
 >   where funinfo =
 >           [CExpr "FAPP_TAG",closureNodeSize n,gcPointerTable,
->            CString (undecorate (demangle f)),CExpr (evalFunc f),
->            CNull,CInt 0,notFinalized]
+>            CString (undecorate (demangle f)),CExpr (evalFunc n),
+>            CExpr (cName f),CInt 0,notFinalized]
 
 \end{verbatim}
 \subsection{Code Generation}
@@ -396,31 +397,32 @@ the suspend node associated with the abstract machine code function.
 > function :: CVisibility -> Name -> [Name] -> Stmt -> [CTopDecl]
 > function vb f vs st = funcDefs vb f vs (cpsFunction f vs st)
 
-> evalFunction :: Name -> Int -> CTopDecl
-> evalFunction f n = CFuncDef CPrivate (evalFunc f) (evalCode f n)
->   where evalCode f n =
+> evalFunction :: Int -> CTopDecl
+> evalFunction n = CFuncDef CPrivate (evalFunc n) (evalCode n)
+>   where evalCode n =
 >           [CProcCall "CHECK_STACK" [CInt (n - 1)] | n > 1] ++
 >           CLocalVar nodePtrType "clos" (Just (CExpr "sp[0]")) :
 >           [CDecrBy (LVar "sp") (CInt (n - 1)) | n /= 1] ++
->           [saveArg i | i <- [0..n-1]] ++ [goto (cName f)]
+>           [saveArg i | i <- [0..n-1]] ++
+>           [goto "clos->info->entry"]
 >         saveArg i = CAssign (LElem (LVar "sp") (CInt i))
 >                             (CElem (CExpr "clos->c.args") (CInt i))
 
-> lazyFunction :: Name -> Int -> CTopDecl
-> lazyFunction f n = CFuncDef CPrivate (lazyFunc f) (lazyCode f n)
->   where lazyCode f n =
+> lazyFunction :: Int -> CTopDecl
+> lazyFunction n = CFuncDef CPrivate (lazyFunc n) (lazyCode n)
+>   where lazyCode n =
 >           CLocalVar nodePtrType "susp" (Just (CExpr "sp[0]")) :
->           CIf (CFunCall "!is_local_space" [field "susp" "s.spc"])
->               [CProcCall "suspend_search"
->                          [CExpr "resume",CExpr "susp",field "susp" "s.spc"],
+>           CIf (funCall "!is_local_space" ["susp->s.spc"])
+>               [procCall "suspend_search" ["resume","susp","susp->s.spc"],
 >                CAssign (LVar "susp") (CExpr "sp[0]")]
 >               [] :
 >           CProcCall "CHECK_STACK" [CInt (n + 1)] :
 >           CDecrBy (LVar "sp") (CInt (n + 1)) :
 >           [saveArg i | i <- [0..n-1]] ++
->           [CAssign (LElem (LVar "sp") (CInt n)) (asNode (CExpr "update"))] ++
+>           [CAssign (LElem (LVar "sp") (CInt n)) (asNode (CExpr "update")),
+>            CLocalVar labelType "entry" (Just (CExpr "susp->info->entry"))] ++
 >           lock (Name "susp") ++
->           [goto (cName f)]
+>           [goto "entry"]
 >         saveArg i = CAssign (LElem (LVar "sp") (CInt i))
 >                             (CElem (CExpr "susp->s.args") (CInt i))
 
@@ -1169,9 +1171,9 @@ used for constant constructors and functions, respectively.
 > constArray :: String
 > constArray = "constants"
 
-> evalFunc, lazyFunc :: Name -> String
-> evalFunc f = cName f ++ "_eval"
-> lazyFunc f = cName f ++ "_lazy"
+> evalFunc, lazyFunc :: Int -> String
+> evalFunc n = "eval_clos_" ++ show n
+> lazyFunc n = "eval_lazy_" ++ show n
 
 > nodeInfo, pappInfoTable, lazyInfoTable :: Name -> String
 > nodeInfo c = cName c ++ "_info"

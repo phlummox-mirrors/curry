@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: show.nw 1852 2006-02-08 23:24:37Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Show Function}
@@ -36,21 +36,16 @@ objective of this function is to support the declarative debugger.
 DECLARE_ENTRYPOINT(__show);
 DECLARE_ENTRYPOINT(__dval);
 DECLARE_LABEL(showp);
-DECLARE_LABEL(showp_lazy);
 DECLARE_LABEL(showp_1);
 DECLARE_LABEL(showArgs);
-DECLARE_LABEL(showArgs_lazy);
 DECLARE_LABEL(showInfix);
 DECLARE_LABEL(showTuple);
 DECLARE_LABEL(showTupleArgs);
-DECLARE_LABEL(showTupleArgs_lazy);
 DECLARE_LABEL(showList);
 DECLARE_LABEL(showTail);
-DECLARE_LABEL(showTail_lazy);
 DECLARE_LABEL(showTail_1);
 DECLARE_LABEL(showString);
 DECLARE_LABEL(showStringTail);
-DECLARE_LABEL(showStringTail_lazy);
 
 #if ONLY_BOXED_OBJECTS
 static const struct int_node zero_node = { &int_info, 0 };
@@ -75,6 +70,10 @@ static const struct int_node two_node  = { &int_info, 2 };
 #define bar	 (Node *)(char_table + '|')
 #define dblquote (Node *)(char_table + '\"')
 
+DECLARE_LABEL(eval_lazy_2);
+DECLARE_LABEL(eval_lazy_3);
+DECLARE_LABEL(eval_lazy_4);
+
 static NodeInfo showp_lazy_info_table[] = LAZYINFO("showp", showp, 4);
 static NodeInfo showArgs_lazy_info_table[] = LAZYINFO("showArgs", showArgs, 4);
 static NodeInfo showTupleArgs_lazy_info_table[] =
@@ -82,6 +81,123 @@ static NodeInfo showTupleArgs_lazy_info_table[] =
 static NodeInfo showTail_lazy_info_table[] = LAZYINFO("showTail", showTail, 3);
 static NodeInfo showStringTail_lazy_info_table[] =
     LAZYINFO("showStringTail", showStringTail, 2);
+
+static
+FUNCTION(eval_lazy_2)
+{
+    Node  *susp;
+    Label entry;
+ ENTRY_LABEL(eval_lazy_2)
+    susp = sp[0];
+
+    /* suspend the search if the node is not local */
+    /* NB reload susp -- suspend_search might invoke gc */
+    if ( !is_local_space(susp->s.spc) )
+    {
+	suspend_search(resume, susp, susp->s.spc);
+	susp = sp[0];
+    }
+
+    /* create an update frame */
+    CHECK_STACK(3);
+    sp	 -= 3;
+    sp[0] = susp->s.args[0];
+    sp[1] = susp->s.args[1];
+    sp[2] = (Node *)update;
+
+    /* lock the suspension */
+    entry = susp->info->entry;
+    if ( (word *)susp < hlim )
+    {
+	DO_SAVE(susp, q.wq);
+	susp->info++;
+    }
+    else
+	susp->info = queueMe_info_table;
+    susp->q.wq = 0;
+
+    /* enter the callee */
+    GOTO(entry);
+}
+
+static
+FUNCTION(eval_lazy_3)
+{
+    Node  *susp;
+    Label entry;
+ ENTRY_LABEL(eval_lazy_3)
+    susp = sp[0];
+
+    /* suspend the search if the node is not local */
+    /* NB reload susp -- suspend_search might invoke gc */
+    if ( !is_local_space(susp->s.spc) )
+    {
+	suspend_search(resume, susp, susp->s.spc);
+	susp = sp[0];
+    }
+
+    /* create an update frame */
+    CHECK_STACK(4);
+    sp	 -= 4;
+    sp[0] = susp->s.args[0];
+    sp[1] = susp->s.args[1];
+    sp[2] = susp->s.args[2];
+    sp[3] = (Node *)update;
+
+    /* lock the suspension */
+    entry = susp->info->entry;
+    if ( (word *)susp < hlim )
+    {
+	DO_SAVE(susp, q.wq);
+	susp->info++;
+    }
+    else
+	susp->info = queueMe_info_table;
+    susp->q.wq = 0;
+
+    /* enter the callee */
+    GOTO(entry);
+}
+
+static
+FUNCTION(eval_lazy_4)
+{
+    Node  *susp;
+    Label entry;
+ ENTRY_LABEL(eval_lazy_4)
+    susp = sp[0];
+
+    /* suspend the search if the node is not local */
+    /* NB reload susp -- suspend_search might invoke gc */
+    if ( !is_local_space(susp->s.spc) )
+    {
+	suspend_search(resume, susp, susp->s.spc);
+	susp = sp[0];
+    }
+
+    /* create an update frame */
+    CHECK_STACK(5);
+    sp	 -= 5;
+    sp[0] = susp->s.args[0];
+    sp[1] = susp->s.args[1];
+    sp[2] = susp->s.args[2];
+    sp[3] = susp->s.args[3];
+    sp[4] = (Node *)update;
+
+    /* lock the suspension */
+    entry = susp->info->entry;
+    if ( (word *)susp < hlim )
+    {
+	DO_SAVE(susp, q.wq);
+	susp->info++;
+    }
+    else
+	susp->info = queueMe_info_table;
+    susp->q.wq = 0;
+
+    /* enter the callee */
+    GOTO(entry);
+}
 
 @
 The external entry points \texttt{show} and \texttt{dval} just call
@@ -130,44 +246,6 @@ processing to special purpose functions in order to handle data
 structures with arguments.
 
 <<show.c>>=
-static
-FUNCTION(showp_lazy)
-{
-    Node *susp;
- ENTRY_LABEL(showp_lazy)
-    susp = sp[0];
-
-    /* suspend the search if the node is not local */
-    /* NB reload susp -- suspend_search might invoke gc */
-    if ( !is_local_space(susp->s.spc) )
-    {
-	suspend_search(resume, susp, susp->s.spc);
-	susp = sp[0];
-    }
-
-    /* create an update frame */
-    CHECK_STACK(5);
-    sp	 -= 5;
-    sp[0] = susp->s.args[0];
-    sp[1] = susp->s.args[1];
-    sp[2] = susp->s.args[2];
-    sp[3] = susp->s.args[3];
-    sp[4] = (Node *)update;
-
-    /* lock the suspension */
-    if ( (word *)susp < hlim )
-    {
-	DO_SAVE(susp, q.wq);
-	susp->info++;
-    }
-    else
-	susp->info = queueMe_info_table;
-    susp->q.wq = 0;
-
-    /* enter the callee */
-    GOTO(showp);
-}
-
 static
 FUNCTION(showp)
 {
@@ -386,44 +464,6 @@ parentheses if necessary.
 
 <<show.c>>=
 static
-FUNCTION(showArgs_lazy)
-{
-    Node *susp;
- ENTRY_LABEL(showArgs_lazy)
-    susp = sp[0];
-
-    /* suspend the search if the node is not local */
-    /* NB reload susp -- suspend_search might invoke gc */
-    if ( !is_local_space(susp->s.spc) )
-    {
-	suspend_search(resume, susp, susp->s.spc);
-	susp = sp[0];
-    }
-
-    /* create an update frame */
-    CHECK_STACK(5);
-    sp	 -= 5;
-    sp[0] = susp->s.args[0];
-    sp[1] = susp->s.args[1];
-    sp[2] = susp->s.args[2];
-    sp[3] = susp->s.args[3];
-    sp[4] = (Node *)update;
-
-    /* lock the suspension */
-    if ( (word *)susp < hlim )
-    {
-	DO_SAVE(susp, q.wq);
-	susp->info++;
-    }
-    else
-	susp->info = queueMe_info_table;
-    susp->q.wq = 0;
-
-    /* enter the callee */
-    GOTO(showArgs);
-}
-
-static
 FUNCTION(showArgs)
 {
     Node *arglist, *susp, *susp2, *cons, *tail, *prec, *show;
@@ -633,43 +673,6 @@ FUNCTION(showTuple)
     hp		   += cons_node_size;
 
     RETURN(cons);
-}
-
-static
-FUNCTION(showTupleArgs_lazy)
-{
-    Node *susp;
- ENTRY_LABEL(showTupleArgs_lazy)
-    susp = sp[0];
-
-    /* suspend the search if the node is not local */
-    /* NB reload susp -- suspend_search might invoke gc */
-    if ( !is_local_space(susp->s.spc) )
-    {
-	suspend_search(resume, susp, susp->s.spc);
-	susp = sp[0];
-    }
-
-    /* create an update frame */
-    CHECK_STACK(4);
-    sp	 -= 4;
-    sp[0] = susp->s.args[0];
-    sp[1] = susp->s.args[1];
-    sp[2] = susp->s.args[2];
-    sp[3] = (Node *)update;
-
-    /* lock the suspension */
-    if ( (word *)susp < hlim )
-    {
-	DO_SAVE(susp, q.wq);
-	susp->info++;
-    }
-    else
-	susp->info = queueMe_info_table;
-    susp->q.wq = 0;
-
-    /* enter the callee */
-    GOTO(showTupleArgs);
 }
 
 static
@@ -884,43 +887,6 @@ FUNCTION(showList)
 }
 
 static
-FUNCTION(showTail_lazy)
-{
-    Node *susp;
- ENTRY_LABEL(showTail_lazy)
-    susp = sp[0];
-
-    /* suspend the search if the node is not local */
-    /* NB reload susp -- suspend_search might invoke gc */
-    if ( !is_local_space(susp->s.spc) )
-    {
-	suspend_search(resume, susp, susp->s.spc);
-	susp = sp[0];
-    }
-
-    /* create an update frame */
-    CHECK_STACK(4);
-    sp	 -= 4;
-    sp[0] = susp->s.args[0];
-    sp[1] = susp->s.args[1];
-    sp[2] = susp->s.args[2];
-    sp[3] = (Node *)update;
-
-    /* lock the suspension */
-    if ( (word *)susp < hlim )
-    {
-	DO_SAVE(susp, q.wq);
-	susp->info++;
-    }
-    else
-	susp->info = queueMe_info_table;
-    susp->q.wq = 0;
-
-    /* enter the callee */
-    GOTO(showTail);
-}
-
-static
 FUNCTION(showTail)
 {
  ENTRY_LABEL(showTail)
@@ -1077,42 +1043,6 @@ FUNCTION(showString)
 
     cons = prefix_string(lit_char(buf, hd->ch.ch, '"'), susp);
     RETURN(cons);
-}
-
-static
-FUNCTION(showStringTail_lazy)
-{
-    Node *susp;
- ENTRY_LABEL(showStringTail_lazy)
-    susp = sp[0];
-
-    /* suspend the search if the node is not local */
-    /* NB reload susp -- suspend_search might invoke gc */
-    if ( !is_local_space(susp->s.spc) )
-    {
-	suspend_search(resume, susp, susp->s.spc);
-	susp = sp[0];
-    }
-
-    /* create an update frame */
-    CHECK_STACK(3);
-    sp	 -= 3;
-    sp[0] = susp->s.args[0];
-    sp[1] = susp->s.args[1];
-    sp[2] = (Node *)update;
-
-    /* lock the suspension */
-    if ( (word *)susp < hlim )
-    {
-	DO_SAVE(susp, q.wq);
-	susp->info++;
-    }
-    else
-	susp->info = queueMe_info_table;
-    susp->q.wq = 0;
-
-    /* enter the callee */
-    GOTO(showStringTail);
 }
 
 static

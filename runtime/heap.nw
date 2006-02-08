@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1813 2005-11-04 15:21:02Z wlux $
+% $Id: heap.nw 1852 2006-02-08 23:24:37Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{The Heap}\label{sec:heap}
@@ -150,7 +150,7 @@ struct node_info
     const int          *offset_table;	/* pointer offset table */
     const char	       *cname;		/* closure name */
     const Label	       eval;		/* entry point for evaluation */
-    const Label	       entry;		/* PAPP only: function entry point */
+    const Label	       entry;		/* function entry point */
     const unsigned int arity;		/* node arity (> 0 only for PAPPs) */
     const FinalFun     final_fun;	/* optional finalization function */
 };
@@ -629,13 +629,13 @@ an array in ascending order with respect to the number of arguments.
 
 The following macros can be used to initialize the elements of these
 info tables. They presume the existence of an entry point for
-evaluating a (fully applied) closure node whose name is derived by
-adding the suffix [[_eval]] to the name of the function's entry point.       %'
+evaluating a (fully applied) closure node whose name is composed of
+the prefix [[eval_clos_]] and the arity of the function.
 
 <<heap.h>>=
 #define FUNINFO(fname,entrypoint,arity) \
 { FAPP_TAG, closure_node_size(arity), 0, fname, \
-  entrypoint##_eval, 0, 0, 0 }
+  eval_clos_##arity, entrypoint, 0, 0 }
 
 #define PAPPINFO(fname,argc,entrypoint,arity) \
 { PAPP_TAG, closure_node_size(argc), 0, fname, \
@@ -645,15 +645,14 @@ adding the suffix [[_eval]] to the name of the function's entry point.       %'
 In addition to the info table, a descriptor table for lazy
 applications must be provided for every function. The following macro
 can be used to initialize this table. It assumes that the entry point
-is named by adding the suffix [[_lazy]] to the name of function's
-entry point.                                                                 %'
+is named by adding the function's arity to the prefix [[eval_lazy_]].        %'
 
 <<heap.h>>=
-#define LAZYINFO(fname,entrypoint,n) { \
-    { SUSPEND_TAG, suspend_node_size(n), 0, fname, \
-      entrypoint##_lazy, 0, 0, 0 }, \
-    { QUEUEME_TAG, suspend_node_size(n), 0, 0, eval_queueMe, 0, 0, 0 }, \
-    { INDIR_TAG, suspend_node_size(n), 0, 0, eval_indir, 0, 0, 0 } \
+#define LAZYINFO(fname,entrypoint,arity) { \
+    { SUSPEND_TAG, suspend_node_size(arity), 0, fname, \
+      eval_lazy_##arity, entrypoint, 0, 0 }, \
+    { QUEUEME_TAG, suspend_node_size(arity), 0, 0, eval_queueMe, 0, 0, 0 }, \
+    { INDIR_TAG, suspend_node_size(arity), 0, 0, eval_indir, 0, 0, 0 } \
 }
 
 @ 

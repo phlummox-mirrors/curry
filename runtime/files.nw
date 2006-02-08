@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1836 2005-11-15 17:43:41Z wlux $
+% $Id: files.nw 1852 2006-02-08 23:24:37Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Files}
@@ -720,9 +720,47 @@ DECLARE_ENTRYPOINT(__readFile);
 DECLARE_ENTRYPOINT(__getContents);
 DECLARE_ENTRYPOINT(__hGetContents);
 DECLARE_LABEL(lazyRead);
-DECLARE_LABEL(lazyRead_lazy);
+
+DECLARE_LABEL(eval_lazy_1);
 
 static NodeInfo lazyRead_lazy_info_table[] = LAZYINFO("lazyRead", lazyRead, 1);
+
+static
+FUNCTION(eval_lazy_1)
+{
+    Node  *susp;
+    Label entry;
+ ENTRY_LABEL(eval_lazy_1)
+    susp = sp[0];
+
+    /* suspend the search if the node is not local */
+    /* NB reload susp -- suspend_search might invoke gc */
+    if ( !is_local_space(susp->s.spc) )
+    {
+	suspend_search(resume, susp, susp->s.spc);
+	susp = sp[0];
+    }
+
+    /* create an update frame */
+    CHECK_STACK(2);
+    sp	 -= 2;
+    sp[0] = susp->s.args[0];
+    sp[1] = (Node *)update;
+
+    /* lock the suspension */
+    entry = susp->info->entry;
+    if ( (word *)susp < hlim )
+    {
+	DO_SAVE(susp, q.wq);
+	susp->info++;
+    }
+    else
+	susp->info = queueMe_info_table;
+    susp->q.wq = 0;
+
+    /* enter the callee */
+    GOTO(entry);
+}
 
 FUNCTION(__readFile)
 {
@@ -782,41 +820,6 @@ FUNCTION(__hGetContents)
 
     sp += 2;
     RETURN(susp);
-}
-
-static
-FUNCTION(lazyRead_lazy)
-{
-    Node *susp;
- ENTRY_LABEL(lazyRead_lazy)
-    susp = sp[0];
-
-    /* suspend the search if the node is not local */
-    /* NB reload susp -- suspend_search might invoke gc */
-    if ( !is_local_space(susp->s.spc) )
-    {
-	suspend_search(resume, susp, susp->s.spc);
-	susp = sp[0];
-    }
-
-    /* create an update frame */
-    CHECK_STACK(2);
-    sp	 -= 2;
-    sp[0] = susp->s.args[0];
-    sp[1] = (Node *)update;
-
-    /* lock the suspension */
-    if ( (word *)susp < hlim )
-    {
-	DO_SAVE(susp, q.wq);
-	susp->info++;
-    }
-    else
-	susp->info = queueMe_info_table;
-    susp->q.wq = 0;
-
-    /* enter the callee */
-    GOTO(lazyRead);
 }
 
 static
