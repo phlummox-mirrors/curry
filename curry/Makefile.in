@@ -1,6 +1,6 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 1839 2006-01-07 12:14:21Z wlux $
+# $Id: Makefile.in 1851 2006-02-08 19:44:07Z wlux $
 #
 # Copyright (c) 2004-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -162,19 +162,17 @@ $(curry_CSRC) $(debug_CSRC): ../cycc
 $(curry_DCSRC): ../cycc
 $(curry_OBJS) $(curry_DOBJS) $(debug_OBJS): $(rts_H)
 
+obj_dirs = sed -e 's/\([A-Za-z_.]*\)\.o/.\1/g'
+
 libcurry.a: $(rts_LIB) $(curry_OBJS) $(curry_INTF)
 	cp $(rts_LIB) $@
-	for f in $(curry_OBJS:.o=); do \
-		set .$$f/*.o; test "$$1" = ".$$f/*.o" || \
-		$(AR) q $@ $$* || { rc=$$?; rm -f $@; exit $$rc; } \
-	done
+	find `echo $(curry_OBJS) | $(obj_dirs)` -name '*.o' | \
+		xargs $(AR) q $@
 	$(RANLIB) $@
 libcurry_g.a: $(debug_OBJS) $(curry_DOBJS) $(debug_INTF) $(curry_INTF)
 	rm -f $@
-	for f in $(debug_OBJS:.o=) $(curry_DOBJS:.o=); do \
-		set .$$f/*.o; test "$$1" = ".$$f/*.o" || \
-		$(AR) qc $@ $$* || { rc=$$?; rm -f $@; exit $$rc; } \
-	done
+	find `echo $(debug_OBJS) $(curry_DOBJS) | $(obj_dirs)` -name '*.o' | \
+		xargs $(AR) qc $@
 	$(RANLIB) $@
 
 # link all source files into the current directory
