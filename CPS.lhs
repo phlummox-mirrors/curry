@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1814 2005-11-05 22:34:48Z wlux $
+% $Id: CPS.lhs 1854 2006-02-17 13:46:00Z wlux $
 %
-% Copyright (c) 2003-2005, Wolfgang Lux
+% Copyright (c) 2003-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CPS.lhs}
@@ -180,24 +180,23 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 
 > cpsSwitch :: Name -> CPSCont -> Maybe CPSCont -> Int -> RF -> Name -> [Case]
 >           -> (Int,CPSStmt)
-> cpsSwitch f k0 k n rf v cases = (n'',CPSSwitch ub v (vcase ++ cases'))
->   where (n',vcase) = cpsVarCase ub f k0 n rf v ts
+> cpsSwitch f k0 k n rf v cases =
+>   (n'',CPSSwitch ub v (map (CaseBlock CPSFreeCase) st' ++ cases'))
+>   where (n',st') = cpsVarCase f k0 n rf v ts
 >         (n'',cases') = mapAccumL (cpsCase f k) n' cases
 >         ts = [t | Case t _ <- cases, t /= DefaultCase]
 >         ub = unboxedSwitch ts
 
-> cpsVarCase :: Bool -> Name -> CPSCont -> Int -> RF -> Name -> [Tag]
->            -> (Int,[CaseBlock])
-> cpsVarCase _ _ k n Rigid v _ = (n,[CaseBlock CPSFreeCase (CPSDelay v k)])
-> cpsVarCase ub f k n Flex v ts
+> cpsVarCase :: Name -> CPSCont -> Int -> RF -> Name -> [Tag] -> (Int,[CPSStmt])
+> cpsVarCase _ k n Rigid v _ = (n,[CPSDelay v k])
+> cpsVarCase f k n Flex v ts
 >   | null ts = (n,[])
->   | otherwise = (n',[CaseBlock CPSFreeCase (CPSDelayNonLocal v k st')])
->   where (n',st') = cpsFlexCase ub f k n v ts
+>   | otherwise = (n',[CPSDelayNonLocal v k st'])
+>   where (n',st') = cpsFlexCase f k n v ts
 
-> cpsFlexCase :: Bool -> Name -> CPSCont -> Int -> Name -> [Tag]
->             -> (Int,CPSStmt)
-> cpsFlexCase _ _ k n v [t] = (n,cpsFresh k v t)
-> cpsFlexCase ub f k n v ts = (n',CPSChoices (Just (v,k)) (map CPSCont ks))
+> cpsFlexCase :: Name -> CPSCont -> Int -> Name -> [Tag] -> (Int,CPSStmt)
+> cpsFlexCase _ k n v [t] = (n,cpsFresh k v t)
+> cpsFlexCase f k n v ts = (n',CPSChoices (Just (v,k)) (map CPSCont ks))
 >   where (n',ks) = mapAccumL fresh n ts
 >         fresh n t = (n + 1,CPSFunction f n (contVars k) (cpsFresh k v t))
 
