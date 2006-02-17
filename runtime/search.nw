@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1819 2005-11-07 15:56:02Z wlux $
+% $Id: search.nw 1853 2006-02-17 13:24:26Z wlux $
 %
-% Copyright (c) 2002-2005, Wolfgang Lux
+% Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Encapsulated Search}
@@ -25,6 +25,7 @@ static void push_search_context(void);
 static void pop_search_context(void);
 
 DECLARE_LABEL(solved_goal);
+DECLARE_LABEL(search_goal_success);
 DECLARE_LABEL(search_cont);
 DECLARE_LABEL(search_goal_proceed);
 DECLARE_LABEL(resume_search);
@@ -218,7 +219,6 @@ static
 FUNCTION(solved_goal)
 {
     Node  *cont, *res, *arg;
-    Label ret_ip;
  ENTRY_LABEL(solved_goal)
     cont = sp[0];
     res	 = copy_graph(cont->sc.var, cont->sc.spc);
@@ -228,15 +228,25 @@ FUNCTION(solved_goal)
 	arg = arg->n.node;
     if ( is_boxed(arg) && is_variable_node(arg) && is_local_space(arg->v.spc) )
     {
-	sp    += 2;
-	ret_ip = (Label)sp[0];
-	sp[0]  = Success;
-	GOTO(bind_var(arg, res, ret_ip));
+	CHECK_STACK1();
+	sp   -= 1;
+	sp[0] = res;
+	sp[1] = arg;
+	sp[2] = (Node *)search_goal_success;
+	GOTO(bind_var);
     }
 
     sp[0] = arg;
     sp[1] = res;
     GOTO(___61__58__61_);
+}
+
+static
+FUNCTION(search_goal_success)
+{
+ ENTRY_LABEL(search_goal_success)
+    sp += 1;
+    RETURN(Success);
 }
 
 @ 
@@ -262,6 +272,11 @@ the current search space. This policy ensures that -- except for some
 unusual cases, e.g., continuing a partially solved goal in a global
 context -- expensive copying is avoided.
 
+Note that [[search_goal_proceed]] discards the value on the top of the
+stack and therefore it does not matter that [[bind_var]] returns the
+argument to which [[search_cont]] was applied, whereas the equality
+constraint returns the constant [[Success]].
+
 <<search.c>>=
 static NodeInfo search_cont_papp_info_table[] = {
     PAPPINFO("<search goal>", 1, search_cont, 2)
@@ -282,19 +297,19 @@ FUNCTION(search_cont)
     arg  = sp[1];
     while ( is_boxed(arg) && arg->info->tag == INDIR_TAG )
 	arg = arg->n.node;
-    if ( is_boxed(arg) && is_variable_node(arg) && is_local_space(arg->v.spc) )
-    {
-	sp[0] = Success;
-	sp[1] = cont->sc.susp;
-	GOTO(bind_var(arg, cont->sc.var, search_goal_proceed));
-    }
 
     CHECK_STACK(2);
     sp   -= 2;
-    sp[0] = arg;
-    sp[1] = cont->sc.var;
     sp[2] = (Node *)search_goal_proceed;
     sp[3] = cont->sc.susp;
+    if ( is_boxed(arg) && is_variable_node(arg) && is_local_space(arg->v.spc) )
+    {
+	sp[0] = cont->sc.var;
+	sp[1] = arg;
+	GOTO(bind_var);
+    }
+    sp[0] = arg;
+    sp[1] = cont->sc.var;
     GOTO(___61__58__61_);
 }
 

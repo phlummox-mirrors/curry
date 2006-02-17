@@ -1,16 +1,19 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: unify.nw 1853 2006-02-17 13:24:26Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Unification}\label{sec:unification}
-The equality constraint \texttt{=:=} tries to unify its arguments.
+The equality constraint \texttt{=:=} tries to unify its arguments. The
+auxiliary entry point [[bind_var]] is used to bind a variable to a
+data term that does not contain this variable. Note that [[bind_var]]
+does not return [[Success]], but the node to which the variable was
+bound.
 
 <<unify.h>>=
-extern Label bind_var(Node *, Node *, Label);
-
 DECLARE_ENTRYPOINT(___61__58__61_);
+DECLARE_ENTRYPOINT(bind_var);
 
 #if NO_OCCURS_CHECK
 # define occurs(var,arg,nf)	(*(nf) = is_unboxed(arg), false)
@@ -47,6 +50,7 @@ DECLARE_CONST(__prelude__True);
 DECLARE_LABEL(___61__58__61__1);
 DECLARE_LABEL(___61__58__61__2);
 DECLARE_LABEL(unify_var);
+DECLARE_LABEL(unify_var_1);
 DECLARE_LABEL(unify_args);
 DECLARE_LABEL(unify_args_1);
 DECLARE_LABEL(unify_args_2);
@@ -655,7 +659,6 @@ FUNCTION(unify_var)
     boolean	 nf, is_vect;
     unsigned int i, n, sz;
     Node	 *var, *arg, *next, *arglist, **argp;
-    Label	 ret_ip;
  ENTRY_LABEL(unify_var)
     if ( !is_local_space(sp[0]->v.spc) )
     {
@@ -733,17 +736,30 @@ FUNCTION(unify_var)
     }
 
     /* bind the variable */
-    var = sp[0];
-    arg = sp[1];
+    CHECK_STACK(2);
+    var	  = sp[0];
+    arg	  = sp[1];
+    sp	 -= 2;
+    sp[0] = arg;
+    sp[1] = var;
+    sp[2] = (Node *)unify_var_1;
+    sp[3] = arglist;
+    GOTO(bind_var);
+}
+
+static
+FUNCTION(unify_var_1)
+{
+    Node *arglist;
+ ENTRY_LABEL(unify_var_1)
+    arglist = sp[1];
     if ( arglist == nil )
     {
-	sp    += 2;
-	ret_ip = (Label)sp[0];
-	sp[0]  = Success;
-	GOTO(bind_var(var, arg, ret_ip));
+	sp += 2;
+	RETURN(Success);
     }
-    *++sp = arglist;
-    GOTO(bind_var(var, arg, unify_args));
+    sp += 1;
+    GOTO(unify_args);
 }
 
 @
@@ -782,26 +798,29 @@ unification between the two values.
 DECLARE_LABEL(check_constraints);
 DECLARE_LABEL(check_constraints_1);
 DECLARE_LABEL(wake);
-DECLARE_LABEL(resume_bind);
 DECLARE_LABEL(bind_var_1);
 
-Label
-bind_var(Node *var, Node *node, Label cont)
+FUNCTION(bind_var)
 {
     boolean	is_var;
+    Node	*var, *node;
     Constraint	*cstrs;
     ThreadQueue	wq;
+    EXPORT_LABEL(bind_var)
+ ENTRY_LABEL(bind_var)
+    node = sp[0];
+    var	 = sp[1];
 
     if ( !is_boxed(var) || !is_variable_node(var)
 	 || !is_local_space(var->v.spc) )
     {
-	CHECK_STACK(4);
-	sp   -= 4;
+	CHECK_STACK(2);
+	sp   -= 2;
 	sp[0] = var;
 	sp[1] = node;
 	sp[2] = (Node *)bind_var_1;
-	sp[3] = (Node *)cont;
-	return ___61__58__61_;
+	sp[3] = node;
+	GOTO(___61__58__61_);
     }
 
     cstrs  = var->v.cstrs;
@@ -818,13 +837,11 @@ bind_var(Node *var, Node *node, Label cont)
 	    case VARIABLE_TAG:
 		if ( !is_local_space(node->v.spc) && (wq || cstrs) )
 		{
-		    CHECK_STACK(4);
-		    sp	-= 4;
+		    CHECK_STACK1();
+		    sp	 -= 1;
 		    sp[0] = node;
-		    sp[1] = (Node *)resume_bind;
-		    sp[2] = var;
-		    sp[3] = (Node *)cont;
-		    return sync_var;
+		    sp[1] = (Node *)bind_var;
+		    GOTO(sync_var);
 		}
 		is_var = true;
 		break;
@@ -853,6 +870,7 @@ bind_var(Node *var, Node *node, Label cont)
     var->n.node = node;
 
     /* handle the wait queue of the variable */
+    sp += 2;
     if ( wq )
     {
 	if ( is_var )
@@ -862,63 +880,44 @@ bind_var(Node *var, Node *node, Label cont)
 	}
 	else
 	{
-	    CHECK_STACK(2);
-	    sp   -= 2;
-	    sp[0] = (Node *)wq;
-	    sp[1] = (Node *)cont;
-	    cont  = wake;
+	    sp	 -= 2;
+	    sp[0] = (Node *)wake;
+	    sp[1] = (Node *)wq;
 	}
     }
 
     /* if there are any constraints on the variable re-check them */
     if ( cstrs )
     {
-        CHECK_STACK(3);
-	sp   -= 3;
-        sp[0] = (Node *)cstrs;
-        sp[1] = node;
-	sp[2] = (Node *)cont;
-        cont  = check_constraints;
+        CHECK_STACK(2);
+	sp   -= 2;
+        sp[0] = (Node *)check_constraints;
+        sp[1] = (Node *)cstrs;
     }
 
     /* we need to check the constraints of the other variable, too */
     if ( is_var && is_local_space(node->v.spc) && node->v.cstrs )
     {
-        CHECK_STACK(3);
-	sp   -= 3;
-        sp[0] = (Node *)node->v.cstrs;
-        sp[1] = node;
-	sp[2] = (Node *)cont;
-        cont  = check_constraints;
+        CHECK_STACK(2);
+	sp   -= 2;
+        sp[0] = (Node *)check_constraints;
+        sp[1] = (Node *)node->v.cstrs;
 	SAVE(node, v.cstrs);
 	node->v.cstrs = 0;
     }
 
     /* continue evaluation */
-    return cont;
+    RETURN(node);
 }
 
 static
 FUNCTION(bind_var_1)
 {
-    Label cont;
+    Node *node;
  ENTRY_LABEL(bind_var_1)
-    cont = (Label)sp[1];
+    node = sp[1];
     sp	+= 2;
-    GOTO(cont);
-}
-
-static
-FUNCTION(resume_bind)
-{
-    Node  *var, *node;
-    Label cont;
- ENTRY_LABEL(resume_bind)
-    node = sp[0];
-    var	 = sp[1];
-    cont = (Label)sp[2];
-    sp  += 3;
-    GOTO(bind_var(var, node, cont));
+    RETURN(node);
 }
 
 static
@@ -927,8 +926,8 @@ FUNCTION(check_constraints)
     Node       *node;
     Constraint *cstrs;
  ENTRY_LABEL(check_constraints)
-    cstrs = (Constraint *)sp[0];
-    node  = sp[1];
+    node  = sp[0];
+    cstrs = (Constraint *)sp[1];
     ASSERT(cstrs != 0);
 
     CHECK_STACK(3);
@@ -936,39 +935,42 @@ FUNCTION(check_constraints)
     sp[0] = node;
     sp[1] = (Node *)cstrs;
     sp[2] = (Node *)check_constraints_1;
-    sp[3] = (Node *)cstrs->cstrs;
+    sp[4] = (Node *)cstrs->cstrs;
     GOTO(cstrs->info->eval);
 }
 
 static
 FUNCTION(check_constraints_1)
 {
+    Node       *node;
     Constraint *cstrs;
-    Label      ret_ip;
  ENTRY_LABEL(check_constraints_1)
     /* XXX check for suspended constraints? */
-    cstrs = (Constraint *)sp[1];
+    cstrs = (Constraint *)sp[2];
     if ( cstrs )
     {
 	sp += 1;
 	GOTO(check_constraints);
     }
 
-    ret_ip = (Label)sp[3];
-    sp	  += 4;
-    GOTO(ret_ip);
+    node = sp[1];
+    sp	+= 3;
+    RETURN(node);
 }
 
 static
 FUNCTION(wake)
 {
+    Node	*node;
     Label	ret_ip;
     ThreadQueue	wq;
  ENTRY_LABEL(wake)
     /* handle the wait queue of the variable */
-    wq	   = (ThreadQueue)sp[0];
-    ret_ip = (Label)sp[1];
+    node   = sp[0];
+    wq	   = (ThreadQueue)sp[1];
+    ret_ip = (Label)sp[2];
     sp	  += 2;
+    sp[0]  = node;
 
     /* wake all threads from the queue */
     GOTO(activate_threads(wq, ret_ip));

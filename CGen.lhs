@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1852 2006-02-08 23:24:37Z wlux $
+% $Id: CGen.lhs 1853 2006-02-17 13:24:26Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -599,7 +599,7 @@ performing a stack check.
 > stackDepth (CPSExec _ vs k) = length vs + stackDepthCont k
 > stackDepth (CPSCCall _ _ k) = stackDepthCont k
 > stackDepth (CPSApply _ _) = 0
-> stackDepth (CPSUnify _ _ k) = length (contVars k)
+> stackDepth (CPSUnify _ _ k) = 2 + length (contVars k)
 > stackDepth (CPSDelay _ k) = 1 + length (contVars k)
 > stackDepth (CPSDelayNonLocal _ k st) =
 >   max (1 + length (contVars k)) (stackDepth st)
@@ -842,9 +842,7 @@ translation function.
 >         wq = "wq"
 
 > unifyVar :: [Name] -> Name -> Name -> CPSCont -> [CStmt]
-> unifyVar vs0 v n k =
->   saveVars vs0 [if v == v' then n else v' | v' <- contVars k] ++
->   [tailCall "bind_var" [show v,show n,contName k]]
+> unifyVar vs0 v n k = saveCont vs0 [n,v] (Just k) ++ [goto "bind_var"]
 
 > delay :: [Name] -> Name -> CPSCont -> [CStmt]
 > delay vs0 v k = saveCont vs0 [v] (Just k) ++ [goto "sync_var"]
