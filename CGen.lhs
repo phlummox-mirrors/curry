@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1853 2006-02-17 13:24:26Z wlux $
+% $Id: CGen.lhs 1855 2006-02-18 22:58:00Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -262,20 +262,23 @@ option.
 
 \end{verbatim}
 \subsection{Functions}
-Besides the code for all functions, the compiler also defines various
-node descriptors for them. These descriptors are used for partial
-applications of the functions and for (updatable and non-updatable)
-lazy application nodes. In addition, the compiler introduces auxiliary
-functions for partial applications of data constructors defined in the
-current module and tuple constructors used in the current module.
-Furthermore, the code for the \texttt{@}$_n$ functions used in the
-current module is generated.
+Besides the code for all defined functions, the compiler also
+generates node descriptors for them. These descriptors are used for
+partial applications of the functions and for (updatable and
+non-updatable) lazy application nodes. In addition, the compiler
+introduces auxiliary functions that instantiate unbound variables with
+literals and data constructors, respectively, and functions that
+implement partial applications of data constructors including tuple
+constructors used in the current module. Furthermore, the code for
+those functions \texttt{@}$_n$, which are used in the current module,
+is generated.
 \begin{verbatim}
 
 > genFunctions :: [(Name,[ConstrDecl])] -> [(Name,[Name],Stmt)]
 >              -> [Stmt] -> [Expr] -> [CTopDecl]
 > genFunctions ds fs sts ns =
 >   -- imported functions
+>   map (instEntryDecl CPublic) (nonLocalData (map fst flexData)) ++
 >   map (entryDecl CPublic) (nonLocal call) ++
 >   map pappDecl (nonLocal papp) ++
 >   map evalDecl (nonLocal clos) ++
@@ -284,6 +287,15 @@ current module is generated.
 >   -- (private) closure and suspend node evaluation entry points
 >   concat [[evalEntryDecl n,evalFunction n] | n <- closArities] ++
 >   concat [[lazyEntryDecl n,lazyFunction n] | n <- lazyArities] ++
+>   -- instantiation functions for data constructors
+>   map (instEntryDecl CPublic . fst) cs ++
+>   [instFunction CPublic c n | (c,n) <- cs] ++
+>   -- (private) instantiation functions for literals
+>   map litInstEntryDecl flexLits ++
+>   map litInstFunction flexLits ++
+>   -- (private) instantiation functions for tuples
+>   map (instEntryDecl CPrivate . fst) flexTuples ++
+>   [instFunction CPrivate c n | (c,n) <- flexTuples] ++
 >   -- (private) @ functions
 >   [entryDecl CPrivate (apName n) | n <- [3..maxApArity]] ++
 >   [evalDef CPrivate f n | f <- apClos, let n = apArity f, n > 2] ++
@@ -307,18 +319,25 @@ current module is generated.
 >   concat [[fun0Decl f,fun0Def CPublic f n] | (f,n) <- fs'] ++
 >   concat [function CPublic f vs st | (f,vs,st) <- fs]
 >   where nonLocal = filter (`notElem` map fst3 fs)
+>         nonLocalData = filter (`notElem` map fst cs)
 >         (tuplePapp,papp) = partition isTuple (nub [f | Papp f _ <- ns])
 >         (apCall,call) = partition isAp (nub [f | Exec f _ <- sts])
 >         (apClos,clos) = partition isAp (nub [f | Closure f _ <- ns])
 >         (apLazy,lazy) = partition isAp (nub [f | Lazy f _ <- ns])
->         (tupleFun0,fun0) = partition isTuple (nub ([f | Papp f [] <- ns] ++
->                                                    [f | Closure f [] <- ns]))
+>         (tupleFun0,fun0) =
+>           partition isTuple
+>                     (nub ([f | Papp f [] <- ns] ++ [f | Closure f [] <- ns]))
 >         maxApArity = maximum (0 : map apArity (apCall ++ apClos ++ apLazy))
 >         cs = [(c,n) | ConstrDecl c n <- concatMap snd ds]
 >         fs' = [(f,n) | (f,vs,_) <- fs, let n = length vs, (f,n) `notElem` cs]
->         closArities = nub $ filter (> 2) (map apArity apClos) ++ arities
->         lazyArities = nub $ filter (> 2) (map apArity apLazy) ++ arities
+>         closArities = nub (filter (> 2) (map apArity apClos) ++ arities)
+>         lazyArities = nub (filter (> 2) (map apArity apLazy) ++ arities)
 >         arities = map snd fs'
+>         ts = [t | Switch Flex _ cs <- sts, Case t _ <- cs]
+>         flexLits = nub [l | LitCase l <- ts]
+>         (flexTuples,flexData) =
+>           partition (isTuple . fst)
+>                     (nub [(c,length vs) | ConstrCase c vs <- ts])
 
 > entryDecl :: CVisibility -> Name -> CTopDecl
 > entryDecl vb f = CFuncDecl vb (cName f)
@@ -328,6 +347,12 @@ current module is generated.
 
 > lazyEntryDecl :: Int -> CTopDecl
 > lazyEntryDecl n = CFuncDecl CPrivate (lazyFunc n)
+
+> instEntryDecl :: CVisibility -> Name -> CTopDecl
+> instEntryDecl vb c = CFuncDecl vb (instFunc c)
+
+> litInstEntryDecl :: Literal -> CTopDecl
+> litInstEntryDecl l = CFuncDecl CPrivate (litInstFunc l)
 
 > pappDecl :: Name -> CTopDecl
 > pappDecl f = CExternArrayDecl nodeInfoType (pappInfoTable f)
@@ -433,6 +458,16 @@ the suspend node associated with the abstract machine code function.
 > apFunction :: Name -> Int -> [CTopDecl]
 > apFunction f n = funcDefs CPrivate f vs (cpsApply f vs)
 >   where vs = [Name ('v' : show i) | i <- [1..n]]
+
+> instFunction :: CVisibility -> Name -> Int -> CTopDecl
+> instFunction vb c n =
+>   CFuncDef vb (instFunc c) (funCode (cpsInst (Name "") v (ConstrCase c vs)))
+>   where v:vs = [Name ('v' : show i) | i <- [0..n]]
+
+> litInstFunction :: Literal -> CTopDecl
+> litInstFunction l =
+>   CFuncDef CPrivate (litInstFunc l)
+>            (funCode (cpsInst (Name "") (Name "v0") (LitCase l)))
 
 > funcDefs :: CVisibility -> Name -> [Name] -> [CPSFunction] -> [CTopDecl]
 > funcDefs vb f vs (k:ks) =
@@ -593,19 +628,20 @@ performing a stack check.
 >   where depth = stackDepth st - length vs
 
 > stackDepth :: CPSStmt -> Int
-> stackDepth (CPSJump k) = length (contVars k)
+> stackDepth (CPSJump k1 k2) = length (contVars k1) + stackDepthCont k2
 > stackDepth (CPSReturn _ k) = stackDepthCont k
 > stackDepth (CPSEnter _ k) = 1 + stackDepthCont k
 > stackDepth (CPSExec _ vs k) = length vs + stackDepthCont k
 > stackDepth (CPSCCall _ _ k) = stackDepthCont k
 > stackDepth (CPSApply _ _) = 0
-> stackDepth (CPSUnify _ _ k) = 2 + length (contVars k)
+> stackDepth (CPSUnify _ _ k) = 2 + stackDepthCont k
 > stackDepth (CPSDelay _ k) = 1 + length (contVars k)
 > stackDepth (CPSDelayNonLocal _ k st) =
 >   max (1 + length (contVars k)) (stackDepth st)
 > stackDepth (CPSSeq _ st) = stackDepth st
 > stackDepth (CPSSwitch _ _ _) = 0
-> stackDepth (CPSChoices vk (k:_)) = maybe 1 (const 2) vk + length (contVars k)
+> stackDepth (CPSChoices vk (k:_)) =
+>   1 + stackDepthCont (fmap snd vk) + length (contVars k)
 
 > stackDepthCont :: Maybe CPSCont -> Int
 > stackDepthCont = maybe 0 (length . contVars)
@@ -755,7 +791,7 @@ translation function.
 \begin{verbatim}
 
 > cCode :: FM Name CExpr -> [Name] -> CPSStmt -> [CStmt]
-> cCode _ vs0 (CPSJump k) = jump vs0 k
+> cCode _ vs0 (CPSJump k1 k2) = jump vs0 k1 k2
 > cCode consts vs0 (CPSReturn e k) =
 >   freshNode consts resName e ++ ret vs0 resName k
 > cCode _ vs0 (CPSEnter v k) = enter vs0 v k
@@ -783,8 +819,8 @@ translation function.
 > cCode0 consts (Let ds) =
 >   concatMap (allocNode consts) ds ++ concatMap (initNode consts) ds
 
-> jump :: [Name] -> CPSCont -> [CStmt]
-> jump vs0 k = saveVars vs0 (contVars k) ++ [goto (contName k)]
+> jump :: [Name] -> CPSCont -> Maybe CPSCont -> [CStmt]
+> jump vs0 k1 k2 = saveCont vs0 (contVars k1) k2 ++ [goto (contName k1)]
 
 > ret :: [Name] -> Name -> Maybe CPSCont -> [CStmt]
 > ret vs0 v Nothing =
@@ -841,8 +877,8 @@ translation function.
 >   where v1' = show v1
 >         wq = "wq"
 
-> unifyVar :: [Name] -> Name -> Name -> CPSCont -> [CStmt]
-> unifyVar vs0 v n k = saveCont vs0 [n,v] (Just k) ++ [goto "bind_var"]
+> unifyVar :: [Name] -> Name -> Name -> Maybe CPSCont -> [CStmt]
+> unifyVar vs0 v n k = saveCont vs0 [n,v] k ++ [goto "bind_var"]
 
 > delay :: [Name] -> Name -> CPSCont -> [CStmt]
 > delay vs0 v k = saveCont vs0 [v] (Just k) ++ [goto "sync_var"]
@@ -854,22 +890,21 @@ translation function.
 >        []]
 
 > choices :: [Name] -> Maybe (Name,CPSCont) -> [CPSCont] -> [CStmt]
-> choices vs0 vk (k:ks) =
+> choices vs0 vk ks =
 >   CStaticArray constLabelType choices
->                (map (CInit . CExpr . contName) (k:ks) ++ [CInit CNull]) :
+>                (map (CInit . CExpr . contName) ks ++ [CInit CNull]) :
 >   CLocalVar nodePtrType ips (Just (asNode (CExpr choices))) :
->   saveVars vs0 (Name ips : contVars k) ++
+>   saveCont vs0 (Name ips : contVars (head ks)) (fmap snd vk) ++
 >   [CppCondStmts "YIELD_NONDET"
->      [CIf (CExpr "rq") (yieldCall vk) []]
+>      [CIf (CExpr "rq") [yieldCall (fmap fst vk)] []]
 >      [],
 >    goto "nondet_handlers->choices"]
 >   where ips = "_choice_ips"
 >         choices = "_choices"
->         yieldCall (Just (v,k')) =
->           saveCont (Name ips : contVars k) [v,Name ips] (Just k') ++
->           [tailCall "yield_delay_thread" ["flex_yield_resume",show v]]
+>         yieldCall (Just v) =
+>           tailCall "yield_delay_thread" ["flex_yield_resume",show v]
 >         yieldCall Nothing =
->           [tailCall "yield_thread" ["nondet_handlers->choices"]]
+>           tailCall "yield_thread" ["nondet_handlers->choices"]
 
 > failAndBacktrack :: [CStmt]
 > failAndBacktrack = [goto "nondet_handlers->fail"]
@@ -1165,6 +1200,8 @@ used for constant constructors and functions, respectively.
 
 > contName :: CPSCont -> String
 > contName (CPSCont f) = cpsName f
+> contName (CPSInst _ (LitCase l)) = litInstFunc l
+> contName (CPSInst _ (ConstrCase c _)) = instFunc c
 
 > constArray :: String
 > constArray = "constants"
@@ -1172,6 +1209,14 @@ used for constant constructors and functions, respectively.
 > evalFunc, lazyFunc :: Int -> String
 > evalFunc n = "eval_clos_" ++ show n
 > lazyFunc n = "eval_lazy_" ++ show n
+
+> instFunc :: Name -> String
+> instFunc c = cName c ++ "_unify"
+
+> litInstFunc :: Literal -> String
+> litInstFunc (Char c) = "char_" ++ show (ord c) ++ "_unify"
+> litInstFunc (Int i) = constInt i ++ "_unify"
+> litInstFunc (Float f) = constFloat f ++ "_unify"
 
 > nodeInfo, pappInfoTable, lazyInfoTable :: Name -> String
 > nodeInfo c = cName c ++ "_info"

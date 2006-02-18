@@ -1,8 +1,8 @@
 # Makefile for the Curry runtime system
 #
-# $Id: Makefile.in 1744 2005-08-23 16:17:12Z wlux $
+# $Id: Makefile.in 1855 2006-02-18 22:58:00Z wlux $
 #
-# Copyright (c) 2001-2005, Wolfgang Lux
+# Copyright (c) 2001-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
 #
 
@@ -41,14 +41,65 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_DIR = @INSTALL_DIR@
 
 # file lists
-rts_H = curry.h debug.h run.h prims.h heap.h stack.h threads.h spaces.h \
-        trail.h backtrack.h search.h io_monad.h eval.h equal.h unify.h \
-        disequal.h cstring.h prim_errno.h files.h directory.h print.h \
-	vars.h main.h cam.h trace.h stats.h
-rts_C = debug.c run.c prims.c heap.c gc_2space.c stack.c threads.c spaces.c \
-	trail.c backtrack.c search.c io_monad.c eval.c constraints.c unify.c \
-	disequal.c equal.c compare.c foreign.c stable.c cstring.c files.c \
-	random.c refs.c vector.c show.c print.c vars.c main.c trace.c stats.c
+rts_H = curry.h \
+	debug.h \
+	run.h \
+	prims.h \
+	heap.h \
+	stack.h \
+	threads.h \
+	spaces.h \
+	trail.h \
+	backtrack.h \
+	search.h \
+	io_monad.h \
+	data.h \
+	eval.h \
+	equal.h \
+	unify.h \
+	disequal.h \
+	cstring.h \
+	prim_errno.h \
+	files.h \
+	directory.h \
+	print.h \
+	vars.h \
+	main.h \
+	cam.h \
+	trace.h \
+	stats.h
+rts_C = debug.c \
+	run.c \
+	prims.c \
+	heap.c \
+	gc_2space.c \
+	stack.c \
+	threads.c \
+	spaces.c \
+	trail.c \
+	backtrack.c \
+	search.c \
+	io_monad.c \
+	data.c \
+	eval.c \
+	constraints.c \
+	unify.c \
+	disequal.c \
+	equal.c \
+	compare.c \
+	foreign.c \
+	stable.c \
+	cstring.c \
+	files.c \
+	random.c \
+	refs.c \
+	vector.c \
+	show.c \
+	print.c \
+	vars.c \
+	main.c \
+	trace.c \
+	stats.c
 rts_O = $(rts_C:.c=.o)
 rts_LIBS = libcurry.a
 rts_NW = $(rts_H:.h=.nw) $(rts_C:.c=.nw)

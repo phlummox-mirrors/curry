@@ -1,0 +1,124 @@
+% -*- noweb-code-mode: c-mode -*-
+% $Id: data.nw 1855 2006-02-18 22:58:00Z wlux $
+%
+% Copyright (c) 2006, Wolfgang Lux
+% See ../LICENSE for the full license.
+%
+\subsection{Predefined Data Types}
+This file contains the implementation of all runtime system functions
+related to the predefined unit and list types. Functions related to
+the predefined tuple types are defined in each compiled module.
+
+<<data.c>>=
+#include "config.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "debug.h"
+#include "run.h"
+#include "heap.h"
+#include "stack.h"
+#include "spaces.h"
+#include "eval.h"
+#include "unify.h"
+#include "trace.h"
+#include "data.h"
+#include "cam.h"
+
+@ 
+The functions [[___40__41__unify]], [[___91__93__unify]], and
+[[___58__unify]] instantiate their argument with a fresh data term.
+
+<<data.h>>=
+DECLARE_ENTRYPOINT(___40__41__unify);
+DECLARE_ENTRYPOINT(___91__93__unify);
+DECLARE_ENTRYPOINT(___58__unify);
+
+<<data.c>>=
+FUNCTION(___40__41__unify)
+{
+    EXPORT_LABEL(___40__41__unify)
+ ENTRY_LABEL(___40__41__unify)
+    CHECK_STACK1();
+    sp	 -= 1;
+    sp[0] = CONST(___40__41_);
+    GOTO(bind_var);
+}
+
+FUNCTION(___91__93__unify)
+{
+    EXPORT_LABEL(___91__93__unify)
+ ENTRY_LABEL(___91__93__unify)
+    CHECK_STACK1();
+    sp	 -= 1;
+    sp[0] = CONST(___91__93_);
+    GOTO(bind_var);
+}
+
+FUNCTION(___58__unify)
+{
+    Node *v1, *v2, *n;
+    EXPORT_LABEL(___58__unify)
+ ENTRY_LABEL(___58__unify)
+    CHECK_STACK1();
+    CHECK_HEAP(2 * variable_node_size + cons_node_size);
+
+    v1		= (Node *)hp;
+    v1->info	= variable_info_table;
+    v1->v.spc	= ss;
+    v1->v.wq	= 0;
+    v1->v.cstrs = 0;
+    hp	       += variable_node_size;
+
+    v2		= (Node *)hp;
+    v2->info	= variable_info_table;
+    v2->v.spc	= ss;
+    v2->v.wq	= 0;
+    v2->v.cstrs = 0;
+    hp	       += variable_node_size;
+
+    n		 = (Node *)hp;
+    n->info	 = &cons_info;
+    n->c.args[0] = v1;
+    n->c.args[1] = v2;
+    hp		+= cons_node_size;
+
+    sp	 -= 1;
+    sp[0] = n;
+    GOTO(bind_var);
+}
+
+@ 
+The function [[___58_]] is used for partial applications of the list
+constructor. Note that it is not necessary to export the entry point
+because the function will never be called directly.
+
+<<data.h>>=
+extern NodeInfo ___58__papp_info_table[];
+extern const struct closure_node ___58__function;
+
+@ 
+<<data.c>>=
+DECLARE_LABEL(___58_);
+NodeInfo ___58__papp_info_table[] = {
+    PAPPINFO(":", 0, ___58_, 2)
+    PAPPINFO(":", 1, ___58_, 2)
+};
+const struct closure_node ___58__function = { ___58__papp_info_table, { } };
+
+static
+FUNCTION(___58_)
+{
+    Node *cons;
+ ENTRY_LABEL(___58_)
+    TRACE_FUN(":", 2);
+
+    CHECK_HEAP(cons_node_size);
+    cons	    = (Node *)hp;
+    cons->info	    = &cons_info;
+    cons->c.args[0] = sp[0];
+    cons->c.args[1] = sp[1];
+    hp		   += cons_node_size;
+
+    sp += 2;
+    RETURN(cons);
+}

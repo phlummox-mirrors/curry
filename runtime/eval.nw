@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1852 2006-02-08 23:24:37Z wlux $
+% $Id: eval.nw 1855 2006-02-18 22:58:00Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -236,9 +236,9 @@ thread is resumed, it must check whether the variable was bound in the
 meantime. In this case, execution returns to the beginning of the
 switch, otherwise the variable is instantiated non-deterministically.
 This check is implemented in the [[flex_yield_resume]] code, which
-expects the variable node, an array with the continuations that
-instantiate the variable, and the entry point of the switch in that
-order on the stack.
+expects an array with the continuations that instantiate the variable,
+the variable node, and the entry point of the switch in that order on
+the stack.
 
 <<eval.h>>=
 #if YIELD_NONDET
@@ -254,7 +254,7 @@ FUNCTION(flex_yield_resume)
     Label cont_ip;
     EXPORT_LABEL(flex_yield_resume)
  ENTRY_LABEL(flex_yield_resume)
-    node = sp[0];
+    node = sp[1];
     for (;;)
     {
 	if ( is_boxed(node) )
@@ -264,7 +264,6 @@ FUNCTION(flex_yield_resume)
 		node = node->n.node;
 		continue;
 	    case VARIABLE_TAG:
-		sp   += 1;
 		sp[1] = node;
 		GOTO(nondet_handlers->choices);
 	    default:
@@ -423,39 +422,6 @@ FUNCTION(___64__1)
     /* return to the caller */
     sp += 2;
     RETURN(clos);
-}
-
-@ 
-Due to the lack of a better place, this module also implements the
-constructor function for non-empty lists.
-
-Note that it is not necessary to export the entry point because the
-function will never be called directly.
-
-<<eval.c>>=
-DECLARE_LABEL(___58_);
-NodeInfo ___58__papp_info_table[] = {
-    PAPPINFO(":", 0, ___58_, 2)
-    PAPPINFO(":", 1, ___58_, 2)
-};
-const struct closure_node ___58__function = { ___58__papp_info_table, { } };
-
-static
-FUNCTION(___58_)
-{
-    Node *cons;
- ENTRY_LABEL(___58_)
-    TRACE_FUN(":", 2);
-
-    CHECK_HEAP(cons_node_size);
-    cons	    = (Node *)hp;
-    cons->info	    = &cons_info;
-    cons->c.args[0] = sp[0];
-    cons->c.args[1] = sp[1];
-    hp		   += cons_node_size;
-
-    sp += 2;
-    RETURN(cons);
 }
 
 @ 
