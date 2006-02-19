@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1852 2006-02-08 23:24:37Z wlux $
+% $Id: show.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -28,6 +28,7 @@ objective of this function is to support the declarative debugger.
 #include "search.h"
 #include "trail.h"
 #include "eval.h"
+#include "data.h"
 #include "vars.h"
 #include "cstring.h"
 #include "cam.h"

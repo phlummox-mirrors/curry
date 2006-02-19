@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1852 2006-02-08 23:24:37Z wlux $
+% $Id: heap.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -15,6 +15,7 @@
 #include "run.h"
 #include "heap.h"
 #include "eval.h"
+#include "data.h"
 #include "main.h"
 
 @ 
@@ -589,38 +590,6 @@ info pointer of a data constructor.
 <<heap.h>>=
 #define CONST(name)		(Node *)(&name##_node)
 #define INFO(name)		&name##_info
-
-@ 
-Data constructors for the types \verb|[] a|, \verb|()|, and
-\verb|Success| are preallocated by the runtime system.
-
-<<heap.h>>=
-#define NIL_TAG		___91__93__tag
-#define CONS_TAG	___58__tag
-#define UNIT_TAG	___40__41__tag
-#define SUCCESS_TAG	__Success_tag
-
-enum { NIL_TAG, CONS_TAG };
-enum { UNIT_TAG };
-enum { SUCCESS_TAG };
-
-DECLARE_CONST(___91__93_);
-DECLARE_DATA(___58_);
-DECLARE_CONST(___40__41_);
-DECLARE_CONST(__Success);
-
-#define nil		CONST(___91__93_)
-#define unit		CONST(___40__41_)
-#define Success		CONST(__Success)
-#define cons_info	___58__info
-#define cons_node_size	closure_node_size(2)
-
-@ 
-<<heap.c>>=
-DEFINE_CONST(___91__93_, "[]", NIL_TAG);
-DEFINE_DATA(___58_, ":", CONS_TAG, 2);
-DEFINE_CONST(___40__41_, "()", UNIT_TAG);
-DEFINE_CONST(__Success, "Success", SUCCESS_TAG);
 
 @ 
 For a function, an info vector has to be defined for each arity at

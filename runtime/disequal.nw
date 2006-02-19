@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: disequal.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: disequal.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -35,10 +35,11 @@ DECLARE_ENTRYPOINT(___61__47__61_);
 #include "eval.h"
 #include "threads.h"
 #include "spaces.h"
+#include "trail.h"
+#include "data.h"
 #include "unify.h"
 #include "equal.h"
 #include "disequal.h"
-#include "trail.h"
 #include "cam.h"
 #include "trace.h"
 

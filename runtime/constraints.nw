@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: constraints.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: constraints.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -21,6 +21,7 @@ constraint \texttt{=:=} is defined in section~\ref{sec:unification}.
 #include "eval.h"
 #include "threads.h"
 #include "spaces.h"
+#include "data.h"
 #include "cam.h"
 
 DECLARE_ENTRYPOINT(__success);

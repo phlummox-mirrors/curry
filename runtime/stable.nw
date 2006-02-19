@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: stable.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: stable.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -24,7 +24,7 @@ pointers, respectively.
 #include "stack.h"
 #include "threads.h"
 #include "eval.h"
-#include "cstring.h"
+#include "data.h"
 #include "io_monad.h"
 #include "cam.h"
 

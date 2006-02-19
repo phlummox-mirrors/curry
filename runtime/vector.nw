@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: vector.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: vector.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -26,6 +26,7 @@ this will make the printing code treat vectors as tuples.
 #include "trail.h"
 #include "eval.h"
 #include "threads.h"
+#include "data.h"
 #include "io_monad.h"
 #include "cam.h"
 

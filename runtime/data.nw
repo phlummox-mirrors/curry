@@ -1,13 +1,14 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: data.nw 1855 2006-02-18 22:58:00Z wlux $
+% $Id: data.nw 1856 2006-02-19 10:36:44Z wlux $
 %
-% Copyright (c) 2006, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Predefined Data Types}
 This file contains the implementation of all runtime system functions
-related to the predefined unit and list types. Functions related to
-the predefined tuple types are defined in each compiled module.
+related to the predefined data types \texttt{()}, \texttt{[a]}, and
+\texttt{Success}. Tuples are defined in each compiled module as needed
+because there is no upper limit on the size of tuples.
 
 <<data.c>>=
 #include "config.h"
@@ -25,8 +26,42 @@ the predefined tuple types are defined in each compiled module.
 #include "cam.h"
 
 @ 
+The descriptors for the data constructors \texttt{()}, \texttt{[]},
+\texttt{:}, and \texttt{Success} are defined by the runtime system.
+
+<<data.h>>=
+#define UNIT_TAG	___40__41__tag
+#define NIL_TAG		___91__93__tag
+#define CONS_TAG	___58__tag
+#define SUCCESS_TAG	__Success_tag
+
+enum { UNIT_TAG };
+enum { NIL_TAG, CONS_TAG };
+enum { SUCCESS_TAG };
+
+DECLARE_CONST(___40__41_);
+DECLARE_CONST(___91__93_);
+DECLARE_DATA(___58_);
+DECLARE_CONST(__Success);
+
+#define nil		CONST(___91__93_)
+#define unit		CONST(___40__41_)
+#define Success		CONST(__Success)
+#define cons_info	___58__info
+#define cons_node_size	closure_node_size(2)
+
+@ 
+<<data.c>>=
+DEFINE_CONST(___40__41_, "()", UNIT_TAG);
+DEFINE_CONST(___91__93_, "[]", NIL_TAG);
+DEFINE_DATA(___58_, ":", CONS_TAG, 2);
+DEFINE_CONST(__Success, "Success", SUCCESS_TAG);
+
+@ 
 The functions [[___40__41__unify]], [[___91__93__unify]], and
 [[___58__unify]] instantiate their argument with a fresh data term.
+There is no corresponding function for type [[Success]] because its
+constructor is hidden and cannot be instantiated in a flexible match.
 
 <<data.h>>=
 DECLARE_ENTRYPOINT(___40__41__unify);

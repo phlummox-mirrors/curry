@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: compare.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -24,6 +24,7 @@ arguments.
 #include "stack.h"
 #include "eval.h"
 #include "threads.h"
+#include "data.h"
 #include "cstring.h"
 #include "cam.h"
 #include "trace.h"

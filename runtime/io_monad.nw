@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 1815 2005-11-06 12:00:19Z wlux $
+% $Id: io_monad.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -44,6 +44,7 @@ DECLARE_ENTRYPOINT(__ioError);
 #include "threads.h"
 #include "spaces.h"
 #include "eval.h"
+#include "data.h"
 #include "io_monad.h"
 #include "cstring.h"
 #include "trace.h"

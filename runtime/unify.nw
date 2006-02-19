@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1853 2006-02-17 13:24:26Z wlux $
+% $Id: unify.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -37,6 +37,7 @@ extern boolean eq_args(Node *, Node *, unsigned int, Node **);
 #include "threads.h"
 #include "spaces.h"
 #include "trail.h"
+#include "data.h"
 #include "equal.h"
 #include "unify.h"
 #include "cam.h"

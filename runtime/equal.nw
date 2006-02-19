@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: equal.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: equal.nw 1856 2006-02-19 10:36:44Z wlux $
 %
 % Copyright (c) 2001-2004, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -25,6 +25,7 @@ DECLARE_ENTRYPOINT(___61__61_);
 #include "stack.h"
 #include "eval.h"
 #include "threads.h"
+#include "data.h"
 #include "unify.h"
 #include "cam.h"
 #include "trace.h"
