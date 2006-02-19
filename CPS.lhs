@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1855 2006-02-18 22:58:00Z wlux $
+% $Id: CPS.lhs 1857 2006-02-19 15:14:33Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -44,18 +44,19 @@ lists must name all variables that are used in the bodies.
 
 > data CPSFunction = CPSFunction Name Int [Name] CPSStmt deriving Show
 > data CPSStmt =
->     CPSJump CPSCont (Maybe CPSCont)
->   | CPSReturn Expr (Maybe CPSCont)
->   | CPSEnter Name (Maybe CPSCont)
->   | CPSExec Name [Name] (Maybe CPSCont)
->   | CPSCCall CRetType CCall (Maybe CPSCont)
+>     CPSJump CPSCont
+>   | CPSReturn Expr
+>   | CPSEnter Name
+>   | CPSExec Name [Name]
+>   | CPSCCall CRetType CCall
 >   | CPSApply Name [Name]
->   | CPSUnify Name Expr (Maybe CPSCont)
->   | CPSDelay Name CPSCont
->   | CPSDelayNonLocal Name CPSCont CPSStmt
+>   | CPSUnify Name Expr
+>   | CPSDelay Name
+>   | CPSDelayNonLocal Name CPSStmt
 >   | CPSSeq Stmt0 CPSStmt
+>   | CPSWithCont CPSCont CPSStmt
 >   | CPSSwitch Bool Name [CaseBlock]
->   | CPSChoices (Maybe (Name,CPSCont)) [CPSCont]
+>   | CPSChoices (Maybe Name) [CPSCont]
 >   deriving Show
 
 > data CPSCont = CPSCont CPSFunction | CPSInst Name Tag
@@ -87,14 +88,15 @@ lists must name all variables that are used in the bodies.
 
 > cpsApply :: Name -> [Name] -> [CPSFunction]
 > cpsApply f vs@(v:vs') = [k0,k1]
->   where k0 = CPSFunction f 0 vs (CPSEnter v (Just (CPSCont k1)))
+>   where k0 = CPSFunction f 0 vs (CPSWithCont (CPSCont k1) (CPSEnter v))
 >         k1 = CPSFunction f 1 vs
 >                (CPSSwitch False v
->                   [CaseBlock CPSFreeCase (CPSDelay v (CPSCont k1)),
+>                   [CaseBlock CPSFreeCase
+>                              (CPSWithCont (CPSCont k1) (CPSDelay v)),
 >                    CaseBlock CPSDefaultCase (CPSApply v vs')])
 
 > cpsInst :: Name -> Name -> Tag -> CPSFunction
-> cpsInst f v t = CPSFunction f 0 [v] (cpsFresh Nothing v t)
+> cpsInst f v t = CPSFunction f 0 [v] (cpsFresh v t)
 
 > cpsVars :: CPSFunction -> [Name]
 > cpsVars (CPSFunction _ _ vs _) = vs
@@ -148,10 +150,10 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 
 > cpsStmt :: Name -> Maybe CPSCont -> Maybe CPSCont -> Int -> Stmt
 >         -> (Int,CPSStmt)
-> cpsStmt _ _ k n (Return e) = (n,CPSReturn e k)
-> cpsStmt _ _ k n (Enter v) = (n,CPSEnter v k)
-> cpsStmt _ _ k n (Exec f vs) = (n,CPSExec f vs k)
-> cpsStmt _ _ k n (CCall _ ty cc) = (n,CPSCCall ty cc k)
+> cpsStmt _ _ k n (Return e) = (n,maybe id CPSWithCont k (CPSReturn e))
+> cpsStmt _ _ k n (Enter v) = (n,maybe id CPSWithCont k (CPSEnter v))
+> cpsStmt _ _ k n (Exec f vs) = (n,maybe id CPSWithCont k (CPSExec f vs))
+> cpsStmt _ _ k n (CCall _ ty cc) = (n,maybe id CPSWithCont k (CPSCCall ty cc))
 > cpsStmt f k0 k n (Seq st1 st2) =
 >   case st1 of
 >     Lock _ -> (n',CPSSeq st1 st2')
@@ -178,34 +180,34 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 
 > cpsJumpSwitch :: Name -> Maybe CPSCont -> Int -> RF -> Name -> [Case]
 >               -> (Int,CPSStmt)
-> cpsJumpSwitch f k n rf v cases = (n',CPSJump k' Nothing)
+> cpsJumpSwitch f k n rf v cases = (n',CPSJump k')
 >   where k' = CPSCont (CPSFunction f n vs st')
 >         vs = nub (v : freeVars (Switch rf v cases) k)
 >         (n',st') = cpsSwitch f k' k (n + 1) rf v cases
 
 > cpsSwitch :: Name -> CPSCont -> Maybe CPSCont -> Int -> RF -> Name -> [Case]
 >           -> (Int,CPSStmt)
-> cpsSwitch f k0 k n rf v cases =
->   (n',CPSSwitch ub v (map (CaseBlock CPSFreeCase) sts' ++ cases'))
->   where sts' = cpsVarCase k0 rf v ts
+> cpsSwitch f k0 k n rf v cases = (n',CPSSwitch ub v (vcase ++ cases'))
+>   where vcase =
+>           map (CaseBlock CPSFreeCase . CPSWithCont k0) (cpsVarCase rf v ts)
 >         (n',cases') = mapAccumL (cpsCase f k) n cases
 >         ts = [t | Case t _ <- cases, t /= DefaultCase]
 >         ub = unboxedSwitch ts
 
-> cpsVarCase :: CPSCont -> RF -> Name -> [Tag] -> [CPSStmt]
-> cpsVarCase k Rigid v _ = [CPSDelay v k]
-> cpsVarCase k Flex v ts
+> cpsVarCase :: RF -> Name -> [Tag] -> [CPSStmt]
+> cpsVarCase Rigid v _ = [CPSDelay v]
+> cpsVarCase Flex v ts
 >   | null ts = []
->   | otherwise = [CPSDelayNonLocal v k (cpsFlexCase k v ts)]
+>   | otherwise = [CPSDelayNonLocal v (cpsFlexCase v ts)]
 
-> cpsFlexCase :: CPSCont -> Name -> [Tag] -> CPSStmt
-> cpsFlexCase k v [t] = CPSJump (CPSInst v t) (Just k)
-> cpsFlexCase k v ts = CPSChoices (Just (v,k)) (map (CPSInst v) ts)
+> cpsFlexCase :: Name -> [Tag] -> CPSStmt
+> cpsFlexCase v [t] = CPSJump (CPSInst v t)
+> cpsFlexCase v ts = CPSChoices (Just v) (map (CPSInst v) ts)
 
-> cpsFresh :: Maybe CPSCont -> Name -> Tag -> CPSStmt
-> cpsFresh k v (LitCase l) = CPSUnify v (Lit l) k
-> cpsFresh k v (ConstrCase c vs) =
->   foldr CPSSeq (CPSUnify v (Constr c vs) k) (map freshVar vs)
+> cpsFresh :: Name -> Tag -> CPSStmt
+> cpsFresh v (LitCase l) = CPSUnify v (Lit l)
+> cpsFresh v (ConstrCase c vs) =
+>   foldr CPSSeq (CPSUnify v (Constr c vs)) (map freshVar vs)
 >   where freshVar v = Let [Bind v Free]
 
 > unboxedSwitch :: [Tag] -> Bool
@@ -281,22 +283,21 @@ duplication of shared continuations.
 > linearizeCont _ (CPSInst _ _) = []
 
 > linearizeStmt :: Int -> CPSStmt -> [CPSFunction]
-> linearizeStmt n (CPSJump k1 k2) =
->   linMerge [linearizeCont n k1,maybe [] (linearizeCont n) k2]
-> linearizeStmt n (CPSReturn _ k) = maybe [] (linearizeCont n) k
-> linearizeStmt n (CPSEnter _ k) = maybe [] (linearizeCont n) k
-> linearizeStmt n (CPSExec _ _ k) = maybe [] (linearizeCont n) k
-> linearizeStmt n (CPSCCall _ _ k) = maybe [] (linearizeCont n) k
+> linearizeStmt n (CPSJump k) = linearizeCont n k
+> linearizeStmt _ (CPSReturn _) = []
+> linearizeStmt _ (CPSEnter _) = []
+> linearizeStmt _ (CPSExec _ _) = []
+> linearizeStmt _ (CPSCCall _ _) = []
 > linearizeStmt _ (CPSApply _ _) = []
-> linearizeStmt n (CPSUnify _ _ k) = maybe [] (linearizeCont n) k
-> linearizeStmt n (CPSDelay _ k) = linearizeCont n k
-> linearizeStmt n (CPSDelayNonLocal _ k st) =
->   linMerge [linearizeCont n k,linearizeStmt n st]
+> linearizeStmt _ (CPSUnify _ _) = []
+> linearizeStmt _ (CPSDelay _) = []
+> linearizeStmt n (CPSDelayNonLocal _ st) = linearizeStmt n st
 > linearizeStmt n (CPSSeq _ st) = linearizeStmt n st
+> linearizeStmt n (CPSWithCont k st) =
+>   linMerge [linearizeCont n k,linearizeStmt n st]
 > linearizeStmt n (CPSSwitch _ _ cases) =
 >   linMerge [linearizeStmt n st | CaseBlock _ st <- cases]
-> linearizeStmt n (CPSChoices vk ks) =
->   linMerge (map (linearizeCont n) (maybe id ((:) . snd) vk ks))
+> linearizeStmt n (CPSChoices _ ks) = linMerge (map (linearizeCont n) ks)
 
 > linMerge :: [[CPSFunction]] -> [CPSFunction]
 > linMerge kss = merge (sort kss)

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1855 2006-02-18 22:58:00Z wlux $
+% $Id: CGen.lhs 1857 2006-02-19 15:14:33Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -511,7 +511,7 @@ the Gnu C compiler does not detect such redundant save operations.
 > funCode :: CPSFunction -> [CStmt]
 > funCode (CPSFunction _ _ vs st) =
 >   elimUnused (stackCheck vs st ++ heapCheck consts ds tys ++ loadVars vs ++
->               constDefs consts ds ++ cCode consts vs st)
+>               constDefs consts ds ++ cCode consts vs st [])
 >   where ds = concat dss
 >         (tys,dss) = allocs st
 >         consts = constants dss
@@ -519,7 +519,7 @@ the Gnu C compiler does not detect such redundant save operations.
 > caseCode :: [Name] -> Name -> CPSTag -> CPSStmt -> [CStmt]
 > caseCode vs v t st =
 >   [CBlock (stackCheck vs st ++ heapCheck' consts ds tys vs ++
->            fetchArgs v t ++ constDefs consts ds ++ cCode consts vs st)]
+>            fetchArgs v t ++ constDefs consts ds ++ cCode consts vs st [])]
 >   where ds = concat dss
 >         (tys,dss) = allocs st
 >         consts = constants dss
@@ -577,16 +577,17 @@ because constants are allocated per block, not per CPS function.
 >                    [nodeSize n | Bind v n <- ds, not (isConstant consts v)])
  
 > allocs :: CPSStmt -> ([CArgType],[[Bind]])
-> allocs (CPSReturn e _) = ([],[[Bind resName e]])
-> allocs (CPSCCall (Just ty) _ _) = ([ty],[])
-> allocs (CPSUnify _ e _) = ([],[[Bind resName e]])
+> allocs (CPSReturn e) = ([],[[Bind resName e]])
+> allocs (CPSCCall (Just ty) _) = ([ty],[])
+> allocs (CPSUnify _ e) = ([],[[Bind resName e]])
+> allocs (CPSDelayNonLocal _ st) = allocs st
 > allocs (CPSSeq st1 st2) = allocs0 st1 (allocs st2)
 >   where allocs0 (v :<- Return e) ~(tys,dss) = (tys,[Bind v e]:dss)
 >         allocs0 (_ :<- CCall _ (Just ty) _) ~(tys,dss) = (ty:tys,dss)
 >         allocs0 (v :<- Seq st1 st2) as = allocs0 st1 (allocs0 (v :<- st2) as)
 >         allocs0 (Let ds) ~(tys,dss) = (tys,ds:dss)
 >         allocs0 _ as = as
-> allocs (CPSDelayNonLocal _ _ st) = allocs st
+> allocs (CPSWithCont _ st) = allocs st
 > allocs _ = ([],[])
 
 > nodeSize :: Expr -> CExpr
@@ -628,23 +629,22 @@ performing a stack check.
 >   where depth = stackDepth st - length vs
 
 > stackDepth :: CPSStmt -> Int
-> stackDepth (CPSJump k1 k2) = length (contVars k1) + stackDepthCont k2
-> stackDepth (CPSReturn _ k) = stackDepthCont k
-> stackDepth (CPSEnter _ k) = 1 + stackDepthCont k
-> stackDepth (CPSExec _ vs k) = length vs + stackDepthCont k
-> stackDepth (CPSCCall _ _ k) = stackDepthCont k
+> stackDepth (CPSJump k) = stackDepthCont k
+> stackDepth (CPSReturn _) = 0
+> stackDepth (CPSEnter _) = 1
+> stackDepth (CPSExec _ vs) = length vs
+> stackDepth (CPSCCall _ _) = 0
 > stackDepth (CPSApply _ _) = 0
-> stackDepth (CPSUnify _ _ k) = 2 + stackDepthCont k
-> stackDepth (CPSDelay _ k) = 1 + length (contVars k)
-> stackDepth (CPSDelayNonLocal _ k st) =
->   max (1 + length (contVars k)) (stackDepth st)
+> stackDepth (CPSUnify _ _) = 2
+> stackDepth (CPSDelay _) = 1
+> stackDepth (CPSDelayNonLocal _ st) = max 1 (stackDepth st)
 > stackDepth (CPSSeq _ st) = stackDepth st
+> stackDepth (CPSWithCont k st) = stackDepthCont k + stackDepth st
 > stackDepth (CPSSwitch _ _ _) = 0
-> stackDepth (CPSChoices vk (k:_)) =
->   1 + stackDepthCont (fmap snd vk) + length (contVars k)
+> stackDepth (CPSChoices _ (k:_)) = 1 + stackDepthCont k
 
-> stackDepthCont :: Maybe CPSCont -> Int
-> stackDepthCont = maybe 0 (length . contVars)
+> stackDepthCont :: CPSCont -> Int
+> stackDepthCont = length . contVars
 
 \end{verbatim}
 All constants that are used in a function are preallocated in a static
@@ -790,24 +790,26 @@ Every abstract machine code statement is translated by its own
 translation function.
 \begin{verbatim}
 
-> cCode :: FM Name CExpr -> [Name] -> CPSStmt -> [CStmt]
-> cCode _ vs0 (CPSJump k1 k2) = jump vs0 k1 k2
-> cCode consts vs0 (CPSReturn e k) =
->   freshNode consts resName e ++ ret vs0 resName k
-> cCode _ vs0 (CPSEnter v k) = enter vs0 v k
-> cCode _ vs0 (CPSExec f vs k) = exec vs0 f vs k
-> cCode _ vs0 (CPSCCall ty cc k) = cCall ty resName cc ++ ret vs0 resName k
-> cCode _ vs0 (CPSApply v vs) = apply vs0 v vs
-> cCode consts vs0 (CPSUnify v e k) =
->   freshNode consts resName e ++ unifyVar vs0 v resName k
-> cCode _ vs0 (CPSDelay v k) = delay vs0 v k
-> cCode consts vs0 (CPSDelayNonLocal v k st) =
->   delayNonLocal vs0 v k ++ cCode consts vs0 st
-> cCode consts vs0 (CPSSeq st1 st2) = cCode0 consts st1 ++ cCode consts vs0 st2
-> cCode consts vs0 (CPSSwitch unboxed v cases) =
+> cCode :: FM Name CExpr -> [Name] -> CPSStmt -> [CPSCont] -> [CStmt]
+> cCode _ vs0 (CPSJump k) ks = jump vs0 k ks
+> cCode consts vs0 (CPSReturn e) ks =
+>   freshNode consts resName e ++ ret vs0 resName ks
+> cCode _ vs0 (CPSEnter v) ks = enter vs0 v ks
+> cCode _ vs0 (CPSExec f vs) ks = exec vs0 f vs ks
+> cCode _ vs0 (CPSCCall ty cc) ks = cCall ty resName cc ++ ret vs0 resName ks
+> cCode _ vs0 (CPSApply v vs) [] = apply vs0 v vs
+> cCode consts vs0 (CPSUnify v e) ks =
+>   freshNode consts resName e ++ unifyVar vs0 v resName ks
+> cCode _ vs0 (CPSDelay v) ks = delay vs0 v ks
+> cCode consts vs0 (CPSDelayNonLocal v st) ks =
+>   delayNonLocal vs0 v ks ++ cCode consts vs0 st ks
+> cCode consts vs0 (CPSSeq st1 st2) ks =
+>   cCode0 consts st1 ++ cCode consts vs0 st2 ks
+> cCode consts vs0 (CPSWithCont k st) ks = cCode consts vs0 st (k:ks)
+> cCode consts vs0 (CPSSwitch unboxed v cases) [] =
 >   switchOnTerm unboxed vs0 v
 >                [(t,caseCode vs0 v t st) | CaseBlock t st <- cases]
-> cCode _ vs0 (CPSChoices vk ks) = choices vs0 vk ks
+> cCode _ vs0 (CPSChoices v ks) ks' = choices vs0 v ks ks'
 
 > cCode0 :: FM Name CExpr -> Stmt0 -> [CStmt]
 > cCode0 _ (Lock v) = lock v
@@ -819,40 +821,42 @@ translation function.
 > cCode0 consts (Let ds) =
 >   concatMap (allocNode consts) ds ++ concatMap (initNode consts) ds
 
-> jump :: [Name] -> CPSCont -> Maybe CPSCont -> [CStmt]
-> jump vs0 k1 k2 = saveCont vs0 (contVars k1) k2 ++ [goto (contName k1)]
+> jump :: [Name] -> CPSCont -> [CPSCont] -> [CStmt]
+> jump vs0 k ks = saveCont vs0 (contVars k) ks ++ [goto (contName k)]
 
-> ret :: [Name] -> Name -> Maybe CPSCont -> [CStmt]
-> ret vs0 v Nothing =
+> ret :: [Name] -> Name -> [CPSCont] -> [CStmt]
+> ret vs0 v [] =
 >   saveVars vs0 [] ++
 >   [CLocalVar labelType "_ret_ip" (Just (CCast labelType (CExpr "sp[0]"))),
 >    CAssign (LVar "sp[0]") result,
 >    goto "_ret_ip"]
 >   where result = CExpr (show v)
-> ret vs0 v (Just k) =
->   saveVars vs0 (v : tail (contVars k)) ++ [goto (contName k)]
+> ret vs0 v (k:ks) =
+>   saveCont vs0 (v : tail (contVars k)) ks ++ [goto (contName k)]
 
-> enter :: [Name] -> Name -> Maybe CPSCont -> [CStmt]
-> enter vs0 v k =
+> enter :: [Name] -> Name -> [CPSCont] -> [CStmt]
+> enter vs0 v ks =
 >   CLocalVar nodePtrType v' (Just (CExpr (show v))) :
 >   tagSwitch (Name v') [] (Just [])
 >             [CCase "FAPP_TAG" [{- fall through! -}],
 >              CCase "SUSPEND_TAG" [{- fall through! -}],
 >              CCase "QUEUEME_TAG"
->                    (saveCont vs0 [Name v'] k ++
+>                    (saveCont vs0 [Name v'] ks ++
 >                     [gotoExpr (field v' "info->eval")])] :
->   ret vs0 (Name v') k
+>   ret vs0 (Name v') ks
 >   where v' = "_node"
 
-> exec :: [Name] -> Name -> [Name] -> Maybe CPSCont -> [CStmt]
-> exec vs0 f vs k = saveCont vs0 vs k ++ [goto (cName f)]
+> exec :: [Name] -> Name -> [Name] -> [CPSCont] -> [CStmt]
+> exec vs0 f vs ks = saveCont vs0 vs ks ++ [goto (cName f)]
 
-> saveCont :: [Name] -> [Name] -> Maybe CPSCont -> [CStmt]
-> saveCont vs0 vs Nothing = saveVars vs0 vs
-> saveCont vs0 vs (Just k) =
->   CLocalVar nodePtrType ip (Just (asNode (CExpr (contName k)))) :
->   saveVars vs0 (vs ++ Name ip : tail (contVars k))
->   where ip = "_cont_ip"
+> saveCont :: [Name] -> [Name] -> [CPSCont] -> [CStmt]
+> saveCont vs0 vs ks =
+>   zipWith withCont ips ks ++
+>   saveVars vs0 (concat (vs : zipWith contFrame ips ks))
+>   where ips = ["_cont_ip" ++ if n == 1 then "" else show n | n <- [1..]]
+>         withCont ip k =
+>           CLocalVar nodePtrType ip (Just (asNode (CExpr (contName k))))
+>         contFrame ip k = Name ip : tail (contVars k)
 
 > lock :: Name -> [CStmt]
 > lock v =
@@ -877,26 +881,26 @@ translation function.
 >   where v1' = show v1
 >         wq = "wq"
 
-> unifyVar :: [Name] -> Name -> Name -> Maybe CPSCont -> [CStmt]
-> unifyVar vs0 v n k = saveCont vs0 [n,v] k ++ [goto "bind_var"]
+> unifyVar :: [Name] -> Name -> Name -> [CPSCont] -> [CStmt]
+> unifyVar vs0 v n ks = saveCont vs0 [n,v] ks ++ [goto "bind_var"]
 
-> delay :: [Name] -> Name -> CPSCont -> [CStmt]
-> delay vs0 v k = saveCont vs0 [v] (Just k) ++ [goto "sync_var"]
+> delay :: [Name] -> Name -> [CPSCont] -> [CStmt]
+> delay vs0 v ks = saveCont vs0 [v] ks ++ [goto "sync_var"]
 
-> delayNonLocal :: [Name] -> Name -> CPSCont -> [CStmt]
-> delayNonLocal vs0 v k =
+> delayNonLocal :: [Name] -> Name -> [CPSCont] -> [CStmt]
+> delayNonLocal vs0 v ks =
 >   [CIf (CFunCall "!is_local_space" [field (show v) "v.spc"])
->        (delay vs0 v k)
+>        (delay vs0 v ks)
 >        []]
 
-> choices :: [Name] -> Maybe (Name,CPSCont) -> [CPSCont] -> [CStmt]
-> choices vs0 vk ks =
+> choices :: [Name] -> Maybe Name -> [CPSCont] -> [CPSCont] -> [CStmt]
+> choices vs0 v ks ks' =
 >   CStaticArray constLabelType choices
 >                (map (CInit . CExpr . contName) ks ++ [CInit CNull]) :
 >   CLocalVar nodePtrType ips (Just (asNode (CExpr choices))) :
->   saveCont vs0 (Name ips : contVars (head ks)) (fmap snd vk) ++
+>   saveCont vs0 (Name ips : contVars (head ks)) ks' ++
 >   [CppCondStmts "YIELD_NONDET"
->      [CIf (CExpr "rq") [yieldCall (fmap fst vk)] []]
+>      [CIf (CExpr "rq") [yieldCall v] []]
 >      [],
 >    goto "nondet_handlers->choices"]
 >   where ips = "_choice_ips"
@@ -1032,7 +1036,7 @@ the application to the surplus arguments.
 >   CIncrBy (LField (LVar v') "info") (CInt n) :
 >   [CAssign (LElem (LField (LVar v') "c.args") (CAdd (CExpr "argc") (CInt i)))
 >            (CElem (CExpr "sp") (CInt (i+1))) | i <- [0 .. n-1]] ++
->   ret vs0 v Nothing
+>   ret vs0 v []
 >   where v' = show v
 
 \end{verbatim}
