@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: show.nw 1858 2006-02-22 14:23:51Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -617,18 +617,15 @@ The code of \texttt{showp} jumps to the label \texttt{showTuple} in
 order display a tuple. In this case, the arguments are separated by
 commas and not enclosed in parentheses. Instead, the whole tuple is
 always enclosed in parentheses. Note that the function is prepared to
-handle tuples as well as vector-like data which is shown like a
-tuple.
+handle tuples as well as vectors, which are shown like a tuple.
 
 <<show.c>>=
 static
 FUNCTION(showTuple)
 {
     unsigned int i, argc;
-    Node	 *tuple, *susp, *susp2, *cons, *tail, *arglist, **argp, *show;
-
+    Node	 *tuple, *susp, *cons, *tail, *arglist, **argp, *show;
  ENTRY_LABEL(showTuple)
-
     argc = is_vector(sp[0]) ? vector_argc(sp[0]) : closure_argc(sp[0]);
     CHECK_HEAP(argc * cons_node_size + suspend_node_size(3)
 	       + suspend_node_size(4));
@@ -640,6 +637,7 @@ FUNCTION(showTuple)
     argp    = is_vector(tuple) ? tuple->a.args : tuple->c.args;
     argp   += argc;
     arglist = nil;
+
     for ( i = argc; i-- > 1; )
     {
 	cons		= (Node *)hp;
@@ -658,19 +656,24 @@ FUNCTION(showTuple)
     susp->s.args[2] = show;
     hp		   += suspend_node_size(3);
 
-    susp2	     = (Node *)hp;
-    susp2->info	     = showp_lazy_info_table;
-    susp2->s.spc     = ss;
-    susp2->s.args[0] = *--argp;
-    susp2->s.args[1] = zero;
-    susp2->s.args[2] = susp;
-    susp2->s.args[3] = show;
-    hp		    += suspend_node_size(4);
+    if ( argc )
+    {
+	tail = susp;
+
+	susp		= (Node *)hp;
+	susp->info	= showp_lazy_info_table;
+	susp->s.spc	= ss;
+	susp->s.args[0] = *--argp;
+	susp->s.args[1] = zero;
+	susp->s.args[2] = tail;
+	susp->s.args[3] = show;
+	hp	       += suspend_node_size(4);
+    }
 
     cons	    = (Node *)hp;
     cons->info	    = &cons_info;
     cons->c.args[0] = lparen;
-    cons->c.args[1] = susp2;
+    cons->c.args[1] = susp;
     hp		   += cons_node_size;
 
     RETURN(cons);
