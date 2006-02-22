@@ -1,9 +1,9 @@
 -- sets based on finite maps
 
--- Copyright (c) 2002-2004, Wolfgang Lux
+-- Copyright (c) 2002-2006, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
-module Set(Set, eqSet,neqSet, showSet,
+module Set(Set, eqSet,neqSet, showSet,showsSet,
            nullSet, zeroSet, unitSet, addToSet, deleteFromSet,
 	   elemSet, notElemSet, subsetSet, fromListSet, toListSet,
 	   unionSet, unionSets, intersectionSet, diffSet, symDiffSet,
@@ -24,8 +24,15 @@ xs `eqSet` ys = toListSet xs == toListSet ys
 xs `neqSet` ys = not (xs `eqSet` ys)
 
 showSet :: Set a -> String
-showSet set ="{" ++ showList (map show (toListSet set)) ++ show "}"
-    where showList = concat . intersperse ","
+showSet set = showsSet set ""
+
+showsSet :: Set a -> ShowS
+showsSet set =
+  case toListSet set of
+    [] -> showString "{}"
+    (x:xs) -> showChar '{' . shows x . showl xs
+      where showl [] = showChar '}'
+            showl (x:xs) = showChar ',' . shows x . showl xs
 
 nullSet :: Set a -> Bool
 nullSet xs = null (toListSet xs)

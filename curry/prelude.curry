@@ -416,8 +416,27 @@ unwords []	 = []
 unwords (w:ws) = w ++ foldr (\w cs -> (' ' : w) ++ cs) "" ws
 
 --- Converts an arbitrary term into an external string representation.
-foreign import primitive show :: a -> String
+show :: a -> String
+show x = shows x ""
 
+type ShowS = String -> String
+foreign import primitive shows :: a -> ShowS
+
+showChar :: Char -> ShowS
+showChar c = (c :)
+
+showString :: String -> ShowS
+showString s = (s ++)
+
+showList :: [a] -> ShowS
+showList [] = showString "[]"
+showList (x:xs) = showChar '[' . shows x . showl xs
+  where showl [] = showChar ']'
+        showl (x:xs) = showChar ',' . shows x . showl xs
+
+showParen :: Bool -> ShowS -> ShowS
+showParen True x = showChar '(' . x . showChar ')'
+showParen False x = x
 
 -- Types of primitive arithmetic functions and predicates
 -- NB quot,rem and div,mod are compatible with Haskell, i.e.

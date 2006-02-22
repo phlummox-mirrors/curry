@@ -6,7 +6,7 @@
 module DebugPrelude(CTree(..),startDebugging,clean,try',dEval) where
 import IO
 
-foreign import primitive dval :: a -> String
+foreign import primitive dvals :: a -> ShowS
 
 -- data type representing computation trees		   	
 data CTree = CTreeNode String [String] String String [CTree] | 
@@ -107,7 +107,7 @@ buggyChildren (x:xs) =
  where 
 	l = length (x:xs)
 	listN = zip [1..l]  (x:xs)
-	listArrows = map (\(x,y) -> (show x)++". "++basicArrow y) listN
+	listArrows = map (\(x,y) -> shows x (". "++basicArrow y)) listN
 	   
 answerYes = 
   getLine >>= \l -> if l=="y" || l=="Y" then return Yes
@@ -167,4 +167,4 @@ ppTChildren i (x:xs)  =
    	   putStrLn "]"
 
 dEval:: a -> String
-dEval = dval
+dEval x = dvals x ""

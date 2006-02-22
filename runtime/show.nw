@@ -1,17 +1,20 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1858 2006-02-22 14:23:51Z wlux $
+% $Id: show.nw 1859 2006-02-22 20:56:28Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Show Function}
-The function \verb|show :: a -> String| is used to convert a value
-lazily into a string. This function uses the information available in
-the node info structure in order to determine how its argument should
-be displayed. A minor variant of \verb|show| is the impure function
-\verb|dval :: a -> String| which neither does evaluate its argument
-nor wait until unbound variables are instantiated. The primary
-objective of this function is to support the declarative debugger.
+The function \verb|shows :: a -> String -> String| is used to convert
+a value lazily into a string. This function uses the information
+available in the node info structure in order to determine how its
+argument should be displayed.
+
+A minor variant of \verb|shows| is the impure function
+\verb|dvals :: a -> String -> String|, which does not evaluate its
+argument and also does not wait until unbound variables are
+instantiated. The primary objective of this function is to support the
+declarative debugger.
 
 <<show.c>>=
 #include "config.h"
@@ -34,8 +37,8 @@ objective of this function is to support the declarative debugger.
 #include "cam.h"
 #include "trace.h"
 
-DECLARE_ENTRYPOINT(__show);
-DECLARE_ENTRYPOINT(__dval);
+DECLARE_ENTRYPOINT(__shows);
+DECLARE_ENTRYPOINT(__dvals);
 DECLARE_LABEL(showp);
 DECLARE_LABEL(showp_1);
 DECLARE_LABEL(showArgs);
@@ -201,41 +204,38 @@ FUNCTION(eval_lazy_4)
 }
 
 @
-The external entry points \texttt{show} and \texttt{dval} just call
+The external entry points \texttt{shows} and \texttt{dvals} just call
 the main worker function \texttt{showp}. This function is called with
-three additional arguments. The first is an integer precedence level
-that controls whether an application must be enclosed in parentheses,
-the second is the rest of the string, and the last is an integer flag
-set to 1 if \texttt{showp} is called from \texttt{show} and 0
-otherwise. Note that \texttt{dval} calls \texttt{showp} with
-precedence level two. Thus, all arguments are printed as if they did
-occur in an argument position, which is the way \texttt{dval} is used
-by the debugger.
+two additional arguments. The first is an integer precedence level
+that controls whether an application must be enclosed in parentheses
+and the second is an integer flag, which is set to 1 if \texttt{showp}
+is called from \texttt{shows} and 0 otherwise. Note that
+\texttt{dvals} calls \texttt{showp} with precedence level two. Thus,
+all arguments are printed as if they did occur in an argument
+position, which is the way \texttt{dvals} is used by the debugger.
 
 <<show.c>>=
-FUNCTION(__show)
+FUNCTION(__shows)
 {
-    EXPORT_LABEL(__show)
- ENTRY_LABEL(__show)
-    CHECK_STACK(3);
-    sp	 -= 3;
-    sp[0] = sp[3];
+    EXPORT_LABEL(__shows)
+ ENTRY_LABEL(__shows)
+    CHECK_STACK(2);
+    sp	 -= 2;
+    sp[0] = sp[2];
     sp[1] = zero;
-    sp[2] = nil;
-    sp[3] = one;
+    sp[2] = one;
     GOTO(showp);
 }
 
-FUNCTION(__dval)
+FUNCTION(__dvals)
 {
-    EXPORT_LABEL(__dval)
- ENTRY_LABEL(__dval)
-    CHECK_STACK(3);
-    sp	 -= 3;
-    sp[0] = sp[3];
+    EXPORT_LABEL(__dvals)
+ ENTRY_LABEL(__dvals)
+    CHECK_STACK(2);
+    sp	 -= 2;
+    sp[0] = sp[2];
     sp[1] = two;
-    sp[2] = nil;
-    sp[3] = zero;
+    sp[2] = zero;
     GOTO(showp);
 }
 
@@ -272,7 +272,7 @@ FUNCTION(showp_1)
     argc  = 0;
     node  = sp[0];
     prec  = sp[1];
-    show  = sp[3];
+    show  = sp[2];
     isop  = false;
     isneg = false;
 
@@ -390,8 +390,8 @@ FUNCTION(showp_1)
     CHECK_HEAP((argc + 1) * cons_node_size + suspend_node_size(4));
     node = sp[0];
     prec = sp[1];
-    tail = sp[2];
-    show = sp[3];
+    show = sp[2];
+    tail = sp[3];
 
     if ( argc > 0 )
     {
@@ -412,8 +412,8 @@ FUNCTION(showp_1)
 	susp->s.spc	= ss;
 	susp->s.args[0] = arglist;
 	susp->s.args[1] = prec;
-	susp->s.args[2] = tail;
-	susp->s.args[3] = show;
+	susp->s.args[2] = show;
+	susp->s.args[3] = tail;
 	hp	       += suspend_node_size(4);
 
 	tail = susp;
@@ -474,8 +474,8 @@ FUNCTION(showArgs)
     CHECK_HEAP(2 * suspend_node_size(4) + cons_node_size);
     arglist = sp[0];
     prec    = sp[1];
-    tail    = sp[2];
-    show    = sp[3];
+    show    = sp[2];
+    tail    = sp[3];
     sp	   += 4;
 
     if ( arglist->info->tag == NIL_TAG )
@@ -503,8 +503,8 @@ FUNCTION(showArgs)
 	susp->s.spc	= ss;
 	susp->s.args[0] = arglist->c.args[1];
 	susp->s.args[1] = prec;
-	susp->s.args[2] = tail;
-	susp->s.args[3] = show;
+	susp->s.args[2] = show;
+	susp->s.args[3] = tail;
 	hp	       += suspend_node_size(4);
 
 	susp2		 = (Node *)hp;
@@ -512,8 +512,8 @@ FUNCTION(showArgs)
 	susp2->s.spc	 = ss;
 	susp2->s.args[0] = arglist->c.args[0];
 	susp2->s.args[1] = two;
-	susp2->s.args[2] = susp;
-	susp2->s.args[3] = show;
+	susp2->s.args[2] = show;
+	susp2->s.args[3] = susp;
 	hp		+= suspend_node_size(4);
 
 	cons		= (Node *)hp;
@@ -543,8 +543,8 @@ FUNCTION(showInfix)
     CHECK_HEAP(2 * cons_node_size + suspend_node_size(4));
     node = sp[0];
     prec = long_val(sp[1]);
-    tail = sp[2];
-    show = sp[3];
+    show = sp[2];
+    tail = sp[3];
 
     if ( prec > 0 )
     {
@@ -562,8 +562,8 @@ FUNCTION(showInfix)
     susp->s.spc	    = ss;
     susp->s.args[0] = node->c.args[1];
     susp->s.args[1] = one;
-    susp->s.args[2] = tail;
-    susp->s.args[3] = show;
+    susp->s.args[2] = show;
+    susp->s.args[3] = tail;
     hp		   += suspend_node_size(4);
 
     cons	    = (Node *)hp;
@@ -573,12 +573,12 @@ FUNCTION(showInfix)
     hp		   += cons_node_size;
 
     sp[0] = node->c.args[0];
-    sp[2] = prefix_string(node->info->cname, cons);
+    sp[3] = prefix_string(node->info->cname, cons);
 
     CHECK_HEAP(2 * cons_node_size + suspend_node_size(4));
     node = sp[0];
-    tail = sp[2];
-    show = sp[3];
+    show = sp[2];
+    tail = sp[3];
 
     cons	    = (Node *)hp;
     cons->info	    = &cons_info;
@@ -593,8 +593,8 @@ FUNCTION(showInfix)
 	susp->s.spc	= ss;
 	susp->s.args[0] = node;
 	susp->s.args[1] = one;
-	susp->s.args[2] = cons;
-	susp->s.args[3] = show;
+	susp->s.args[2] = show;
+	susp->s.args[3] = cons;
 	hp	       += suspend_node_size(4);
 
 	cons		= (Node *)hp;
@@ -608,13 +608,13 @@ FUNCTION(showInfix)
     }
 
     sp[1] = one;
-    sp[2] = cons;
+    sp[3] = cons;
     GOTO(showp);
 }
 
 @
 The code of \texttt{showp} jumps to the label \texttt{showTuple} in
-order display a tuple. In this case, the arguments are separated by
+order to display a tuple. In this case, the arguments are separated by
 commas and not enclosed in parentheses. Instead, the whole tuple is
 always enclosed in parentheses. Note that the function is prepared to
 handle tuples as well as vectors, which are shown like a tuple.
@@ -630,8 +630,8 @@ FUNCTION(showTuple)
     CHECK_HEAP(argc * cons_node_size + suspend_node_size(3)
 	       + suspend_node_size(4));
     tuple = sp[0];
-    tail  = sp[1];
-    show  = sp[2];
+    show  = sp[1];
+    tail  = sp[2];
     sp	 += 3;
 
     argp    = is_vector(tuple) ? tuple->a.args : tuple->c.args;
@@ -652,8 +652,8 @@ FUNCTION(showTuple)
     susp->info	    = showTupleArgs_lazy_info_table;
     susp->s.spc	    = ss;
     susp->s.args[0] = arglist;
-    susp->s.args[1] = tail;
-    susp->s.args[2] = show;
+    susp->s.args[1] = show;
+    susp->s.args[2] = tail;
     hp		   += suspend_node_size(3);
 
     if ( argc )
@@ -665,8 +665,8 @@ FUNCTION(showTuple)
 	susp->s.spc	= ss;
 	susp->s.args[0] = *--argp;
 	susp->s.args[1] = zero;
-	susp->s.args[2] = tail;
-	susp->s.args[3] = show;
+	susp->s.args[2] = show;
+	susp->s.args[3] = tail;
 	hp	       += suspend_node_size(4);
     }
 
@@ -688,8 +688,8 @@ FUNCTION(showTupleArgs)
 
     CHECK_HEAP(suspend_node_size(3) + suspend_node_size(4) + cons_node_size);
     arglist = sp[0];
-    tail    = sp[1];
-    show    = sp[2];
+    show    = sp[1];
+    tail    = sp[2];
     sp	   += 3;
 
     if ( arglist->info->tag == NIL_TAG )
@@ -708,8 +708,8 @@ FUNCTION(showTupleArgs)
 	susp->info	= showTupleArgs_lazy_info_table;
 	susp->s.spc	= ss;
 	susp->s.args[0] = arglist->c.args[1];
-	susp->s.args[1] = tail;
-	susp->s.args[2] = show;
+	susp->s.args[1] = show;
+	susp->s.args[2] = tail;
 	hp	       += suspend_node_size(3);
 
 	susp2		 = (Node *)hp;
@@ -717,8 +717,8 @@ FUNCTION(showTupleArgs)
 	susp2->s.spc	 = ss;
 	susp2->s.args[0] = arglist->c.args[0];
 	susp2->s.args[1] = zero;
-	susp2->s.args[2] = susp;
-	susp2->s.args[3] = show;
+	susp2->s.args[2] = show;
+	susp2->s.args[3] = susp;
 	hp		+= suspend_node_size(4);
 
 	cons		= (Node *)hp;
@@ -732,10 +732,10 @@ FUNCTION(showTupleArgs)
 }
 
 @
-Lists are printed in the standard list notation, enclosing the whole
+Lists are shown using the standard list notation, enclosing the whole
 list in brackets and separating the arguments by commas. Eventually
 the function \texttt{showTail} has to evaluate its tail before it can
-be converted into a string. When being called from \texttt{dval}, we
+be converted into a string. When being called from \texttt{dvals}, we
 do not evaluate the tail of the list, but print it in the usual Prolog
 notation, i.e., separating the unevaluated or non-ground tail from the
 head of the list with a vertical bar. Unfortunately, this notation is
@@ -748,9 +748,9 @@ make use of the standard string notation. In the case of the
 \texttt{show} function we only need to check the first element of the
 list in order to check whether it is a character. As \texttt{show} is
 rigid we know that the string will be ground. The situation is
-different for \texttt{dval} because is not rigid. Therefore, we have
+different for \texttt{dvals} because is not rigid. Therefore, we have
 to check every character of the list. In order to prevent entering an
-infinite loop when \texttt{dval} is applied to a cyclic list -- as can
+infinite loop when \texttt{dvals} is applied to a cyclic list -- as can
 be created, for instance, with the function \texttt{repeat x = xs
 where x:xs} -- only strings with less than 10000 characters are
 recognized.
@@ -788,7 +788,7 @@ FUNCTION(showList)
     Node *hd, *tl, *susp, *susp2, *cons, *tail, *show;
  ENTRY_LABEL(showList)
     hd	 = sp[0];
-    show = sp[3];
+    show = sp[2];
     for (;;)
     {
 	if ( is_boxed(hd) )
@@ -827,7 +827,7 @@ FUNCTION(showList)
 
 		    hd   = sp[0];
 		    tl   = sp[1];
-		    tail = sp[2];
+		    tail = sp[3];
 		    sp  += 4;
 
 		    cons	    = (Node *)hp;
@@ -860,16 +860,16 @@ FUNCTION(showList)
     CHECK_HEAP(suspend_node_size(3) + suspend_node_size(4) + cons_node_size);
     hd   = sp[0];
     tl	 = sp[1];
-    tail = sp[2];
-    show = sp[3];
+    show = sp[2];
+    tail = sp[3];
     sp	+= 4;
 
     susp	    = (Node *)hp;
     susp->info	    = showTail_lazy_info_table;
     susp->s.spc	    = ss;
     susp->s.args[0] = tl;
-    susp->s.args[1] = tail;
-    susp->s.args[2] = show;
+    susp->s.args[1] = show;
+    susp->s.args[2] = tail;
     hp		   += suspend_node_size(3);
 
     susp2	     = (Node *)hp;
@@ -877,8 +877,8 @@ FUNCTION(showList)
     susp2->s.spc     = ss;
     susp2->s.args[0] = hd;
     susp2->s.args[1] = zero;
-    susp2->s.args[2] = susp;
-    susp2->s.args[3] = show;
+    susp2->s.args[2] = show;
+    susp2->s.args[3] = susp;
     hp		    += suspend_node_size(4);
 
     cons	    = (Node *)hp;
@@ -902,10 +902,9 @@ static
 FUNCTION(showTail_1)
 {
     Node *list, *susp, *susp2, *cons, *tail, *show;
-
  ENTRY_LABEL(showTail_1)
     list = sp[0];
-    show = sp[2];
+    show = sp[1];
  again:
     switch ( node_tag(list) )
     {
@@ -939,8 +938,8 @@ FUNCTION(showTail_1)
 	sp[0] = list;
 	CHECK_HEAP(suspend_node_size(4) + 2 * cons_node_size);
 	list = sp[0];
-	tail = sp[1];
-	show = sp[2];
+	show = sp[1];
+	tail = sp[2];
 	sp  += 3;
 
 	cons		= (Node *)hp;
@@ -954,8 +953,8 @@ FUNCTION(showTail_1)
 	susp->s.spc	= ss;
 	susp->s.args[0] = list;
 	susp->s.args[1] = zero;
-	susp->s.args[2] = cons;
-	susp->s.args[3] = show;
+	susp->s.args[2] = show;
+	susp->s.args[3] = cons;
 	hp	       += suspend_node_size(4);
 
 	cons		= (Node *)hp;
@@ -967,7 +966,7 @@ FUNCTION(showTail_1)
 
     case NIL_TAG:
 	CHECK_HEAP(cons_node_size);
-	tail = sp[1];
+	tail = sp[2];
 	sp  += 3;
 
 	cons		= (Node *)hp;
@@ -982,16 +981,16 @@ FUNCTION(showTail_1)
 	CHECK_HEAP(suspend_node_size(3) + suspend_node_size(4)
 		   + cons_node_size);
 	list = sp[0];
-	tail = sp[1];
-	show = sp[2];
+	show = sp[1];
+	tail = sp[2];
 	sp  += 3;
 
 	susp	   	= (Node *)hp;
 	susp->info 	= showTail_lazy_info_table;
 	susp->s.spc	= ss;
 	susp->s.args[0] = list->c.args[1];
-	susp->s.args[1] = tail;
-	susp->s.args[2] = show;
+	susp->s.args[1] = show;
+	susp->s.args[2] = tail;
 	hp	       += suspend_node_size(3);
 
 	susp2		 = (Node *)hp;
@@ -999,8 +998,8 @@ FUNCTION(showTail_1)
 	susp2->s.spc	 = ss;
 	susp2->s.args[0] = list->c.args[0];
 	susp2->s.args[1] = zero;
-	susp2->s.args[2] = susp;
-	susp2->s.args[3] = show;
+	susp2->s.args[2] = show;
+	susp2->s.args[3] = susp;
 	hp		+= suspend_node_size(4);
 
 	cons		= (Node *)hp;
@@ -1028,7 +1027,6 @@ FUNCTION(showString)
 {
     char buf[8];
     Node *hd, *tl, *tail, *susp, *cons;
-
  ENTRY_LABEL(showString);
     EVAL_RIGID_CHAR(showString);
     CHECK_HEAP(suspend_node_size(2));
@@ -1053,7 +1051,6 @@ static
 FUNCTION(showStringTail)
 {
     Node *cons;
-
  ENTRY_LABEL(showStringTail)
     EVAL_RIGID_POLY(showStringTail);
 

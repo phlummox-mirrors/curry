@@ -1,11 +1,11 @@
 -- finite maps based on 2-3 trees
 
--- Copyright (c) 1999-2004, Wolfgang Lux
+-- Copyright (c) 1999-2006, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module FiniteMap(FM, nullFM, zeroFM, unitFM, addToFM, deleteFromFM,
                  lookupFM, fromListFM, toListFM, eqFM, neqFM,
-                 showFM, mapFM) where
+                 showFM, showsFM, mapFM) where
 import List
 
 infix 4 `eqFM`,`neqFM`
@@ -148,9 +148,16 @@ xys1 `eqFM` xys2 = toListFM xys1 == toListFM xys2
 xys1 `neqFM` xys2 = not (xys1 `eqFM` xys2)
 
 showFM :: FM a b -> String
-showFM xys = "{" ++ showList (map showAssoc (toListFM xys)) ++ "}"
-    where showList = concat . intersperse ","
-          showAssoc (x,y) = show x ++ "|->" ++ show y
+showFM xys = showsFM xys ""
+
+showsFM :: FM a b -> ShowS
+showsFM xys =
+  case toListFM xys of
+    [] -> showString "{}"
+    (xy:xys) -> showChar '{' . showp xy . showl xys
+      where showl [] = showChar '}'
+            showl (xy:xys) = showChar ',' . showp xy . showl xys
+            showp (x,y) = shows x . showString "|->" . shows y
 
 mapFM :: (b -> c) -> FM a b -> FM a c
 mapFM f Empty = Empty
