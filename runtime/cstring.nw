@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cstring.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: cstring.nw 1860 2006-02-23 14:51:09Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{C String Interface}\label{sec:string}
@@ -19,7 +19,7 @@ extern unsigned string_length(Node *);
 extern char	*copy_string(Node *, char *buf);
 extern char	*to_string(Node *);
 
-extern char *lit_char(char *buf, int c, char q);
+extern char *lit_char(char *buf, int c0, int c, int q);
 extern char *lit_double(char *buf, double d);
 
 DECLARE_ENTRYPOINT(nf_string);
@@ -30,6 +30,7 @@ DECLARE_ENTRYPOINT(nf_string);
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <limits.h>
 #include <math.h>
 #ifdef HAVE_IEEEFP_H
@@ -395,13 +396,21 @@ FUNCTION(__peekCStringLen_2)
 
 @ 
 The function [[lit_char]] converts a character into its printable
-representation (without quotes). The [[q]] argument is used for
+representation (without quotes). The argument [[q]] is used for
 specifying the quote character. This character will be escaped with a
 backslash character in the return value. Passing [['\0']] as quote
-character will avoid escaping. The buffer passed to [[lit_char]] must
-be long enough to accomodate the converted string. Since at present
-characters are limited to the range between \verb|chr 0| and
-\verb|chr 255|, five bytes are sufficient.
+character avoids escaping. The argument [[c0]] specifies the preceding
+character and is used in order to insert a ``null character'' escape
+sequence \verb|\&| between a numeric character escape sequence and a
+digit so that it is possible to distinguish the strings
+\verb|['\137',9]| and \verb|['\1379']|. Similarly, \verb|\&| is
+inserted between \verb|\SO| (ASCII code 14) and \verb|H| in order to
+distinguish the strings \verb|['\SO','H']| and \verb|['\SOH']|.
+
+The buffer passed to [[lit_char]] must be long enough to accommodate
+the converted string. Since at present characters are limited to the
+range between \verb|chr 0| and \verb|chr 255|, five bytes are
+sufficient.
 
 <<cstring.c>>=
 static const char *asciiTab[] = {
@@ -412,7 +421,7 @@ static const char *asciiTab[] = {
 };
 
 char *
-lit_char(char *buf, int c, char q)
+lit_char(char *buf, int c0, int c, int q)
 {
     if ( c >= '\0' && c < ' ' )
 	strcpy(buf, asciiTab[c]);
@@ -424,6 +433,12 @@ lit_char(char *buf, int c, char q)
 
 	if ( c == q || c == '\\' )
 	    *cp++ = '\\';
+	else if ( (c == 'H' && c0 == 016/*'\SO'*/) ||
+		  (isdigit(c) && c0 > 0177) )
+	{
+	    *cp++ = '\\';
+	    *cp++ = '&';
+	}
 	*cp++ = c;
 	*cp   = '\0';
     }

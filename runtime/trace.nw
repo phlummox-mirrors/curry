@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: trace.nw 1822 2005-11-07 22:50:22Z wlux $
+% $Id: trace.nw 1860 2006-02-23 14:51:09Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Tracing}
@@ -164,7 +164,7 @@ trace_shownode(int depth, Node *node)
 	switch ( node_tag(node) )
 	{
 	case CHAR_TAG:
-	    fprintf(stderr, "'%s'", lit_char(buf, node->ch.ch, '\''));
+	    fprintf(stderr, "'%s'", lit_char(buf, '\0', node->ch.ch, '\''));
 	    break;
 	case INT_TAG:
 	    fprintf(stderr, "%ld", node->i.i);

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1859 2006-02-22 20:56:28Z wlux $
+% $Id: show.nw 1860 2006-02-23 14:51:09Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -74,7 +74,6 @@ static const struct int_node two_node  = { &int_info, 2 };
 #define bar	 (Node *)(char_table + '|')
 #define dblquote (Node *)(char_table + '\"')
 
-DECLARE_LABEL(eval_lazy_2);
 DECLARE_LABEL(eval_lazy_3);
 DECLARE_LABEL(eval_lazy_4);
 
@@ -84,45 +83,7 @@ static NodeInfo showTupleArgs_lazy_info_table[] =
     LAZYINFO("showTupleArgs", showTupleArgs, 3);
 static NodeInfo showTail_lazy_info_table[] = LAZYINFO("showTail", showTail, 3);
 static NodeInfo showStringTail_lazy_info_table[] =
-    LAZYINFO("showStringTail", showStringTail, 2);
-
-static
-FUNCTION(eval_lazy_2)
-{
-    Node  *susp;
-    Label entry;
- ENTRY_LABEL(eval_lazy_2)
-    susp = sp[0];
-
-    /* suspend the search if the node is not local */
-    /* NB reload susp -- suspend_search might invoke gc */
-    if ( !is_local_space(susp->s.spc) )
-    {
-	suspend_search(resume, susp, susp->s.spc);
-	susp = sp[0];
-    }
-
-    /* create an update frame */
-    CHECK_STACK(3);
-    sp	 -= 3;
-    sp[0] = susp->s.args[0];
-    sp[1] = susp->s.args[1];
-    sp[2] = (Node *)update;
-
-    /* lock the suspension */
-    entry = susp->info->entry;
-    if ( (word *)susp < hlim )
-    {
-	DO_SAVE(susp, q.wq);
-	susp->info++;
-    }
-    else
-	susp->info = queueMe_info_table;
-    susp->q.wq = 0;
-
-    /* enter the callee */
-    GOTO(entry);
-}
+    LAZYINFO("showStringTail", showStringTail, 3);
 
 static
 FUNCTION(eval_lazy_3)
@@ -319,7 +280,7 @@ FUNCTION(showp_1)
 
 	case CHAR_TAG:
 	    buf[0] = '\'';
-	    strcpy(strchr(lit_char(buf + 1, node->ch.ch, '\''), '\0'), "'");
+	    strcat(lit_char(buf + 1, '\0', node->ch.ch, '\''), "'");
 	    break;
 
 	case INT_TAG:
@@ -823,7 +784,7 @@ FUNCTION(showList)
 		if ( show != zero || is_string(sp[1]) )
 		{
 		    sp[0] = hd;
-		    CHECK_HEAP(suspend_node_size(2) + 2 * cons_node_size);
+		    CHECK_HEAP(suspend_node_size(3) + 2 * cons_node_size);
 
 		    hd   = sp[0];
 		    tl   = sp[1];
@@ -840,8 +801,9 @@ FUNCTION(showList)
 		    susp->info	    = showStringTail_lazy_info_table;
 		    susp->s.spc	    = ss;
 		    susp->s.args[0] = cons;
-		    susp->s.args[1] = tail;
-		    hp		   += suspend_node_size(2);
+		    susp->s.args[1] = (Node *)char_table;
+		    susp->s.args[2] = tail;
+		    hp		   += suspend_node_size(3);
 
 		    cons	    = (Node *)hp;
 		    cons->info	    = &cons_info;
@@ -1026,24 +988,26 @@ static
 FUNCTION(showString)
 {
     char buf[8];
-    Node *hd, *tl, *tail, *susp, *cons;
+    Node *hd, *tl, *prev, *tail, *susp, *cons;
  ENTRY_LABEL(showString);
     EVAL_RIGID_CHAR(showString);
-    CHECK_HEAP(suspend_node_size(2));
+    CHECK_HEAP(suspend_node_size(3));
 
     hd	 = sp[0];
     tl	 = sp[1];
-    tail = sp[2];
-    sp	+= 3;
+    prev = sp[2];
+    tail = sp[3];
+    sp	     += 4;
 
     susp	    = (Node *)hp;
     susp->info	    = showStringTail_lazy_info_table;
     susp->s.spc	    = ss;
     susp->s.args[0] = tl;
-    susp->s.args[1] = tail;
-    hp		   += suspend_node_size(2);
+    susp->s.args[1] = hd;
+    susp->s.args[2] = tail;
+    hp		   += suspend_node_size(3);
 
-    cons = prefix_string(lit_char(buf, hd->ch.ch, '"'), susp);
+    cons = prefix_string(lit_char(buf, prev->ch.ch, hd->ch.ch, '"'), susp);
     RETURN(cons);
 }
 
@@ -1061,10 +1025,10 @@ FUNCTION(showStringTail)
 	cons		= (Node *)hp;
 	cons->info	= &cons_info;
 	cons->c.args[0] = dblquote;
-	cons->c.args[1] = sp[1];
+	cons->c.args[1] = sp[2];
 	hp	       += cons_node_size;
 
-	sp += 2;
+	sp += 3;
 	RETURN(cons);
     }
 

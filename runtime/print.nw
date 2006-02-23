@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: print.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: print.nw 1860 2006-02-23 14:51:09Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Printing the Result}
@@ -117,7 +117,7 @@ print_node(unsigned prec, Node *node)
 	    switch ( node_tag(node) )
 	    {
 	    case CHAR_TAG:
-		printf("'%s'", lit_char(buf, node->ch.ch, '\''));
+		printf("'%s'", lit_char(buf, '\0', node->ch.ch, '\''));
 		break;
 	    case INT_TAG:
 		printf(prec > 0 && node->i.i < 0 ? "(%ld)" : "%ld",
@@ -251,8 +251,10 @@ static void
 print_string(Node *list)
 {
     char buf[8];
+    int	 c0, c;
     Node *head;
 
+    c0 = '\0';
     putchar('"');
     while ( list->info == &cons_info )
     {
@@ -260,7 +262,9 @@ print_string(Node *list)
 	while ( is_boxed(head) && head->info->tag == INDIR_TAG )
 	    head = head->n.node;
 	ASSERT(is_boxed(head) && head->info->tag == CHAR_TAG);
-	printf("%s", lit_char(buf, head->ch.ch, '"'));
+	c = head->ch.ch;
+	printf("%s", lit_char(buf, c0, c, '"'));
+	c0 = c;;
 
 	list = list->c.args[1];
 	while ( list->info->tag == INDIR_TAG )
