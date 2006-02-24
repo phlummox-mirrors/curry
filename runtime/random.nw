@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: random.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: random.nw 1862 2006-02-24 18:35:16Z wlux $
 %
 % Copyright (c) 2004-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -100,6 +100,7 @@ FUNCTION(__mkStdGen)
     rng->valid  = 0;
     rng->random = 0;
     hp	       += stdgen_node_size;
+    register_final((Node *)rng);
 
     if ( rng->state == NULL )
 	sys_error("mkStdGen");
