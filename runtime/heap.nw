@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: heap.nw 1861 2006-02-24 17:29:05Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -721,6 +721,14 @@ extern void collect(unsigned int);
 @
 <<heap.c>>=
 boolean in_gc = false;
+
+@ 
+The macro \texttt{primPerformGC} forcibly invokes the garbage
+collector. Since it is not tied to an allocation, it does not request
+any additional memory.
+
+<<heap.h>>=
+#define primPerformGC()	collect(0)
 
 @
 In order to find all live nodes during a garbage collection, the

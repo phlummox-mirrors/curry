@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: io_monad.nw 1861 2006-02-24 17:29:05Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -482,19 +482,4 @@ FUNCTION(__fixIO)
 
     *++sp = susp;
     GOTO(susp->info->eval);    
-}
-
-@
-The primitive I/O action [[performGC]] invokes the garbage collector.
-
-<<io_monad.c>>=
-DECLARE_ENTRYPOINT(__performGC);
-
-FUNCTION(__performGC)
-{
-    EXPORT_LABEL(__performGC)
- ENTRY_LABEL(__performGC)
-    sp += 1;
-    collect(0);
-    RETURN(unit);
 }

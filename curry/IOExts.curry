@@ -1,4 +1,4 @@
--- $Id: IOExts.curry 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: IOExts.curry 1861 2006-02-24 17:29:05Z wlux $
 --
 -- Copyright (c) 2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -73,4 +73,4 @@ foreign import primitive pClose :: Handle -> IO Int
 foreign import primitive connectTcpSocket :: String -> Int -> IOMode -> IO Handle
 
 -- perform a garbage collection
-foreign import primitive performGC :: IO ()
+foreign import ccall "primPerformGC" performGC :: IO ()
