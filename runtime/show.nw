@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1860 2006-02-23 14:51:09Z wlux $
+% $Id: show.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -219,8 +219,7 @@ FUNCTION(showp)
 static
 FUNCTION(showp_1)
 {
-    boolean	 isop;
-    boolean	 isneg;
+    boolean	 isop, isneg;
     char	 buf[32];
     const char   *str;
     unsigned int i, argc;
@@ -303,7 +302,20 @@ FUNCTION(showp_1)
 	    sprintf(buf, long_val(prec) > 1 ? "(%s %p)" : "%s %p",
 		    node->info->cname, node->fp.ptr);
 	    break;
-	    
+
+	case VECTOR_TAG:
+	    if ( is_tuple(node->info) )
+	    {
+		*++sp = node;
+		GOTO(showTuple);
+	    }
+	    else
+	    {
+		str  = node->info->cname;
+		argc = vector_argc(node);
+	    }
+	    break;
+
 	case PAPP_TAG:
 	    str  = node->info->cname;
 	    isop = is_operator(node->info) && !is_tuple(node->info);
@@ -337,7 +349,7 @@ FUNCTION(showp_1)
 	    {
 		str  = node->info->cname;
 		isop = is_operator(node->info);
-		argc = is_vector(node) ? vector_argc(node) : closure_argc(node);
+		argc = closure_argc(node);
 	    }
 	}
 
@@ -356,7 +368,7 @@ FUNCTION(showp_1)
 
     if ( argc > 0 )
     {
-	argp	= is_vector(node) ? node->a.args : node->c.args;
+	argp	= is_vector_node(node) ? node->a.args : node->c.args;
 	arglist = nil;
 	for ( i = argc; i-- > 0; )
 	{
@@ -587,7 +599,7 @@ FUNCTION(showTuple)
     unsigned int i, argc;
     Node	 *tuple, *susp, *cons, *tail, *arglist, **argp, *show;
  ENTRY_LABEL(showTuple)
-    argc = is_vector(sp[0]) ? vector_argc(sp[0]) : closure_argc(sp[0]);
+    argc = is_vector_node(sp[0]) ? vector_argc(sp[0]) : closure_argc(sp[0]);
     CHECK_HEAP(argc * cons_node_size + suspend_node_size(3)
 	       + suspend_node_size(4));
     tuple = sp[0];
@@ -595,7 +607,7 @@ FUNCTION(showTuple)
     tail  = sp[2];
     sp	 += 3;
 
-    argp    = is_vector(tuple) ? tuple->a.args : tuple->c.args;
+    argp    = is_vector_node(tuple) ? tuple->a.args : tuple->c.args;
     argp   += argc;
     arglist = nil;
 

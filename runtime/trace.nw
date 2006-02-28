@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: trace.nw 1860 2006-02-23 14:51:09Z wlux $
+% $Id: trace.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -181,6 +181,9 @@ trace_shownode(int depth, Node *node)
 	    fprintf(stderr, depth > 0 ? "(%s %p)" : "(%s ...)",
 		    node->info->cname, node->fp.ptr);
 	    break;
+	case VECTOR_TAG:
+	    trace_showapp(depth, node, vector_argc(node), node->a.args);
+	    break;
 	case VARIABLE_TAG:
 	    fprintf(stderr, "var@%p", node);
 	    break;
@@ -208,8 +211,6 @@ trace_shownode(int depth, Node *node)
 		    name = "<abstract>";
 		fprintf(stderr, "%s@%p", name, node);
 	    }
-	    else if ( is_vector(node) )
-		trace_showapp(depth, node, vector_argc(node), node->a.args);
 	    else
 		trace_showapp(depth, node, closure_argc(node), node->c.args);
 	    break;

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1820 2005-11-07 17:18:46Z wlux $
+% $Id: spaces.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -791,6 +791,12 @@ copy_graph(Node *graph, SearchSpace *space)
 	    }
 	    break;
 
+	case VECTOR_TAG:
+	    n = vector_argc(node);
+	    for ( i = 0; i < n; i++ )
+		node->a.args[i] = copy_node(node->a.args[i], space);
+	    break;
+
 	default:
 	    if ( is_abstract_node(node) )
 		break;
@@ -798,17 +804,8 @@ copy_graph(Node *graph, SearchSpace *space)
 	    /* FALL THROUGH*/
 	case PAPP_TAG:
 	case FAPP_TAG:
-	    if ( is_vector(node) )
-	    {
-		i = 1;
-		n = vector_argc(node) + 1;
-	    }
-	    else
-	    {
-		i = 0;
-		n = closure_argc(node);
-	    }
-	    for ( ; i < n; i++ )
+	    n = closure_argc(node);
+	    for ( i = 0; i < n; i++ )
 		node->c.args[i] = copy_node(node->c.args[i], space);
 	    break;
 	}

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: vector.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: vector.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -30,8 +30,6 @@ this will make the printing code treat vectors as tuples.
 #include "io_monad.h"
 #include "cam.h"
 
-enum { VECTOR_TAG };
-
 static NodeInfo vector_info = { VECTOR_TAG, 0, 0, "(,)", eval_whnf, 0, 0, 0 };
 static const struct vector_node empty = {
     &vector_info, vector_node_size(0), { }
@@ -48,7 +46,6 @@ FUNCTION(__newIOVector)
 {
     long i, n;
     Node *init, *vec;
-
     EXPORT_LABEL(__newIOVector)
  ENTRY_LABEL(__newIOVector)
     EVAL_RIGID_INT(__newIOVector);
@@ -87,11 +84,9 @@ DECLARE_ENTRYPOINT(__copyIOVector);
 FUNCTION(__copyIOVector)
 {
     Node *vec;
-
     EXPORT_LABEL(__copyIOVector)
  ENTRY_LABEL(__copyIOVector)
-    EVAL_RIGID(__copyIOVector);
-    ASSERT(node_tag(sp[0]) == VECTOR_TAG);
+    EVAL_RIGID_VECTOR(__copyIOVector);
 
     vec = sp[0];
     if ( vector_argc(vec) > 0 )
@@ -119,12 +114,9 @@ DECLARE_LABEL(__readIOVector_1);
 FUNCTION(__readIOVector)
 {
     Node *aux;
-
     EXPORT_LABEL(__readIOVector)
  ENTRY_LABEL(__readIOVector)
-    EVAL_RIGID(__readIOVector);
-    ASSERT(node_tag(sp[0]) == VECTOR_TAG);
-
+    EVAL_RIGID_VECTOR(__readIOVector);
     aux	  = sp[0];
     sp[0] = sp[1];
     sp[1] = aux;
@@ -136,7 +128,6 @@ FUNCTION(__readIOVector_1)
 {
     long  i;
     Node *vec, *r;
-
  ENTRY_LABEL(__readIOVector_1)
     EVAL_RIGID_INT(__readIOVector_1);
 
@@ -162,12 +153,9 @@ DECLARE_LABEL(__writeIOVector_1);
 FUNCTION(__writeIOVector)
 {
     Node *aux;
-
     EXPORT_LABEL(__writeIOVector)
  ENTRY_LABEL(__writeIOVector)
-    EVAL_RIGID(__writeIOVector);
-    ASSERT(node_tag(sp[0]) == VECTOR_TAG);
-
+    EVAL_RIGID_VECTOR(__writeIOVector);
     aux	  = sp[0];
     sp[0] = sp[1];
     sp[1] = aux;
@@ -179,7 +167,6 @@ FUNCTION(__writeIOVector_1)
 {
     long i;
     Node *vec, *node;
-
  ENTRY_LABEL(__writeIOVector_1)
     EVAL_RIGID_INT(__writeIOVector_1);
 
@@ -209,11 +196,9 @@ FUNCTION(__lengthIOVector)
 {
     int  n;
     Node *r;
-
     EXPORT_LABEL(__lengthIOVector)
  ENTRY_LABEL(__lengthIOVector)
-    EVAL_RIGID(__lengthIOVector);
-    ASSERT(node_tag(sp[0]) == VECTOR_TAG);
+    EVAL_RIGID_VECTOR(__lengthIOVector);
 
     n	= vector_argc(sp[0]);
     sp += 1;

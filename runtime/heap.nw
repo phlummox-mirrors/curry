@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1861 2006-02-24 17:29:05Z wlux $
+% $Id: heap.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -79,14 +79,15 @@ comparing them in equality and disequality constraints.
 <<heap.h>>=
 /* tag values */
 enum {
-    ABSTRACT_TAG    = -15,	/* external objects */
-    SCRIPT_TAG	    = -14,	/* saved script/trail */
-    THREAD_TAG	    = -13,	/* threadqueue node */
-    CHAR_TAG	    = -12,	/* character node */
-    INT_TAG	    = -11,	/* integer number */
-    FLOAT_TAG	    = -10,	/* floating-point number */
-    PTR_TAG	    = -9,	/* foreign pointer */
-    FOREIGN_PTR_TAG = -8,	/* finalized foreign pointer */
+    ABSTRACT_TAG    = -16,	/* external objects */
+    SCRIPT_TAG	    = -15,	/* saved script/trail */
+    THREAD_TAG	    = -14,	/* threadqueue node */
+    CHAR_TAG	    = -13,	/* character node */
+    INT_TAG	    = -12,	/* integer number */
+    FLOAT_TAG	    = -11,	/* floating-point number */
+    PTR_TAG	    = -10,	/* foreign pointer */
+    FOREIGN_PTR_TAG = -9,	/* finalized foreign pointer */
+    VECTOR_TAG	    = -8,	/* vector nodes */
     PAPP_TAG	    = -7,	/* partial application node */
     FAPP_TAG	    = -6,	/* function application node */
     SEARCH_CONT_TAG = -5,	/* search continuation */
@@ -164,6 +165,7 @@ struct node_info
 #define is_float_node(node)	(node_tag(node) == FLOAT_TAG)
 #define is_ptr_node(node)	(node_tag(node) == PTR_TAG)
 #define is_foreign_ptr_node(node) (node_tag(node) == FOREIGN_PTR_TAG)
+#define is_vector_node(node)	(node_tag(node) == VECTOR_TAG)
 #define is_papp_node(node)	(node_tag(node) == PAPP_TAG)
 #define is_fapp_node(node)	(node_tag(node) == FAPP_TAG)
 #define is_variable_node(node)	(node_tag(node) == VARIABLE_TAG)
@@ -196,11 +198,10 @@ struct closure_node {
 #define closure_node_size(argc)	(wordsof(struct closure_node) + (argc) - 1)
 
 @
-Vectors differ from tuples in that the size of a vector cannot be
-determined from its type at compile time, but only at runtime when the
-vector is actually allocated. Therefore, the size of a vector node
-cannot be saved in its descriptor, but is saved in the first word of
-the node after the info pointer.
+The size of a vector node cannot be determined from its type at
+compile time, but only at runtime when the vector is allocated.
+Therefore, the size of a vector is saved in the first word of the node
+after the info pointer.
 
 <<heap.h>>=
 struct vector_node {
@@ -209,7 +210,6 @@ struct vector_node {
     Node     *args[1];
 };
 
-#define is_vector(node) ((node)->info->length == 0)
 #define vector_argc(node) \
     (((struct vector_node *)(node))->length - vector_node_size(0))
 #define vector_node_size(argc) \

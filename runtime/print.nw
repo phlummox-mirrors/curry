@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: print.nw 1860 2006-02-23 14:51:09Z wlux $
+% $Id: print.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -27,14 +27,14 @@ extern void print_result(const char *var_names[], Node *vars[], Node *result);
 #include "cstring.h"
 #include "print.h"
 
-static void    print_node(unsigned, Node *);
-static void    print_app(unsigned, Node *, unsigned, Node **);
+static void    print_node(unsigned int, Node *);
+static void    print_app(unsigned int, Node *, unsigned int, Node **);
 static boolean is_string(Node *);
 static void    print_string(Node *);
 static void    print_list(Node *);
-static void    print_tuple(Node *);
+static void    print_tuple(Node *, unsigned int, Node **);
 static boolean print_constraints(boolean, Node *);
-static boolean print_app_constraints(boolean, unsigned, Node **);
+static boolean print_app_constraints(boolean, unsigned int, Node **);
 static boolean print_constrained_var(boolean, Node *);
 
 @ 
@@ -55,7 +55,7 @@ bindings of the free variables when the computation succeeds.                %'
 void
 print_result(const char **var_names, Node **vars, Node *result)
 {
-    unsigned	     i, n;
+    unsigned int     i, n;
     boolean	     hasAnswer;
     struct dict_node *tail;
 
@@ -87,7 +87,7 @@ print_result(const char **var_names, Node **vars, Node *result)
 
 @
 In general, when a node is printed we will use the closure name
-found in the info vector of the node. However, some kinds of nodes are
+found in the node descriptor. However, some kinds of nodes are
 handled differently. In particular, for each unbound variable a name
 is generated and this name is shown by the printer. Special functions
 are used for printing lists and tuples. The [[prec]] parameter is used
@@ -99,7 +99,7 @@ in a regular application.
 
 <<print.c>>=
 static void
-print_node(unsigned prec, Node *node)
+print_node(unsigned int prec, Node *node)
 {
     char	 buf[32];
     unsigned int argc;
@@ -139,6 +139,12 @@ print_node(unsigned prec, Node *node)
 	    case VARIABLE_TAG:
 		printf("%s", lookup_name(node));
 		break;
+	    case VECTOR_TAG:
+		 if ( is_tuple(node->info) )
+		     print_tuple(node, vector_argc(node), node->a.args);
+		 else
+		     print_app(prec, node, vector_argc(node), node->a.args);
+		break;
 	    case PAPP_TAG:
 	    case FAPP_TAG:
 		print_app(prec, node, closure_argc(node), node->c.args);
@@ -171,9 +177,7 @@ print_node(unsigned prec, Node *node)
 			print_list(node);
 		}
 		else if ( is_tuple(node->info) )
-		    print_tuple(node);
-		else if ( is_vector(node) )
-		    print_app(prec, node, vector_argc(node), node->a.args);
+		    print_tuple(node, closure_argc(node), node->c.args);
 		else
 		    print_app(prec, node, closure_argc(node), node->c.args);
 		break;
@@ -183,12 +187,12 @@ print_node(unsigned prec, Node *node)
 }
 
 static void
-print_app(unsigned prec, Node *node, unsigned argc, Node **argv)
+print_app(unsigned int prec, Node *node, unsigned int argc, Node **argv)
 {
-    unsigned i;
-    boolean  isop   = is_operator(node->info) && !is_tuple(node->info);
-    boolean  infix  = isop && argc == 2;
-    boolean  parens = infix ? prec > 0 : prec > 1 && argc != 0;
+    unsigned int i;
+    boolean	 isop   = is_operator(node->info) && !is_tuple(node->info);
+    boolean	 infix  = isop && argc == 2;
+    boolean	 parens = infix ? prec > 0 : prec > 1 && argc != 0;
 
     if ( parens )
 	putchar('(');
@@ -300,24 +304,13 @@ print_list(Node *list)
 }
 
 static void
-print_tuple(Node *node)
+print_tuple(Node *node, unsigned int argc, Node **argv)
 {
-    unsigned int i, argc;
+    unsigned int i;
     boolean	 first = true;
-    Node	 **argv;
 
     putchar('(');
 
-    if ( is_vector(node) )
-    {
-	argc = vector_argc(node);
-	argv = node->a.args;
-    }
-    else
-    {
-	argc = closure_argc(node);
-	argv = node->c.args;
-    }
     for ( i = 0; i < argc; i++ )
     {
 	if ( first )
@@ -349,12 +342,6 @@ print_constraints(boolean hasAnswer, Node *node)
 	if ( is_boxed(node) )
 	    switch ( node_tag(node) )
 	    {
-	    case PAPP_TAG:
-	    case FAPP_TAG:
-		hasAnswer = print_app_constraints(hasAnswer,
-						  closure_argc(node),
-						  node->c.args);
-		break;
 	    case VARIABLE_TAG:
 		if ( node->v.cstrs )
 		    hasAnswer = print_constrained_var(hasAnswer, node);
@@ -370,17 +357,19 @@ print_constraints(boolean hasAnswer, Node *node)
 		node = node->n.node;
 		continue;
 	    default:
-		if ( is_capp_node(node) )
-		{
-		    if ( is_vector(node) )
-			hasAnswer = print_app_constraints(hasAnswer,
-							  vector_argc(node),
-							  node->a.args);
-		    else
-			hasAnswer = print_app_constraints(hasAnswer,
-							  closure_argc(node),
-							  node->c.args);
-		}
+		if ( !is_capp_node(node) )
+		    break;
+		/* FALL THROUGH!!! */
+	    case PAPP_TAG:
+	    case FAPP_TAG:
+		hasAnswer = print_app_constraints(hasAnswer,
+						  closure_argc(node),
+						  node->c.args);
+		break;
+	    case VECTOR_TAG:
+		hasAnswer = print_app_constraints(hasAnswer,
+						  vector_argc(node),
+						  node->a.args);
 		break;
 	    }
 	break;
@@ -389,9 +378,9 @@ print_constraints(boolean hasAnswer, Node *node)
 }
 
 static boolean
-print_app_constraints(boolean hasAnswer, unsigned argc, Node **argv)
+print_app_constraints(boolean hasAnswer, unsigned int argc, Node **argv)
 {
-    unsigned i;
+    unsigned int i;
 
     for ( i = 0; i < argc; i++ )
 	hasAnswer = print_constraints(hasAnswer, argv[i]);

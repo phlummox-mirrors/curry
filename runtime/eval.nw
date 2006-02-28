@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1855 2006-02-18 22:58:00Z wlux $
+% $Id: eval.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -569,13 +569,29 @@ FUNCTION(__ground_1)
  ENTRY_LABEL(__ground_1)
     EVAL_RIGID_POLY(__ground_1);
     node = sp[0];
-    if ( is_boxed(node) && (is_capp_node(node) || is_papp_node(node)) )
+    if ( is_boxed(node) )
     {
-	is_vect = is_vector(node);
-	n	= is_vect ? vector_argc(node) : closure_argc(node);
+	switch ( node_tag(node) )
+	{
+	case VECTOR_TAG:
+	    is_vect = true;
+	    n	    = vector_argc(node);
+	    sz	    = node->a.length;
+	    break;
+	case PAPP_TAG:
+	    is_vect = false;
+	    n	    = closure_argc(node);
+	    sz	    = node->info->length;
+	    break;
+	default:
+	    is_vect = false;
+	    n	    = is_capp_node(node) ? closure_argc(node) : 0;
+	    sz	    = node->info->length;
+	    break;
+	}
+
 	if ( n > 0 )
 	{
-	    sz = is_vect ? vector_node_size(n) : node_size(node);
 	    CHECK_HEAP(sz + n * suspend_node_size(1));
 
 	    node = (Node *)(hp + n * suspend_node_size(1));

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: unify.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -204,6 +204,11 @@ eq_root(Node *arg1, Node *arg2, unsigned int *argc)
 	case FOREIGN_PTR_TAG:
 	    eq = arg1->fp.ptr == arg2->fp.ptr;
 	    break;
+	case VECTOR_TAG:
+	    eq = arg1->a.length == arg2->a.length;
+	    if ( eq )
+		*argc = vector_argc(arg1);
+	    break;
 	case PAPP_TAG:
 	    eq	  = true;
 	    *argc = closure_argc(arg1);
@@ -212,17 +217,11 @@ eq_root(Node *arg1, Node *arg2, unsigned int *argc)
 	    eq = arg1 == arg2;
 	    break;
         default:
-	    assert(is_capp_node(arg1) || is_abstract_node(arg1));
 	    if ( is_abstract_node(arg1) )
 		eq = arg1 == arg2;
-	    else if ( is_vector(arg1) )
-	    {
-		eq = arg1->a.length == arg2->a.length;
-		if ( eq )
-		    *argc = vector_argc(arg1);
-	    }
 	    else
 	    {
+		assert(is_capp_node(arg1));
 		eq    = true;
 		*argc = closure_argc(arg1);
 	    }
@@ -232,18 +231,9 @@ eq_root(Node *arg1, Node *arg2, unsigned int *argc)
     else if ( is_tuple(arg1->info) && is_tuple(arg2->info)
 	      && arg1->info->tag == arg2->info->tag )
     {
-	if ( is_vector(arg1) )
-	{
-	    eq = is_vector(arg2) && arg1->a.length == arg2->a.length;
-	    if ( eq )
-		*argc = vector_argc(arg1);
-	}
-	else
-	{
-	    eq = !is_vector(arg2) && arg1->info->length == arg2->info->length;
-	    if ( eq )
-		*argc = closure_argc(arg1);
-	}
+	eq = arg1->info->length == arg2->info->length;
+	if ( eq )
+	    *argc = closure_argc(arg1);
     }
     else
 	eq = false;
@@ -281,7 +271,7 @@ eq_args(Node *arg1, Node *arg2, unsigned int n, Node **arglist)
     CHECK_HEAP(n * pair_cons_node_size);
     END_LOCAL_ROOTS
 
-    is_vect = is_vector(arg1);
+    is_vect = is_vector_node(arg1);
     argp1   = (is_vect ? arg1->a.args : arg1->c.args) + n;
     argp2   = (is_vect ? arg2->a.args : arg2->c.args) + n;
 
@@ -370,6 +360,15 @@ eq_args(Node *arg1, Node *arg2, unsigned int n, Node **arglist)
 		if ( x == y )
 		    continue;
 		break;
+	    case VECTOR_TAG:
+		if ( is_vector_node(y) )
+		{
+		    if ( x->info != y->info || x->a.length != y->a.length )
+			return false;
+		    if ( vector_argc(x) == 0 )
+			continue;
+		}
+		break;
 	    case PAPP_TAG:
 		if ( is_papp_node(y) )
 		{
@@ -405,38 +404,13 @@ eq_args(Node *arg1, Node *arg2, unsigned int n, Node **arglist)
 				return false;
 			    continue;
 			}
-			else if ( is_vector(x) )
-			{
-			    if ( x->a.length != y->a.length )
-				return false;
-			    if ( vector_argc(x) == 0 )
-				continue;
-			}
 			else if ( closure_argc(x) == 0 )
 			    continue;
 		    }
-		    else if ( is_tuple(x->info) && is_tuple(y->info)
-			      && node_tag(x) == node_tag(y) )
-		    {
-			if ( is_vector(x) )
-			{
-			    if ( !is_vector(y) || x->a.length != y->a.length )
-				return false;
-			    if ( vector_argc(x) == 0 )
-				continue;
-			}
-			else
-			{
-			    if ( is_vector(y)
-				 || x->info->length != y->info->length )
-				return false;
-			    if ( closure_argc(x) == 0 )
-				continue;
-			}
-		    }
-		    else
+		    else if ( !is_tuple(x->info) || !is_tuple(y->info)
+			      || node_tag(x) != node_tag(y)
+			      || x->info->length != y->info->length )
 			return false;
-
 		}
 		break;
 	    }
@@ -616,7 +590,6 @@ unification is not trivial are replaced by fresh variables.
 boolean
 occurs(Node *var, Node *arg, boolean *nf)
 {
-    boolean  is_vect;
     unsigned i, argc;
     Node     **argp;
 
@@ -624,6 +597,9 @@ occurs(Node *var, Node *arg, boolean *nf)
     {
 	if ( arg == var )
 	    return true;
+
+	argc = 0;
+	argp = 0;
 	switch ( node_tag(arg) )
 	{
 	case INDIR_TAG:
@@ -634,20 +610,23 @@ occurs(Node *var, Node *arg, boolean *nf)
 	case QUEUEME_TAG:
 	    *nf = false;
 	    break;
-	default:
-	    if ( !is_capp_node(arg) )
-		break;
-	    /* FALL THROUGH!!! */
+	case VECTOR_TAG:
+	    argc = vector_argc(arg);
+	    argp = arg->a.args;
+	    break;
 	case PAPP_TAG:
-	    is_vect = is_vector(arg);
-	    argc    = is_vect ? vector_argc(arg) : closure_argc(arg);
-	    argp    = is_vect ? arg->a.args : arg->c.args;
-
-	    for ( i = 0; i < argc; i++ )
-		if ( occurs(var, argp[i], nf) )
-		    return true;
+	    argc = closure_argc(arg);
+	    argp = arg->c.args;
+	    break;
+	default:
+	    argc = is_capp_node(arg) ? closure_argc(arg) : 0;
+	    argp = arg->c.args;
 	    break;
 	}
+
+	for ( i = 0; i < argc; i++ )
+	    if ( occurs(var, *argp++, nf) )
+		return true;
 	break;
     }
     return false;
@@ -687,14 +666,29 @@ FUNCTION(unify_var)
 	FAIL();
 
     arglist = nil;
-    if ( !nf && (is_capp_node(arg) || is_papp_node(arg)) )
+    if ( !nf )
     {
-	is_vect = is_vector(arg);
-	n	= is_vect ? vector_argc(arg) : closure_argc(arg);
+	switch ( node_tag(arg) )
+	{
+	case VECTOR_TAG:
+	    is_vect = true;
+	    n	    = vector_argc(arg);
+	    sz	    = arg->a.length;
+	    break;
+	case PAPP_TAG:
+	    is_vect = false;
+	    n	    = closure_argc(arg);
+	    sz	    = arg->info->length;
+	    break;
+	default:
+	    is_vect = false;
+	    n	    = is_capp_node(arg) ? closure_argc(arg) : 0;
+	    sz	    = arg->info->length;
+	    break;
+	}
 
 	if ( n > 0 )
 	{
-	    sz = is_vect ? vector_node_size(n) : closure_node_size(n);
 	    CHECK_HEAP(sz + n * (variable_node_size + pair_cons_node_size));
 	    memcpy(hp, sp[1], sz * word_size);
 	    sp[1] = (Node *)hp;
@@ -707,10 +701,10 @@ FUNCTION(unify_var)
 		arg = *--argp;
 		while ( is_boxed(arg) && is_indir_node(arg) )
 		    arg = arg->n.node;
-		/* XXX avoid redundant unification for empty vectors */
 		if ( is_boxed(arg) &&
 		     ((is_capp_node(arg) && closure_argc(arg) > 0) ||
 		      (is_papp_node(arg) && closure_argc(arg) > 0) ||
+		      (is_vector_node(arg) && vector_argc(arg) > 0) ||
 		      is_fapp_node(arg) || is_suspend_node(arg) ||
 		      is_queueMe_node(arg)) )
 		{

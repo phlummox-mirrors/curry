@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: compare.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -144,6 +144,19 @@ FUNCTION(__compare_2)
 		: arg1->fp.ptr < arg2->fp.ptr ? CONST(__prelude__LT)
 					      : CONST(__prelude__GT);
 	    break;
+	case VECTOR_TAG:
+	    assert(is_vector_node(arg2));
+	    is_vect = true;
+	    x	    = arg1->a.length;
+	    y	    = arg2->a.length;
+	    if ( x == y )
+	    {
+		cmp = CONST(__prelude__EQ);
+		n   = vector_argc(arg1);
+	    }
+	    else
+		cmp = x < y ? CONST(__prelude__LT) : CONST(__prelude__GT);
+	    break;
 	case PAPP_TAG:
 	    *++sp = from_string("compare applied to partial application");
 	    GOTO(__prelude__error);
@@ -163,19 +176,7 @@ FUNCTION(__compare_2)
 	    if ( x == y )
 	    {
 		cmp = CONST(__prelude__EQ);
-		if ( is_vector(arg1) )
-		{
-		    is_vect = true;
-		    x = arg1->a.length;
-		    y = arg2->a.length;
-		    if ( x == y )
-			n = vector_argc(arg1);
-		    else
-			cmp = x < y ? CONST(__prelude__LT)
-		       		    : CONST(__prelude__GT);
-		}
-		else
-		    n = closure_argc(arg1);
+		n   = closure_argc(arg1);
 	    }
 	    else
 		cmp = x < y ? CONST(__prelude__LT) : CONST(__prelude__GT);

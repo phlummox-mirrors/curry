@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: equal.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: equal.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2004, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -89,14 +89,14 @@ FUNCTION(___61__61__2)
     }
     else if ( n == 1 )
     {
-	is_vect = is_vector(arg1);
+	is_vect = is_vector_node(arg1);
 	sp[0]	= is_vect? arg1->a.args[0] : arg1->c.args[0];
 	sp[1]	= is_vect? arg2->a.args[0] : arg2->c.args[0];
 	GOTO(___61__61_);
     }
 
     arglist = nil;
-    is_vect = is_vector(arg1);
+    is_vect = is_vector_node(arg1);
     CHECK_HEAP(n * pair_cons_node_size);
     argp1 = is_vect ? sp[1]->a.args : sp[1]->c.args;
     argp2 = is_vect ? sp[0]->a.args : sp[0]->c.args;

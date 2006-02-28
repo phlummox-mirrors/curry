@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: threads.nw 1809 2005-10-27 22:11:41Z wlux $
+% $Id: threads.nw 1863 2006-02-28 13:16:31Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -221,7 +221,7 @@ static void terminate_thread(void);
 static ThreadQueue interrupt_thread(Label, enum suspend_reason);
 static ExceptionFrame *relocate_thread(ExceptionFrame *, int);
 
-static NodeInfo saved_stack_info = { 0, 0, 0, 0, no_eval, 0, 0, 0 };
+static NodeInfo saved_stack_info = { VECTOR_TAG, 0, 0, 0, no_eval, 0, 0, 0 };
 
 @
 The function [[start_thread]] starts a new thread. It uses the stack
