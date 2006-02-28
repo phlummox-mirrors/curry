@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: show.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -323,18 +323,15 @@ FUNCTION(showp_1)
 	    break;
 
 	case SEARCH_CONT_TAG:
+	case ABSTRACT_TAG:
 	    str = node->info->cname;
+	    if ( str == 0 )
+		str = "<abstract>";
 	    break;
 
 	default:
-	    ASSERT(is_capp_node(node) || is_abstract_node(node));
-	    if ( is_abstract_node(node) )
-	    {
-		str = node->info->cname;
-		if ( str == 0 )
-		    str = "<abstract>";
-	    }
-	    else if ( node->info == (NodeInfo *)&cons_info )
+	    ASSERT(is_capp_node(node));
+	    if ( node->info == (NodeInfo *)&cons_info )
 	    {
 		sp[0] = node->c.args[0];
 		sp[1] = node->c.args[1];

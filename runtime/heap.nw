@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: heap.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -71,10 +71,10 @@ and negative values are reserved for special node types defined by the
 runtime system. For instance, the constructors of the type
 \texttt{data Num = Prec Num | Zero | Succ Num} are assigned the tags 0
 (\verb|Prec|), 1 (\verb|Zero|), and 2 (\verb|Succ|), respectively.
-All tags less than or equal to [[ABSTRACT_TAG]] can be used to
-implement references to external data, e.g., files. The runtime system
-will never duplicate such nodes and use physical equality when
-comparing them in equality and disequality constraints.
+The tag [[ABSTRACT_TAG]] is used for references to external data,
+e.g., files. The runtime system will never duplicate such nodes and
+use physical equality when comparing them in equality and disequality
+constraints.
 
 <<heap.h>>=
 /* tag values */
@@ -173,7 +173,7 @@ struct node_info
 #define is_queueMe_node(node)	(node_tag(node) == QUEUEME_TAG)
 #define is_indir_node(node)	(node_tag(node) == INDIR_TAG)
 #define is_search_cont_node(node) (node_tag(node) == SEARCH_CONT_TAG)
-#define is_abstract_node(node)	(node_tag(node) <= ABSTRACT_TAG)
+#define is_abstract_node(node)	(node_tag(node) == ABSTRACT_TAG)
 
 #define word_offsetof(type,field) ((word *)&(((type *)0)->field) - (word *)0)
 

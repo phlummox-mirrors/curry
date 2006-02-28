@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: random.nw 1862 2006-02-24 18:35:16Z wlux $
+% $Id: random.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2004-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -47,8 +47,9 @@ moving nodes around, and are released when their [[StdGen]] nodes
 becomes garbage.
 
 <<random.c>>=
-#define STDGEN_TAG	 ABSTRACT_TAG
-#define stdgen_node_size wordsof(StdGen)
+#define STDGEN_TAG		ABSTRACT_TAG
+#define EVAL_RIGID_STDGEN(l)	EVAL_RIGID_ABSTRACT(l)
+#define stdgen_node_size	wordsof(StdGen)
 
 static void finalize_stdgen(Node *);
 
@@ -85,7 +86,6 @@ FUNCTION(__mkStdGen)
 {
     unsigned long seed;
     StdGen	  *rng;
-
     EXPORT_LABEL(__mkStdGen)
  ENTRY_LABEL(__mkStdGen)
     EVAL_RIGID_INT(__mkStdGen);
@@ -193,7 +193,7 @@ FUNCTION(__nextRStdGen_2)
     Node   *p, *i;
 
  ENTRY_LABEL(__nextRStdGen_2)
-    EVAL_RIGID(__nextRStdGen_2);
+    EVAL_RIGID_STDGEN(__nextRStdGen_2);
 
     CHECK_HEAP(pair_node_size + int_node_size);
 
@@ -308,7 +308,7 @@ FUNCTION(__setStdGen)
 {
     EXPORT_LABEL(__setStdGen)
  ENTRY_LABEL(__setStdGen)
-    EVAL_RIGID(__setStdGen);
+    EVAL_RIGID_STDGEN(__setStdGen);
     if ( stdGen == 0 )
 	add_global_root((Node **)&stdGen);
     DET_CHECK("Random.stdGen");

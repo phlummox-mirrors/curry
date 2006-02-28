@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: unify.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -209,22 +209,16 @@ eq_root(Node *arg1, Node *arg2, unsigned int *argc)
 	    if ( eq )
 		*argc = vector_argc(arg1);
 	    break;
-	case PAPP_TAG:
-	    eq	  = true;
-	    *argc = closure_argc(arg1);
-	    break;
 	case SEARCH_CONT_TAG:
+	case ABSTRACT_TAG:
 	    eq = arg1 == arg2;
 	    break;
         default:
-	    if ( is_abstract_node(arg1) )
-		eq = arg1 == arg2;
-	    else
-	    {
-		assert(is_capp_node(arg1));
-		eq    = true;
-		*argc = closure_argc(arg1);
-	    }
+	    assert(is_capp_node(arg1));
+	    /* FALL THROUGH!!! */
+	case PAPP_TAG:
+	    eq	  = true;
+	    *argc = closure_argc(arg1);
 	    break;
         }
     }
@@ -388,23 +382,25 @@ eq_args(Node *arg1, Node *arg2, unsigned int n, Node **arglist)
 		    continue;
 		}
 		break;
+	    case ABSTRACT_TAG:
+		if ( is_abstract_node(y) )
+		{
+		    if ( x != y )
+			return false;
+		    continue;
+		}
+		break;
 	    case FAPP_TAG:
 	    case SUSPEND_TAG:
 	    case QUEUEME_TAG:
 		break;
 	    default:
-		assert(is_capp_node(x) || is_abstract_node(x));
-		if ( is_capp_node(y) || is_abstract_node(y) )
+		assert(is_capp_node(x));
+		if ( is_capp_node(y) )
 		{
 		    if ( x->info == y->info )
 		    {
-			if ( is_abstract_node(x) )
-			{
-			    if ( x != y )
-				return false;
-			    continue;
-			}
-			else if ( closure_argc(x) == 0 )
+			if ( closure_argc(x) == 0 )
 			    continue;
 		    }
 		    else if ( !is_tuple(x->info) || !is_tuple(y->info)

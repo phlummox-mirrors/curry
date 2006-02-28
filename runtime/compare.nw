@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: compare.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -161,15 +161,10 @@ FUNCTION(__compare_2)
 	    *++sp = from_string("compare applied to partial application");
 	    GOTO(__prelude__error);
 	case SEARCH_CONT_TAG:
+	case ABSTRACT_TAG:
 	    *++sp = from_string("compare applied to abstract type");
 	    GOTO(__prelude__error);
         default:
-	    if ( is_abstract_node(arg1) || is_abstract_node(arg2) )
-	    {
-		*++sp = from_string("compare applied to abstract type");
-		GOTO(__prelude__error);
-	    }
-
 	    assert(is_capp_node(arg1) && is_capp_node(arg2));
 	    x = (long)node_tag(arg1);
 	    y = (long)node_tag(arg2);

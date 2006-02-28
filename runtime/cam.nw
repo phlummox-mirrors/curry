@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cam.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: cam.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -157,6 +157,22 @@ for (;;) { \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sync_var); \
     case VECTOR_TAG: break; \
+    default: invalid_arg(#l, sp[0]->info->tag); \
+    } \
+    break; \
+}
+
+#define EVAL_RIGID_ABSTRACT(l) \
+for (;;) { \
+    switch ( sp[0]->info->tag ) { \
+    case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
+    case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
+	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	GOTO(sp[0]->info->eval); \
+    case VARIABLE_TAG: \
+	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
+	GOTO(sync_var); \
+    case ABSTRACT_TAG: break; \
     default: invalid_arg(#l, sp[0]->info->tag); \
     } \
     break; \

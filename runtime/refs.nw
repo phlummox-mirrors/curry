@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: refs.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: refs.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2004, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -24,7 +24,8 @@ which are defined in this file.
 #include "data.h"
 #include "cam.h"
 
-#define IOREF_TAG ABSTRACT_TAG
+#define IOREF_TAG		ABSTRACT_TAG
+#define EVAL_RIGID_IOREF(l)	EVAL_RIGID_ABSTRACT(l)
 
 typedef struct ioref_node {
     NodeInfo *info;
@@ -45,7 +46,6 @@ DECLARE_ENTRYPOINT(__newIORef);
 FUNCTION(__newIORef)
 {
     IORef *ref;
-
     EXPORT_LABEL(__newIORef)
  ENTRY_LABEL(__newIORef)
     CHECK_HEAP(ioref_node_size);
@@ -69,11 +69,9 @@ DECLARE_ENTRYPOINT(__readIORef);
 FUNCTION(__readIORef)
 {
     IORef *ref;
-
     EXPORT_LABEL(__readIORef)
  ENTRY_LABEL(__readIORef)
-    EVAL_RIGID(__readIORef);
-    ASSERT(node_tag(sp[0]) == IOREF_TAG);
+    EVAL_RIGID_IOREF(__readIORef);
     ref = (IORef *)sp[0];
     sp += 2;
     RETURN(ref->ref);
@@ -94,14 +92,12 @@ DECLARE_ENTRYPOINT(__writeIORef);
 FUNCTION(__writeIORef)
 {
     IORef *ref;
-
     EXPORT_LABEL(__writeIORef)
  ENTRY_LABEL(__writeIORef)
-    EVAL_RIGID(__writeIORef);
-    ASSERT(node_tag(sp[0]) == IOREF_TAG);
+    EVAL_RIGID_IOREF(__writeIORef);
     ref = (IORef *)sp[0];
     SAVE(ref, ref);
     ref->ref = sp[1];
-    sp += 3;
+    sp	    += 3;
     RETURN(unit);
 }

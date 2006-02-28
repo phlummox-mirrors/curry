@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: trace.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: trace.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -203,16 +203,14 @@ trace_shownode(int depth, Node *node)
 	case INDIR_TAG:
 	    trace_shownode(depth, node->n.node);
 	    break;
+	case ABSTRACT_TAG:
+	    name = node->info->cname;
+	    if ( name == 0 )
+		name = "<abstract>";
+	    fprintf(stderr, "%s@%p", name, node);
+	    break;
 	default:
-	    if ( is_abstract_node(node) )
-	    {
-		name = node->info->cname;
-		if ( name == 0 )
-		    name = "<abstract>";
-		fprintf(stderr, "%s@%p", name, node);
-	    }
-	    else
-		trace_showapp(depth, node, closure_argc(node), node->c.args);
+	    trace_showapp(depth, node, closure_argc(node), node->c.args);
 	    break;
 	}
 }

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: print.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: print.nw 1864 2006-02-28 15:58:21Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -161,15 +161,15 @@ print_node(unsigned int prec, Node *node)
 	    case INDIR_TAG:
 		node = node->n.node;
 		continue;
+	    case SEARCH_CONT_TAG:
+	    case ABSTRACT_TAG:
+		name = node->info->cname;
+		if ( name == 0 )
+		    name = "<abstract>";
+		printf("%s", name);
+		break;
 	    default:
-		if ( is_abstract_node(node) || is_search_cont_node(node) )
-		{
-		    name = node->info->cname;
-		    if ( name == 0 )
-			name = "<abstract>";
-		    printf("%s", name);
-		}
-		else if ( node->info == (NodeInfo *)&cons_info )
+		if ( node->info == (NodeInfo *)&cons_info )
 		{
 		    if ( is_string(node) )
 			print_string(node);
