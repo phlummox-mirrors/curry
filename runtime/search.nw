@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1853 2006-02-17 13:24:26Z wlux $
+% $Id: search.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -130,8 +130,8 @@ FUNCTION(__try)
     Node *susp, *list, *sc, *var;
     EXPORT_LABEL(__try)
  ENTRY_LABEL(__try)
-    EVAL_RIGID(__try);
-    ASSERT(is_papp_node(sp[0]) && sp[0]->info->arity == 1);
+    EVAL_RIGID_PAPP(__try);
+    assert(sp[0]->info->tag == 1);
 
     /* return immediately when applied to a solved search goal */
     if ( sp[0]->info->entry == solved_goal )
@@ -224,7 +224,7 @@ FUNCTION(solved_goal)
     res	 = copy_graph(cont->sc.var, cont->sc.spc);
 
     arg = sp[1];
-    while ( is_boxed(arg) && arg->info->tag == INDIR_TAG )
+    while ( is_boxed(arg) && arg->info->kind == INDIR_KIND )
 	arg = arg->n.node;
     if ( is_boxed(arg) && is_variable_node(arg) && is_local_space(arg->v.spc) )
     {
@@ -295,7 +295,7 @@ FUNCTION(search_cont)
     /* NB reload cont -- restore_continuation might invoke gc */
     cont = sp[0];
     arg  = sp[1];
-    while ( is_boxed(arg) && arg->info->tag == INDIR_TAG )
+    while ( is_boxed(arg) && arg->info->kind == INDIR_KIND )
 	arg = arg->n.node;
 
     CHECK_STACK(2);
@@ -347,28 +347,30 @@ FUNCTION(deadlock_search)
     ASSERT(sp == (Node **)bp - 2);
     for ( goal = sp[0]; ; )
     {
-	switch ( goal->info->tag )
+	switch ( goal->info->kind )
 	{
-	case INDIR_TAG:
+	case INDIR_KIND:
 	    goal = goal->n.node;
 	    continue;
-	case SUSPEND_TAG:
+	case SUSPEND_KIND:
 	    curry_panic("search goal not locked\n");
-	case QUEUEME_TAG:
-	case VARIABLE_TAG:
+	case QUEUEME_KIND:
+	case LVAR_KIND:
 	    TRACE(("deadlock in encapsulated search\n"));
 	    discard_search_space();
 	    pop_search_context();
 	    GOTO(stop_thread);
-	default:
+	case CAPP_KIND:
 	    break;
+	default:
+	    invalid_arg("deadlock_search", goal->info->kind);
 	}
 	break;
     }
     TRACE(("leaving encapsulated search with solved search goal\n"));
 
     /* dereference the goal variable in order to avoid some garbage */
-    while ( is_boxed(sp[1]) && sp[1]->info->tag == INDIR_TAG )
+    while ( is_boxed(sp[1]) && sp[1]->info->kind == INDIR_KIND )
 	sp[1] = sp[1]->n.node;
 
     /* allocate the singleton list for the search continuation */
@@ -430,9 +432,9 @@ suspend_search(Label retIp, Node *node, SearchSpace *spc)
 
 	/* dereference the goal nodes in order to avoid some garbage */
 	ASSERT(sp == (Node **)bp - 2);
-	while ( is_boxed(sp[0]) && sp[0]->info->tag == INDIR_TAG )
+	while ( is_boxed(sp[0]) && sp[0]->info->kind == INDIR_KIND )
 	    sp[0] = sp[0]->n.node;
-	while ( is_boxed(sp[1]) && sp[1]->info->tag == INDIR_TAG )
+	while ( is_boxed(sp[1]) && sp[1]->info->kind == INDIR_KIND )
 	    sp[1] = sp[1]->n.node;
 
 	/* allocate a search continuation */
@@ -532,9 +534,9 @@ FUNCTION(choices_search)
 
     /* dereference the goal nodes in order to avoid some garbage */
     ASSERT(sp == (Node **)bp - 2);
-    while ( is_boxed(sp[0]) && sp[0]->info->tag == INDIR_TAG )
+    while ( is_boxed(sp[0]) && sp[0]->info->kind == INDIR_KIND )
 	sp[0] = sp[0]->n.node;
-    while ( is_boxed(sp[1]) && sp[1]->info->tag == INDIR_TAG )
+    while ( is_boxed(sp[1]) && sp[1]->info->kind == INDIR_KIND )
 	sp[1] = sp[1]->n.node;
 
     /* allocate the list of search continuations */

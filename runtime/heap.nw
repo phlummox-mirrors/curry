@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: heap.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -63,57 +63,69 @@ preprocessor flag.
 
 @
 All other objects are stored as nodes in the heap. The first word of a
-node is a node descriptor that includes, among other things, a tag
-number. This number is used to distinguish the different kinds of
-nodes and in particular the different data constructors of an
-algebraic data type. Non-negative tags are used for data constructors
-and negative values are reserved for special node types defined by the
-runtime system. For instance, the constructors of the type
-\texttt{data Num = Prec Num | Zero | Succ Num} are assigned the tags 0
-(\verb|Prec|), 1 (\verb|Zero|), and 2 (\verb|Succ|), respectively.
-The tag [[ABSTRACT_TAG]] is used for references to external data,
+node points to a node descriptor, which provides some shared
+information about the particular node. There is a fixed set of node
+kinds that are used to represent constructor applications, partial
+(function) applications, shared and unshared function applications,
+logical variables, and a few other primitive data types. Other kinds
+of nodes are used for managing the internal state of the runtime
+system, e.g., the state of inactive threads.
+
+The kind [[ABSTRACT_KIND]] is used for references to external data,
 e.g., files. The runtime system will never duplicate such nodes and
 use physical equality when comparing them in equality and disequality
 constraints.
 
+The following enumeration lists all kinds of nodes that are known to
+the runtime system.
+
 <<heap.h>>=
-/* tag values */
 enum {
-    ABSTRACT_TAG    = -16,	/* external objects */
-    SCRIPT_TAG	    = -15,	/* saved script/trail */
-    THREAD_TAG	    = -14,	/* threadqueue node */
-    CHAR_TAG	    = -13,	/* character node */
-    INT_TAG	    = -12,	/* integer number */
-    FLOAT_TAG	    = -11,	/* floating-point number */
-    PTR_TAG	    = -10,	/* foreign pointer */
-    FOREIGN_PTR_TAG = -9,	/* finalized foreign pointer */
-    VECTOR_TAG	    = -8,	/* vector nodes */
-    PAPP_TAG	    = -7,	/* partial application node */
-    FAPP_TAG	    = -6,	/* function application node */
-    SEARCH_CONT_TAG = -5,	/* search continuation */
-    VARIABLE_TAG    = -4,	/* (unbound) logic variable */
-    QUEUEME_TAG	    = -3,	/* locked suspended application node */
-    SUSPEND_TAG	    = -2,	/* suspended application node */
-    INDIR_TAG	    = -1	/* indirection node */
+    CAPP_KIND,			/* constructor application */
+    PAPP_KIND,			/* partial application node */
+    LVAR_KIND,			/* (unbound) logic variable */
+    FAPP_KIND,			/* unshared function application node */
+    SUSPEND_KIND,		/* shared function application node */
+    QUEUEME_KIND,		/* locked suspended application node */
+    INDIR_KIND,			/* indirection node */
+    VECTOR_KIND,		/* vector nodes */
+    CHAR_KIND,			/* character node */
+    INT_KIND,			/* integer number */
+    FLOAT_KIND,			/* floating-point number */
+    PTR_KIND,			/* foreign pointer */
+    FOREIGN_PTR_KIND,		/* finalized foreign pointer */
+    ABSTRACT_KIND,		/* external objects */
+    THREAD_KIND,		/* threadqueue node */
+    SEARCH_CONT_KIND,		/* search continuation */
+    SCRIPT_KIND			/* saved script/trail */
 };
 
 @
 In general, a node consists of a pointer to a node descriptor followed
 by a list of argument pointers. However, some kinds of nodes use
 different representations, e.g., a node representing a \verb|Float|
-expression consists of a descriptor and a [[double]] value.
-Therefore, the [[Node]] type is defined as a union type. The first
-field of all variants as well as of the union itself is the [[info]]
-field, which points to the node descriptor. This descriptor comprises
-the tag number, the length of the node in words, a pointer offset
-table, the evaluation code for the node, a name, and an optional
-finalization function. The [[arity]] field denotes the arity of a
-node, i.e., the number of missing arguments. This field is zero for
-all kinds of nodes except for partial applications where it is
-positive. The [[entry]] field of a node is used only for partial
-application nodes and denotes the entry point of the function.
+number consists of a descriptor and a [[double]] value. Therefore,
+the [[Node]] type is defined as a union type. The first field of all
+variants as well as of the union itself is the [[info]] field, which
+points to the node descriptor. This descriptor comprises
+the node's kind, a tag value, the length of the node in words, a %'
+pointer offset table, a name used for printing the node, the
+evaluation code for the node, the entry point of the function
+corresponding to a partial application or function application node,
+and an optional finalization function.
 
-The length of the node includes the descriptor pointer; a valid size
+The meaning of the [[tag]] field depends on the node kind. For
+constructor applications, it is used to distinguish data constructors
+of the same type. For instance, the constructors of the type
+\texttt{data Num = Prec Num | Zero | Succ Num} are assigned tags 0
+(\verb|Prec|), 1 (\verb|Zero|), and 2 (\verb|Succ|), respectively. For
+partial application nodes, the [[tag]] field denotes the arity --
+i.e., the number of missing arguments -- of the application. In
+principle, small integer numbers and character codes could be stored
+in the [[tag]] field of integer and character nodes, respectively.
+However, the runtime system does not use this possibility at present.
+
+The length of a node includes the descriptor pointer; a valid size
 must therefore be greater than 0. If the length in the descriptor is
 [[0]], the runtime system assumes that the length of the node is
 stored in the first word of the node after the info pointer. This
@@ -147,33 +159,34 @@ typedef void (*FinalFun)(Node *);
 
 struct node_info
 {
-    const int	       tag;		/* tag number */
+    const short	       kind;		/* node kind */
+    const short	       tag;		/* tag value */
     const unsigned int length;		/* length of the node */
     const int          *offset_table;	/* pointer offset table */
     const char	       *cname;		/* closure name */
     const Label	       eval;		/* entry point for evaluation */
     const Label	       entry;		/* function entry point */
-    const unsigned int arity;		/* node arity (> 0 only for PAPPs) */
     const FinalFun     final_fun;	/* optional finalization function */
 };
 
+#define node_kind(node)		(node)->info->kind
 #define node_tag(node)		(node)->info->tag
 #define node_size(node)		(node)->info->length
-#define is_capp_node(node)	(node_tag(node) >= 0)
-#define is_char_node(node)	(node_tag(node) == CHAR_TAG)
-#define is_int_node(node)	(node_tag(node) == INT_TAG)
-#define is_float_node(node)	(node_tag(node) == FLOAT_TAG)
-#define is_ptr_node(node)	(node_tag(node) == PTR_TAG)
-#define is_foreign_ptr_node(node) (node_tag(node) == FOREIGN_PTR_TAG)
-#define is_vector_node(node)	(node_tag(node) == VECTOR_TAG)
-#define is_papp_node(node)	(node_tag(node) == PAPP_TAG)
-#define is_fapp_node(node)	(node_tag(node) == FAPP_TAG)
-#define is_variable_node(node)	(node_tag(node) == VARIABLE_TAG)
-#define is_suspend_node(node)	(node_tag(node) == SUSPEND_TAG)
-#define is_queueMe_node(node)	(node_tag(node) == QUEUEME_TAG)
-#define is_indir_node(node)	(node_tag(node) == INDIR_TAG)
-#define is_search_cont_node(node) (node_tag(node) == SEARCH_CONT_TAG)
-#define is_abstract_node(node)	(node_tag(node) == ABSTRACT_TAG)
+#define is_capp_node(node)	(node_kind(node) == CAPP_KIND)
+#define is_char_node(node)	(node_kind(node) == CHAR_KIND)
+#define is_int_node(node)	(node_kind(node) == INT_KIND)
+#define is_float_node(node)	(node_kind(node) == FLOAT_KIND)
+#define is_ptr_node(node)	(node_kind(node) == PTR_KIND)
+#define is_foreign_ptr_node(node) (node_kind(node) == FOREIGN_PTR_KIND)
+#define is_vector_node(node)	(node_kind(node) == VECTOR_KIND)
+#define is_papp_node(node)	(node_kind(node) == PAPP_KIND)
+#define is_fapp_node(node)	(node_kind(node) == FAPP_KIND)
+#define is_variable_node(node)	(node_kind(node) == LVAR_KIND)
+#define is_suspend_node(node)	(node_kind(node) == SUSPEND_KIND)
+#define is_queueMe_node(node)	(node_kind(node) == QUEUEME_KIND)
+#define is_indir_node(node)	(node_kind(node) == INDIR_KIND)
+#define is_search_cont_node(node) (node_kind(node) == SEARCH_CONT_KIND)
+#define is_abstract_node(node)	(node_kind(node) == ABSTRACT_KIND)
 
 #define word_offsetof(type,field) ((word *)&(((type *)0)->field) - (word *)0)
 
@@ -243,7 +256,7 @@ struct int_node {
 @
 <<heap.c>>=
 NodeInfo int_info = { 
-    INT_TAG, int_node_size, ot_binary, 0, eval_whnf, 0, 0, 0
+    INT_KIND, 0, int_node_size, ot_binary, 0, eval_whnf, 0, 0
 };
 
 @ 
@@ -296,7 +309,7 @@ union _conv {
 @
 <<heap.c>>=
 NodeInfo float_info = {
-    FLOAT_TAG, float_node_size, ot_binary, 0, eval_whnf, 0, 0, 0
+    FLOAT_KIND, 0, float_node_size, ot_binary, 0, eval_whnf, 0, 0
 };
 
 @ 
@@ -319,7 +332,7 @@ extern void init_chars(void);
 @
 <<heap.c>>=
 NodeInfo char_info = {
-    CHAR_TAG, char_node_size, ot_binary, 0, eval_whnf, 0, 0, 0
+    CHAR_KIND, 0, char_node_size, ot_binary, 0, eval_whnf, 0, 0
 };
 
 struct char_node char_table[256];
@@ -347,6 +360,8 @@ function when using the trampoline configuration (see
 Sect.~\ref{sec:execution}).
 
 <<heap.h>>=
+enum { PTR_TAG, FUNPTR_TAG, STABPTR_TAG };
+
 extern NodeInfo ptr_info, funptr_info, stabptr_info;
 struct ptr_node {
     NodeInfo *info;
@@ -359,13 +374,14 @@ extern const struct ptr_node null_ptr, null_funptr, null_stabptr;
 @ 
 <<heap.c>>=
 NodeInfo ptr_info = {
-    PTR_TAG, ptr_node_size, ot_binary, "Ptr", eval_whnf, 0, 0, 0
+    PTR_KIND, PTR_TAG, ptr_node_size, ot_binary, "Ptr", eval_whnf, 0, 0
 };
 NodeInfo funptr_info = {
-    PTR_TAG, ptr_node_size, ot_binary, "FunPtr", eval_whnf, 0, 0, 0
+    PTR_KIND, FUNPTR_TAG, ptr_node_size, ot_binary, "FunPtr", eval_whnf, 0, 0
 };
 NodeInfo stabptr_info = {
-    PTR_TAG, ptr_node_size, ot_binary, "StablePtr", eval_whnf, 0, 0, 0
+    PTR_KIND, STABPTR_TAG, ptr_node_size, ot_binary, "StablePtr",
+    eval_whnf, 0, 0
 };
 
 const struct ptr_node null_ptr     = { &ptr_info, 0 };
@@ -416,7 +432,7 @@ struct indir_node {
 @
 <<heap.c>>=
 NodeInfo indir_info = {
-    INDIR_TAG, indir_node_size, 0, 0, eval_indir, 0, 0, 0
+    INDIR_KIND, 0, indir_node_size, 0, 0, eval_indir, 0, 0
 };
 
 @ 
@@ -439,8 +455,8 @@ struct variable_node {
 @
 <<heap.c>>=
 NodeInfo variable_info_table[] = {
-    { VARIABLE_TAG, variable_node_size, 0, 0, eval_whnf, 0, 0, 0 },
-    { INDIR_TAG, variable_node_size, 0, 0, eval_indir, 0, 0, 0 }
+    { LVAR_KIND, 0, variable_node_size, 0, 0, eval_whnf, 0, 0 },
+    { INDIR_KIND, 0, variable_node_size, 0, 0, eval_indir, 0, 0 }
 };
 
 @
@@ -514,8 +530,8 @@ struct queueMe_node {
 @
 <<heap.c>>=
 NodeInfo queueMe_info_table[] = {
-    { QUEUEME_TAG, queueMe_node_size, 0, 0, eval_queueMe, 0, 0, 0 },
-    { INDIR_TAG, queueMe_node_size, 0, 0, eval_indir, 0, 0, 0 }
+    { QUEUEME_KIND, 0, queueMe_node_size, 0, 0, eval_queueMe, 0, 0 },
+    { INDIR_KIND, 0, queueMe_node_size, 0, 0, eval_indir, 0, 0 }
 };
 
 @ 
@@ -536,7 +552,7 @@ struct search_cont_node {
 @
 <<heap.c>>=
 NodeInfo search_cont_info = {
-    SEARCH_CONT_TAG, search_cont_node_size, 0, "<state>", no_eval, 0, 0, 0
+    SEARCH_CONT_KIND, 0, search_cont_node_size, 0, "<state>", no_eval, 0, 0
 };
 
 @
@@ -579,7 +595,7 @@ NodeInfo *const name##_node = &name##_info
 
 #define DEFINE_DATA(name,cname,tag,arity) \
 NodeInfo name##_info = { \
-    tag, closure_node_size(arity), 0, cname, eval_whnf, 0, 0, 0 \
+    CAPP_KIND, tag, closure_node_size(arity), 0, cname, eval_whnf, 0, 0 \
 }
 
 @ 
@@ -603,12 +619,12 @@ the prefix [[eval_clos_]] and the arity of the function.
 
 <<heap.h>>=
 #define FUNINFO(fname,entrypoint,arity) \
-{ FAPP_TAG, closure_node_size(arity), 0, fname, \
-  eval_clos_##arity, entrypoint, 0, 0 }
+{ FAPP_KIND, 0, closure_node_size(arity), 0, fname, \
+  eval_clos_##arity, entrypoint, 0 }
 
 #define PAPPINFO(fname,argc,entrypoint,arity) \
-{ PAPP_TAG, closure_node_size(argc), 0, fname, \
-  eval_whnf, entrypoint, (arity) - (argc), 0 },
+{ PAPP_KIND, (arity) - (argc), closure_node_size(argc), 0, fname, \
+  eval_whnf, entrypoint, 0 },
 
 @ 
 In addition to the info table, a descriptor table for lazy
@@ -618,10 +634,10 @@ is named by adding the function's arity to the prefix [[eval_lazy_]].        %'
 
 <<heap.h>>=
 #define LAZYINFO(fname,entrypoint,arity) { \
-    { SUSPEND_TAG, suspend_node_size(arity), 0, fname, \
-      eval_lazy_##arity, entrypoint, 0, 0 }, \
-    { QUEUEME_TAG, suspend_node_size(arity), 0, 0, eval_queueMe, 0, 0, 0 }, \
-    { INDIR_TAG, suspend_node_size(arity), 0, 0, eval_indir, 0, 0, 0 } \
+    { SUSPEND_KIND, 0, suspend_node_size(arity), 0, fname, \
+      eval_lazy_##arity, entrypoint, 0 }, \
+    { QUEUEME_KIND, 0, suspend_node_size(arity), 0, 0, eval_queueMe, 0, 0 }, \
+    { INDIR_KIND, 0, suspend_node_size(arity), 0, 0, eval_indir, 0, 0 } \
 }
 
 @ 
@@ -660,8 +676,7 @@ is_operator(NodeInfo *info)
 {
     const char *cp;
 
-    if ( info == &___91__93__info || info == &___40__41__info ||
-	 info->cname == 0 )
+    if ( info == INFO(___91__93_) || info == INFO(___40__41_) || !info->cname )
 	return false;
 
     for ( cp = info->cname; *cp != '\0'; cp++ )

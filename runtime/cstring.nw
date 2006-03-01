@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cstring.nw 1860 2006-02-23 14:51:09Z wlux $
+% $Id: cstring.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -128,7 +128,7 @@ FUNCTION(nf_string_1)
 {
     Node *list;
  ENTRY_LABEL(nf_string_1)
-    EVAL_RIGID(nf_string_1);
+    EVAL_RIGID_DATA(nf_string_1);
     list = sp[0];
     switch ( node_tag(list) )
     {
@@ -143,9 +143,8 @@ FUNCTION(nf_string_1)
 	sp[1] = list->c.args[1];
 	GOTO(nf_string_2);
     default:
-	break;
+	unexpected_tag("nf_string", node_tag(list));
     }
-    invalid_arg("nf_string", node_tag(list));
 }
 
 static
@@ -174,16 +173,18 @@ string_length(Node *list)
 {
     unsigned n = 0;
 
-    while ( list->info->tag == INDIR_TAG )
-	list = list->n.node;
-    while ( list->info->tag == CONS_TAG )
+    while ( list->info->kind != CAPP_KIND || list->info->tag != NIL_TAG )
     {
-	n++;
-	list = list->c.args[1];
-	while ( list->info->tag == INDIR_TAG )
+	while ( list->info->kind == INDIR_KIND )
 	    list = list->n.node;
+
+	assert(list->info->kind == CAPP_KIND);
+	if ( list->info->tag == CONS_TAG )
+	    n++, list = list->c.args[1];
+	else
+	    assert(list->info->tag == NIL_TAG);
     }
-    ASSERT(list->info->tag == NIL_TAG);
+
     return n;
 }
 
@@ -193,23 +194,24 @@ copy_string(Node *list, char *buf)
     char *cp = buf;
     Node *head;
 
-    while ( list->info->tag != NIL_TAG )
-	switch ( list->info->tag )
-	{
-	case INDIR_TAG:
+    while ( list->info->kind != CAPP_KIND || list->info->tag != NIL_TAG )
+    {
+	while ( list->info->kind == INDIR_KIND )
 	    list = list->n.node;
-	    break;
-	case CONS_TAG:
+	assert(list->info->kind == CAPP_KIND);
+
+	if ( list->info->tag == CONS_TAG )
+	{
 	    head = list->c.args[0];
-	    while ( is_boxed(head) && head->info->tag == INDIR_TAG )
+	    while ( is_boxed(head) && head->info->kind == INDIR_KIND )
 		head = head->n.node;
-	    ASSERT(is_boxed(head) && is_char_node(head));
+	    assert(is_boxed(head) && head->info->kind == CHAR_KIND);
 	    *cp++ = head->ch.ch;
 	    list  = list->c.args[1];
-	    break;
-	default:
-	    curry_panic("copy_string: invalid string or not in normal form\n");
 	}
+	else
+	    assert(list->info->tag == NIL_TAG);
+    }
     *cp = '\0';
     return buf;
 }
@@ -238,9 +240,7 @@ DECLARE_LABEL(__newCString_1);
 DECLARE_LABEL(__newCStringLen_1);
 
 #define pair_node_size closure_node_size(2)
-static NodeInfo pair_info = {
-    0, pair_node_size, 0, "(,)", eval_whnf, 0, 0, 0
-};
+static DEFINE_DATA(pair, "(,)", 0, 2);
 
 FUNCTION(__newCString)
 {
@@ -349,7 +349,7 @@ FUNCTION(__peekCStringLen)
 {
     EXPORT_LABEL(__peekCStringLen)
  ENTRY_LABEL(__peekCStringLen)
-    EVAL_RIGID(__peekCStringLen);
+    EVAL_RIGID_DATA(__peekCStringLen);
     CHECK_STACK1();
     sp	 -= 1;
     sp[0] = sp[1]->c.args[0];

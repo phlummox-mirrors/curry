@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: refs.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: refs.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2004, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -24,7 +24,6 @@ which are defined in this file.
 #include "data.h"
 #include "cam.h"
 
-#define IOREF_TAG		ABSTRACT_TAG
 #define EVAL_RIGID_IOREF(l)	EVAL_RIGID_ABSTRACT(l)
 
 typedef struct ioref_node {
@@ -34,7 +33,9 @@ typedef struct ioref_node {
 
 #define ioref_node_size wordsof(IORef)
 
-static DEFINE_DATA(ioref, "<IORef>", IOREF_TAG, 1);
+static NodeInfo ioref_info = {
+    ABSTRACT_KIND, 0, closure_node_size(1), 0, "<IORef>", eval_whnf, 0, 0
+};
 
 @ 
 The function [[newIORef]] creates a new [[IORef]] and initializes it

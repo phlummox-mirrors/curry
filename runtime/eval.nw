@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: eval.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -150,7 +150,7 @@ FUNCTION(resume)
     /* dereference the indirection */
     result = sp[0];
     ret_ip = (Label)sp[1];
-    while ( is_boxed(result) && result->info->tag == INDIR_TAG )
+    while ( is_boxed(result) && result->info->kind == INDIR_KIND )
 	result = result->n.node;
     *++sp = result;
 
@@ -258,12 +258,12 @@ FUNCTION(flex_yield_resume)
     for (;;)
     {
 	if ( is_boxed(node) )
-	    switch ( node->info->tag )
+	    switch ( node->info->kind )
 	    {
-	    case INDIR_TAG:
+	    case INDIR_KIND:
 		node = node->n.node;
 		continue;
-	    case VARIABLE_TAG:
+	    case LVAR_KIND:
 		sp[1] = node;
 		GOTO(nondet_handlers->choices);
 	    default:
@@ -380,14 +380,13 @@ FUNCTION(___64__1)
     NodeInfo	 *fInfo;
  ENTRY_LABEL(___64__1)
     /* evaluate the function argument to head normal form */
-    EVAL_RIGID(___64__1);
+    EVAL_RIGID_PAPP(___64__1);
     clos = sp[0];
-    ASSERT(is_boxed(clos) && is_papp_node(clos));
 
     /* check the number of missing arguments */
     fInfo = clos->info;
     argc  = closure_argc(clos);
-    if ( fInfo->arity == 1 )
+    if ( fInfo->tag == 1 )
     {
 	/* push the arguments onto the stack */
 	switch ( argc )
@@ -571,22 +570,23 @@ FUNCTION(__ground_1)
     node = sp[0];
     if ( is_boxed(node) )
     {
-	switch ( node_tag(node) )
+	switch ( node_kind(node) )
 	{
-	case VECTOR_TAG:
+	case VECTOR_KIND:
 	    is_vect = true;
 	    n	    = vector_argc(node);
 	    sz	    = node->a.length;
 	    break;
-	case PAPP_TAG:
+	case CAPP_KIND:
+	case PAPP_KIND:
 	    is_vect = false;
 	    n	    = closure_argc(node);
 	    sz	    = node->info->length;
 	    break;
 	default:
 	    is_vect = false;
-	    n	    = is_capp_node(node) ? closure_argc(node) : 0;
-	    sz	    = node->info->length;
+	    n	    = 0;
+	    sz	    = 0;
 	    break;
 	}
 

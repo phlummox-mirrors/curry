@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: disequal.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: disequal.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -57,7 +57,7 @@ DECLARE_LABEL(check_diseq);
 
 #define diseq_constraint_size wordsof(Disequality)
 NodeInfo diseq_constraint_info = {
-    0, diseq_constraint_size, 0, 0, check_diseq, 0, 0, 0
+    CAPP_KIND, 0, diseq_constraint_size, 0, 0, check_diseq, 0, 0
 };
 
 FUNCTION(___61__47__61_)

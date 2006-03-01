@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: random.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: random.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2004-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -47,7 +47,6 @@ moving nodes around, and are released when their [[StdGen]] nodes
 becomes garbage.
 
 <<random.c>>=
-#define STDGEN_TAG		ABSTRACT_TAG
 #define EVAL_RIGID_STDGEN(l)	EVAL_RIGID_ABSTRACT(l)
 #define stdgen_node_size	wordsof(StdGen)
 
@@ -61,8 +60,8 @@ typedef struct stdgen_node {
 } StdGen;
 
 static NodeInfo stdgen_info = {
-    STDGEN_TAG, stdgen_node_size, ot_binary, "@<<Random.StdGen>>",
-    eval_whnf, 0, 0, finalize_stdgen
+    ABSTRACT_KIND, 0, stdgen_node_size, ot_binary, "@<<Random.StdGen>>",
+    eval_whnf, 0, finalize_stdgen
 };
 
 static void

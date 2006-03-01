@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1857 2006-02-19 15:14:33Z wlux $
+% $Id: CGen.lhs 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -227,8 +227,9 @@ option.
 >   | otherwise = [CVarDef vb nodeInfoType (nodeInfo c) nodeinfo]
 >   where nodeinfo = CStruct (map CInit nodeinfo')
 >         nodeinfo' =
->           [CExpr (dataTag c),closureNodeSize n,gcPointerTable,CString name,
->            CExpr "eval_whnf",noEntry,CInt 0,notFinalized]
+>           [CExpr "CAPP_KIND",CExpr (dataTag c),closureNodeSize n,
+>            gcPointerTable,CString name,CExpr "eval_whnf",noEntry,
+>            notFinalized]
 >         name = snd $ splitQualified $ demangle c
 
 > literals :: [Literal] -> [CTopDecl]
@@ -378,15 +379,15 @@ is generated.
 >   CArrayDef vb nodeInfoType (lazyInfoTable f)
 >             (map (CStruct . map CInit) [suspinfo,queuemeinfo,indirinfo])
 >   where suspinfo =
->           [CExpr "SUSPEND_TAG",suspendNodeSize n,gcPointerTable,
+>           [CExpr "SUSPEND_KIND",CInt 0,suspendNodeSize n,gcPointerTable,
 >            CString (undecorate (demangle f)),CExpr (lazyFunc n),
->            CExpr (cName f),CInt 0,notFinalized]
+>            CExpr (cName f),notFinalized]
 >         queuemeinfo =
->           [CExpr "QUEUEME_TAG",suspendNodeSize n,gcPointerTable,
->            noName,CExpr "eval_queueMe",noEntry,CInt 0,notFinalized]
+>           [CExpr "QUEUEME_KIND",CInt 0,suspendNodeSize n,gcPointerTable,
+>            noName,CExpr "eval_queueMe",noEntry,notFinalized]
 >         indirinfo =
->           [CExpr "INDIR_TAG",suspendNodeSize n,gcPointerTable,
->            noName,CExpr "eval_indir",noEntry,CInt 0,notFinalized]
+>           [CExpr "INDIR_KIND",CInt 0,suspendNodeSize n,gcPointerTable,
+>            noName,CExpr "eval_indir",noEntry,notFinalized]
 
 > fun0Def :: CVisibility -> Name -> Int -> CTopDecl
 > fun0Def vb f n =
@@ -399,16 +400,16 @@ is generated.
 > pappInfo :: Name -> Int -> Int -> CInitializer
 > pappInfo f i n = CStruct (map CInit funinfo)
 >   where funinfo =
->           [CExpr "PAPP_TAG",closureNodeSize i,gcPointerTable,
+>           [CExpr "PAPP_KIND",CInt (n - i),closureNodeSize i,gcPointerTable,
 >            CString (undecorate (demangle f)),CExpr "eval_whnf",
->            CExpr (cName f),CInt (n - i),notFinalized]
+>            CExpr (cName f),notFinalized]
 
 > funInfo :: Name -> Int -> CInitializer
 > funInfo f n = CStruct (map CInit funinfo)
 >   where funinfo =
->           [CExpr "FAPP_TAG",closureNodeSize n,gcPointerTable,
+>           [CExpr "FAPP_KIND",CInt 0,closureNodeSize n,gcPointerTable,
 >            CString (undecorate (demangle f)),CExpr (evalFunc n),
->            CExpr (cName f),CInt 0,notFinalized]
+>            CExpr (cName f),notFinalized]
 
 \end{verbatim}
 \subsection{Code Generation}
@@ -837,12 +838,12 @@ translation function.
 > enter :: [Name] -> Name -> [CPSCont] -> [CStmt]
 > enter vs0 v ks =
 >   CLocalVar nodePtrType v' (Just (CExpr (show v))) :
->   tagSwitch (Name v') [] (Just [])
->             [CCase "FAPP_TAG" [{- fall through! -}],
->              CCase "SUSPEND_TAG" [{- fall through! -}],
->              CCase "QUEUEME_TAG"
->                    (saveCont vs0 [Name v'] ks ++
->                     [gotoExpr (field v' "info->eval")])] :
+>   kindSwitch (Name v') [] (Just [])
+>              [CCase "FAPP_KIND" [{- fall through! -}],
+>               CCase "SUSPEND_KIND" [{- fall through! -}],
+>               CCase "QUEUEME_KIND"
+>                     (saveCont vs0 [Name v'] ks ++
+>                      [gotoExpr (field v' "info->eval")])] :
 >   ret vs0 (Name v') ks
 >   where v' = "_node"
 
@@ -860,7 +861,7 @@ translation function.
 
 > lock :: Name -> [CStmt]
 > lock v =
->   [rtsAssertList[isBoxed v',CRel (nodeTag v') "==" (CExpr "SUSPEND_TAG"),
+>   [rtsAssertList[isBoxed v',CRel (nodeKind v') "==" (CExpr "SUSPEND_KIND"),
 >                  CFunCall "is_local_space" [field v' "s.spc"]],
 >    CIf (CRel (CCast wordPtrType (CExpr v')) "<" (CExpr "hlim"))
 >        [procCall "DO_SAVE" [v',"q.wq"],
@@ -871,7 +872,7 @@ translation function.
 
 > update :: Name -> Name -> [CStmt]
 > update v1 v2 =
->   [rtsAssertList[isBoxed v1',CRel (nodeTag v1') "==" (CExpr "QUEUEME_TAG"),
+>   [rtsAssertList[isBoxed v1',CRel (nodeKind v1') "==" (CExpr "QUEUEME_KIND"),
 >                  CFunCall "is_local_space" [field v1' "q.spc"]],
 >    CLocalVar (CType "ThreadQueue") wq (Just (CField (CExpr v1') "q.wq")),
 >    procCall "SAVE" [v1',"q.wq"],
@@ -926,7 +927,7 @@ integer numbers when set to a non-zero value.
 
 > switchOnTerm :: Bool -> [Name] -> Name -> [(CPSTag,[CStmt])] -> [CStmt]
 > switchOnTerm maybeUnboxed vs0 v cases =
->   tagSwitch v [updVar vs0 v] unboxedCase otherCases :
+>   kindSwitch v [updVar vs0 v] unboxedCase otherCases :
 >   head (dflts ++ [failAndBacktrack])
 >   where v' = show v
 >         (lits,constrs,vars,dflts) = foldr partition ([],[],[],[]) cases
@@ -943,14 +944,14 @@ integer numbers when set to a non-zero value.
 >         otherCases =
 >           map varCase vars ++ [charCase | not (null chars)] ++
 >           [intCase | not (null ints)] ++ [floatCase | not (null floats)] ++
->           map constrCase constrs
->         varCase = CCase "VARIABLE_TAG"
->         charCase = CCase "CHAR_TAG" [charSwitch v chars,CBreak]
+>           [constrCase | not (null constrs)]
+>         varCase = CCase "LVAR_KIND"
+>         charCase = CCase "CHAR_KIND" [charSwitch v chars,CBreak]
 >         intCase =
->           CCase "INT_TAG"
+>           CCase "INT_KIND"
 >                 [intSwitch (CField (CExpr v') "i.i") ints,CBreak]
->         floatCase = CCase "FLOAT_TAG" (floatSwitch v floats ++ [CBreak])
->         constrCase (c,stmts) = CCase (dataTag c) stmts
+>         floatCase = CCase "FLOAT_KIND" (floatSwitch v floats ++ [CBreak])
+>         constrCase = CCase "CAPP_KIND" [tagSwitch v constrs,CBreak]
 >         partition (t,stmts) ~(lits,constrs,vars,dflts) =
 >           case t of
 >              CPSLitCase l -> ((l,stmts) : lits,constrs,vars,dflts)
@@ -964,12 +965,12 @@ integer numbers when set to a non-zero value.
 >         litPartition (Float f,stmts) ~(chars,ints,floats) =
 >           (chars,ints,(f,stmts):floats)
 
-> tagSwitch :: Name -> [CStmt] -> Maybe [CStmt] -> [CCase] -> CStmt
-> tagSwitch v upd unboxed cases =
->   CLoop [unboxedSwitch unboxed (CSwitch (nodeTag v') allCases),CBreak]
+> kindSwitch :: Name -> [CStmt] -> Maybe [CStmt] -> [CCase] -> CStmt
+> kindSwitch v upd unboxed cases =
+>   CLoop [unboxedSwitch unboxed (CSwitch (nodeKind v') allCases),CBreak]
 >   where v' = show v
 >         allCases =
->           CCase "INDIR_TAG"
+>           CCase "INDIR_KIND"
 >             (CAssign (LVar v') (field v' "n.node") : upd ++ [CContinue]) :
 >           cases ++
 >           [CDefault [CBreak]]
@@ -994,6 +995,11 @@ integer numbers when set to a non-zero value.
 >   getFloat "d" (field (show v) "f") ++ foldr (match (CExpr "d")) [] cases
 >   where match v (f,stmts) rest = [CIf (CRel v "==" (CFloat f)) stmts rest]
 
+> tagSwitch :: Name -> [(Name,[CStmt])] -> CStmt
+> tagSwitch v cases =
+>   CSwitch (nodeTag (show v))
+>     ([CCase (dataTag c) stmts | (c,stmts) <- cases] ++ [CDefault [CBreak]])
+
 \end{verbatim}
 The code for \texttt{CPSApply} statements has to check to how many
 arguments a partial application is applied. If there are too few
@@ -1009,7 +1015,7 @@ the application to the surplus arguments.
 > apply :: [Name] -> Name -> [Name] -> [CStmt]
 > apply vs0 v vs =
 >   [CLocalVar uintType "argc" (Just (funCall "closure_argc" [show v])),
->    CSwitch (field v' "info->arity")
+>    CSwitch (field v' "info->tag")
 >            ([CCase (show i) (splitArgs i) | i <- [1..n-1]] ++
 >             [CCase (show n) (saveVars vs0 vs ++ [CBreak]),
 >              CDefault (applyPartial vs0 n v)]),
@@ -1027,7 +1033,7 @@ the application to the surplus arguments.
 
 > applyPartial :: [Name] -> Int -> Name -> [CStmt]
 > applyPartial vs0 n v =
->   assertRel (field v' "info->arity") "!=" (CInt 0) :
+>   assertRel (field v' "info->tag") ">" (CInt 0) :
 >   CLocalVar uintType "sz" (Just (funCall "closure_node_size" ["argc"])) :
 >   CProcCall "CHECK_HEAP" [CAdd (CExpr "sz") (CInt n)] :
 >   CAssign (LVar v') (asNode (CExpr "hp")) :
@@ -1360,7 +1366,8 @@ of the abstract syntax tree.
 > isBoxed v = funCall "is_boxed" [v]
 > isUnboxed v = funCall "is_unboxed" [v]
 
-> nodeTag :: String -> CExpr
+> nodeKind, nodeTag :: String -> CExpr
+> nodeKind v = field v "info->kind"
 > nodeTag v = field v "info->tag"
 
 > field :: String -> String -> CExpr

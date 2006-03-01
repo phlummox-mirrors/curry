@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: files.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -67,11 +67,12 @@ should not be blocked until the process really terminates,
 [[finalize_process]] calls [[waitpid]] with the [[WNOHANG]] flag.
 
 <<files.c>>=
-#define FILE_TAG		ABSTRACT_TAG
 #define EVAL_RIGID_FILE(l)	EVAL_RIGID_ABSTRACT(l)
 
 enum file_flags { readable, writable };
 #define mask(flag) (1<<(flag))
+
+enum { FILE_TAG, PROCESS_TAG };
 
 #define file_node_size wordsof(Handle)
 typedef struct file_node {
@@ -104,13 +105,13 @@ static void finalize_file(Node *node);
 static void finalize_process(Node *node);
 
 static NodeInfo file_info = {
-    FILE_TAG, file_node_size, ot_binary, "<Handle>",
-    eval_whnf, 0, 0, finalize_file
+    ABSTRACT_KIND, FILE_TAG, file_node_size, ot_binary, "<Handle>",
+    eval_whnf, 0, finalize_file
 };
 
 static NodeInfo process_info = {
-    FILE_TAG, process_node_size, ot_binary, "<ProcessHandle>",
-    eval_whnf, 0, 0, finalize_process
+    ABSTRACT_KIND, PROCESS_TAG, process_node_size, ot_binary, "<ProcessHandle>",
+    eval_whnf, 0, finalize_process
 };
 
 static void
@@ -256,7 +257,7 @@ FUNCTION(__openFile_2)
     Handle     *file;
  ENTRY_LABEL(__openFile_2)
     /* determine the access mode */
-    EVAL_RIGID(__openFile_2);
+    EVAL_RIGID_DATA(__openFile_2);
     switch ( node_tag(sp[0]) )
     {
     case ReadMode_tag:
@@ -276,7 +277,7 @@ FUNCTION(__openFile_2)
 	flags = mask(readable) | mask(writable);
 	break;
     default:
-	invalid_arg("openFile (mode)", node_tag(sp[0]));
+	unexpected_tag("openFile (mode)", node_tag(sp[0]));
     }
 
     /* open the file */
@@ -930,7 +931,7 @@ FUNCTION(__hPutStr_1)
 {
     Node *list;
  ENTRY_LABEL(__hPutStr_1)
-    EVAL_RIGID(__hPutStr_1);
+    EVAL_RIGID_DATA(__hPutStr_1);
     list = sp[0];
     switch ( node_tag(list) )
     {
@@ -944,9 +945,8 @@ FUNCTION(__hPutStr_1)
 	sp[1] = list->c.args[1];
 	GOTO(__hPutStr_2);
     default:
-	break;
+	unexpected_tag("hPutStr", node_tag(list));
     }
-    invalid_arg("hPutStr", node_tag(list));
 }
 
 static
@@ -1256,7 +1256,7 @@ FUNCTION(__hSetBuffering_1)
     short  bmode;
     Handle *file;
  ENTRY_LABEL(__hSetBuffering_1)
-    EVAL_RIGID(__hSetBuffering_1);
+    EVAL_RIGID_DATA(__hSetBuffering_1);
     switch ( node_tag(sp[0]) )
     {
     case NoBuffering_tag:
@@ -1269,7 +1269,7 @@ FUNCTION(__hSetBuffering_1)
 	sp[0] = sp[0]->c.args[0];
 	GOTO(__hSetBuffering_2);
     default:
-	invalid_arg("hSetBuffering", node_tag(sp[0]));
+	unexpected_tag("hSetBuffering", node_tag(sp[0]));
     }
 
     file = (Handle *)sp[1];
@@ -1300,7 +1300,7 @@ FUNCTION(__hSetBuffering_2)
 {
     Handle *file;
  ENTRY_LABEL(__hSetBuffering_2)
-    EVAL_RIGID(__hSetBuffering_2);
+    EVAL_RIGID_DATA(__hSetBuffering_2);
     switch ( node_tag(sp[0]) )
     {
     case Nothing_tag:
@@ -1309,7 +1309,7 @@ FUNCTION(__hSetBuffering_2)
 	sp[0] = sp[0]->c.args[0];
 	GOTO(__hSetBuffering_3);
     default:
-	invalid_arg("hSetBuffering (mode)", node_tag(sp[0]));
+	unexpected_tag("hSetBuffering (mode)", node_tag(sp[0]));
     }
 
     file = (Handle *)sp[1];
@@ -1492,7 +1492,7 @@ FUNCTION(__hSeek_1)
 {
     Node *mode;
  ENTRY_LABEL(__hSeek_1)
-    EVAL_RIGID(__hSeek_1);
+    EVAL_RIGID_DATA(__hSeek_1);
     mode  = sp[0];
     sp[0] = sp[2];
     sp[2] = mode;
@@ -1527,7 +1527,7 @@ FUNCTION(__hSeek_2)
 	smode = SEEK_END;
 	break;
     default:
-	invalid_arg("hSeek (mode)", node_tag(sp[2]));
+	unexpected_tag("hSeek (mode)", node_tag(sp[2]));
     }
 
     assert(file->fp != NULL);
@@ -1587,7 +1587,7 @@ FUNCTION(__openProcess_2)
     ProcessHandle *proc;
  ENTRY_LABEL(__openProcess_2)
     /* determine the access mode */
-    EVAL_RIGID(__openProcess_2);
+    EVAL_RIGID_DATA(__openProcess_2);
     cmd = to_string(sp[1]);
     switch ( node_tag(sp[0]) )
     {
@@ -1605,7 +1605,7 @@ FUNCTION(__openProcess_2)
 	flags = mask(readable) | mask(writable);
 	break;
     default:
-	invalid_arg("openProcess (mode)", node_tag(sp[0]));
+	unexpected_tag("openProcess (mode)", node_tag(sp[0]));
     }
 
     /* depending on the mode create either a pipe or a socket pair */
@@ -1814,7 +1814,7 @@ FUNCTION(__connectTcpSocket_3)
     struct hostent     *hostent;
     struct sockaddr_in addr;
  ENTRY_LABEL(__connectTcpSocket_3)
-    EVAL_RIGID(__connectTcpSocket_3)
+    EVAL_RIGID_DATA(__connectTcpSocket_3)
     host = to_string(sp[1]);
     port = long_val(sp[2]);
     switch ( node_tag(sp[0]) )
@@ -1833,7 +1833,7 @@ FUNCTION(__connectTcpSocket_3)
 	flags = mask(readable) | mask(writable);
 	break;
     default:
-	invalid_arg("connectTcpSocket (mode)", node_tag(sp[0]));
+	unexpected_tag("connectTcpSocket (mode)", node_tag(sp[0]));
     }
 
     /* setup the socket address structure */

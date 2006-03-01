@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: threads.nw 1863 2006-02-28 13:16:31Z wlux $
+% $Id: threads.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -80,6 +80,8 @@ safe to check whether [[rq != 0]] in order to test whether other
 runnable threads exist.
 
 <<threads.h>>=
+enum { THREAD_TAG, SURROGATE_TAG };
+
 #if 0
 typedef union thread_node *ThreadQueue; /* already declared in heap.h */
 #endif
@@ -124,7 +126,7 @@ static const int ot_thread[] = {
     word_offsetof(struct thread_state, ds)
 };
 static NodeInfo thread_info = {
-    THREAD_TAG, thread_state_size, ot_thread, 0, no_eval, 0, 0, 0
+    THREAD_KIND, THREAD_TAG, thread_state_size, ot_thread, 0, no_eval, 0, 0
 };
 
 static const int ot_surrogate[] = {
@@ -134,7 +136,8 @@ static const int ot_surrogate[] = {
     word_offsetof(struct thread_surrogate, link)
 };
 static NodeInfo surrogate_info = {
-    THREAD_TAG, thread_surrogate_size, ot_surrogate, 0, no_eval, 0, 0, 0
+    THREAD_KIND, SURROGATE_TAG, thread_surrogate_size, ot_surrogate, 0,
+    no_eval, 0, 0
 };
 
 ThreadQueue rq;
@@ -221,7 +224,7 @@ static void terminate_thread(void);
 static ThreadQueue interrupt_thread(Label, enum suspend_reason);
 static ExceptionFrame *relocate_thread(ExceptionFrame *, int);
 
-static NodeInfo saved_stack_info = { VECTOR_TAG, 0, 0, 0, no_eval, 0, 0, 0 };
+static NodeInfo saved_stack_info = { VECTOR_KIND, 0, 0, 0, 0, no_eval, 0, 0 };
 
 @
 The function [[start_thread]] starts a new thread. It uses the stack

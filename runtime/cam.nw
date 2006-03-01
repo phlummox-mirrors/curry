@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cam.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: cam.nw 1865 2006-03-01 22:30:38Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Abstract Machine Instruction Macros}
@@ -50,140 +50,54 @@ evaluated or after resuming the current thread. In general this is the
 entry point of the function that uses the [[EVAL]] macro.
 
 <<cam.h>>=
-#define EVAL_RIGID(l) \
+#define EVAL_RIGID(what, l) \
 for (;;) { \
-    switch ( sp[0]->info->tag ) { \
-    case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-    case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
+    switch ( sp[0]->info->kind ) { \
+    case INDIR_KIND: sp[0] = sp[0]->n.node; continue; \
+    case FAPP_KIND: case SUSPEND_KIND: case QUEUEME_KIND: \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: \
+    case LVAR_KIND: \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sync_var); \
-    default: break; \
+    case what##_KIND: break; \
+    default: invalid_arg(#l, sp[0]->info->kind); \
     } \
     break; \
 }
 
-#define EVAL_RIGID_CHAR(l) \
-for (;;) { \
-    switch ( sp[0]->info->tag ) { \
-    case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-    case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sync_var); \
-    case CHAR_TAG: break; \
-    default: invalid_arg(#l, sp[0]->info->tag); \
-    } \
-    break; \
-}
+#define EVAL_RIGID_CHAR(l)		EVAL_RIGID(CHAR, l)
+#define EVAL_RIGID_FLOAT(l)		EVAL_RIGID(FLOAT, l)
+#define EVAL_RIGID_PTR(l)		EVAL_RIGID(PTR, l)
+#define EVAL_RIGID_FOREIGN_PTR(l)	EVAL_RIGID(FOREIGN_PTR, l)
+#define EVAL_RIGID_DATA(l)		EVAL_RIGID(CAPP, l)
+#define EVAL_RIGID_PAPP(l)		EVAL_RIGID(PAPP, l)
+#define EVAL_RIGID_VECTOR(l)		EVAL_RIGID(VECTOR, l)
+#define EVAL_RIGID_ABSTRACT(l)		EVAL_RIGID(ABSTRACT, l)
 
 #define EVAL_RIGID_INT(l) \
 for (;;) { \
     if ( is_boxed(sp[0]) ) \
-	switch ( sp[0]->info->tag ) { \
-	case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-	case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
+	switch ( sp[0]->info->kind ) { \
+	case INDIR_KIND: sp[0] = sp[0]->n.node; continue; \
+	case FAPP_KIND: case SUSPEND_KIND: case QUEUEME_KIND: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sp[0]->info->eval); \
-	case VARIABLE_TAG: \
+	case LVAR_KIND: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sync_var); \
-	case INT_TAG: break; \
-	default: invalid_arg(#l, sp[0]->info->tag); \
+	case INT_KIND: break; \
+	default: invalid_arg(#l, sp[0]->info->kind); \
 	} \
-    break; \
-}
-
-#define EVAL_RIGID_FLOAT(l) \
-for (;;) { \
-    switch ( sp[0]->info->tag ) { \
-    case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-    case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sync_var); \
-    case FLOAT_TAG: break; \
-    default: invalid_arg(#l, sp[0]->info->tag); \
-    } \
-    break; \
-}
-
-#define EVAL_RIGID_PTR(l) \
-for (;;) { \
-    switch ( sp[0]->info->tag ) { \
-    case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-    case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sync_var); \
-    case PTR_TAG: break; \
-    default: invalid_arg(#l, sp[0]->info->tag); \
-    } \
-    break; \
-}
-
-#define EVAL_RIGID_FOREIGN_PTR(l) \
-for (;;) { \
-    switch ( sp[0]->info->tag ) { \
-    case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-    case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sync_var); \
-    case FOREIGN_PTR_TAG: break; \
-    default: invalid_arg(#l, sp[0]->info->tag); \
-    } \
-    break; \
-}
-
-#define EVAL_RIGID_VECTOR(l) \
-for (;;) { \
-    switch ( sp[0]->info->tag ) { \
-    case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-    case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sync_var); \
-    case VECTOR_TAG: break; \
-    default: invalid_arg(#l, sp[0]->info->tag); \
-    } \
-    break; \
-}
-
-#define EVAL_RIGID_ABSTRACT(l) \
-for (;;) { \
-    switch ( sp[0]->info->tag ) { \
-    case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-    case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sp[0]->info->eval); \
-    case VARIABLE_TAG: \
-	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
-	GOTO(sync_var); \
-    case ABSTRACT_TAG: break; \
-    default: invalid_arg(#l, sp[0]->info->tag); \
-    } \
     break; \
 }
 
 #define EVAL_FLEX_POLY(l) \
 for (;;) { \
     if ( is_boxed(sp[0]) ) \
-	switch ( sp[0]->info->tag ) { \
-	case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-	case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
+	switch ( sp[0]->info->kind ) { \
+	case INDIR_KIND: sp[0] = sp[0]->n.node; continue; \
+	case FAPP_KIND: case SUSPEND_KIND: case QUEUEME_KIND: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sp[0]->info->eval); \
 	default: break; \
@@ -194,12 +108,12 @@ for (;;) { \
 #define EVAL_RIGID_POLY(l) \
 for (;;) { \
     if ( is_boxed(sp[0]) ) \
-	switch ( sp[0]->info->tag ) { \
-	case INDIR_TAG: sp[0] = sp[0]->n.node; continue; \
-	case FAPP_TAG: case SUSPEND_TAG: case QUEUEME_TAG: \
+	switch ( sp[0]->info->kind ) { \
+	case INDIR_KIND: sp[0] = sp[0]->n.node; continue; \
+	case FAPP_KIND: case SUSPEND_KIND: case QUEUEME_KIND: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sp[0]->info->eval); \
-	case VARIABLE_TAG: \
+	case LVAR_KIND: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sync_var); \
 	default: break; \

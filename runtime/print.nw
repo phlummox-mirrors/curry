@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: print.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: print.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -114,61 +114,61 @@ print_node(unsigned int prec, Node *node)
 		   unboxed_val(node));
 	else
 #endif
-	    switch ( node_tag(node) )
+	    switch ( node_kind(node) )
 	    {
-	    case CHAR_TAG:
+	    case CHAR_KIND:
 		printf("'%s'", lit_char(buf, '\0', node->ch.ch, '\''));
 		break;
-	    case INT_TAG:
+	    case INT_KIND:
 		printf(prec > 0 && node->i.i < 0 ? "(%ld)" : "%ld",
 		       node->i.i);
 		break;
-	    case FLOAT_TAG:
+	    case FLOAT_KIND:
 		get_double_val(d, node->f);
 		lit_double(buf, d);
 		printf(prec > 0 && buf[0] == '-' ? "(%s)" : "%s", buf);
 		break;
-	    case PTR_TAG:
+	    case PTR_KIND:
 		printf(prec > 1 ? "(%s %p)" : "%s %p",
 		       node->info->cname, node->p.ptr);
 		break;
-	    case FOREIGN_PTR_TAG:
+	    case FOREIGN_PTR_KIND:
 		printf(prec > 1 ? "(%s %p)" : "%s %p",
 		       node->info->cname, node->fp.ptr);
 		break;
-	    case VARIABLE_TAG:
+	    case LVAR_KIND:
 		printf("%s", lookup_name(node));
 		break;
-	    case VECTOR_TAG:
+	    case VECTOR_KIND:
 		 if ( is_tuple(node->info) )
 		     print_tuple(node, vector_argc(node), node->a.args);
 		 else
 		     print_app(prec, node, vector_argc(node), node->a.args);
 		break;
-	    case PAPP_TAG:
-	    case FAPP_TAG:
+	    case PAPP_KIND:
+	    case FAPP_KIND:
 		print_app(prec, node, closure_argc(node), node->c.args);
 		break;
-	    case SUSPEND_TAG:
+	    case SUSPEND_KIND:
 		argc = suspend_argc(node);
 		if ( argc == 1 && node->s.args[0] == 0 )
 		    argc = 0;
 		print_app(prec, node, argc, node->s.args);
 		break;
-	    case QUEUEME_TAG:
+	    case QUEUEME_KIND:
 		printf("Suspended");
 		break;
-	    case INDIR_TAG:
+	    case INDIR_KIND:
 		node = node->n.node;
 		continue;
-	    case SEARCH_CONT_TAG:
-	    case ABSTRACT_TAG:
+	    case SEARCH_CONT_KIND:
+	    case ABSTRACT_KIND:
 		name = node->info->cname;
 		if ( name == 0 )
 		    name = "<abstract>";
 		printf("%s", name);
 		break;
-	    default:
+	    case CAPP_KIND:
 		if ( node->info == (NodeInfo *)&cons_info )
 		{
 		    if ( is_string(node) )
@@ -181,6 +181,8 @@ print_node(unsigned int prec, Node *node)
 		else
 		    print_app(prec, node, closure_argc(node), node->c.args);
 		break;
+	    default:
+		invalid_arg("print_node", node_kind(node));
 	    }
 	break;
     }
@@ -238,16 +240,16 @@ is_string(Node *list)
     while ( list->info == &cons_info )
     {
 	head = list->c.args[0];
-	while ( is_boxed(head) && head->info->tag == INDIR_TAG )
+	while ( is_boxed(head) && head->info->kind == INDIR_KIND )
 	    head = head->n.node;
-	if ( is_unboxed(head) || head->info->tag != CHAR_TAG )
+	if ( is_unboxed(head) || head->info->kind != CHAR_KIND )
 	    return false;
 
 	list = list->c.args[1];
-	while ( list->info->tag == INDIR_TAG )
+	while ( list->info->kind == INDIR_KIND )
 	    list = list->n.node;
     }
-    
+
     return list == nil;
 }
 
@@ -263,15 +265,15 @@ print_string(Node *list)
     while ( list->info == &cons_info )
     {
 	head = list->c.args[0];
-	while ( is_boxed(head) && head->info->tag == INDIR_TAG )
+	while ( is_boxed(head) && head->info->kind == INDIR_KIND )
 	    head = head->n.node;
-	ASSERT(is_boxed(head) && head->info->tag == CHAR_TAG);
+	ASSERT(is_boxed(head) && head->info->kind == CHAR_KIND);
 	c = head->ch.ch;
 	printf("%s", lit_char(buf, c0, c, '"'));
 	c0 = c;;
 
 	list = list->c.args[1];
-	while ( list->info->tag == INDIR_TAG )
+	while ( list->info->kind == INDIR_KIND )
 	    list = list->n.node;
    }
    ASSERT(list == nil);
@@ -290,7 +292,7 @@ print_list(Node *list)
 	sep = ',';
 
 	list = list->c.args[1];
-	while ( list->info->tag == INDIR_TAG )
+	while ( list->info->kind == INDIR_KIND )
 	    list = list->n.node;
     }
 
@@ -340,36 +342,35 @@ print_constraints(boolean hasAnswer, Node *node)
     for (;;)
     {
 	if ( is_boxed(node) )
-	    switch ( node_tag(node) )
+	    switch ( node_kind(node) )
 	    {
-	    case VARIABLE_TAG:
+	    case LVAR_KIND:
 		if ( node->v.cstrs )
 		    hasAnswer = print_constrained_var(hasAnswer, node);
 		break;
-	    case SUSPEND_TAG:
+	    case SUSPEND_KIND:
 		argc = suspend_argc(node);
 		if ( argc > 1 || node->s.args[0] )
 		    hasAnswer = print_app_constraints(hasAnswer,
 						      argc,
 						      node->s.args);
 		break;
-	    case INDIR_TAG:
+	    case INDIR_KIND:
 		node = node->n.node;
 		continue;
-	    default:
-		if ( !is_capp_node(node) )
-		    break;
-		/* FALL THROUGH!!! */
-	    case PAPP_TAG:
-	    case FAPP_TAG:
+	    case CAPP_KIND:
+	    case PAPP_KIND:
+	    case FAPP_KIND:
 		hasAnswer = print_app_constraints(hasAnswer,
 						  closure_argc(node),
 						  node->c.args);
 		break;
-	    case VECTOR_TAG:
+	    case VECTOR_KIND:
 		hasAnswer = print_app_constraints(hasAnswer,
 						  vector_argc(node),
 						  node->a.args);
+		break;
+	    default:
 		break;
 	    }
 	break;

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: show.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -245,15 +245,15 @@ FUNCTION(showp_1)
     }
     else
 #endif
-	switch ( node_tag(node) )
+	switch ( node_kind(node) )
 	{
-	case INDIR_TAG:
+	case INDIR_KIND:
 	    node = node->n.node;
 	    goto again;
 
-	case FAPP_TAG:
-	case SUSPEND_TAG:
-	case QUEUEME_TAG:
+	case FAPP_KIND:
+	case SUSPEND_KIND:
+	case QUEUEME_KIND:
 	    if ( show != zero )
 	    {
 		CHECK_STACK1();
@@ -265,7 +265,7 @@ FUNCTION(showp_1)
 	    str = "_";
 	    break;
 
-	case VARIABLE_TAG:
+	case LVAR_KIND:
 	    if ( show != zero )
 	    {
 		CHECK_STACK1();
@@ -277,33 +277,33 @@ FUNCTION(showp_1)
 	    str = lookup_name(node);
 	    break;
 
-	case CHAR_TAG:
+	case CHAR_KIND:
 	    buf[0] = '\'';
 	    strcat(lit_char(buf + 1, '\0', node->ch.ch, '\''), "'");
 	    break;
 
-	case INT_TAG:
+	case INT_KIND:
 	    sprintf(buf, "%ld", node->i.i);
 	    isneg = buf[0] == '-';
 	    break;
 
-	case FLOAT_TAG:
+	case FLOAT_KIND:
 	    get_double_val(d, node->f);
 	    lit_double(buf, d);
 	    isneg = buf[0] == '-';
 	    break;
 
-	case PTR_TAG:
+	case PTR_KIND:
 	    sprintf(buf, long_val(prec) > 1 ? "(%s %p)" : "%s %p",
 		    node->info->cname, node->p.ptr);
 	    break;
 
-	case FOREIGN_PTR_TAG:
+	case FOREIGN_PTR_KIND:
 	    sprintf(buf, long_val(prec) > 1 ? "(%s %p)" : "%s %p",
 		    node->info->cname, node->fp.ptr);
 	    break;
 
-	case VECTOR_TAG:
+	case VECTOR_KIND:
 	    if ( is_tuple(node->info) )
 	    {
 		*++sp = node;
@@ -316,21 +316,20 @@ FUNCTION(showp_1)
 	    }
 	    break;
 
-	case PAPP_TAG:
+	case PAPP_KIND:
 	    str  = node->info->cname;
 	    isop = is_operator(node->info) && !is_tuple(node->info);
 	    argc = closure_argc(node);
 	    break;
 
-	case SEARCH_CONT_TAG:
-	case ABSTRACT_TAG:
+	case SEARCH_CONT_KIND:
+	case ABSTRACT_KIND:
 	    str = node->info->cname;
 	    if ( str == 0 )
 		str = "<abstract>";
 	    break;
 
-	default:
-	    ASSERT(is_capp_node(node));
+	case CAPP_KIND:
 	    if ( node->info == (NodeInfo *)&cons_info )
 	    {
 		sp[0] = node->c.args[0];
@@ -348,6 +347,10 @@ FUNCTION(showp_1)
 		isop = is_operator(node->info);
 		argc = closure_argc(node);
 	    }
+	    break;
+
+	default:
+	    invalid_arg("showp", node_kind(node));
 	}
 
     if ( isop && argc == 2 )
@@ -762,14 +765,14 @@ FUNCTION(showList)
     for (;;)
     {
 	if ( is_boxed(hd) )
-	    switch ( hd->info->tag )
+	    switch ( hd->info->kind )
 	    {
-	    case INDIR_TAG:
+	    case INDIR_KIND:
 		hd = hd->n.node;
 		continue;
-	    case SUSPEND_TAG:
-	    case QUEUEME_TAG:
-	    case FAPP_TAG:
+	    case SUSPEND_KIND:
+	    case QUEUEME_KIND:
+	    case FAPP_KIND:
 		if ( show != zero )
 		{
 		    CHECK_STACK1();
@@ -779,7 +782,7 @@ FUNCTION(showList)
 		    GOTO(hd->info->eval);
 		}
 		break;
-	    case VARIABLE_TAG:
+	    case LVAR_KIND:
 		if ( show != zero )
 		{
 		    CHECK_STACK1();
@@ -789,7 +792,7 @@ FUNCTION(showList)
 		    GOTO(sync_var);
 		}
 		break;
-	    case CHAR_TAG:
+	    case CHAR_KIND:
 		if ( show != zero || is_string(sp[1]) )
 		{
 		    sp[0] = hd;
@@ -877,15 +880,15 @@ FUNCTION(showTail_1)
     list = sp[0];
     show = sp[1];
  again:
-    switch ( node_tag(list) )
+    switch ( node_kind(list) )
     {
-    case INDIR_TAG:
+    case INDIR_KIND:
 	list = list->n.node;
 	goto again;
 
-    case FAPP_TAG:
-    case SUSPEND_TAG:
-    case QUEUEME_TAG:
+    case FAPP_KIND:
+    case SUSPEND_KIND:
+    case QUEUEME_KIND:
 	if ( show != zero )
 	{
 	    CHECK_STACK1();
@@ -896,7 +899,7 @@ FUNCTION(showTail_1)
 	}
 	goto make_tail;
 
-    case VARIABLE_TAG:
+    case LVAR_KIND:
 	if ( show != zero )
 	{
 	    CHECK_STACK1();
@@ -935,53 +938,61 @@ FUNCTION(showTail_1)
 	hp	       += cons_node_size;
 	break;
 
-    case NIL_TAG:
-	CHECK_HEAP(cons_node_size);
-	tail = sp[2];
-	sp  += 3;
+    case CAPP_KIND:
+	switch ( node_tag(list) )
+	{
+	case NIL_TAG:
+	    CHECK_HEAP(cons_node_size);
+	    tail = sp[2];
+	    sp  += 3;
 
-	cons		= (Node *)hp;
-	cons->info	= &cons_info;
-	cons->c.args[0] = rbracket;
-	cons->c.args[1] = tail;
-	hp	       += cons_node_size;
-	break;
+	    cons		= (Node *)hp;
+	    cons->info	= &cons_info;
+	    cons->c.args[0] = rbracket;
+	    cons->c.args[1] = tail;
+	    hp	       += cons_node_size;
+	    break;
 
-    case CONS_TAG:
-	sp[0] = list;
-	CHECK_HEAP(suspend_node_size(3) + suspend_node_size(4)
-		   + cons_node_size);
-	list = sp[0];
-	show = sp[1];
-	tail = sp[2];
-	sp  += 3;
+	case CONS_TAG:
+	    sp[0] = list;
+	    CHECK_HEAP(suspend_node_size(3) + suspend_node_size(4)
+		       + cons_node_size);
+	    list = sp[0];
+	    show = sp[1];
+	    tail = sp[2];
+	    sp  += 3;
 
-	susp	   	= (Node *)hp;
-	susp->info 	= showTail_lazy_info_table;
-	susp->s.spc	= ss;
-	susp->s.args[0] = list->c.args[1];
-	susp->s.args[1] = show;
-	susp->s.args[2] = tail;
-	hp	       += suspend_node_size(3);
+	    susp	   	= (Node *)hp;
+	    susp->info 	= showTail_lazy_info_table;
+	    susp->s.spc	= ss;
+	    susp->s.args[0] = list->c.args[1];
+	    susp->s.args[1] = show;
+	    susp->s.args[2] = tail;
+	    hp	       += suspend_node_size(3);
 
-	susp2		 = (Node *)hp;
-	susp2->info	 = showp_lazy_info_table;
-	susp2->s.spc	 = ss;
-	susp2->s.args[0] = list->c.args[0];
-	susp2->s.args[1] = zero;
-	susp2->s.args[2] = show;
-	susp2->s.args[3] = susp;
-	hp		+= suspend_node_size(4);
+	    susp2		 = (Node *)hp;
+	    susp2->info	 = showp_lazy_info_table;
+	    susp2->s.spc	 = ss;
+	    susp2->s.args[0] = list->c.args[0];
+	    susp2->s.args[1] = zero;
+	    susp2->s.args[2] = show;
+	    susp2->s.args[3] = susp;
+	    hp		+= suspend_node_size(4);
 
-	cons		= (Node *)hp;
-	cons->info	= &cons_info;
-	cons->c.args[0] = comma;
-	cons->c.args[1] = susp2;
-	hp	       += cons_node_size;
+	    cons		= (Node *)hp;
+	    cons->info	= &cons_info;
+	    cons->c.args[0] = comma;
+	    cons->c.args[1] = susp2;
+	    hp	       += cons_node_size;
+	    break;
+
+	default:
+	    unexpected_tag("showTail", node_tag(list));
+	}
 	break;
 
     default:
-	invalid_arg("showTail", node_tag(list));
+	invalid_arg("showTail", node_kind(list));
     }
 
     RETURN(cons);

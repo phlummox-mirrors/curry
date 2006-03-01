@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: trace.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: trace.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -48,6 +48,7 @@ extern void trace_fun(const char *name, unsigned int arity);
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include "debug.h"
 #include "run.h"
 #include "heap.h"
 #include "stack.h"
@@ -161,57 +162,61 @@ trace_shownode(int depth, Node *node)
 	fprintf(stderr, "%ld", unboxed_val(node));
 #endif
     else
-	switch ( node_tag(node) )
+	switch ( node_kind(node) )
 	{
-	case CHAR_TAG:
+	case CHAR_KIND:
 	    fprintf(stderr, "'%s'", lit_char(buf, '\0', node->ch.ch, '\''));
 	    break;
-	case INT_TAG:
+	case INT_KIND:
 	    fprintf(stderr, "%ld", node->i.i);
 	    break;
-	case FLOAT_TAG:
+	case FLOAT_KIND:
 	    get_double_val(d, node->f);
 	    fprintf(stderr, "%s", lit_double(buf, d));
 	    break;
-	case PTR_TAG:
+	case PTR_KIND:
 	    fprintf(stderr, depth > 0 ? "(%s %p)" : "(%s ...)",
 		    node->info->cname, node->p.ptr);
 	    break;
-	case FOREIGN_PTR_TAG:
+	case FOREIGN_PTR_KIND:
 	    fprintf(stderr, depth > 0 ? "(%s %p)" : "(%s ...)",
 		    node->info->cname, node->fp.ptr);
 	    break;
-	case VECTOR_TAG:
+	case VECTOR_KIND:
 	    trace_showapp(depth, node, vector_argc(node), node->a.args);
 	    break;
-	case VARIABLE_TAG:
+	case LVAR_KIND:
 	    fprintf(stderr, "var@%p", node);
 	    break;
-	case QUEUEME_TAG:
+	case QUEUEME_KIND:
 	    fprintf(stderr, "que@%p", node);
 	    break;
-	case SUSPEND_TAG:
+	case SUSPEND_KIND:
 	    fprintf(stderr, "susp@%p=", node);
 	    argc = suspend_argc(node);
 	    if ( argc == 1 && node->s.args[0] == 0 )
 		argc = 0;
 	    trace_showapp(depth, node, argc, node->s.args);
 	    break;
-	case SEARCH_CONT_TAG:
+	case SEARCH_CONT_KIND:
 	    fprintf(stderr, "cont@%p", node);
 	    break;
-	case INDIR_TAG:
+	case INDIR_KIND:
 	    trace_shownode(depth, node->n.node);
 	    break;
-	case ABSTRACT_TAG:
+	case ABSTRACT_KIND:
 	    name = node->info->cname;
 	    if ( name == 0 )
 		name = "<abstract>";
 	    fprintf(stderr, "%s@%p", name, node);
 	    break;
-	default:
+	case CAPP_KIND:
+	case FAPP_KIND:
+	case PAPP_KIND:
 	    trace_showapp(depth, node, closure_argc(node), node->c.args);
 	    break;
+	default:
+	    invalid_arg("trace_shownode", node_kind(node));
 	}
 }
 

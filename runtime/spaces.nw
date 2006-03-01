@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1864 2006-02-28 15:58:21Z wlux $
+% $Id: spaces.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -64,7 +64,7 @@ static SearchSpace *copy_search_space(SearchSpace *spc, SearchSpace *space);
 static Node *copy_node(Node *node, SearchSpace *space);
 
 static NodeInfo search_space_info = {
-    0, wordsof(struct search_space), 0, 0, no_eval, 0, 0, 0
+    CAPP_KIND, 0, wordsof(struct search_space), 0, 0, no_eval, 0, 0
 };
 
 SearchSpace *ss;
@@ -109,7 +109,7 @@ static const int ot_script[] = {
     word_offsetof(ScriptRec, outVal)
 };
 static NodeInfo script_info = {
-    SCRIPT_TAG, 0, ot_script, 0, no_eval, 0, 0, 0
+    SCRIPT_KIND, 0, 0, ot_script, 0, no_eval, 0, 0
 };
 
 @
@@ -567,18 +567,18 @@ copy_node(Node *node, SearchSpace *space)
 	/* check whether we can/must share the node */
 	else
 	{
-	    switch ( node_tag(node) )
+	    switch ( node_kind(node) )
 	    {
-	    case CHAR_TAG:
-	    case INT_TAG:
-	    case FLOAT_TAG:
-	    case PTR_TAG:
-	    case FOREIGN_PTR_TAG:
-	    case ABSTRACT_TAG:
+	    case CHAR_KIND:
+	    case INT_KIND:
+	    case FLOAT_KIND:
+	    case PTR_KIND:
+	    case FOREIGN_PTR_KIND:
+	    case ABSTRACT_KIND:
 		do_copy = false;
 		break;
 
-	    case INDIR_TAG:
+	    case INDIR_KIND:
 		if ( node->n.spc && is_forwarded(node->n.spc)
 		     && space && node->n.spc->root != space->root )
 		{
@@ -588,13 +588,13 @@ copy_node(Node *node, SearchSpace *space)
 		node = node->n.node;
 		continue;
 
-	    case VARIABLE_TAG:
-	    case SUSPEND_TAG:
-	    case QUEUEME_TAG:
+	    case LVAR_KIND:
+	    case SUSPEND_KIND:
+	    case QUEUEME_KIND:
 		do_copy = !space || (node->s.spc && is_forwarded(node->s.spc));
 		break;
 
-	    case SEARCH_CONT_TAG:
+	    case SEARCH_CONT_KIND:
 		/* FIXME: non-local continuations need not be copied */
 		do_copy = true;
 		break;
@@ -733,22 +733,22 @@ copy_graph(Node *graph, SearchSpace *space)
 	if ( sz == 0 )
 	    sz = node->a.length;
 
-	switch ( node_tag(node) )
+	switch ( node_kind(node) )
 	{
-	case CHAR_TAG:
-	case INT_TAG:
-	case FLOAT_TAG:
-	case PTR_TAG:
-	case FOREIGN_PTR_TAG:
-	case ABSTRACT_TAG:
-	    curry_panic("copy_graph: atomic object (tag %d) has been copied\n",
-			node_tag(node));
+	case CHAR_KIND:
+	case INT_KIND:
+	case FLOAT_KIND:
+	case PTR_KIND:
+	case FOREIGN_PTR_KIND:
+	case ABSTRACT_KIND:
+	    curry_panic("copy_graph: atomic object (kind %d) has been copied\n",
+			node_kind(node));
 
-	case INDIR_TAG:
+	case INDIR_KIND:
 	    ASSERT(node->n.spc && is_forwarded(node->n.spc));
-	case VARIABLE_TAG:
-	case SUSPEND_TAG:
-	case QUEUEME_TAG:
+	case LVAR_KIND:
+	case SUSPEND_KIND:
+	case QUEUEME_KIND:
 	    if ( node->s.spc && is_forwarded(node->s.spc) )
 		node->s.spc = (SearchSpace *)get_forward(node->s.spc);
 	    else
@@ -757,14 +757,14 @@ copy_graph(Node *graph, SearchSpace *space)
 		node->s.args[i] = copy_node(node->s.args[i], space);
 	    break;
 
-	case SEARCH_CONT_TAG:
+	case SEARCH_CONT_KIND:
 	    node->sc.spc  = copy_search_space(node->sc.spc, space);
 	    node->sc.susp = copy_node(node->sc.susp, space);
 	    node->sc.var  = copy_node(node->sc.var, space);
 	    node->sc.rq	  = (ThreadQueue)copy_node((Node *)node->sc.rq, space);
 	    break;
 
-	case THREAD_TAG:
+	case THREAD_KIND:
 	    tq = (ThreadQueue)node;
 	    if ( tq->t.id )
 	    {
@@ -779,7 +779,7 @@ copy_graph(Node *graph, SearchSpace *space)
 	    }
 	    break;
 
-	case SCRIPT_TAG:
+	case SCRIPT_KIND:
 	    script = (Script *)node;
 	    n	   = vector_argc(script) / wordsof(ScriptRec);
 	    for ( i = 0; i < n; i++ )
@@ -793,21 +793,22 @@ copy_graph(Node *graph, SearchSpace *space)
 	    }
 	    break;
 
-	case VECTOR_TAG:
+	case VECTOR_KIND:
 	    n = vector_argc(node);
 	    for ( i = 0; i < n; i++ )
 		node->a.args[i] = copy_node(node->a.args[i], space);
 	    break;
 
-	default:
-	    assert(is_capp_node(node));
-	    /* FALL THROUGH*/
-	case PAPP_TAG:
-	case FAPP_TAG:
+	case CAPP_KIND:
+	case PAPP_KIND:
+	case FAPP_KIND:
 	    n = closure_argc(node);
 	    for ( i = 0; i < n; i++ )
 		node->c.args[i] = copy_node(node->c.args[i], space);
 	    break;
+
+	default:
+	    invalid_arg("copy_graph", node_kind(node));
 	}
     }
     assert(scan == (Node **)alloc);

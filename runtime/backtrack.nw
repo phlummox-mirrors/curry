@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: backtrack.nw 1815 2005-11-06 12:00:19Z wlux $
+% $Id: backtrack.nw 1865 2006-03-01 22:30:38Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -279,7 +279,7 @@ eval_apply(NodeInfo *goal_info, const char *fv_names[])
 
     for ( n = 0, fv = fv_names; *fv; n++, fv++ )
 	;
-    assert(goal_info->tag == FAPP_TAG &&
+    assert(goal_info->kind == FAPP_KIND &&
 	   goal_info->length == closure_node_size(n + 1));
 
     CHECK_HEAP(closure_node_size(n + 1) + (n + 1) * variable_node_size);
