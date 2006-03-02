@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: CurryPP.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -71,6 +71,23 @@ Declarations
 >   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 > ppTopDecl (BlockDecl d) = ppDecl d
 
+> ppTypeDeclLhs :: String -> Ident -> [Ident] -> Doc
+> ppTypeDeclLhs kw tc tvs = text kw <+> ppIdent tc <+> hsep (map ppIdent tvs)
+
+> ppConstr :: ConstrDecl -> Doc
+> ppConstr (ConstrDecl _ tvs c tys) =
+>   sep [ppExistVars tvs,ppIdent c <+> fsep (map (ppTypeExpr 2) tys)]
+> ppConstr (ConOpDecl _ tvs ty1 op ty2) =
+>   sep [ppExistVars tvs,ppTypeExpr 1 ty1,ppInfixOp op <+> ppTypeExpr 1 ty2]
+
+> ppExistVars :: [Ident] -> Doc
+> ppExistVars tvs
+>   | null tvs = empty
+>   | otherwise = text "forall" <+> hsep (map ppIdent tvs) <+> char '.'
+
+> ppNewConstr :: NewConstrDecl -> Doc
+> ppNewConstr (NewConstrDecl _ c ty) = ppIdent c <+> ppTypeExpr 2 ty
+
 > ppBlock :: [Decl] -> Doc
 > ppBlock = vcat . map ppDecl
 
@@ -102,24 +119,6 @@ Declarations
 >         ppAssoc InfixR = text "infixr"
 >         ppAssoc Infix = text "infix"
 >         ppPrio p = if p < 0 then empty else int p
-
-> ppTypeDeclLhs :: String -> Ident -> [Ident] -> Doc
-> ppTypeDeclLhs kw tc tvs = text kw <+> ppIdent tc <+> hsep (map ppIdent tvs)
-
-> ppConstr :: ConstrDecl -> Doc
-> ppConstr (ConstrDecl _ tvs c tys) =
->   sep [ppExistVars tvs,ppIdent c <+> fsep (map (ppTypeExpr 2) tys)]
-> ppConstr (ConOpDecl _ tvs ty1 op ty2) =
->   sep [ppExistVars tvs,ppTypeExpr 1 ty1,ppInfixOp op <+> ppTypeExpr 1 ty2]
-
-> ppNewConstr :: NewConstrDecl -> Doc
-> ppNewConstr (NewConstrDecl _ tvs c ty) =
->   sep [ppExistVars tvs,ppIdent c <+> ppTypeExpr 2 ty]
-
-> ppExistVars :: [Ident] -> Doc
-> ppExistVars tvs
->   | null tvs = empty
->   | otherwise = text "forall" <+> hsep (map ppIdent tvs) <+> char '.'
 
 > ppEquation :: Equation -> Doc
 > ppEquation (Equation _ lhs rhs) = ppRule (ppLhs lhs) equals rhs

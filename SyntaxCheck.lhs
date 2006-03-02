@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: SyntaxCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -523,7 +523,7 @@ Auxiliary definitions.
 > constrs (DataDecl _ _ _ cs) = map constr cs
 >   where constr (ConstrDecl p _ c _) = P p c
 >         constr (ConOpDecl p _ _ op _) = P p op
-> constrs (NewtypeDecl _ _ _ (NewConstrDecl p _ c _)) = [P p c]
+> constrs (NewtypeDecl _ _ _ (NewConstrDecl p c _)) = [P p c]
 > constrs (TypeDecl _ _ _ _) = []
 > constrs (BlockDecl _) = []
 

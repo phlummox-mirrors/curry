@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: IntfSyntaxCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -95,11 +95,8 @@ during syntax checking of type expressions.
 
 > checkNewConstrDecl :: TypeEnv -> [Ident] -> NewConstrDecl
 >                    -> Error NewConstrDecl
-> checkNewConstrDecl env tvs (NewConstrDecl p evs c ty) =
->   do
->     checkTypeLhs env p evs
->     liftM (NewConstrDecl p evs c) (checkClosedType env p tvs' ty)
->   where tvs' = evs ++ tvs
+> checkNewConstrDecl env tvs (NewConstrDecl p c ty) =
+>   liftM (NewConstrDecl p c) (checkClosedType env p tvs ty)
 
 > checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr
 >                 -> Error TypeExpr

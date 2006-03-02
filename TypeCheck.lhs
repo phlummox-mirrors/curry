@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1792 2005-10-09 22:48:18Z wlux $
+% $Id: TypeCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -95,7 +95,7 @@ types and also because the name of the type could be ambiguous.
 >           bindConstr DataConstructor m tcEnv tvs op [ty1,ty2] ty0
 > bindConstrs m tcEnv (NewtypeDecl _ tc tvs nc) tyEnv = bind nc tyEnv
 >   where ty0 = constrType m tc tvs
->         bind (NewConstrDecl _ _ c ty) =
+>         bind (NewConstrDecl _ c ty) =
 >           bindConstr NewtypeConstructor m tcEnv tvs c [ty] ty0
 > bindConstrs _ _ (TypeDecl _ _ _ _) tyEnv = tyEnv
 > bindConstrs _ _ (BlockDecl _) tyEnv = tyEnv

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 1789 2005-10-08 17:17:49Z wlux $
+% $Id: KindCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -67,7 +67,7 @@ function in any particular order.
 > bindTC :: ModuleIdent -> TCEnv -> TopDecl -> TCEnv -> TCEnv
 > bindTC m tcEnv (DataDecl _ tc tvs cs) =
 >   globalBindTopEnv m tc (typeCon DataType m tc tvs (map (Just . constr) cs))
-> bindTC m tcEnv (NewtypeDecl _ tc tvs (NewConstrDecl _ _ c _)) =
+> bindTC m tcEnv (NewtypeDecl _ tc tvs (NewConstrDecl _ c _)) =
 >   globalBindTopEnv m tc (typeCon RenamingType m tc tvs c)
 > bindTC m tcEnv (TypeDecl _ tc tvs ty) =
 >   globalBindTopEnv m tc
@@ -126,7 +126,7 @@ Kind checking is applied to all type expressions in the program.
 >   checkType tcEnv p ty1 >> checkType tcEnv p ty2
 
 > checkNewConstrDecl :: TCEnv -> NewConstrDecl -> Error ()
-> checkNewConstrDecl tcEnv (NewConstrDecl p _ _ ty) = checkType tcEnv p ty
+> checkNewConstrDecl tcEnv (NewConstrDecl p _ ty) = checkType tcEnv p ty
 
 > checkEquation :: TCEnv -> Equation -> Error ()
 > checkEquation tcEnv (Equation _ _ rhs) = checkRhs tcEnv rhs

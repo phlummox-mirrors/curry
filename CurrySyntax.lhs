@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: CurrySyntax.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -61,9 +61,7 @@ parsed representation of a Curry program.
 >     ConstrDecl Position [Ident] Ident [TypeExpr]
 >   | ConOpDecl Position [Ident] TypeExpr Ident TypeExpr
 >   deriving (Eq,Show)
-> data NewConstrDecl =
->   NewConstrDecl Position [Ident] Ident TypeExpr
->   deriving (Eq,Show)
+> data NewConstrDecl = NewConstrDecl Position Ident TypeExpr deriving (Eq,Show)
 
 > data Decl =
 >     InfixDecl Position Infix Int [Ident]
@@ -86,7 +84,7 @@ parsed representation of a Curry program.
 > constr (ConOpDecl _ _ _ op _) = op
 
 > nconstr :: NewConstrDecl -> Ident
-> nconstr (NewConstrDecl _ _ c _) = c
+> nconstr (NewConstrDecl _ c _) = c
 
 \end{verbatim}
 \paragraph{Module interfaces}

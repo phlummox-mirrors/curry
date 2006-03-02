@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfEquiv.lhs 1785 2005-10-07 11:13:16Z wlux $
+% $Id: IntfEquiv.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -72,8 +72,7 @@ inadvertently mix up these cases.
 >   _ =~= _ = False
 
 > instance IntfEquiv NewConstrDecl where
->   NewConstrDecl _ evs1 c1 ty1 =~= NewConstrDecl _ evs2 c2 ty2 =
->     c1 == c2 && evs1 == evs2 && ty1 == ty2
+>   NewConstrDecl _ c1 ty1 =~= NewConstrDecl _ c2 ty2 = c1 == c2 && ty1 == ty2
 
 \end{verbatim}
 If we check for a change in the interface, we do not need to check the
@@ -109,7 +108,7 @@ by function \texttt{fixInterface} and the associated type class
 >     ConOpDecl p evs (fix tcs ty1) op (fix tcs ty2)
 
 > instance FixInterface NewConstrDecl where
->   fix tcs (NewConstrDecl p evs c ty) = NewConstrDecl p evs c (fix tcs ty)
+>   fix tcs (NewConstrDecl p c ty) = NewConstrDecl p c (fix tcs ty)
 
 > instance FixInterface TypeExpr where
 >   fix tcs (ConstructorType tc tys)

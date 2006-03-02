@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1790 2005-10-09 16:48:16Z wlux $
+% $Id: IntfCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -117,11 +117,11 @@ interface module only. However, this has not been implemented yet.
 
 > checkNewConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
 >                      -> NewConstrDecl -> Error ()
-> checkNewConstrImport m tyEnv tc tvs (NewConstrDecl p evs c ty) =
+> checkNewConstrImport m tyEnv tc tvs (NewConstrDecl p c ty) =
 >   checkValueInfo "newtype constructor" checkNewConstr tyEnv p qc
 >   where qc = qualifyLike tc c
 >         checkNewConstr (NewtypeConstructor c' (ForAll n' ty')) =
->           qc == c' && length (tvs ++ evs) == n' &&
+>           qc == c' && length tvs == n' &&
 >           toType m tvs ty == head (arrowArgs ty')
 >         checkNewConstr _ = False
 

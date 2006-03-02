@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ImportSyntaxCheck.lhs 1781 2005-10-03 20:26:58Z wlux $
+% $Id: ImportSyntaxCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -55,8 +55,7 @@ declarations.
 > bindConstr tc (ConOpDecl _ _ _ op _) = bindEnv op (Constr (qualifyLike tc op))
 
 > bindNewConstr :: QualIdent -> NewConstrDecl -> ExpFunEnv -> ExpFunEnv
-> bindNewConstr tc (NewConstrDecl _ _ c _) =
->   bindEnv c (Constr (qualifyLike tc c))
+> bindNewConstr tc (NewConstrDecl _ c _) = bindEnv c (Constr (qualifyLike tc c))
 
 > bindUnqual :: QualIdent -> a -> Env Ident a -> Env Ident a
 > bindUnqual x = bindEnv (unqualify x)

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: CurryParser.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -149,7 +149,9 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > constrDecl :: Parser Token ConstrDecl a
 > constrDecl = position <**> (existVars <**> constr)
->   where constr = conId <**> identDecl
+>   where {- existVars = token Id_forall <-*> many1 tyvar <*-> dot `opt` [] -}
+>         existVars = succeed []
+>         constr = conId <**> identDecl
 >              <|> leftParen <-*> parenDecl
 >              <|> type1 <\> conId <\> leftParen <**> opDecl
 >         identDecl = many type2 <**> (conType <$> opDecl `opt` conDecl)
@@ -161,11 +163,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >         conOpDecl op ty2 ty1 tvs p = ConOpDecl p tvs ty1 op ty2
 
 > newConstrDecl :: Parser Token NewConstrDecl a
-> newConstrDecl = NewConstrDecl <$> position <*> existVars <*> con <*> type2
-
-> existVars :: Parser Token [Ident] a
-> {- existVars = token Id_forall <-*> many1 tyvar <*-> dot `opt` [] -}
-> existVars = succeed []
+> newConstrDecl = NewConstrDecl <$> position <*> con <*> type2
 
 > infixDecl :: Parser Token Decl a
 > infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma

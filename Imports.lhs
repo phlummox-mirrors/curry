@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1790 2005-10-09 16:48:16Z wlux $
+% $Id: Imports.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -129,7 +129,7 @@ following functions.
 
 > newConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> NewConstrDecl
 >           -> I ValueInfo
-> newConstr m tc tvs ty0 (NewConstrDecl _ _ c ty1) =
+> newConstr m tc tvs ty0 (NewConstrDecl _ c ty1) =
 >   (c,con NewtypeConstructor m tc tvs c (ArrowType ty1 ty0))
 
 > qual :: QualIdent -> a -> [I a] -> [I a]

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: Renaming.lhs 1867 2006-03-02 18:35:01Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -140,12 +140,8 @@ syntax tree and renames all type and expression variables.
 >     return (ConOpDecl p evs' ty1' op ty2')
 
 > renameNewConstrDecl :: RenameEnv -> NewConstrDecl -> RenameState NewConstrDecl
-> renameNewConstrDecl env (NewConstrDecl p evs c ty) =
->   do
->     env' <- bindVars env evs
->     evs' <- mapM (renameVar env') evs
->     ty' <- renameType env' ty
->     return (NewConstrDecl p evs' c ty')
+> renameNewConstrDecl env (NewConstrDecl p c ty) =
+>   liftM (NewConstrDecl p c) (renameType env ty)
 
 > renameTypeSig :: TypeExpr -> RenameState TypeExpr
 > renameTypeSig ty =
