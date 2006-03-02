@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1866 2006-03-02 17:34:02Z wlux $
+% $Id: CGen.lhs 1868 2006-03-02 23:28:17Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -171,33 +171,38 @@ is used for building archive files from the standard library.
 \end{verbatim}
 \subsection{Data Types and Constants}
 For every data type, the compiler defines an enumeration that assigns
-tag numbers to its data constructors and also defines node info
-structures for every data constructor. The \verb|enum| declarations
-are not strictly necessary, but simplify the code generator because it
-does not need to determine the tag value of a constructor when it is
-used. Furthermore, constant constructors and literal constants are
-preallocated. Note that character constants are allocated in a table
-defined by the runtime system. Integer constants need to be allocated
-only if they cannot be represented in $n-1$ bits where $n$ is the bit
-size of the target machine. The generated code uses the preprocessor
-macro \texttt{is\_large\_int} defined in the runtime system (see
-Sect.~\ref{sec:heap}) in order to determine whether allocation is
-necessary. Note that this macro will always return true if the system
-was configured with the \texttt{--disable-unboxed} configuration
-option.
+tag numbers to its data constructors. Normally, tags starting at zero
+are assigned from left to right to the constructors of each type.
+However, in order to distinguish constructors of existentially
+quantified types, those constructors are assigned negative tag values
+starting at $-1$. The \verb|enum| declarations are not strictly
+necessary, but simplify the code generator because it does not need to
+determine the tag value of a constructor when it is used.
+
+In addition to the tag enumerations, the compiler also defines node
+info structures for every data constructor and preallocates constant
+constructors and literal constants. Note that character constants are
+allocated in a table defined by the runtime system. Integer constants
+need to be allocated only if they cannot be represented in $n-1$ bits
+where $n$ is the bit size of the target machine. The generated code
+uses the preprocessor macro \texttt{is\_large\_int} defined in the
+runtime system (see Sect.~\ref{sec:heap}) in order to determine
+whether allocation is necessary. Note that this macro always returns
+true if the system was configured with the \texttt{--disable-unboxed}
+configuration option.
 \begin{verbatim}
 
 > genTypes :: [Decl] -> [(Name,[Name],[ConstrDecl])] -> [Stmt] -> [Expr]
 >          -> [CTopDecl]
 > genTypes impDs ds sts ns =
 >   -- imported data constructors
->   [tagDecl t cs | DataDecl t _ cs <- impDs, any (`conElem` usedTs) cs] ++
+>   [tagDecl t vs cs | DataDecl t vs cs <- impDs, any (`conElem` usedTs) cs] ++
 >   [dataDecl c | DataDecl _ _ cs <- impDs, c <- cs, c `conElem` usedCs] ++
 >   -- (private) tuple constructors
->   [tagDecl c [tupleConstr c n] | (c,n) <- nub (usedTts ++ usedTcs)] ++
+>   map (tupleTagDecl . fst) (nub (usedTts ++ usedTcs)) ++
 >   concatMap (dataDef CPrivate . uncurry tupleConstr) usedTcs ++
 >   -- local data declarations
->   [tagDecl t cs | (t,_,cs) <- ds] ++
+>   [tagDecl t vs cs | (t,vs,cs) <- ds] ++
 >   concat [dataDecl c : dataDef CPublic c | cs <- map thd3 ds, c <- cs] ++
 >   -- literal constants
 >   literals [c | Lit c <- ns]
@@ -215,10 +220,20 @@ option.
 > tupleConstr c n = ConstrDecl c (map TypeVar vs)
 >   where vs = [Name ('a' : show i) | i <- [1..n]]
 
-> tagDecl :: Name -> [ConstrDecl] -> CTopDecl
-> tagDecl _ cs =
+> tagDecl :: Name -> [Name] -> [ConstrDecl] -> CTopDecl
+> tagDecl _ vs cs =
 >   CEnumDecl [CConst (dataTag c) (Just n)
->             | (ConstrDecl c _,n) <- zip cs [0..], c /= Name "_"]
+>             | (ConstrDecl c _,n) <- zip cs tags, c /= Name "_"]
+>   where tags
+>           | any hasExistType cs = [-1,-2..]
+>           | otherwise = [0..]
+>         hasExistType (ConstrDecl _ tys) = any hasExistVar tys
+>         hasExistVar (TypeVar v) = v `notElem` vs
+>         hasExistVar (TypeApp _ tys) = any hasExistVar tys
+>         hasExistVar (TypeArr ty1 ty2) = hasExistVar ty1 || hasExistVar ty2
+
+> tupleTagDecl :: Name -> CTopDecl
+> tupleTagDecl c = CEnumDecl [CConst (dataTag c) (Just 0)]
 
 > dataDecl :: ConstrDecl -> CTopDecl
 > dataDecl (ConstrDecl c tys)

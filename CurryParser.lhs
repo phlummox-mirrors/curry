@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1867 2006-03-02 18:35:01Z wlux $
+% $Id: CurryParser.lhs 1868 2006-03-02 23:28:17Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -149,8 +149,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > constrDecl :: Parser Token ConstrDecl a
 > constrDecl = position <**> (existVars <**> constr)
->   where {- existVars = token Id_forall <-*> many1 tyvar <*-> dot `opt` [] -}
->         existVars = succeed []
+>   where existVars = token Id_forall <-*> many1 tyvar <*-> dot `opt` []
 >         constr = conId <**> identDecl
 >              <|> leftParen <-*> parenDecl
 >              <|> type1 <\> conId <\> leftParen <**> opDecl

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: disequal.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: disequal.nw 1868 2006-03-02 23:28:17Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -83,9 +83,7 @@ FUNCTION(___61__47__61__1)
 static
 FUNCTION(___61__47__61__2)
 {
-    boolean	 is_papp;
-    unsigned int n;
-    Node	 *arg1, *arg2, *arglist;
+    Node *arg1, *arg2;
  ENTRY_LABEL(___61__47__61__2)
     EVAL_FLEX_POLY(___61__47__61__2);
     arg1 = sp[1];
@@ -111,7 +109,8 @@ FUNCTION(___61__47__61__2)
     }
     else
     {
-	n = 0;
+	unsigned int n = 0;
+
 	if ( !eq_root(arg1, arg2, &n) )
 	{
 	    sp += 2;
@@ -119,9 +118,13 @@ FUNCTION(___61__47__61__2)
 	}
 	else if ( n > 0 )
 	{
-	    /* NB assign is_papp before calling eq_args because a
+	    boolean exist_type;
+	    Node    *arglist;
+
+	    /* NB assign exist_type before calling eq_args because a
 	     *    garbage collection in eq_args will invalidate arg1 */
-	    is_papp = is_papp_node(arg1);
+	    exist_type = is_papp_node(arg1)
+		|| (is_capp_node(arg1) && node_tag(arg1) < 0);
 	    arglist = nil;
 	    if ( !eq_args(arg1, arg2, n, &arglist) )
 	    {
@@ -132,7 +135,7 @@ FUNCTION(___61__47__61__2)
 	    if ( arglist != nil )
 	    {
 		*++sp = arglist;
-		GOTO(is_papp ? diseq_papp_args : diseq_args);
+		GOTO(exist_type ? diseq_papp_args : diseq_args);
 	    }
 	}
     }
@@ -293,12 +296,14 @@ FUNCTION(diseq_args_2)
 @ 
 As explained on p.~\pageref{unsafe-equality} in
 Sect.~\ref{unsafe-equality}, computing the equality of two partial
-applications is not type safe. In order to prevent ill-typed nodes
-from escaping the scope of a disequality constraint, we restrict
-disequality constraints between two partial applications to ground
-terms. This is implemented by applying the \texttt{(==)} primitive to
-each pair of arguments and checking that at least one of these
-applications reduces to \texttt{False}.
+applications and of two data constructors with existentially
+quantified types, respectively, is not type safe. In order to prevent
+ill-typed nodes from escaping the scope of a disequality constraint,
+we restrict disequality constraints between partial applications and
+between existentially quantified data constructors to ground terms.
+This is implemented by applying the \texttt{(==)} primitive to each
+pair of arguments and checking that at least one of these applications
+reduces to \texttt{False}.
 
 \ToDo{Using \texttt{(==)} and checking arguments sequentially is
 probably too restrictive. Provide a more general solution by defining

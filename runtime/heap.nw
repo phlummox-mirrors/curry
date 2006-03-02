@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: heap.nw 1868 2006-03-02 23:28:17Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -118,8 +118,12 @@ The meaning of the [[tag]] field depends on the node kind. For
 constructor applications, it is used to distinguish data constructors
 of the same type. For instance, the constructors of the type
 \texttt{data Num = Prec Num | Zero | Succ Num} are assigned tags 0
-(\verb|Prec|), 1 (\verb|Zero|), and 2 (\verb|Succ|), respectively. For
-partial application nodes, the [[tag]] field denotes the arity --
+(\verb|Prec|), 1 (\verb|Zero|), and 2 (\verb|Succ|),
+respectively. Usually, data constructor tags are positive
+numbers. However, data constructors of existentially quantified 
+types are assigned negative tags.
+
+For partial application nodes, the [[tag]] field denotes the arity --
 i.e., the number of missing arguments -- of the application. In
 principle, small integer numbers and character codes could be stored
 in the [[tag]] field of integer and character nodes, respectively.

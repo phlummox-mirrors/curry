@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: compare.nw 1868 2006-03-02 23:28:17Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -168,8 +168,16 @@ FUNCTION(__compare_2)
 	    assert(is_capp_node(arg2));
 	    x = (long)node_tag(arg1);
 	    y = (long)node_tag(arg2);
-	    if ( x == y )
+	    if ( x < 0 )
 	    {
+		assert(y < 0);
+		*++sp = from_string("compare applied to existentially "
+				    "quantified type");
+		GOTO(__prelude__error);
+	    }
+	    else if ( x == y )
+	    {
+		assert(y >= 0);
 		cmp = CONST(__prelude__EQ);
 		n   = closure_argc(arg1);
 		assert(closure_argc(arg2) == n);

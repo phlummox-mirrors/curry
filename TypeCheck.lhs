@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
+% $Id: TypeCheck.lhs 1868 2006-03-02 23:28:17Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeCheck.lhs}
@@ -61,7 +61,8 @@ declarations.
 
 > typeCheckGoal :: TCEnv -> ValueEnv -> Goal -> Error ValueEnv
 > typeCheckGoal tcEnv tyEnv (Goal p e ds) =
->    run (tcRhs emptyMIdent tcEnv (SimpleRhs p e ds) >>
+>    run (tcRhs emptyMIdent tcEnv (SimpleRhs p e ds) >>=
+>         checkSkolems p emptyMIdent (text "Goal:" <+> ppExpr 0 e) zeroSet >>
 >         liftSt fetchSt >>= \theta -> liftM (subst theta) fetchSt)
 >        tyEnv
 
@@ -168,12 +169,30 @@ by the user match the inferred types.
 > tcDeclLhs m tcEnv sigs (PatternDecl p t _) = tcConstrTerm m tcEnv sigs p t
 
 > tcDeclRhs :: ModuleIdent -> TCEnv -> Type -> Decl -> TcState ()
-> tcDeclRhs m tcEnv ty (FunctionDecl _ f eqs) = mapM_ (tcEqn m tcEnv ty) eqs
->   where tcEqn m tcEnv ty eq@(Equation p _ _) =
->           tcEquation m tcEnv eq >>=
->           unify p "function declaration" (ppEquation eq) m ty
+> tcDeclRhs m tcEnv ty (FunctionDecl _ f eqs) =
+>   do
+>     tyEnv0 <- fetchSt
+>     theta <- liftSt fetchSt
+>     mapM_ (tcEquation m tcEnv (fsEnv (subst theta tyEnv0)) ty) eqs
 > tcDeclRhs m tcEnv ty (PatternDecl p t rhs) =
 >   tcRhs m tcEnv rhs >>= unify p "pattern binding" (ppConstrTerm 0 t) m ty
+
+> tcEquation :: ModuleIdent -> TCEnv -> Set Int -> Type -> Equation
+>            -> TcState ()
+> tcEquation m tcEnv fs ty eq@(Equation p lhs rhs) =
+>   do
+>     tcEqn m tcEnv p ts rhs >>=
+>       unify p "function declaration" (ppEquation eq) m ty
+>     checkSkolems p m (text "Function:" <+> ppIdent f) fs ty
+>   where (f,ts) = flatLhs lhs
+
+> tcEqn :: ModuleIdent -> TCEnv -> Position -> [ConstrTerm] -> Rhs
+>       -> TcState Type
+> tcEqn m tcEnv p ts rhs =
+>   do
+>     tys <- mapM (tcConstrTerm m tcEnv noSigs p) ts
+>     ty <- tcRhs m tcEnv rhs
+>     return (foldr TypeArrow ty tys)
 
 \end{verbatim}
 Argument and result types of foreign functions using the
@@ -273,16 +292,6 @@ is checked in \texttt{tcVariable} below.
 >     Nothing -> updateSt_ (rebindFun m f sigma)
 >   where what = text "Function:" <+> ppIdent f
 > genDecl _ _ _ _ (PatternDecl _ _ _) = return ()
-
-> tcEquation :: ModuleIdent -> TCEnv -> Equation -> TcState Type
-> tcEquation m tcEnv (Equation p lhs rhs) =
->   do
->     tyEnv0 <- fetchSt
->     tys <- mapM (tcConstrTerm m tcEnv noSigs p) ts
->     ty <- tcRhs m tcEnv rhs
->     checkSkolems p m (text "Function:" <+> ppIdent f) tyEnv0
->                  (foldr TypeArrow ty tys)
->   where (f,ts) = flatLhs lhs
 
 > tcLiteral :: ModuleIdent -> Literal -> TcState Type
 > tcLiteral _ (Char _) = return charType
@@ -666,16 +675,13 @@ algorithm in~\cite{LauferOdersky94:AbstractTypes}, which checks for
 escaping skolems at every let binding, but is still sound.
 \begin{verbatim}
 
-> checkSkolems :: Position -> ModuleIdent -> Doc -> ValueEnv -> Type
->              -> TcState Type
-> checkSkolems p m what tyEnv ty =
+> checkSkolems :: Position -> ModuleIdent -> Doc -> Set Int -> Type
+>              -> TcState ()
+> checkSkolems p m what fs ty =
 >   do
->     theta <- liftSt fetchSt
->     let ty' = subst theta ty
->         fs = fsEnv (subst theta tyEnv)
+>     ty' <- liftM (flip subst ty) (liftSt fetchSt)
 >     unless (all (`elemSet` fs) (typeSkolems ty'))
 >            (errorAt p (skolemEscapingScope m what ty'))
->     return ty'
 
 \end{verbatim}
 \paragraph{Instantiation and Generalization}
