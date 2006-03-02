@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CamParser.lhs 1814 2005-11-05 22:34:48Z wlux $
+% $Id: CamParser.lhs 1866 2006-03-02 17:34:02Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -35,12 +35,12 @@ in appendix~\ref{sec:ll-parsecomb}.
 >   -- identifiers
 >     Ident | Keyword Keyword
 >   -- numbers
->   | NatNum | IntNum | FloatNum
+>   | IntNum | FloatNum
 >   -- strings
 >   | String
 >   -- symbols
->   | Slash | Equals | Colon | Comma | Semicolon
->   | Bar | Ampersand | Asterisk | LeftArrow
+>   | Equals | Colon | Comma | Semicolon
+>   | Bar | Ampersand | Asterisk | LeftArrow | RightArrow
 >   | LeftParen | RightParen | LeftBrace | RightBrace
 >   -- end-of-file
 >   | EOF
@@ -104,11 +104,9 @@ in appendix~\ref{sec:ll-parsecomb}.
 > instance Show Token where
 >   showsPrec _ (Token Ident a) = shows a
 >   showsPrec _ (Token (Keyword k) _) = showChar '`' . shows k . showChar '\''
->   showsPrec _ (Token NatNum a) = showString "natural " . shows a
 >   showsPrec _ (Token IntNum a) = showString "integer " . shows a
 >   showsPrec _ (Token FloatNum a) = showString "float " . shows a
 >   showsPrec _ (Token String a) = showString "string " . shows a
->   showsPrec _ (Token Slash _) = showString "`/'"
 >   showsPrec _ (Token Equals _) = showString "="
 >   showsPrec _ (Token Colon _) = showString "`:'"
 >   showsPrec _ (Token Comma _) = showString "`,'"
@@ -117,6 +115,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >   showsPrec _ (Token Ampersand _) = showString "`&'"
 >   showsPrec _ (Token Asterisk _) = showString "`*'"
 >   showsPrec _ (Token LeftArrow _) = showString "`<-'"
+>   showsPrec _ (Token RightArrow _) = showString "`->'"
 >   showsPrec _ (Token LeftParen _) = showString "`('"
 >   showsPrec _ (Token RightParen _) = showString "`)'"
 >   showsPrec _ (Token LeftBrace _) = showString "`{'"
@@ -204,8 +203,8 @@ in appendix~\ref{sec:ll-parsecomb}.
 >   | c == '-' =
 >       case cs of
 >         ('-':cs') -> lexer success fail p (dropWhile (/= '\n') cs')
+>         ('>':cs') -> token2 RightArrow cs'
 >         _ -> illegalChar
->   | c == '/' = token Slash
 >   | c == '=' = token Equals
 >   | c == ':' = token Colon
 >   | c == ',' = token Comma
@@ -256,10 +255,9 @@ in appendix~\ref{sec:ll-parsecomb}.
 >         ('.':cs'') -> lexFraction success fail (c:ds) (next p') cs''
 >         ('e':cs'') -> lexExponent success fail (c:ds) "" (next p') cs''
 >         ('E':cs'') -> lexExponent success fail (c:ds) "" (next p') cs''
->         _ -> success (intTok (cat c) (c:ds)) p' cs'
+>         _ -> success (intTok IntNum (c:ds)) p' cs'
 >   where (ds,cs' ) = span isDigit cs
 >         p' = incr p (1 + length ds)
->         cat c = if c `elem` "+-" then IntNum else NatNum
 
 > lexFraction :: (Token -> L a) -> FailL a -> String -> L a
 > lexFraction success fail ds p cs =
@@ -307,11 +305,15 @@ in appendix~\ref{sec:ll-parsecomb}.
 > importDecl = ImportDecl <$-> keyword KW_import <*> checkName
 
 > dataDecl :: Parser Token Decl a
-> dataDecl = DataDecl <$-> keyword KW_data <*> checkName
+> dataDecl = DataDecl <$-> keyword KW_data <*> checkName <*> (nameList `opt` [])
 >                     <*> (equals <-*> (constrDecl `sepBy1` bar) `opt` [])
 
 > constrDecl :: Parser Token ConstrDecl a
-> constrDecl = ConstrDecl <$> name <*-> checkSlash <*> checkNat
+> constrDecl = ConstrDecl <$> name <*> (parenList typ `opt` [])
+
+> typ, atyp :: Parser Token Type a
+> typ = atyp `chainr1` (TypeArr <$-> rightArrow)
+> atyp = name <**> (flip TypeApp <$> parenList typ `opt` TypeVar)
 
 > funcDecl :: Parser Token Decl a
 > funcDecl =
@@ -393,12 +395,8 @@ in appendix~\ref{sec:ll-parsecomb}.
 > keyword :: Keyword -> Parser Token Attributes a
 > keyword k = token (Keyword k)
 
-> nat,checkNat :: Parser Token Int a
-> nat = ival <$> token NatNum
-> checkNat = nat <?> "unsigned number expected"
-
 > int,checkInt :: Parser Token Int a
-> int = ival <$> (token NatNum <|> token IntNum)
+> int = ival <$> token IntNum
 > checkInt = int <?> "integer number expected"
 
 > float,checkFloat :: Parser Token Double a
@@ -418,10 +416,6 @@ in appendix~\ref{sec:ll-parsecomb}.
 > token :: Category -> Parser Token Attributes a
 > token c = attr <$> symbol (Token c NoAttributes)
 >   where attr (Token _ a) = a
-
-> slash, checkSlash :: Parser Token Attributes a
-> slash = token Slash
-> checkSlash = slash <?> "/ expected"
 
 > equals, checkEquals :: Parser Token Attributes a
 > equals = token Equals
@@ -451,6 +445,9 @@ in appendix~\ref{sec:ll-parsecomb}.
 > leftArrow, checkLeftArrow :: Parser Token Attributes a
 > leftArrow = token LeftArrow
 > checkLeftArrow = leftArrow <?> "<- expected"
+
+> rightArrow :: Parser Token Attributes a
+> rightArrow = token RightArrow
 
 > leftParen, rightParen :: Parser Token Attributes a
 > leftParen = token LeftParen

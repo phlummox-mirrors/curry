@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Cam.lhs 1814 2005-11-05 22:34:48Z wlux $
+% $Id: Cam.lhs 1866 2006-03-02 17:34:02Z wlux $
 %
-% Copyright (c) 1998-2005, Wolfgang Lux
+% Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Cam.lhs}
@@ -14,24 +14,30 @@ This section describes the instruction set of the abstract machine.
 
 \end{verbatim}
 An abstract machine code module consists of a list of import, data,
-and function declarations. A data declaration names the constructors
-of a data type together with their arity. A function declaration
-comprises the function's name, arguments, and code.
+and function declarations. A data declaration defines the constructors
+of a data type together with their argument types. A function
+declaration comprises the function's name, arguments, and code.
 \begin{verbatim}
 
 > type Module = [Decl]
 > data Decl =
 >     ImportDecl Name
->   | DataDecl Name [ConstrDecl]
+>   | DataDecl Name [Name] [ConstrDecl]
 >   | FunctionDecl Name [Name] Stmt
 >   deriving (Eq,Show)
-> data ConstrDecl = ConstrDecl Name Int deriving (Eq,Show)
+> data ConstrDecl = ConstrDecl Name [Type] deriving (Eq,Show)
+> data Type =
+>     TypeVar Name
+>   | TypeApp Name [Type]
+>   | TypeArr Type Type
+>   deriving (Eq,Show)
 
-> splitCam :: Module -> ([Name],[(Name,[ConstrDecl])],[(Name,[Name],Stmt)])
+> splitCam :: Module
+>          -> ([Name],[(Name,[Name],[ConstrDecl])],[(Name,[Name],Stmt)])
 > splitCam = foldr split ([],[],[])
 >   where split (ImportDecl m) ~(ms,ds,fs) = (m:ms,ds,fs)
->         split (DataDecl t cs) ~(ms,ds,fs) = (ms,(t,cs):ds,fs)
->         split (FunctionDecl f n is) ~(ms,dss,fs) = (ms,dss,(f,n,is):fs)
+>         split (DataDecl t vs cs) ~(ms,ds,fs) = (ms,(t,vs,cs):ds,fs)
+>         split (FunctionDecl f vs is) ~(ms,dss,fs) = (ms,dss,(f,vs,is):fs)
 
 \end{verbatim}
 \subsection{Instruction Set}

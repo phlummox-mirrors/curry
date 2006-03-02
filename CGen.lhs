@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1865 2006-03-01 22:30:38Z wlux $
+% $Id: CGen.lhs 1866 2006-03-02 17:34:02Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -132,10 +132,9 @@ function because there is not much chance for them to be shared.
 > linStmts' (Switch rf x cs) sts = foldr linStmts sts [st | Case _ st <- cs]
 > linStmts' (Choices sts) sts' = foldr linStmts sts' sts
 
-> switchTags :: [Stmt] -> [ConstrDecl]
+> switchTags :: [Stmt] -> [(Name,Int)]
 > switchTags sts =
->   [ConstrDecl c (length vs) | Switch _ _ cs <- sts,
->                               Case (ConstrCase c vs) _ <- cs]
+>   [(c,length vs) | Switch _ _ cs <- sts,  Case (ConstrCase c vs) _ <- cs]
 
 > nodes :: [Stmt] -> [Expr]
 > nodes sts = [n | Return n <- sts]
@@ -163,11 +162,11 @@ is used for building archive files from the standard library.
 
 > genSplitModule :: [Decl] -> Module -> [CFile]
 > genSplitModule impDs cam =
->   [genModule ms' [DataDecl t cs] | DataDecl t cs <- ds', not (null cs)] ++
+>   [genModule ms' [DataDecl t vs cs] | (t,vs,cs) <- ds, not (null cs)] ++
 >   [genModule (impDs ++ ds') [FunctionDecl f vs st] | (f,vs,st) <- fs]
 >   where (ms,ds,fs) = splitCam cam
 >         ms' = map ImportDecl ms
->         ds' = map (uncurry DataDecl) ds
+>         ds' = map (uncurry3 DataDecl) ds
 
 \end{verbatim}
 \subsection{Data Types and Constants}
@@ -188,25 +187,33 @@ was configured with the \texttt{--disable-unboxed} configuration
 option.
 \begin{verbatim}
 
-> genTypes :: [Decl] -> [(Name,[ConstrDecl])] -> [Stmt] -> [Expr] -> [CTopDecl]
+> genTypes :: [Decl] -> [(Name,[Name],[ConstrDecl])] -> [Stmt] -> [Expr]
+>          -> [CTopDecl]
 > genTypes impDs ds sts ns =
 >   -- imported data constructors
->   [tagDecl t cs | DataDecl t cs <- impDs, any (`elem` usedTs) cs] ++
->   [dataDecl c | DataDecl t cs <- impDs, c <- cs, c `elem` usedCs] ++
+>   [tagDecl t cs | DataDecl t _ cs <- impDs, any (`conElem` usedTs) cs] ++
+>   [dataDecl c | DataDecl _ _ cs <- impDs, c <- cs, c `conElem` usedCs] ++
 >   -- (private) tuple constructors
->   [tagDecl c [ConstrDecl c n] | ConstrDecl c n <- nub (usedTts ++ usedTcs)] ++
->   concatMap (dataDef CPrivate) usedTcs ++
+>   [tagDecl c [tupleConstr c n] | (c,n) <- nub (usedTts ++ usedTcs)] ++
+>   concatMap (dataDef CPrivate . uncurry tupleConstr) usedTcs ++
 >   -- local data declarations
->   [tagDecl t cs | (t,cs) <- ds] ++
->   concat [dataDecl c : dataDef CPublic c | (_,cs) <- ds, c <- cs] ++
+>   [tagDecl t cs | (t,_,cs) <- ds] ++
+>   concat [dataDecl c : dataDef CPublic c | cs <- map thd3 ds, c <- cs] ++
 >   -- literal constants
 >   literals [c | Lit c <- ns]
->   where constrs = [ConstrDecl c (length vs) | Constr c vs <- ns]
->         (usedTts,usedTs) = partition isTupleConstr (nub (switchTags sts))
->         (usedTcs',usedCs) = partition isTupleConstr (nub constrs)
+>   where constrs = [(c,length vs) | Constr c vs <- ns]
+>         (usedTts,usedTs) = partition (isTuple . fst) (nub (switchTags sts))
+>         (usedTcs',usedCs) = partition (isTuple . fst) (nub constrs)
 >         usedTcs = nub (usedTcs' ++ usedTfs)
->         usedTfs = [ConstrDecl f (tupleArity f) | Papp f _ <- ns, isTuple f]
->         isTupleConstr (ConstrDecl c _) = isTuple c
+>         usedTfs = [(f,tupleArity f) | Papp f _ <- ns, isTuple f]
+>         conElem c = (constr c `elem`)
+
+> constr :: ConstrDecl -> (Name,Int)
+> constr (ConstrDecl c tys) = (c,length tys)
+
+> tupleConstr :: Name -> Int -> ConstrDecl
+> tupleConstr c n = ConstrDecl c (map TypeVar vs)
+>   where vs = [Name ('a' : show i) | i <- [1..n]]
 
 > tagDecl :: Name -> [ConstrDecl] -> CTopDecl
 > tagDecl _ cs =
@@ -214,20 +221,20 @@ option.
 >             | (ConstrDecl c _,n) <- zip cs [0..], c /= Name "_"]
 
 > dataDecl :: ConstrDecl -> CTopDecl
-> dataDecl (ConstrDecl c n)
->   | n == 0 = CExternVarDecl nodeInfoConstPtrType (constNode c)
+> dataDecl (ConstrDecl c tys)
+>   | null tys = CExternVarDecl nodeInfoConstPtrType (constNode c)
 >   | otherwise = CExternVarDecl nodeInfoType (nodeInfo c)
 
 > dataDef :: CVisibility -> ConstrDecl -> [CTopDecl]
-> dataDef vb (ConstrDecl c n)
->   | n == 0 =
+> dataDef vb (ConstrDecl c tys)
+>   | null tys =
 >       [CVarDef CPrivate nodeInfoType (nodeInfo c) nodeinfo,
 >        CVarDef vb nodeInfoConstPtrType (constNode c)
 >                (CInit (CAddr (CExpr (nodeInfo c))))]
 >   | otherwise = [CVarDef vb nodeInfoType (nodeInfo c) nodeinfo]
 >   where nodeinfo = CStruct (map CInit nodeinfo')
 >         nodeinfo' =
->           [CExpr "CAPP_KIND",CExpr (dataTag c),closureNodeSize n,
+>           [CExpr "CAPP_KIND",CExpr (dataTag c),closureNodeSize (length tys),
 >            gcPointerTable,CString name,CExpr "eval_whnf",noEntry,
 >            notFinalized]
 >         name = snd $ splitQualified $ demangle c
@@ -275,7 +282,7 @@ those functions \texttt{@}$_n$, which are used in the current module,
 is generated.
 \begin{verbatim}
 
-> genFunctions :: [(Name,[ConstrDecl])] -> [(Name,[Name],Stmt)]
+> genFunctions :: [(Name,[Name],[ConstrDecl])] -> [(Name,[Name],Stmt)]
 >              -> [Stmt] -> [Expr] -> [CTopDecl]
 > genFunctions ds fs sts ns =
 >   -- imported functions
@@ -329,7 +336,7 @@ is generated.
 >           partition isTuple
 >                     (nub ([f | Papp f [] <- ns] ++ [f | Closure f [] <- ns]))
 >         maxApArity = maximum (0 : map apArity (apCall ++ apClos ++ apLazy))
->         cs = [(c,n) | ConstrDecl c n <- concatMap snd ds]
+>         cs = [constr c | c <- concatMap thd3 ds]
 >         fs' = [(f,n) | (f,vs,_) <- fs, let n = length vs, (f,n) `notElem` cs]
 >         closArities = nub (filter (> 2) (map apArity apClos) ++ arities)
 >         lazyArities = nub (filter (> 2) (map apArity apLazy) ++ arities)

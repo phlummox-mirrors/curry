@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CamPP.lhs 1814 2005-11-05 22:34:48Z wlux $
+% $Id: CamPP.lhs 1866 2006-03-02 17:34:02Z wlux $
 %
-% Copyright (c) 2002-2005, Wolfgang Lux
+% Copyright (c) 2002-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \subsection{Pretty-printing Abstract Machine Code}
@@ -21,12 +21,20 @@
 
 > ppDecl :: Decl -> Doc
 > ppDecl (ImportDecl m) = ppKW "import" <+> ppName m
-> ppDecl (DataDecl t cs) =
->   ppKW "data" <+> ppName t
+> ppDecl (DataDecl tc vs cs) =
+>   ppKW "data" <+> ppName tc <> (if null vs then empty else ppNames vs)
 >               <+> sep (zipWith (<+>) (equals : repeat bar) (map ppConstr cs))
->   where ppConstr (ConstrDecl c n) = ppName c <> char '/' <> int n
 > ppDecl (FunctionDecl f vs st) =
 >   ppCode (ppKW "function" <+> ppName f <> ppNames vs) st
+
+> ppConstr :: ConstrDecl -> Doc
+> ppConstr (ConstrDecl c tys) =
+>   ppName c <> if null tys then empty else ppList ppType tys
+
+> ppType :: Type -> Doc
+> ppType (TypeVar v) = ppName v
+> ppType (TypeApp tc tys) = ppName tc <> ppList ppType tys
+> ppType (TypeArr ty1 ty2) = ppType ty1 <+> text "->" <+> ppType ty2
 
 > ppCode :: Doc -> Stmt -> Doc
 > ppCode prefix = ppBlock prefix . ppStmt

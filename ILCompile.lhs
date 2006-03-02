@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 1817 2005-11-06 23:42:07Z wlux $
+% $Id: ILCompile.lhs 1866 2006-03-02 17:34:02Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILCompile.lhs}
@@ -31,21 +31,27 @@ language into abstract machine code.
 >   where compileImport = Cam.ImportDecl . Cam.mangle . moduleName
 
 > camCompileData :: [Decl] -> [Cam.Decl]
-> camCompileData ds = [compileData tc cs | DataDecl tc _ cs <- ds]
+> camCompileData ds = [compileData tc n cs | DataDecl tc n cs <- ds]
 
 > compileDecl :: Decl -> [Cam.Decl]
-> compileDecl (DataDecl tc _ cs) = [compileData tc cs]
+> compileDecl (DataDecl tc n cs) = [compileData tc n cs]
 > compileDecl (TypeDecl _ _ _) = []
 > compileDecl (FunctionDecl f vs _ e) = [compileFun f vs e]
 > compileDecl (ForeignDecl f cc ie ty) = compileForeign f cc ie ty
 
-> compileData :: QualIdent -> [ConstrDecl] -> Cam.Decl
-> compileData tc cs = Cam.DataDecl (con tc) (map compileConstr cs)
+> compileData :: QualIdent -> Int -> [ConstrDecl] -> Cam.Decl
+> compileData tc n cs =
+>   Cam.DataDecl (con tc) (take n vs) (map (compileConstr vs) cs)
+>   where vs = nameSupply "_"
 
-> compileConstr :: ConstrDecl -> Cam.ConstrDecl
-> compileConstr (ConstrDecl c tys)
->   | c == hidden = Cam.ConstrDecl hiddenCon 0
->   | otherwise = Cam.ConstrDecl (con c) (length tys)
+> compileConstr :: [Cam.Name] -> ConstrDecl -> Cam.ConstrDecl
+> compileConstr vs (ConstrDecl c tys) = Cam.ConstrDecl c' (map compileType tys)
+>   where c' = if c == hidden then hiddenCon else con c
+>         compileType (TypeConstructor tc tys) =
+>           Cam.TypeApp (con tc) (map compileType tys)
+>         compileType (TypeVariable n) = Cam.TypeVar (vs !! n)
+>         compileType (TypeArrow ty1 ty2) =
+>           Cam.TypeArr (compileType ty1) (compileType ty2)
 
 > compileFun :: QualIdent -> [Ident] -> Expression -> Cam.Decl
 > compileFun f vs e =

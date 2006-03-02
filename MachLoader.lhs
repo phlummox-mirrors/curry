@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachLoader.lhs 1824 2005-11-08 12:45:30Z wlux $
+% $Id: MachLoader.lhs 1866 2006-03-02 17:34:02Z wlux $
 %
 % Copyright (c) 1998-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -40,8 +40,8 @@ to the functions.
 >         fEnv' = foldr bindConstrFun fEnv cs
 >         fEnv'' = translate instrumentOpt cEnv' fEnv' fs
 
-> constrs :: (Name,[ConstrDecl]) -> [(ConstrDecl,Int)]
-> constrs (_,ds) = zip ds [0..]
+> constrs :: (Name,[Name],[ConstrDecl]) -> [(ConstrDecl,Int)]
+> constrs (_,_,cs) = zip cs [0..]
 
 > function :: String -> FunEnv -> Maybe Function
 > function = lookupEnv
@@ -211,8 +211,8 @@ names to node tags and function names to function triples.
 >   where bindTag (ConstructorTag t c n) = bindEnv c (ConstructorTag t c n)
 
 > bindConstr :: (ConstrDecl,Int) -> ConstrEnv -> ConstrEnv
-> bindConstr (ConstrDecl c n,t) =
->   bindEnv c' (ConstructorTag t (snd $ splitQualified $ c') n)
+> bindConstr (ConstrDecl c tys,t) =
+>   bindEnv c' (ConstructorTag t (snd $ splitQualified $ c') (length tys))
 >   where c' = demangle c
 
 > lookupConstr :: Name -> ConstrEnv -> NodeTag
@@ -263,7 +263,8 @@ names to node tags and function names to function triples.
 >   where f' = demangle f
 
 > bindConstrFun :: (ConstrDecl,Int) -> FunEnv -> FunEnv
-> bindConstrFun (ConstrDecl c n,t) = bindEnv c' (constrFunction t c' n)
+> bindConstrFun (ConstrDecl c tys,t) =
+>   bindEnv c' (constrFunction t c' (length tys))
 >   where c' = demangle c
 
 > lookupFun :: Name -> FunEnv -> Function
