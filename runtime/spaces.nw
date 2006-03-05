@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: spaces.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2003-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -578,6 +578,16 @@ copy_node(Node *node, SearchSpace *space)
 		do_copy = false;
 		break;
 
+	    case LVAR_KIND:
+		do_copy = !space || (node->v.spc && is_forwarded(node->v.spc));
+		break;
+
+	    case LAZY_KIND:
+		do_copy = node_tag(node) == NOUPD_TAG
+		    || !space
+		    || (node->s.spc && is_forwarded(node->s.spc));
+		break;
+
 	    case INDIR_KIND:
 		if ( node->n.spc && is_forwarded(node->n.spc)
 		     && space && node->n.spc->root != space->root )
@@ -587,12 +597,6 @@ copy_node(Node *node, SearchSpace *space)
 		}
 		node = node->n.node;
 		continue;
-
-	    case LVAR_KIND:
-	    case SUSPEND_KIND:
-	    case QUEUEME_KIND:
-		do_copy = !space || (node->s.spc && is_forwarded(node->s.spc));
-		break;
 
 	    case SEARCH_CONT_KIND:
 		/* FIXME: non-local continuations need not be copied */
@@ -735,33 +739,56 @@ copy_graph(Node *graph, SearchSpace *space)
 
 	switch ( node_kind(node) )
 	{
-	case CHAR_KIND:
-	case INT_KIND:
-	case FLOAT_KIND:
-	case PTR_KIND:
-	case FOREIGN_PTR_KIND:
-	case ABSTRACT_KIND:
-	    curry_panic("copy_graph: atomic object (kind %d) has been copied\n",
-			node_kind(node));
+	case CAPP_KIND:
+	case PAPP_KIND:
+	    n = closure_argc(node);
+	    for ( i = 0; i < n; i++ )
+		node->c.args[i] = copy_node(node->c.args[i], space);
+	    break;
+
+	case LVAR_KIND:
+	    if ( node->v.spc && is_forwarded(node->v.spc) )
+		node->v.spc = (SearchSpace *)get_forward(node->v.spc);
+	    else
+		node->v.spc = ss;
+	    node->v.wq	  = (ThreadQueue)copy_node((Node *)node->v.wq, space);
+	    node->v.cstrs =
+		(Constraint *)copy_node((Node *)node->v.cstrs, space);
+	    break;
+
+	case LAZY_KIND:
+	    switch ( node_tag(node) )
+	    {
+	    case NOUPD_TAG:
+		for ( i = 0, n = closure_argc(node); i < n; i++ )
+		    node->c.args[i] = copy_node(node->c.args[i], space);
+		break;
+	    case UPD_TAG:
+	    case QUEUEME_TAG:
+		if ( node->s.spc && is_forwarded(node->s.spc) )
+		    node->s.spc = (SearchSpace *)get_forward(node->s.spc);
+		else
+		    node->s.spc = ss;
+		for ( i = 0, n = suspend_argc(node); i < n; i++ )
+		    node->s.args[i] = copy_node(node->s.args[i], space);
+		break;
+	    default:
+		unexpected_tag("copy_graph", node_tag(node));
+		break;
+	    }
+	    break;
 
 	case INDIR_KIND:
-	    ASSERT(node->n.spc && is_forwarded(node->n.spc));
-	case LVAR_KIND:
-	case SUSPEND_KIND:
-	case QUEUEME_KIND:
-	    if ( node->s.spc && is_forwarded(node->s.spc) )
-		node->s.spc = (SearchSpace *)get_forward(node->s.spc);
-	    else
-		node->s.spc = ss;
+	    assert(node->n.spc && is_forwarded(node->n.spc));
+	    node->n.spc = (SearchSpace *)get_forward(node->n.spc);
 	    for ( i = 0, n = suspend_argc(node); i < n; i++ )
 		node->s.args[i] = copy_node(node->s.args[i], space);
 	    break;
-
-	case SEARCH_CONT_KIND:
-	    node->sc.spc  = copy_search_space(node->sc.spc, space);
-	    node->sc.susp = copy_node(node->sc.susp, space);
-	    node->sc.var  = copy_node(node->sc.var, space);
-	    node->sc.rq	  = (ThreadQueue)copy_node((Node *)node->sc.rq, space);
+    
+	case VECTOR_KIND:
+	    n = vector_argc(node);
+	    for ( i = 0; i < n; i++ )
+		node->a.args[i] = copy_node(node->a.args[i], space);
 	    break;
 
 	case THREAD_KIND:
@@ -779,6 +806,13 @@ copy_graph(Node *graph, SearchSpace *space)
 	    }
 	    break;
 
+	case SEARCH_CONT_KIND:
+	    node->sc.spc  = copy_search_space(node->sc.spc, space);
+	    node->sc.susp = copy_node(node->sc.susp, space);
+	    node->sc.var  = copy_node(node->sc.var, space);
+	    node->sc.rq	  = (ThreadQueue)copy_node((Node *)node->sc.rq, space);
+	    break;
+
 	case SCRIPT_KIND:
 	    script = (Script *)node;
 	    n	   = vector_argc(script) / wordsof(ScriptRec);
@@ -791,20 +825,6 @@ copy_graph(Node *graph, SearchSpace *space)
 		script->data[i].outVal =
 		    (word)copy_node((Node *)script->data[i].outVal, space);
 	    }
-	    break;
-
-	case VECTOR_KIND:
-	    n = vector_argc(node);
-	    for ( i = 0; i < n; i++ )
-		node->a.args[i] = copy_node(node->a.args[i], space);
-	    break;
-
-	case CAPP_KIND:
-	case PAPP_KIND:
-	case FAPP_KIND:
-	    n = closure_argc(node);
-	    for ( i = 0; i < n; i++ )
-		node->c.args[i] = copy_node(node->c.args[i], space);
 	    break;
 
 	default:

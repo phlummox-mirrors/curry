@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: show.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -251,9 +251,7 @@ FUNCTION(showp_1)
 	    node = node->n.node;
 	    goto again;
 
-	case FAPP_KIND:
-	case SUSPEND_KIND:
-	case QUEUEME_KIND:
+	case LAZY_KIND:
 	    if ( show != zero )
 	    {
 		CHECK_STACK1();
@@ -770,9 +768,7 @@ FUNCTION(showList)
 	    case INDIR_KIND:
 		hd = hd->n.node;
 		continue;
-	    case SUSPEND_KIND:
-	    case QUEUEME_KIND:
-	    case FAPP_KIND:
+	    case LAZY_KIND:
 		if ( show != zero )
 		{
 		    CHECK_STACK1();
@@ -886,9 +882,7 @@ FUNCTION(showTail_1)
 	list = list->n.node;
 	goto again;
 
-    case FAPP_KIND:
-    case SUSPEND_KIND:
-    case QUEUEME_KIND:
+    case LAZY_KIND:
 	if ( show != zero )
 	{
 	    CHECK_STACK1();

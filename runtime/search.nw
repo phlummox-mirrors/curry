@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: search.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -349,19 +349,19 @@ FUNCTION(deadlock_search)
     {
 	switch ( goal->info->kind )
 	{
-	case INDIR_KIND:
-	    goal = goal->n.node;
-	    continue;
-	case SUSPEND_KIND:
-	    curry_panic("search goal not locked\n");
-	case QUEUEME_KIND:
+	case CAPP_KIND:
+	    break;
+	case LAZY_KIND:
+	    assert(goal->info->tag == QUEUEME_TAG);
+	    /* FALL THROUGH!!! */
 	case LVAR_KIND:
 	    TRACE(("deadlock in encapsulated search\n"));
 	    discard_search_space();
 	    pop_search_context();
 	    GOTO(stop_thread);
-	case CAPP_KIND:
-	    break;
+	case INDIR_KIND:
+	    goal = goal->n.node;
+	    continue;
 	default:
 	    invalid_arg("deadlock_search", goal->info->kind);
 	}

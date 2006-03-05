@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: io_monad.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -130,7 +130,7 @@ curry_exec(NodeInfo *main_info, int argc, char **argv)
     io_argc = argc;
     io_argv = argv;
 
-    assert(main_info->kind == FAPP_KIND &&
+    assert(main_info->kind == LAZY_KIND && main_info->tag == NOUPD_TAG &&
 	   main_info->length == closure_node_size(0));
 
     CHECK_STACK1();

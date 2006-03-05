@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: trace.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: trace.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -188,15 +188,26 @@ trace_shownode(int depth, Node *node)
 	case LVAR_KIND:
 	    fprintf(stderr, "var@%p", node);
 	    break;
-	case QUEUEME_KIND:
-	    fprintf(stderr, "que@%p", node);
-	    break;
-	case SUSPEND_KIND:
-	    fprintf(stderr, "susp@%p=", node);
-	    argc = suspend_argc(node);
-	    if ( argc == 1 && node->s.args[0] == 0 )
-		argc = 0;
-	    trace_showapp(depth, node, argc, node->s.args);
+	case LAZY_KIND:
+	    switch ( node_tag(node) )
+	    {
+	    case NOUPD_TAG:
+		trace_showapp(depth, node, closure_argc(node), node->c.args);
+		break;
+	    case UPD_TAG:
+		fprintf(stderr, "app@%p=", node);
+		argc = suspend_argc(node);
+		if ( argc == 1 && node->s.args[0] == 0 )
+		    argc = 0;
+		trace_showapp(depth, node, argc, node->s.args);
+		break;
+	    case QUEUEME_TAG:
+		fprintf(stderr, "que@%p", node);
+		break;
+	    default:
+		unexpected_tag("trace_shownode", node_tag(node));
+		break;
+	    }
 	    break;
 	case SEARCH_CONT_KIND:
 	    fprintf(stderr, "cont@%p", node);
@@ -211,7 +222,6 @@ trace_shownode(int depth, Node *node)
 	    fprintf(stderr, "%s@%p", name, node);
 	    break;
 	case CAPP_KIND:
-	case FAPP_KIND:
 	case PAPP_KIND:
 	    trace_showapp(depth, node, closure_argc(node), node->c.args);
 	    break;

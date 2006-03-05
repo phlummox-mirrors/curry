@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cam.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: cam.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -54,7 +54,7 @@ entry point of the function that uses the [[EVAL]] macro.
 for (;;) { \
     switch ( sp[0]->info->kind ) { \
     case INDIR_KIND: sp[0] = sp[0]->n.node; continue; \
-    case FAPP_KIND: case SUSPEND_KIND: case QUEUEME_KIND: \
+    case LAZY_KIND: \
 	CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	GOTO(sp[0]->info->eval); \
     case LVAR_KIND: \
@@ -80,7 +80,7 @@ for (;;) { \
     if ( is_boxed(sp[0]) ) \
 	switch ( sp[0]->info->kind ) { \
 	case INDIR_KIND: sp[0] = sp[0]->n.node; continue; \
-	case FAPP_KIND: case SUSPEND_KIND: case QUEUEME_KIND: \
+	case LAZY_KIND: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sp[0]->info->eval); \
 	case LVAR_KIND: \
@@ -97,7 +97,7 @@ for (;;) { \
     if ( is_boxed(sp[0]) ) \
 	switch ( sp[0]->info->kind ) { \
 	case INDIR_KIND: sp[0] = sp[0]->n.node; continue; \
-	case FAPP_KIND: case SUSPEND_KIND: case QUEUEME_KIND: \
+	case LAZY_KIND: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sp[0]->info->eval); \
 	default: break; \
@@ -110,7 +110,7 @@ for (;;) { \
     if ( is_boxed(sp[0]) ) \
 	switch ( sp[0]->info->kind ) { \
 	case INDIR_KIND: sp[0] = sp[0]->n.node; continue; \
-	case FAPP_KIND: case SUSPEND_KIND: case QUEUEME_KIND: \
+	case LAZY_KIND: \
 	    CHECK_STACK1(); sp -= 1; sp[0] = sp[1]; sp[1] = (Node *)(l); \
 	    GOTO(sp[0]->info->eval); \
 	case LVAR_KIND: \

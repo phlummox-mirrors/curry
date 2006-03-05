@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1868 2006-03-02 23:28:17Z wlux $
+% $Id: CGen.lhs 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -401,15 +401,15 @@ is generated.
 >   CArrayDef vb nodeInfoType (lazyInfoTable f)
 >             (map (CStruct . map CInit) [suspinfo,queuemeinfo,indirinfo])
 >   where suspinfo =
->           [CExpr "SUSPEND_KIND",CInt 0,suspendNodeSize n,gcPointerTable,
->            CString (undecorate (demangle f)),CExpr (lazyFunc n),
->            CExpr (cName f),notFinalized]
+>           [CExpr "LAZY_KIND",CExpr "UPD_TAG",suspendNodeSize n,
+>            gcPointerTable,CString (undecorate (demangle f)),
+>            CExpr (lazyFunc n),CExpr (cName f),notFinalized]
 >         queuemeinfo =
->           [CExpr "QUEUEME_KIND",CInt 0,suspendNodeSize n,gcPointerTable,
->            noName,CExpr "eval_queueMe",noEntry,notFinalized]
+>           [CExpr "LAZY_KIND",CExpr "QUEUEME_TAG",suspendNodeSize n,
+>            gcPointerTable,noName,CExpr "eval_queueMe",noEntry,notFinalized]
 >         indirinfo =
->           [CExpr "INDIR_KIND",CInt 0,suspendNodeSize n,gcPointerTable,
->            noName,CExpr "eval_indir",noEntry,notFinalized]
+>           [CExpr "INDIR_KIND",CInt 0,suspendNodeSize n,
+>            gcPointerTable,noName,CExpr "eval_indir",noEntry,notFinalized]
 
 > fun0Def :: CVisibility -> Name -> Int -> CTopDecl
 > fun0Def vb f n =
@@ -429,9 +429,9 @@ is generated.
 > funInfo :: Name -> Int -> CInitializer
 > funInfo f n = CStruct (map CInit funinfo)
 >   where funinfo =
->           [CExpr "FAPP_KIND",CInt 0,closureNodeSize n,gcPointerTable,
->            CString (undecorate (demangle f)),CExpr (evalFunc n),
->            CExpr (cName f),notFinalized]
+>           [CExpr "LAZY_KIND",CExpr "NOUPD_TAG",closureNodeSize n,
+>            gcPointerTable,CString (undecorate (demangle f)),
+>            CExpr (evalFunc n),CExpr (cName f),notFinalized]
 
 \end{verbatim}
 \subsection{Code Generation}
@@ -861,9 +861,7 @@ translation function.
 > enter vs0 v ks =
 >   CLocalVar nodePtrType v' (Just (CExpr (show v))) :
 >   kindSwitch (Name v') [] (Just [])
->              [CCase "FAPP_KIND" [{- fall through! -}],
->               CCase "SUSPEND_KIND" [{- fall through! -}],
->               CCase "QUEUEME_KIND"
+>              [CCase "LAZY_KIND"
 >                     (saveCont vs0 [Name v'] ks ++
 >                      [gotoExpr (field v' "info->eval")])] :
 >   ret vs0 (Name v') ks
@@ -883,7 +881,8 @@ translation function.
 
 > lock :: Name -> [CStmt]
 > lock v =
->   [rtsAssertList[isBoxed v',CRel (nodeKind v') "==" (CExpr "SUSPEND_KIND"),
+>   [rtsAssertList[isBoxed v',CRel (nodeKind v') "==" (CExpr "LAZY_KIND"),
+>                  CRel (nodeTag v') "==" (CExpr "UPD_TAG"),
 >                  CFunCall "is_local_space" [field v' "s.spc"]],
 >    CIf (CRel (CCast wordPtrType (CExpr v')) "<" (CExpr "hlim"))
 >        [procCall "DO_SAVE" [v',"q.wq"],
@@ -894,7 +893,8 @@ translation function.
 
 > update :: Name -> Name -> [CStmt]
 > update v1 v2 =
->   [rtsAssertList[isBoxed v1',CRel (nodeKind v1') "==" (CExpr "QUEUEME_KIND"),
+>   [rtsAssertList[isBoxed v1',CRel (nodeKind v1') "==" (CExpr "LAZY_KIND"),
+>                  CRel (nodeTag v1') "==" (CExpr "QUEUEME_TAG"),
 >                  CFunCall "is_local_space" [field v1' "q.spc"]],
 >    CLocalVar (CType "ThreadQueue") wq (Just (CField (CExpr v1') "q.wq")),
 >    procCall "SAVE" [v1',"q.wq"],

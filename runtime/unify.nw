@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1868 2006-03-02 23:28:17Z wlux $
+% $Id: unify.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -313,6 +313,44 @@ eq_args(Node *arg1, Node *arg2, unsigned int n, Node **arglist)
 	{
 	    switch ( node_kind(x) )
 	    {
+	    case CAPP_KIND:
+		if ( is_capp_node(y) )
+		{
+		    if ( x->info != y->info
+			 && (!is_tuple(x->info) || !is_tuple(y->info)
+			     || x->info->length != y->info->length) )
+			return false;
+		    if ( closure_argc(x) == 0 )
+			continue;
+		}
+		break;
+	    case PAPP_KIND:
+		if ( is_papp_node(y) )
+		{
+		    if ( x->info != y->info
+			 && (!is_tuple(x->info) || !is_tuple(y->info)
+			     || x->info->tag != y->info->tag
+			     || x->info->length != y->info->length) )
+			return false;
+		    if ( closure_argc(x) == 0 )
+			continue;
+		}
+		break;
+	    case LVAR_KIND:
+		if ( x == y )
+		    continue;
+		break;
+	    case LAZY_KIND:
+		break;
+	    case VECTOR_KIND:
+		if ( is_vector_node(y) )
+		{
+		    if ( x->info != y->info || x->a.length != y->a.length )
+			return false;
+		    if ( vector_argc(x) == 0 )
+			continue;
+		}
+		break;
 	    case CHAR_KIND:
 		if ( is_char_node(y) )
 		{
@@ -355,39 +393,6 @@ eq_args(Node *arg1, Node *arg2, unsigned int n, Node **arglist)
 		    continue;
 		}
 		break;
-	    case LVAR_KIND:
-		if ( x == y )
-		    continue;
-		break;
-	    case VECTOR_KIND:
-		if ( is_vector_node(y) )
-		{
-		    if ( x->info != y->info || x->a.length != y->a.length )
-			return false;
-		    if ( vector_argc(x) == 0 )
-			continue;
-		}
-		break;
-	    case PAPP_KIND:
-		if ( is_papp_node(y) )
-		{
-		    if ( x->info != y->info
-			 && (!is_tuple(x->info) || !is_tuple(y->info)
-			     || x->info->tag != y->info->tag
-			     || x->info->length != y->info->length) )
-			return false;
-		    if ( closure_argc(x) == 0 )
-			continue;
-		}
-		break;
-	    case SEARCH_CONT_KIND:
-		if ( is_search_cont_node(y) )
-		{
-		    if ( x != y )
-			return false;
-		    continue;
-		}
-		break;
 	    case ABSTRACT_KIND:
 		if ( is_abstract_node(y) )
 		{
@@ -396,19 +401,12 @@ eq_args(Node *arg1, Node *arg2, unsigned int n, Node **arglist)
 		    continue;
 		}
 		break;
-	    case FAPP_KIND:
-	    case SUSPEND_KIND:
-	    case QUEUEME_KIND:
-		break;
-	    case CAPP_KIND:
-		if ( is_capp_node(y) )
+	    case SEARCH_CONT_KIND:
+		if ( is_search_cont_node(y) )
 		{
-		    if ( x->info != y->info
-			 && (!is_tuple(x->info) || !is_tuple(y->info)
-			     || x->info->length != y->info->length) )
+		    if ( x != y )
 			return false;
-		    if ( closure_argc(x) == 0 )
-			continue;
+		    continue;
 		}
 		break;
 	    default:
@@ -484,7 +482,7 @@ FUNCTION(unify_args_1)
 	sp++;
     else
     {
-	ASSERT(node_kind(r) == QUEUEME_KIND);
+	ASSERT(node_kind(r) == LAZY_KIND && node_tag(r) == QUEUEME_TAG);
 	CHECK_STACK1();
 	sp   -= 1;
 	sp[0] = sp[2];
@@ -503,7 +501,7 @@ FUNCTION(unify_args_2)
     for ( r = sp[1]; node_kind(r) == INDIR_KIND; r = r->n.node )
 	;
 
-    if ( node_kind(r) == QUEUEME_KIND )
+    if ( node_kind(r) == LAZY_KIND && node_tag(r) == QUEUEME_TAG )
     {
 	*++sp = r;
 	GOTO(r->info->eval);
@@ -604,22 +602,20 @@ occurs(Node *var, Node *arg, boolean *nf)
 	argp = 0;
 	switch ( node_kind(arg) )
 	{
-	case INDIR_KIND:
-	    arg = arg->n.node;
-	    continue;
-	case FAPP_KIND:
-	case SUSPEND_KIND:
-	case QUEUEME_KIND:
-	    *nf = false;
-	    break;
-	case VECTOR_KIND:
-	    argc = vector_argc(arg);
-	    argp = arg->a.args;
-	    break;
 	case CAPP_KIND:
 	case PAPP_KIND:
 	    argc = closure_argc(arg);
 	    argp = arg->c.args;
+	    break;
+	case LAZY_KIND:
+	    *nf = false;
+	    break;
+	case INDIR_KIND:
+	    arg = arg->n.node;
+	    continue;
+	case VECTOR_KIND:
+	    argc = vector_argc(arg);
+	    argp = arg->a.args;
 	    break;
 	}
 
@@ -705,8 +701,7 @@ FUNCTION(unify_var)
 		     ((is_capp_node(arg) && closure_argc(arg) > 0) ||
 		      (is_papp_node(arg) && closure_argc(arg) > 0) ||
 		      (is_vector_node(arg) && vector_argc(arg) > 0) ||
-		      is_fapp_node(arg) || is_suspend_node(arg) ||
-		      is_queueMe_node(arg)) )
+		      is_lazy_node(arg)) )
 		{
 		    var	= *argp	    = (Node *)hp;
 		    var->info	    = variable_info_table;

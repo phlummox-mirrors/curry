@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1868 2006-03-02 23:28:17Z wlux $
+% $Id: heap.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -84,9 +84,7 @@ enum {
     CAPP_KIND,			/* constructor application */
     PAPP_KIND,			/* partial application node */
     LVAR_KIND,			/* (unbound) logic variable */
-    FAPP_KIND,			/* unshared function application node */
-    SUSPEND_KIND,		/* shared function application node */
-    QUEUEME_KIND,		/* locked suspended application node */
+    LAZY_KIND,			/* lazy function application node */
     INDIR_KIND,			/* indirection node */
     VECTOR_KIND,		/* vector nodes */
     CHAR_KIND,			/* character node */
@@ -114,7 +112,7 @@ evaluation code for the node, the entry point of the function
 corresponding to a partial application or function application node,
 and an optional finalization function.
 
-The meaning of the [[tag]] field depends on the node kind. For
+The meaning of the [[tag]] field depends on the node's kind. For %'
 constructor applications, it is used to distinguish data constructors
 of the same type. For instance, the constructors of the type
 \texttt{data Num = Prec Num | Zero | Succ Num} are assigned tags 0
@@ -177,20 +175,18 @@ struct node_info
 #define node_tag(node)		(node)->info->tag
 #define node_size(node)		(node)->info->length
 #define is_capp_node(node)	(node_kind(node) == CAPP_KIND)
+#define is_papp_node(node)	(node_kind(node) == PAPP_KIND)
+#define is_variable_node(node)	(node_kind(node) == LVAR_KIND)
+#define is_lazy_node(node)	(node_kind(node) == LAZY_KIND)
+#define is_indir_node(node)	(node_kind(node) == INDIR_KIND)
+#define is_vector_node(node)	(node_kind(node) == VECTOR_KIND)
 #define is_char_node(node)	(node_kind(node) == CHAR_KIND)
 #define is_int_node(node)	(node_kind(node) == INT_KIND)
 #define is_float_node(node)	(node_kind(node) == FLOAT_KIND)
 #define is_ptr_node(node)	(node_kind(node) == PTR_KIND)
 #define is_foreign_ptr_node(node) (node_kind(node) == FOREIGN_PTR_KIND)
-#define is_vector_node(node)	(node_kind(node) == VECTOR_KIND)
-#define is_papp_node(node)	(node_kind(node) == PAPP_KIND)
-#define is_fapp_node(node)	(node_kind(node) == FAPP_KIND)
-#define is_variable_node(node)	(node_kind(node) == LVAR_KIND)
-#define is_suspend_node(node)	(node_kind(node) == SUSPEND_KIND)
-#define is_queueMe_node(node)	(node_kind(node) == QUEUEME_KIND)
-#define is_indir_node(node)	(node_kind(node) == INDIR_KIND)
-#define is_search_cont_node(node) (node_kind(node) == SEARCH_CONT_KIND)
 #define is_abstract_node(node)	(node_kind(node) == ABSTRACT_KIND)
+#define is_search_cont_node(node) (node_kind(node) == SEARCH_CONT_KIND)
 
 #define word_offsetof(type,field) ((word *)&(((type *)0)->field) - (word *)0)
 
@@ -486,24 +482,43 @@ a pointer to the search space in which the node was created and an
 array of arguments. The search space pointer is required because a
 lazy application must be evaluated in the search space where it was
 created or a descendant of that space in order to properly share its
-result.
+result. When the evaluation of a lazy application is finished, the
+node is overwritten with an indirection pointing to the result.
+Furthermore, in order to prevent multiple threads from evaluating a
+lazy application concurrently, the node is immediately overwritten
+with a queue-me node (see below) when the evaluation is started.
 
-When the evaluation of a lazy application is finished, the node is
-overwritten with an indirection pointing to the result. Therefore,
-every lazy application node must provide space for at least one
-argument. Furthermore, in order to prevent multiple threads from
-evaluating a lazy application concurrently, the node is overwritten
-immediately with a queue-me node (see below) when the evaluation is
-started.
+When a lazy application node is not shared, there is no need to
+overwrite the node. In fact, since the node does not change, there is
+also no need to record the search space in which the node was created.
+Therefore, we use the standard closure layout for unshared application
+nodes. The different kinds of lazy application nodes can be
+distinguished by the [[tag]] value of their node descriptor, where
+[[NOUPD_TAG]] is used for unshared application nodes, which are not
+updated, [[UPD_TAG]] is used for shared lazy application nodes that
+are updated, and [[QUEUEME_TAG]] is used for queue-me nodes.
 
-When a lazy application node is overwritten that is protected by a
-choice point, its size cannot be changed. Therefore specialized info
-vectors for queue-me and indirection nodes, which take the original
-size of the application into account, must be provided for each
-function (see the [[LAZYINFO]] macro below). However, if the node is
-not protected when it is overwritten, we will shrink its size so that
-the arguments of the application can be garbage collected when they
-are no longer used.
+<<heap.h>>=
+enum { NOUPD_TAG, UPD_TAG, QUEUEME_TAG };
+
+#define is_unshared_lazy_node(node) \
+    (is_lazy_node(node) && node_tag(node) == NOUPD_TAG)
+#define is_shared_lazy_node(node) \
+    (is_lazy_node(node) && node_tag(node) == UPD_TAG)
+#define is_queueMe_node(node) \
+    (is_lazy_node(node) && node_tag(node) == QUEUEME_TAG)
+
+@ 
+A shared lazy application node must provide space for at least one
+argument into which the result of the application can be written.
+When a shared lazy application node is overwritten that is protected
+by a choice point, its size cannot be changed. Therefore specialized
+info vectors for queue-me and indirection nodes, which take the
+original size of the application into account, must be provided for
+each function (see the [[LAZYINFO]] macro below). However, if the node
+is not protected when it is overwritten, we will shrink its size so
+that the arguments of the application can be garbage collected when
+they are no longer used.
 
 <<heap.h>>=
 struct suspend_node {
@@ -516,11 +531,11 @@ struct suspend_node {
 #define raw_suspend_node_size(argc) (wordsof(struct suspend_node) + (argc) - 1)
 
 @ 
-When the evaluation of a lazy application node is started, it is
-changed into a queue-me node that prevents other threads from
-evaluating the node as well. Note that the generic queue-me node
-described by [[queueMe_info_table[0]]] is used only when the
-overwritten application cannot be restored by the computation.
+When the evaluation of a shared lazy application node is started, it
+is changed into a queue-me node that prevents other threads from
+evaluating the node as well. Generic queue-me nodes, as described by
+[[queueMe_info_table[0]]], are used as a means of synchronization in
+the runtime system.
 
 <<heap.h>>=
 extern NodeInfo queueMe_info_table[];
@@ -534,7 +549,7 @@ struct queueMe_node {
 @
 <<heap.c>>=
 NodeInfo queueMe_info_table[] = {
-    { QUEUEME_KIND, 0, queueMe_node_size, 0, 0, eval_queueMe, 0, 0 },
+    { LAZY_KIND, QUEUEME_TAG, queueMe_node_size, 0, 0, eval_queueMe, 0, 0 },
     { INDIR_KIND, 0, queueMe_node_size, 0, 0, eval_indir, 0, 0 }
 };
 
@@ -623,7 +638,7 @@ the prefix [[eval_clos_]] and the arity of the function.
 
 <<heap.h>>=
 #define FUNINFO(fname,entrypoint,arity) \
-{ FAPP_KIND, 0, closure_node_size(arity), 0, fname, \
+{ LAZY_KIND, NOUPD_TAG, closure_node_size(arity), 0, fname, \
   eval_clos_##arity, entrypoint, 0 }
 
 #define PAPPINFO(fname,argc,entrypoint,arity) \
@@ -638,9 +653,10 @@ is named by adding the function's arity to the prefix [[eval_lazy_]].        %'
 
 <<heap.h>>=
 #define LAZYINFO(fname,entrypoint,arity) { \
-    { SUSPEND_KIND, 0, suspend_node_size(arity), 0, fname, \
+    { LAZY_KIND, UPD_TAG, suspend_node_size(arity), 0, fname, \
       eval_lazy_##arity, entrypoint, 0 }, \
-    { QUEUEME_KIND, 0, suspend_node_size(arity), 0, 0, eval_queueMe, 0, 0 }, \
+    { LAZY_KIND, QUEUEME_TAG, suspend_node_size(arity), 0, 0, \
+      eval_queueMe, 0, 0 },					\
     { INDIR_KIND, 0, suspend_node_size(arity), 0, 0, eval_indir, 0, 0 } \
 }
 

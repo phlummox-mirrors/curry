@@ -1,11 +1,11 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: constraints.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: constraints.nw 1869 2006-03-05 17:28:46Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Basic Constraints}
-This file implements two basic constraint functions, viz. the trivial
+This file implements two basic constraint functions, viz.\ the trivial
 constraint \texttt{success}, which is always satisfied, and the
 concurrent conjunction of two constraints \texttt{\&}. The equality
 constraint \texttt{=:=} is defined in section~\ref{sec:unification}.
@@ -34,19 +34,28 @@ FUNCTION(__success)
 }
 
 @
-The code for the parallel conjunction tries to avoid creating a
-new thread whenever this is possible. The only case where a new thread
-must be started is when both arguments are (suspended)
-applications. In this case, the evaluation of the first argument is
-started on a new thread. In order to synchronize the current thread
-and its new child, at least one of the applications must be a
-suspension. A new suspension node is created if
-necessary. Otherwise, if there is one argument that is not in normal
-form, its evaluation will be started. Finally, for queue-me closures
-and in the case of two variables, the current thread will be
-suspended. Note that the concurrent conjunction may return an unbound
-variable to the caller. The caller is responsible for suspending the
-computation until this variable is bound.
+The code for a parallel conjunction of two constraints tries to avoid
+creating a new thread whenever this is possible. The only case when a
+new thread must be started is when both arguments are unevaluated
+application nodes. In this case, the evaluation of the first argument
+is started on a new thread. In order to synchronize the current thread
+and its new child, at least one of the applications must be updatable.
+Otherwise, a new queue-me node is created for this purpose.
+
+Note that an unbound variable can be returned from a concurrent
+conjunction, This follows the specification
+\begin{verbatim}
+  success & y = y
+  x & success = x
+\end{verbatim}
+It is up to the caller to decide how an unbound variable is handled.
+For instance, in the implementation of concurrent conjunction below,
+the current thread is delayed until the first argument is instantiated
+when both arguments are unbound variables.
+
+\ToDo{Make the implementation of \texttt{\&} more symmetric in this
+  case so that the current thread is woken after either of the
+  variables is instantiated.}
 
 <<constraints.c>>=
 DECLARE_ENTRYPOINT(___38_);
@@ -56,10 +65,8 @@ DECLARE_LABEL(___38__2);
 FUNCTION(___38_)
 {
     Node *c1, *c2, *aux;
-
     EXPORT_LABEL(___38_)
  ENTRY_LABEL(___38_)
-
     for ( c1 = sp[0]; node_kind(c1) == INDIR_KIND; c1 = c1->n.node )
 	;
     for ( c2 = sp[1]; node_kind(c2) == INDIR_KIND; c2 = c2->n.node )
@@ -67,95 +74,101 @@ FUNCTION(___38_)
 
     switch ( node_kind(c1) )
     {
-    case FAPP_KIND:
-	switch ( node_kind(c2) )
+    case LAZY_KIND:
+	switch ( node_tag(c1) )
 	{
-	case FAPP_KIND:
-	    sp[0] = c1;
-	    sp[1] = c2;
-	    CHECK_HEAP(queueMe_node_size);
-	    aux	       = (Node *)hp;
-	    aux->info  = queueMe_info_table;
-	    aux->q.spc = ss;
-	    aux->q.wq  = 0;
-	    hp	      += queueMe_node_size;
-	    CHECK_STACK(4);
-	    sp	 -= 4;
-	    sp[0] = sp[4];
-	    sp[1] = (Node *)update;
-	    sp[2] = aux;
-	    sp[3] = (Node *)___38_;
-	    sp[4] = aux;
-	    start_thread(4);
-	    GOTO(sp[0]->info->eval);
-	case SUSPEND_KIND:
-	    aux = c1;
-	    c1	= c2;
-	    c2	= aux;
-	    break;
-	}
-	/* FALL THROUGH!!! */
-    case SUSPEND_KIND:
-	switch ( node_kind(c2) )
-	{
-	case FAPP_KIND:
-	case SUSPEND_KIND:
-	    CHECK_STACK(2);
-	    sp	 -= 2;
-	    sp[0] = c1;
-	    sp[1] = (Node *)___38_;
-	    sp[2] = c1;
-	    sp[3] = c2;
-	    start_thread(2);
-	    GOTO(sp[0]->info->eval);
-	case QUEUEME_KIND:
-	case LVAR_KIND:
-	    CHECK_STACK1();
-	    sp	 -= 1;
-	    sp[0] = c1;
-	    sp[1] = (Node *)___38__1;
-	    sp[2] = c2;
+	case NOUPD_TAG:
+	    if ( node_kind(c2) == LAZY_KIND )
+		switch ( node_tag(c2) )
+		{
+		case NOUPD_TAG:
+		    sp[0] = c1;
+		    sp[1] = c2;
+		    CHECK_HEAP(queueMe_node_size);
+		    aux	       = (Node *)hp;
+		    aux->info  = queueMe_info_table;
+		    aux->q.spc = ss;
+		    aux->q.wq  = 0;
+		    hp	      += queueMe_node_size;
+		    CHECK_STACK(4);
+		    sp	 -= 4;
+		    sp[0] = sp[4];
+		    sp[1] = (Node *)update;
+		    sp[2] = aux;
+		    sp[3] = (Node *)___38_;
+		    sp[4] = aux;
+		    start_thread(4);
+		    GOTO(sp[0]->info->eval);
+		case UPD_TAG:
+		    aux = c1;
+		    c1	= c2;
+		    c2	= aux;
+		    break;
+		}
+	    /* FALL THROUGH!!! */
+	case UPD_TAG:
+	    switch ( node_kind(c2) )
+	    {
+	    case LAZY_KIND:
+		if ( node_tag(c2) != QUEUEME_TAG )
+		{
+		    CHECK_STACK(2);
+		    sp	 -= 2;
+		    sp[0] = c1;
+		    sp[1] = (Node *)___38_;
+		    sp[2] = c1;
+		    sp[3] = c2;
+		    start_thread(2);
+		    GOTO(sp[0]->info->eval);
+		}
+		/* FALL THROUGH!!! */
+	    case LVAR_KIND:
+		CHECK_STACK1();
+		sp   -= 1;
+		sp[0] = c1;
+		sp[1] = (Node *)___38__1;
+		sp[2] = c2;
+		GOTO(c1->info->eval);
+	    }
+	    assert(node_tag(c2) == CAPP_KIND);
+	    *++sp = c1;
 	    GOTO(c1->info->eval);
-	case CAPP_KIND:
+
+	case QUEUEME_TAG:
+	    switch ( node_kind(c2) )
+	    {
+	    case LAZY_KIND:
+		if ( node_kind(c2) != QUEUEME_TAG )
+		{
+		    CHECK_STACK1();
+		    sp	 -= 1;
+		    sp[0] = c2;
+		    sp[1] = (Node *)___38__1;
+		    sp[2] = c1;
+		    GOTO(c2->info->eval);
+		}
+		/* FALL_THROUGH!!! */
+	    case LVAR_KIND:
+		CHECK_STACK1();
+		sp	 -= 1;
+		sp[0] = c1;
+		sp[1] = (Node *)___38__1;
+		sp[2] = c2;
+		GOTO(c1->info->eval);
+	    }
+	    assert(node_kind(c2) == CAPP_KIND);
 	    *++sp = c1;
 	    GOTO(c1->info->eval);
 	default:
-	    invalid_arg("(&)", node_kind(c2));
+	    unexpected_tag("(&)", node_tag(c1));
 	}
 	break;
-    case QUEUEME_KIND:
-	switch ( node_kind(c2) )
-	{
-	case FAPP_KIND:
-	case SUSPEND_KIND:
-	    CHECK_STACK1();
-	    sp	 -= 1;
-	    sp[0] = c2;
-	    sp[1] = (Node *)___38__1;
-	    sp[2] = c1;
-	    GOTO(c2->info->eval);
-	case QUEUEME_KIND:
-	case LVAR_KIND:
-	    CHECK_STACK1();
-	    sp	 -= 1;
-	    sp[0] = c1;
-	    sp[1] = (Node *)___38__1;
-	    sp[2] = c2;
-	    GOTO(c1->info->eval);
-	case CAPP_KIND:
-	    *++sp = c1;
-	    GOTO(c1->info->eval);
-	default:
-	    invalid_arg("(&)", node_kind(c2));
-	}
-	break;
+
     case LVAR_KIND:
 	/* evaluate the other argument then delay */
 	switch ( node_kind(c2) )
 	{
-	case FAPP_KIND:
-	case SUSPEND_KIND:
-	case QUEUEME_KIND:
+	case LAZY_KIND:
 	    CHECK_STACK1();
 	    sp	 -= 1;
 	    sp[0] = c2;
@@ -169,126 +182,95 @@ FUNCTION(___38_)
 	    sp[1] = (Node *)___38__2;
 	    sp[2] = c2;
 	    GOTO(sync_var);
-	case CAPP_KIND:
-	    sp += 2;
-	    RETURN(c1);
-	default:
-	    invalid_arg("(&)", node_kind(c2));	    
 	}
-	break;
-    case CAPP_KIND:
-	/* trivial case */
-	switch ( node_kind(c2) )
-	{
-	case FAPP_KIND:
-	case SUSPEND_KIND:
-	case QUEUEME_KIND:
-	    *++sp = c2;
-	    GOTO(c2->info->eval);
-	case LVAR_KIND:
-	case CAPP_KIND:
-	    sp += 2;
-	    RETURN(c2);
-	default:
-	    invalid_arg("(&)", node_kind(c2));
-	}
-	break;
-    default:
-	invalid_arg("(&)", node_kind(c1));
+	assert(node_kind(c2) == CAPP_KIND);
+	sp += 2;
+	RETURN(c1);
     }
+
+    /* trivial case */
+    assert(node_kind(c1) == CAPP_KIND);
+    if ( is_lazy_node(c2) )
+    {
+	*++sp = c2;
+	GOTO(c2->info->eval);
+    }
+    sp += 2;
+    RETURN(c2);
 }
 
 @
 When an argument has been evaluated to head normal form, it must be
-either a variable or the constant [[Success]]. In the latter case we
-can simply return the other argument to the caller -- except if it is
-still a queue-me closure. In the former case, we may return the
-variable if the other argument was evaluated to [[Success]] in the
-meantime.
+either a variable or the constant [[Success]]. In the former case, we
+may return the variable if the other argument was evaluated to
+[[Success]] in the meantime. In the latter case we can simply return
+the other argument to the caller except if it is still a queue-me
+node.
 
 <<constraints.c>>=
 static
 FUNCTION(___38__1)
 {
     Node *c1, *c2;
-
  ENTRY_LABEL(___38__1)
-    /* if the evaluated argument is now success return the other one */
     for ( c1 = sp[0]; node_kind(c1) == INDIR_KIND; c1 = c1->n.node )
 	;
-    c2 = sp[1];
-    if ( node_kind(c1) == CAPP_KIND )
+    for ( c2 = sp[1]; node_kind(c2) == INDIR_KIND; c2 = c2->n.node )
+	;
+ 
+    if ( node_kind(c1) == LVAR_KIND )
     {
-    again_1:
-        switch ( node_kind(c2) )
-        {
-	case INDIR_KIND:
-	    c2 = c2->n.node;
-	    goto again_1;
-	case QUEUEME_KIND:
-	    *++sp = c2;
+	switch ( node_kind(c2) )
+	{
+	case LAZY_KIND:
+	    assert(node_tag(c2) == QUEUEME_TAG);
+	    CHECK_STACK1();
+	    sp   -= 1;
+	    sp[0] = c2;
+	    sp[1] = (Node *)___38__1;
+	    sp[2] = c1;
 	    GOTO(c2->info->eval);
 	case LVAR_KIND:
-	case CAPP_KIND:
-	    sp += 2;
-	    RETURN(c2);
-	default:
-	    invalid_arg("(&)", node_kind(c2));
+	    CHECK_STACK1();
+	    sp   -= 1;
+	    sp[0] = c1;
+	    sp[1] = (Node *)___38__2;
+	    sp[2] = c2;
+	    GOTO(sync_var);
 	}
+	assert(node_kind(c2) == CAPP_KIND);
+	sp += 2;
+	RETURN(c1);
     }
 
-    /* wait for the other argument being evaluated if it is a queue-me */
-    ASSERT(node_kind(c1) == LVAR_KIND);
- again_2:
-    switch ( node_kind(c2) )
+    assert(node_kind(c1) == CAPP_KIND);
+    if ( node_kind(c2) == LAZY_KIND )
     {
-    case INDIR_KIND:
-	c2 = c2->n.node;
-	goto again_2;
-    case QUEUEME_KIND:
-	CHECK_STACK1();
-	sp   -= 1;
-	sp[0] = c2;
-	sp[1] = (Node *)___38__1;
-	sp[2] = c1;
+	assert(node_tag(c2) == QUEUEME_TAG);
+	*++sp = c2;
 	GOTO(c2->info->eval);
-    case LVAR_KIND:
-	CHECK_STACK1();
-	sp   -= 1;
-	sp[0] = c1;
-	sp[1] = (Node *)___38__2;
-	sp[2] = c2;
-	GOTO(sync_var);
-    case CAPP_KIND:
-        break;
-    default:
-	invalid_arg("(&)", node_kind(c2));
     }
-
     sp += 2;
-    RETURN(c1);
+    RETURN(c2);
 }
 
 @
-After waiting for an unbound variable to become ground, we can always
-return the other argument. Note that this code can be invoked only if
-the other argument was a variable node. Therefore, it can only be
-still a variable or an indirection, which either points to another
-variable or to [[Success]].
+After waiting until an unbound variable has been instantiated, we can
+always return the other argument. Note that the code below is invoked
+only if the other argument was a variable node.
 
 <<constraints.c>>=
 static
 FUNCTION(___38__2)
 {
     Node *c1, *c2;
-
  ENTRY_LABEL(___38__2)
     for ( c1 = sp[0]; node_kind(c1) == INDIR_KIND; c1 = c1->n.node )
 	;
     for ( c2 = sp[1]; node_kind(c2) == INDIR_KIND; c2 = c2->n.node )
 	;
-    ASSERT(node_kind(c1) == CAPP_KIND);
-    ASSERT(node_kind(c2) == CAPP_KIND || node_kind(c2) == LVAR_KIND);
+    assert(node_kind(c1) == CAPP_KIND);
+    assert(node_kind(c2) == CAPP_KIND || node_kind(c2) == LVAR_KIND);
 
     sp += 2;
     RETURN(c2);
@@ -297,7 +279,8 @@ FUNCTION(___38__2)
 @ 
 The unsafe function [[spawnConstraint]] forks a new concurrent
 computation, but does not wait for its termination. It is defined for
-compatibility with PAKCS.
+compatibility with PAKCS. No new thread is started when the first
+argument is already in head normal form.
 
 <<constraints.c>>=
 DECLARE_ENTRYPOINT(__spawnConstraint);
@@ -306,36 +289,18 @@ DECLARE_LABEL(__spawnConstraint_1);
 FUNCTION(__spawnConstraint)
 {
     Node *c;
-
     EXPORT_LABEL(__spawnConstraint)
  ENTRY_LABEL(__spawnConstraint)
-    c = sp[0];
-    for (;;)
+    for ( c = sp[0]; node_kind(c) == INDIR_KIND; c = c->n.node )
+	;
+    if ( node_kind(c) == LAZY_KIND && node_tag(c) != QUEUEME_TAG )
     {
-	switch ( node_kind(c) )
-	{
-	case INDIR_KIND:
-	    c = c->n.node;
-	    continue;
-
-	case FAPP_KIND:
-	case SUSPEND_KIND:
-	    CHECK_STACK(2);
-	    sp	 -= 1;
-	    sp[0] = c;
-	    sp[1] = (Node *)__spawnConstraint_1;
-	    start_thread(2);
-	    GOTO(sp[0]->info->eval);
-
-	case QUEUEME_KIND:
-	case LVAR_KIND:
-	case CAPP_KIND:
-	    break;
-
-	default:
-	    invalid_arg("spawnConstraint", node_kind(c));
-	}
-	break;
+	CHECK_STACK(2);
+	sp   -= 1;
+	sp[0] = c;
+	sp[1] = (Node *)__spawnConstraint_1;
+	start_thread(2);
+	GOTO(sp[0]->info->eval);
     }
 
     sp += 1;
