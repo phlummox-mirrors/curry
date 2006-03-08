@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: files.nw 1870 2006-03-08 22:49:17Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -695,37 +695,53 @@ static NodeInfo lazyRead_lazy_info_table[] = LAZYINFO("lazyRead", lazyRead, 1);
 static
 FUNCTION(eval_lazy_1)
 {
-    Node  *susp;
-    Label entry;
+    boolean local;
+    Node    *susp, *x;
+    Label   entry;
  ENTRY_LABEL(eval_lazy_1)
-    susp = sp[0];
-
     /* suspend the search if the node is not local */
-    /* NB reload susp -- suspend_search might invoke gc */
-    if ( !is_local_space(susp->s.spc) )
-    {
-	suspend_search(resume, susp, susp->s.spc);
-	susp = sp[0];
-    }
+    local = is_local_space(sp[0]->s.spc);
+    if ( !local )
+	suspend_search(resume, sp[0], sp[0]->s.spc);
 
-    /* create an update frame */
-    CHECK_STACK(2);
-    sp	 -= 2;
-    sp[0] = susp->s.args[0];
-    sp[1] = (Node *)update;
-
-    /* lock the suspension */
+    /* get the argument */
+    susp  = sp[0];
     entry = susp->info->entry;
-    if ( (word *)susp < hlim )
+    x	  = susp->s.args[0];
+
+    /* create an indirection if there is an update frame immediately above */
+    if ( local && (Label)sp[1] == update )
     {
-	DO_SAVE(susp, q.wq);
-	susp->info++;
+	if ( (word *)susp < hlim )
+	{
+	    DO_SAVE(susp, n.node);
+	    susp->info += 2;
+	}
+	else
+	    susp->info = &indir_info;
+	assert(is_queueMe_node(sp[2]));
+	susp->n.node = sp[2];
     }
+
+    /* otherwise, lock the application node and create an update frame */
     else
-	susp->info = queueMe_info_table;
-    susp->q.wq = 0;
+    {
+	CHECK_STACK(2);
+	sp   -= 2;
+	sp[1] = (Node *)update;
+
+	if ( (word *)susp < hlim )
+	{
+	    DO_SAVE(susp, q.wq);
+	    susp->info++;
+	}
+	else
+	    susp->info = queueMe_info_table;
+	susp->q.wq = 0;
+    }
 
     /* enter the callee */
+    sp[0] = x;
     GOTO(entry);
 }
 

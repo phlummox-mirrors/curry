@@ -193,10 +193,8 @@ null (_:_)      = False
 --- Computes the length of a list.
 length          :: [a] -> Int
 length		= count 0
-  where count n []    		 = n
-  	count n (_:xs) | n'=:=n' = count n' xs where n' = n + 1
-  	-- NB: Do not replace n'=:=n' = ... by n' `seq` ... because this
-        --     can lead to a stack overflow in the current implementation
+  where count n []     = n
+  	count n (_:xs) = n' `seq` count n' xs where n' = n + 1
 
 --- List index (subscript) operator, head has index 0
 (!!)              :: [a] -> Int -> a
