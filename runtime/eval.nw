@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1870 2006-03-08 22:49:17Z wlux $
+% $Id: eval.nw 1871 2006-03-09 18:04:52Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -101,9 +101,18 @@ FUNCTION(eval_indir)
 
 @
 The [[eval_queueMe]] code is used when the node on the top of the
-stack is a queue-me closure. In this case, the current thread is
+stack is a queue-me node. In this case, the current thread is
 suspended until the evaluation of the corresponding application is
-completed and the queue-me closure is overwritten with the result.
+finished and the queue-me node is overwritten with the result.
+
+When this code is invoked with an update frame on the top of the
+stack, the queue-me node recorded in the update frame is overwritten
+with an indirection to the queue-me node just entered and the update
+frame is removed from the stack.
+
+As a minor optimization, if the current thread would return to
+[[stop_thread]] after the queue-me node being entered is overwritten
+with its result, the current thread is terminated immediately.
 
 <<eval.h>>=
 DECLARE_ENTRYPOINT(eval_queueMe);
@@ -112,11 +121,42 @@ DECLARE_ENTRYPOINT(eval_queueMe);
 <<eval.c>>=
 FUNCTION(eval_queueMe)
 {
-    Node  *susp;
-    Label cont_ip;
+    Node	*susp, *susp2;
+    Label	cont_ip;
+    ThreadQueue wq;
     EXPORT_LABEL(eval_queueMe)
  ENTRY_LABEL(eval_queueMe)
-    susp    = sp[0];
+    susp = sp[0];
+    if ( (Label)sp[1] == update )
+    {
+	susp2 = sp[2];
+	assert(is_queueMe_node(susp2) && is_local_space(susp2->q.spc));
+	if ( is_local_space(susp->q.spc) || !susp2->q.wq )
+	{
+	    wq = susp2->q.wq;
+	    SAVE(susp2, n.node);
+	    susp2->info++;
+	    susp2->n.node = susp;
+
+	    if ( wq )
+	    {
+		wq = join_queues(susp->q.wq, wq);
+		if ( wq != susp->q.wq )
+		{
+		    SAVE(susp, q.wq);
+		    susp->q.wq = wq;
+		}
+	    }
+
+	    if ( (Label)sp[3] == stop_thread )
+		GOTO(stop_thread);
+	    sp	 += 2;
+	    sp[0] = susp;
+	}
+    }
+    else if ( (Label)sp[1] == stop_thread )
+	GOTO(stop_thread);
+
     cont_ip = resume;
     if ( !is_local_space(susp->q.spc) )
     {
@@ -129,8 +169,8 @@ FUNCTION(eval_queueMe)
 }
 
 @
-When a thread that has been suspended because of entering a queue-me
-node is continued, the node on the top of the stack has to be
+When a thread is continued, which has been suspended because of
+entering a queue-me node, the node on the top of the stack has to be
 dereferenced before actually returning. The [[resume]] code performs
 this task. Note that the node on the top of the stack is always in
 weak head normal form when [[resume]] is entered. Therefore, it is
