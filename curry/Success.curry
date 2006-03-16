@@ -1,9 +1,9 @@
--- $Id: Success.curry 1872 2006-03-16 10:11:43Z wlux $
+-- $Id: Success.curry 1873 2006-03-16 12:01:05Z wlux $
 --
 -- Copyright (c) 2002-2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
-module Success(module Success, Success, success, (&), (&>)) where
+module Success(module Success, Success, success, (&), (&>), ground) where
 infix  0 ==>, <==
 
 -- Computes the concurrent conjunction of a list of constraints
@@ -31,7 +31,3 @@ choose (x:xs) = choosep x xs
   where choosep x [] = x
         choosep x (_:_) = x
         choosep _ (x:xs) = choosep x xs
-
--- (ground e) ensures that e is a ground data term; the argument is
--- evaluated lazily as with Prelude.id
-foreign import primitive ground :: a -> a

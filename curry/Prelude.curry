@@ -1,3 +1,4 @@
+-- $Id: Prelude.curry 1873 2006-03-16 12:01:05Z wlux $
 module Prelude where
 
 -- Lines beginning with "--++" are part of the prelude, but are already
@@ -16,7 +17,7 @@ infix  4 `elem`, `notElem`
 infixr 3 &&
 infixr 2 ||
 infixl 1 >>, >>=
-infixr 0 $, $!, `seq`, &, &>, ?
+infixr 0 $, $!, $!!, $#, $##, `seq`, &, &>, ?
 
 -- Some standard combinators:
 
@@ -44,25 +45,47 @@ uncurry f (a,b) = f a b
 flip            :: (a -> b -> c) -> b -> a -> c
 flip  f x y     = f y x
 
---- Right-associative application.
-($)             :: (a -> b) -> a -> b
-f $ x           = f x
+--- Repeat application of a function until a predicate holds.
+until          :: (a -> Bool) -> (a -> a) -> a -> a
+until p f x     = if p x then x else until p f (f x)
 
---- Evaluate the first argument to head  normal form and return the
+
+--- Evaluate the first argument to head normal form and return the
 --- second argument.
 foreign import primitive seq :: a -> b -> b
-
---- Right-associative application with strict evaluation of its argument.
-($!)		:: (a -> b) -> a -> b
-f $! x		= x `seq` f x
 
 --- (ensureNotFree x) is equivalent to (id x) except that it suspends
 --- until x is instantiated to a non-variable term.
 foreign import primitive ensureNotFree :: a -> a
 
---- Repeat application of a function until a predicate holds.
-until          :: (a -> Bool) -> (a -> a) -> a -> a
-until p f x     = if p x then x else until p f (f x)
+--- (ground x) is equivalent to (id x) except that it ensures that the
+--- result is a ground term.
+foreign import primitive ground :: a -> a
+
+
+--- Right-associative application.
+($)             :: (a -> b) -> a -> b
+f $ x           = f x
+
+--- Right-associative application with strict evaluation of its argument.
+($!)		:: (a -> b) -> a -> b
+f $! x		= x `seq` f x
+
+--- Right-associative application with strict evaluation of its argument
+--- to normal form.
+($!!)		:: (a -> b) -> a -> b
+f $!! x		| x=:=y = f y where y free
+
+--- Right-associative application with strict evaluation of its argument
+--- to a non-variable term.
+($#)		:: (a -> b) -> a -> b
+f $# x		= f $! ensureNotFree x
+
+--- Right-associative application with strict evaluation of its argument
+--- to ground normal form.
+($##)		:: (a -> b) -> a -> b
+f $## x		= f $!! ground x
+
 
 --- Abort the execution with an error message.
 error :: String -> a
@@ -166,7 +189,8 @@ snd (_,y)       = y
 
 --++ data [a] = [] | a : [a]
 
---- Returns a list with an instantiated spine.
+--- Evaluates the argument to spine form and returns it.
+--- Suspends until the result is bound to a non-variable spine.
 ensureSpine    	 :: [a] -> [a]
 ensureSpine eval rigid
 ensureSpine [] 	  = []
@@ -624,6 +648,11 @@ foreign import primitive try :: (a -> Success) -> [a -> Success]
 (?)   :: a -> a -> a
 x ? _ = x
 _ ? y = y
+
+
+--- Evaluates to a fresh free variable.
+unknown :: a
+unknown = x where x free
 
 
 --- Inject operator which adds the application of the unary
