@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1868 2006-03-02 23:28:17Z wlux $
+% $Id: compare.nw 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -29,14 +29,14 @@ arguments.
 #include "cam.h"
 #include "trace.h"
 
-DECLARE_CONST(__prelude__LT);
-DECLARE_CONST(__prelude__EQ);
-DECLARE_CONST(__prelude__GT);
+DECLARE_CONST(__Prelude__LT);
+DECLARE_CONST(__Prelude__EQ);
+DECLARE_CONST(__Prelude__GT);
 
 #define pair_cons_node_size closure_node_size(3)
 static DEFINE_DATA(pair_cons, ",:", CONS_TAG, 3);
 
-DECLARE_ENTRYPOINT(__prelude__error);
+DECLARE_ENTRYPOINT(__Prelude__error);
 DECLARE_ENTRYPOINT(__compare);
 
 DECLARE_LABEL(__compare_1);
@@ -95,16 +95,16 @@ FUNCTION(__compare_2)
 	    x = unboxed_val(arg1);
 	    y = arg2->i.i;
 	}
-	cmp = x == y ? CONST(__prelude__EQ)
-	    : x < y ? CONST(__prelude__LT) : CONST(__prelude__GT);
+	cmp = x == y ? CONST(__Prelude__EQ)
+	    : x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
     }
     else if ( is_unboxed(arg2) )
     {
 	assert(is_int_node(arg1));
 	x = arg1->i.i;
 	y = unboxed_val(arg2);
-	cmp = x == y ? CONST(__prelude__EQ)
-	    : x < y ? CONST(__prelude__LT) : CONST(__prelude__GT);
+	cmp = x == y ? CONST(__Prelude__EQ)
+	    : x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
     }
     else
 #endif
@@ -115,34 +115,34 @@ FUNCTION(__compare_2)
 	    assert(is_char_node(arg2));
 	    x = arg1->ch.ch;
 	    y = arg2->ch.ch;
-	    cmp = x == y ? CONST(__prelude__EQ)
-		: x < y ? CONST(__prelude__LT) : CONST(__prelude__GT);
+	    cmp = x == y ? CONST(__Prelude__EQ)
+		: x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
 	    break;
         case INT_KIND:
 	    assert(is_int_node(arg2));
 	    x = arg1->i.i;
 	    y = arg2->i.i;
-	    cmp = x == y ? CONST(__prelude__EQ)
-		: x < y ? CONST(__prelude__LT) : CONST(__prelude__GT);
+	    cmp = x == y ? CONST(__Prelude__EQ)
+		: x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
 	    break;
         case FLOAT_KIND:
 	    assert(is_float_node(arg2));
 	    get_double_val(d, arg1->f);
 	    get_double_val(e, arg2->f);
-	    cmp = d == e ? CONST(__prelude__EQ)
-		: d < e ? CONST(__prelude__LT) : CONST(__prelude__GT);
+	    cmp = d == e ? CONST(__Prelude__EQ)
+		: d < e ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
             break;
 	case PTR_KIND:
 	    assert(is_ptr_node(arg2));
-	    cmp = arg1->p.ptr == arg2->p.ptr ? CONST(__prelude__EQ)
-		: arg1->p.ptr < arg2->p.ptr ? CONST(__prelude__LT)
-					    : CONST(__prelude__GT);
+	    cmp = arg1->p.ptr == arg2->p.ptr ? CONST(__Prelude__EQ)
+		: arg1->p.ptr < arg2->p.ptr ? CONST(__Prelude__LT)
+					    : CONST(__Prelude__GT);
 	    break;
 	case FOREIGN_PTR_KIND:
 	    assert(is_foreign_ptr_node(arg2));
-	    cmp = arg1->fp.ptr == arg2->fp.ptr ? CONST(__prelude__EQ)
-		: arg1->fp.ptr < arg2->fp.ptr ? CONST(__prelude__LT)
-					      : CONST(__prelude__GT);
+	    cmp = arg1->fp.ptr == arg2->fp.ptr ? CONST(__Prelude__EQ)
+		: arg1->fp.ptr < arg2->fp.ptr ? CONST(__Prelude__LT)
+					      : CONST(__Prelude__GT);
 	    break;
 	case VECTOR_KIND:
 	    assert(is_vector_node(arg2));
@@ -151,19 +151,19 @@ FUNCTION(__compare_2)
 	    y	    = arg2->a.length;
 	    if ( x == y )
 	    {
-		cmp = CONST(__prelude__EQ);
+		cmp = CONST(__Prelude__EQ);
 		n   = vector_argc(arg1);
 	    }
 	    else
-		cmp = x < y ? CONST(__prelude__LT) : CONST(__prelude__GT);
+		cmp = x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
 	    break;
 	case PAPP_KIND:
 	    *++sp = from_string("compare applied to partial application");
-	    GOTO(__prelude__error);
+	    GOTO(__Prelude__error);
 	case SEARCH_CONT_KIND:
 	case ABSTRACT_KIND:
 	    *++sp = from_string("compare applied to abstract type");
-	    GOTO(__prelude__error);
+	    GOTO(__Prelude__error);
 	case CAPP_KIND:
 	    assert(is_capp_node(arg2));
 	    x = (long)node_tag(arg1);
@@ -173,24 +173,24 @@ FUNCTION(__compare_2)
 		assert(y < 0);
 		*++sp = from_string("compare applied to existentially "
 				    "quantified type");
-		GOTO(__prelude__error);
+		GOTO(__Prelude__error);
 	    }
 	    else if ( x == y )
 	    {
 		assert(y >= 0);
-		cmp = CONST(__prelude__EQ);
+		cmp = CONST(__Prelude__EQ);
 		n   = closure_argc(arg1);
 		assert(closure_argc(arg2) == n);
 	    }
 	    else
-		cmp = x < y ? CONST(__prelude__LT) : CONST(__prelude__GT);
+		cmp = x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
             break;
         default:
 	    invalid_arg("compare", node_kind(arg1));
         }
     }
 
-    if ( cmp != CONST(__prelude__EQ) || n == 0 )
+    if ( cmp != CONST(__Prelude__EQ) || n == 0 )
     {
 	sp += 2;
 	RETURN(cmp);
@@ -233,7 +233,7 @@ FUNCTION(__compare_3)
     Node *cmp, *arg1, *arg2, *arglist;
  ENTRY_LABEL(__compare_3)
     cmp = sp[0];
-    if ( cmp != CONST(__prelude__EQ) )
+    if ( cmp != CONST(__Prelude__EQ) )
     {
 	sp += 2;
 	RETURN(cmp);

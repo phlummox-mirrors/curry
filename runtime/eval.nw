@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1871 2006-03-09 18:04:52Z wlux $
+% $Id: eval.nw 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -526,8 +526,8 @@ its argument evaluates to an unbound variable. This function is
 implemented only for compatibility with PAKCS.
 
 <<eval.c>>=
-DECLARE_CONST(__prelude__True);
-DECLARE_CONST(__prelude__False);
+DECLARE_CONST(__Prelude__True);
+DECLARE_CONST(__Prelude__False);
 
 DECLARE_ENTRYPOINT(__isVar);
 
@@ -537,8 +537,8 @@ FUNCTION(__isVar)
     EXPORT_LABEL(__isVar)
  ENTRY_LABEL(__isVar)
     EVAL_FLEX_POLY(__isVar);
-    r	= is_boxed(sp[0]) && is_variable_node(sp[0]) ? CONST(__prelude__True)
-						     : CONST(__prelude__False);
+    r	= is_boxed(sp[0]) && is_variable_node(sp[0]) ? CONST(__Prelude__True)
+						     : CONST(__Prelude__False);
     sp += 1;
     RETURN(r);
 }
@@ -564,7 +564,7 @@ FUNCTION(__ensureNotFree)
 @ 
 The polymorphic function \texttt{ground} ensures that the normal form
 of its argument is a ground data term. This is done lazily so that
-\texttt{ground} is semantically equivalent to \texttt{prelude.id}
+\texttt{ground} is semantically equivalent to \texttt{Prelude.id}
 otherwise.
 
 <<eval.c>>=

@@ -5,7 +5,7 @@ module Combinatorial where
 infixl 0 !
 
 --- Non-deterministic choice par exellence
---- This function is equivalent to prelude.? and therefore its use
+--- This function is equivalent to Prelude.? and therefore its use
 --- is deprecated.
 x ! _ = x
 _ ! y = y

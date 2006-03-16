@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Ident.lhs 1842 2006-01-31 14:22:53Z wlux $
+% $Id: Ident.lhs 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -152,7 +152,7 @@ A few identifiers a predefined here.
 > emptyMIdent, mainMIdent, preludeMIdent, debugPreludeMIdent :: ModuleIdent
 > emptyMIdent        = ModuleIdent []
 > mainMIdent         = ModuleIdent ["main"]
-> preludeMIdent      = ModuleIdent ["prelude"]
+> preludeMIdent      = ModuleIdent ["Prelude"]
 > debugPreludeMIdent = ModuleIdent ["DebugPrelude"]
 
 > ptrMIdent, stablePtrMIdent :: ModuleIdent

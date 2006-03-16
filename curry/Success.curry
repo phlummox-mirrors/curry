@@ -1,4 +1,4 @@
--- $Id: Success.curry 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: Success.curry 1872 2006-03-16 10:11:43Z wlux $
 --
 -- Copyright (c) 2002-2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -33,5 +33,5 @@ choose (x:xs) = choosep x xs
         choosep _ (x:xs) = choosep x xs
 
 -- (ground e) ensures that e is a ground data term; the argument is
--- evaluated lazily as with prelude.id
+-- evaluated lazily as with Prelude.id
 foreign import primitive ground :: a -> a

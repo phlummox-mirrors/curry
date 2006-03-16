@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 1840 2006-01-19 19:31:41Z wlux $
+% $Id: Simplify.lhs 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -311,7 +311,7 @@ functions to access the pattern variables.
 When the scrutinized expression in a case expression is a literal or a
 constructor application, the compiler can perform the pattern matching
 already at compile time and simplify the case expression to the right
-hand side of the matching alternative or to \texttt{prelude.failed} if
+hand side of the matching alternative or to \texttt{Prelude.failed} if
 no alternative matches. When a case expression collapses to a matching
 alternative, the pattern variables are bound to the matching
 (sub)terms of the scrutinized expression. We have to be careful with

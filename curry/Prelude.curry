@@ -1,4 +1,4 @@
-module prelude where
+module Prelude where
 
 -- Lines beginning with "--++" are part of the prelude, but are already
 -- predefined by the compiler (or cannot be defined at all)

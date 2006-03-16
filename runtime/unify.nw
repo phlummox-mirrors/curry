@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1869 2006-03-05 17:28:46Z wlux $
+% $Id: unify.nw 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -46,7 +46,7 @@ extern boolean eq_args(Node *, Node *, unsigned int, Node **);
 #define pair_cons_node_size closure_node_size(3)
 static DEFINE_DATA(pair_cons, ",:", CONS_TAG, 3);
 
-DECLARE_CONST(__prelude__True);
+DECLARE_CONST(__Prelude__True);
 
 DECLARE_LABEL(___61__58__61__1);
 DECLARE_LABEL(___61__58__61__2);
@@ -554,7 +554,7 @@ static
 FUNCTION(unify_papp_args_1)
 {
  ENTRY_LABEL(unify_papp_args_1)
-    if ( *sp++ != CONST(__prelude__True) )
+    if ( *sp++ != CONST(__Prelude__True) )
 	FAIL();
 
     if ( sp[0] == nil )

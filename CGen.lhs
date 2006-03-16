@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1870 2006-03-08 22:49:17Z wlux $
+% $Id: CGen.lhs 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1476,7 +1476,7 @@ We make use of some prelude entities in the generated code.
 \begin{verbatim}
 
 > prelName :: String -> Name
-> prelName x = mangleQualified ("prelude." ++ x)
+> prelName x = mangleQualified ("Prelude." ++ x)
 
 > prelTrue, prelFalse :: Name
 > prelTrue = prelName "True"

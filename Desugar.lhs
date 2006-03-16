@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1843 2006-01-31 19:22:48Z wlux $
+% $Id: Desugar.lhs 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -37,7 +37,7 @@ properties.
   newtype constructor, are replaced by a $x$. Note that neither the
   newtype declaration itself nor partial applications of newtype
   constructors are changed.\footnote{It were possible to replace
-  partial applications of newtype constructor by \texttt{prelude.id}.
+  partial applications of newtype constructor by \texttt{Prelude.id}.
   However, our solution yields a more accurate output when the result
   of a computation includes partial applications.}
 \end{itemize}

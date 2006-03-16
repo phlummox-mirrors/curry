@@ -1,5 +1,5 @@
 module List(module List,
-	    {- entities re-exported from the prelude-}
+	    {- re-exported Prelude entities -}
 	    map, (++), concat, filter,
 	    head, {-last,-} tail, {-init,-} null, length, (!!),
 	    foldl, foldl1, {-scanl, scanl1,-} foldr, foldr1, {-scanr, scanr1,-}
@@ -14,7 +14,7 @@ import Maybe(listToMaybe)
 
 infix 5 \\
 
-{- functions not yet defined in the prelude: -}
+{- functions not yet defined in Prelude: -}
 
 init :: [a] -> [a]
 init (x:xs) = initp x xs
@@ -61,7 +61,7 @@ maximum (x:xs) = foldr max x xs
 minimum (x:xs) = foldr min x xs
   where min x y = if x <= y then x else y
 
-{- end of supposed prelude functions -}
+{- end of supposed Prelude functions -}
 
 elemIndex :: a -> [a] -> Maybe Int
 elemIndex x = findIndex (x ==)

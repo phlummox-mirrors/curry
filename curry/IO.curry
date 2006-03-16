@@ -8,7 +8,7 @@ module IO(Handle, HandlePosn, IOMode(..), BufferMode(..), SeekMode(..),
 	  hGetBuffering, hSetBuffering, hFlush,
 	  hGetPosn, hSetPosn, hSeek,
 	  tryIO, bracket, bracket_,
-          {- entities re-exported from the prelude -}
+          {- re-exported Prelude entities -}
 	  IO, FilePath, IOError, ioError, catch, interact,
 	  putChar, putStr, putStrLn, print, getChar, getLine, getContents,
 	  readFile, writeFile, appendFile) where

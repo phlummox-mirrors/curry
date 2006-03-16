@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1870 2006-03-08 22:49:17Z wlux $
+% $Id: files.nw 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -332,11 +332,11 @@ apply to a file handle. Note that for a semi-closed handle neither
 [[hIsOpen]] nor [[hIsClosed]] returns \texttt{True}.
 
 <<files.c>>=
-DECLARE_CONST(__prelude__False);
-DECLARE_CONST(__prelude__True);
+DECLARE_CONST(__Prelude__False);
+DECLARE_CONST(__Prelude__True);
 
-#define prelude_False CONST(__prelude__False)
-#define prelude_True  CONST(__prelude__True)
+#define Prelude_False CONST(__Prelude__False)
+#define Prelude_True  CONST(__Prelude__True)
 
 DECLARE_ENTRYPOINT(__hIsOpen);
 DECLARE_ENTRYPOINT(__hIsClosed);
@@ -350,7 +350,7 @@ FUNCTION(__hIsOpen)
     EXPORT_LABEL(__hIsOpen)
  ENTRY_LABEL(__hIsOpen)
     EVAL_RIGID_FILE(__hIsOpen);
-    r	= is_open((Handle *)sp[0]) ? prelude_True : prelude_False;
+    r	= is_open((Handle *)sp[0]) ? Prelude_True : Prelude_False;
     sp += 2;
     RETURN(r);
 }
@@ -361,7 +361,7 @@ FUNCTION(__hIsClosed)
     EXPORT_LABEL(__hIsClosed)
  ENTRY_LABEL(__hIsClosed)
     EVAL_RIGID_FILE(__hIsClosed);
-    r	= ((Handle *)sp[0])->fp == NULL ? prelude_True : prelude_False;
+    r	= ((Handle *)sp[0])->fp == NULL ? Prelude_True : Prelude_False;
     sp += 2;
     RETURN(r);
 }
@@ -372,7 +372,7 @@ FUNCTION(__hIsReadable)
     EXPORT_LABEL(__hIsReadable)
  ENTRY_LABEL(__hIsReadable)
     EVAL_RIGID_FILE(__hIsReadable);
-    r	= is_readable((Handle *)sp[0]) ? prelude_True : prelude_False;
+    r	= is_readable((Handle *)sp[0]) ? Prelude_True : Prelude_False;
     sp += 2;
     RETURN(r);
 }
@@ -383,7 +383,7 @@ FUNCTION(__hIsWritable)
     EXPORT_LABEL(__hIsWritable)
  ENTRY_LABEL(__hIsWritable)
     EVAL_RIGID_FILE(__hIsWritable);
-    r	= is_writable((Handle *)sp[0]) ? prelude_True : prelude_False;
+    r	= is_writable((Handle *)sp[0]) ? Prelude_True : Prelude_False;
     sp += 2;
     RETURN(r);
 }
@@ -399,13 +399,13 @@ FUNCTION(__hIsSeekable)
     sp	+= 2;
 
     if ( !is_open(file) )
-	r = prelude_False;
+	r = Prelude_False;
     else if ( ftell(file->fp) != - 1 )
-	r = prelude_True;
+	r = Prelude_True;
     else
     {
 	clearerr(file->fp);
-	r = prelude_False;
+	r = Prelude_False;
     }
     RETURN(r);
 }
@@ -464,7 +464,7 @@ FUNCTION(__hIsEOF)
     ungetc(c, file->fp);
 
     sp += 2;
-    r	= c == EOF ? prelude_True : prelude_False;
+    r	= c == EOF ? Prelude_True : Prelude_False;
     RETURN(r);
 }
 
@@ -1140,7 +1140,7 @@ FUNCTION(__hIsTerminalDevice)
     assert(file->fp != NULL);
 
     sp += 2;
-    r	= isatty(fileno(file->fp)) ? prelude_True : prelude_False;
+    r	= isatty(fileno(file->fp)) ? Prelude_True : Prelude_False;
     RETURN(r);
 }
 
@@ -1162,8 +1162,8 @@ The buffer mode is returned as an instance of the type
 
 <<files.c>>=
 enum { Nothing_tag, Just_tag };
-DECLARE_CONST(__prelude__Nothing);
-DECLARE_DATA(__prelude__Just);
+DECLARE_CONST(__Prelude__Nothing);
+DECLARE_DATA(__Prelude__Just);
 
 enum { NoBuffering_tag, LineBuffering_tag, BlockBuffering_tag };
 DECLARE_CONST(__IO__NoBuffering);
@@ -1223,12 +1223,12 @@ FUNCTION(__hGetBuffering)
 		}
 
 		size		= (Node *)hp;
-		size->info	= INFO(__prelude__Just);
+		size->info	= INFO(__Prelude__Just);
 		size->c.args[0] = r;
 		hp	       += closure_node_size(1);
 	    }
 	    else
-		size = CONST(__prelude__Nothing);
+		size = CONST(__Prelude__Nothing);
 
 	    r		 = (Node *)hp;
 	    r->info	 = INFO(__IO__BlockBuffering);

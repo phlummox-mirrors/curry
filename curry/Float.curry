@@ -1,4 +1,4 @@
--- $Id: Float.curry 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: Float.curry 1872 2006-03-16 10:11:43Z wlux $
 --
 -- Copyright (c) 2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -8,7 +8,7 @@ module Float((+.), (-.), (*.), (/.), (^), (^^), (**), (<.), (>.), (<=.), (>=.),
 	     sin, cos, tan, asin, acos, atan, atan2, sinh, cosh, tanh) where
 infixl 8 ^, ^^, **
 
--- (+.), (-.), (*.), (/.) re-exported from the prelude for compatibility with PAKCS
+-- (+.), (-.), (*.), (/.) re-exported from Prelude for compatibility with PAKCS
 -- (<.), (>.), (<=.) (>=.) ordering relations of floats
 (<.), (>.), (<=.), (>=.) :: Float -> Float -> Bool
 (<.) = (<)

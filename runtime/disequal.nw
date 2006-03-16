@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: disequal.nw 1868 2006-03-02 23:28:17Z wlux $
+% $Id: disequal.nw 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -43,7 +43,7 @@ DECLARE_ENTRYPOINT(___61__47__61_);
 #include "cam.h"
 #include "trace.h"
 
-DECLARE_CONST(__prelude__True);
+DECLARE_CONST(__Prelude__True);
 
 DECLARE_LABEL(___61__47__61__1);
 DECLARE_LABEL(___61__47__61__2);
@@ -333,7 +333,7 @@ static
 FUNCTION(diseq_papp_args_1)
 {
  ENTRY_LABEL(diseq_papp_args_1)
-    if ( *sp++ != CONST(__prelude__True) )
+    if ( *sp++ != CONST(__Prelude__True) )
     {
 	sp += 1;
 	RETURN(Success);

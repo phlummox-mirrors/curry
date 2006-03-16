@@ -1,6 +1,6 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 1851 2006-02-08 19:44:07Z wlux $
+# $Id: Makefile.in 1872 2006-03-16 10:11:43Z wlux $
 #
 # Copyright (c) 2004-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -40,7 +40,7 @@ INSTALL_DIR = @INSTALL_DIR@
 
 # file lists
 curry_prelude_SRCS = \
-	prelude.curry \
+	Prelude.curry \
 	IO.curry
 curry_stdlib_SRCS  = \
 	AllSolutions.curry \
@@ -243,7 +243,7 @@ depend: $(curry_SRCS) $($(debug)_SRCS)
 	(for f in $(curry_SRCS) $($(debug)_SRCS); do \
 		stem=`basename $$f .curry`; o="$$stem.c $$stem.d.c"; \
 		echo $$o : $$f; \
-		test $$f = prelude.curry || echo $$o : prelude.icurry; \
+		test $$f = Prelude.curry || echo $$o : Prelude.icurry; \
 		echo $$stem.d.c : DebugPrelude.icurry; \
 		sed -e '/^import/!d;s/import \([A-Za-z0-9_]*\).*/'"$$o : "'\1.icurry/' $(srcdir)/$$f; \
 	 done) > .depend

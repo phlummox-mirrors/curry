@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 1869 2006-03-05 17:28:46Z wlux $
+% $Id: io_monad.nw 1872 2006-03-16 10:11:43Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -14,7 +14,7 @@ the given return code, which will be returned from [[curry_exec]].
 
 The function [[fail_with]] prints an error message and stops the
 execution with return code 1. It is effectively equivalent to calling
-\texttt{prelude.error} with the formatted error message.
+\texttt{Prelude.error} with the formatted error message.
 
 The functions [[curry_argc]] and [[curry_argv]] return the arguments
 that were passed to [[curry_exec]].
@@ -353,7 +353,7 @@ exception handler is available -- as may happen when
 [[error]] function from the prelude.
 
 <<io_monad.c>>=
-DECLARE_ENTRYPOINT(__prelude__error);
+DECLARE_ENTRYPOINT(__Prelude__error);
 DECLARE_LABEL(__ioError_1);
 
 FUNCTION(__ioError)
@@ -368,7 +368,7 @@ FUNCTION(__ioError)
     {
 	sp[1] = prefix_string("Uncaught I/O exception:\n", sp[0]);
 	sp   += 1;
-	GOTO(__prelude__error);
+	GOTO(__Prelude__error);
     }
 
     exc	     = sp[0];

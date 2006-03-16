@@ -1,24 +1,24 @@
 module Monad(module Monad,
-       	     {- re-exported prelude entitites -}
+       	     {- re-exported Prelude entitites -}
 	     (>>=), (>>), return) where
 
 infixr 1 =<<
 
-{- functions from the Haskell prelude -}
+{- functions from Haskell's Prelude -}
 fail :: String -> IO a
 fail = ioError
 
 sequence :: [IO a] -> IO [a]
-sequence = prelude.sequenceIO
+sequence = Prelude.sequenceIO
 
 sequence_ :: [IO a] -> IO ()
-sequence_ = prelude.sequenceIO_
+sequence_ = Prelude.sequenceIO_
 
 mapM :: (a -> IO b) -> [a] -> IO [b]
-mapM = prelude.mapIO
+mapM = Prelude.mapIO
 
 mapM_ :: (a -> IO b) -> [a] -> IO ()
-mapM_ = prelude.mapIO_
+mapM_ = Prelude.mapIO_
 
 (=<<) :: (a -> IO b) -> IO a -> IO b
 f =<< m = m >>= f
