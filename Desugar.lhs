@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1872 2006-03-16 10:11:43Z wlux $
+% $Id: Desugar.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -202,10 +202,9 @@ hack is no longer needed.}
 
 \end{verbatim}
 Within a declaration group, all fixity declarations, type signatures
-and evaluation annotations are discarded. First, the patterns
-occurring in the left hand sides are desugared. Due to lazy patterns
-this may add further declarations to the group that must be desugared
-as well.
+and trust annotations are discarded. First, the patterns occurring in
+the left hand sides are desugared. Due to lazy patterns this may add
+further declarations to the group that must be desugared as well.
 \begin{verbatim}
 
 > desugarDeclGroup :: ModuleIdent -> [Decl] -> DesugarState [Decl]
@@ -599,7 +598,7 @@ where the default alternative is redundant.
 >             -> DesugarState Expression
 > desugarCase _ _ _ [] = return prelFailed
 > desugarCase m prefix [] (alt : alts) =
->   desugarCase m id vs (map resetArgs alts) >>= 
+>   desugarCase m id vs (map resetArgs alts) >>=
 >   desugarAltRhs m (toAlt vs alt)
 >   where vs = prefix []
 >         resetArgs (p,prefix,ts,rhs) = (p,id,prefix ts,rhs)

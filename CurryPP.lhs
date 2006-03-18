@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 1867 2006-03-02 18:35:01Z wlux $
+% $Id: CurryPP.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -94,9 +94,6 @@ Declarations
 > ppDecl :: Decl -> Doc
 > ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
 > ppDecl (TypeSig _ fs ty) = ppIdentList fs <+> text "::" <+> ppTypeExpr 0 ty
-> ppDecl (EvalAnnot _ fs ev) = ppIdentList fs <+> text "eval" <+> ppEval ev
->   where ppEval EvalRigid = text "rigid"
->         ppEval EvalChoice = text "choice"
 > ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
 > ppDecl (ForeignDecl p cc ie f ty) =
 >   sep [text "foreign import" <+> ppCallConv cc <+> maybePP (text . show) ie,

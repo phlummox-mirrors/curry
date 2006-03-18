@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: Base.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -266,23 +266,12 @@ because precedences are checked after renaming.
 >   origName (PrecInfo op _) = op
 
 \end{verbatim}
-\paragraph{Evaluation modes}
-The compiler collects the evaluation annotations for all functions in
-an environment. As these annotations affect only declarations from the
-current module, a simple environment mapping unqualified names onto
-annotations is sufficient.
-\begin{verbatim}
-
-> type EvalEnv = Env Ident EvalAnnotation
-
-\end{verbatim}
 \paragraph{Trusted functions}
-The compiler collects trust annotations from the source code in
-another environment. As for evaluation annotations, a simple
-environment mapping unqualified names onto annotations is sufficient
-because trust annotations control how function declarations are
-transformed when generating code for the declarative debugger (cf.
-Sect.~\ref{sec:dtrans}).
+The compiler collects trust annotations from the source code in an
+environment. A simple environment mapping unqualified names onto
+annotations is sufficient because trust annotations control how
+function declarations are transformed when generating code for the
+declarative debugger (cf.  Sect.~\ref{sec:dtrans}).
 \begin{verbatim}
 
 > type TrustEnv = Env Ident Trust
@@ -498,15 +487,12 @@ declarations.
 > isBlockDecl (BlockDecl _) = True
 > isBlockDecl _ = False
 
-> isInfixDecl, isTypeSig, isEvalAnnot :: Decl -> Bool
-> isFreeDecl, isTrustAnnot, isValueDecl :: Decl -> Bool
+> isInfixDecl, isTypeSig, isFreeDecl, isTrustAnnot, isValueDecl :: Decl -> Bool
 > isInfixDecl (InfixDecl _ _ _ _) = True
 > isInfixDecl _ = False
 > isTypeSig (TypeSig _ _ _) = True
 > isTypeSig (ForeignDecl _ _ _ _ _) = True
 > isTypeSig _ = False
-> isEvalAnnot (EvalAnnot _ _ _) = True
-> isEvalAnnot _ = False
 > isFreeDecl (FreeDecl _ _) = True
 > isFreeDecl _ = False
 > isTrustAnnot (TrustAnnot _ _ _) = True

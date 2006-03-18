@@ -1,4 +1,4 @@
--- $Id: Prelude.curry 1874 2006-03-18 14:46:46Z wlux $
+-- $Id: Prelude.curry 1875 2006-03-18 18:43:27Z wlux $
 module Prelude where
 
 -- Lines beginning with "--++" are part of the prelude, but are already
@@ -129,9 +129,10 @@ not False       = True
 
 --- Conditional.
 if_then_else	:: Bool -> a -> a -> a
-if_then_else eval rigid
-if_then_else True  t _ = t
-if_then_else False _ f = f
+if_then_else b t f =
+  case b of 
+    True -> t
+    False -> f
 
 --- Useful name for the last condition in a sequence of conditional equations.
 otherwise       :: Bool
@@ -192,9 +193,10 @@ snd (_,y)       = y
 --- Evaluates the argument to spine form and returns it.
 --- Suspends until the result is bound to a non-variable spine.
 ensureSpine    	 :: [a] -> [a]
-ensureSpine eval rigid
-ensureSpine [] 	  = []
-ensureSpine (x:xs) = x : ensureSpine xs
+ensureSpine l =
+  case l of
+     []   -> []
+     x:xs -> x : ensureSpine xs
 
 --- Computes the first element of a list.
 head            :: [a] -> a
@@ -678,11 +680,13 @@ once :: (a -> Success) -> a -> Success
 once g = head (solveAll g)
 
 {-
+--- Primitive operation for committed choice
+foreign import primitive commit :: [(Success,a)] -> a
+
 --- Try to find a solution to a search goal via a fair search.
 --- Fail if there is no solution.
 tryone         :: (a -> Success) -> a
-tryone         eval choice
-tryone g | g x = x  where x free
+tryone g       = commit [let x free in (g x, x)]
 
 --- Search for one solution via a fair strategy ("tryone").
 --- To control failure and to return the solution in a lambda abstraction,

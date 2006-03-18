@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryLexer.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: CurryLexer.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -39,15 +39,15 @@ In this section a lexer for Curry is implemented.
 >   -- virtual punctation (inserted by layout)
 >   | VSemicolon | VRightBrace
 >   -- reserved identifiers
->   | KW_case | KW_data | KW_do | KW_else | KW_eval | KW_foreign | KW_free
->   | KW_if | KW_import | KW_in | KW_infix | KW_infixl | KW_infixr | KW_let
+>   | KW_case | KW_data | KW_do | KW_else | KW_foreign | KW_free | KW_if
+>   | KW_import | KW_in | KW_infix | KW_infixl | KW_infixr | KW_let
 >   | KW_module | KW_newtype | KW_of | KW_then | KW_type | KW_where
 >   -- reserved operators
 >   | At | Colon | DotDot | DoubleColon | Equals | Backslash | Bar
 >   | LeftArrow | RightArrow | Tilde
 >   -- special identifiers
->   | Id_as | Id_ccall | Id_choice | Id_forall | Id_hiding | Id_interface
->   | Id_primitive | Id_qualified | Id_rigid | Id_safe | Id_unsafe
+>   | Id_as | Id_ccall | Id_forall | Id_hiding | Id_interface
+>   | Id_primitive | Id_qualified | Id_safe | Id_unsafe
 >   -- pragmas
 >   | PragmaBegin Pragma | PragmaEnd
 >   -- special operators
@@ -154,7 +154,6 @@ all tokens in their source representation.
 >   showsPrec _ (Token KW_data _) = showString "`data'"
 >   showsPrec _ (Token KW_do _) = showString "`do'"
 >   showsPrec _ (Token KW_else _) = showString "`else'"
->   showsPrec _ (Token KW_eval _) = showString "`eval'"
 >   showsPrec _ (Token KW_foreign _) = showString "`foreign'"
 >   showsPrec _ (Token KW_free _) = showString "`free'"
 >   showsPrec _ (Token KW_if _) = showString "`if'"
@@ -172,13 +171,11 @@ all tokens in their source representation.
 >   showsPrec _ (Token KW_where _) = showString "`where'"
 >   showsPrec _ (Token Id_as _) = showString "identifier `as'"
 >   showsPrec _ (Token Id_ccall _) = showString "identifier `ccall'"
->   showsPrec _ (Token Id_choice _) = showString "identifier `choice'"
 >   showsPrec _ (Token Id_forall _) = showString "identifier `forall'"
 >   showsPrec _ (Token Id_hiding _) = showString "identifier `hiding'"
 >   showsPrec _ (Token Id_interface _) = showString "identifier `interface'"
 >   showsPrec _ (Token Id_primitive _) = showString "identifier `primitive'"
 >   showsPrec _ (Token Id_qualified _) = showString "identifier `qualified'"
->   showsPrec _ (Token Id_rigid _) = showString "identifier `rigid'"
 >   showsPrec _ (Token Id_safe _) = showString "identifier `safe'"
 >   showsPrec _ (Token Id_unsafe _) = showString "identifier `unsafe'"
 >   showsPrec _ (Token (PragmaBegin _) a) = shows a
@@ -215,7 +212,6 @@ pragmas.
 >     ("data",    KW_data),
 >     ("do",      KW_do),
 >     ("else",    KW_else),
->     ("eval",    KW_eval),
 >     ("foreign", KW_foreign),
 >     ("free",    KW_free),
 >     ("if",      KW_if),
@@ -235,13 +231,11 @@ pragmas.
 > reserved_and_special_ids = foldr (uncurry addToFM) reserved_ids [
 >     ("as",        Id_as),
 >     ("ccall",     Id_ccall),
->     ("choice",    Id_choice),
 >     ("forall",    Id_forall),
 >     ("hiding",    Id_hiding),
 >     ("interface", Id_interface),
 >     ("primitive", Id_primitive),
 >     ("qualified", Id_qualified),
->     ("rigid",     Id_rigid),
 >     ("safe",      Id_safe),
 >     ("unsafe",    Id_unsafe)
 >   ]

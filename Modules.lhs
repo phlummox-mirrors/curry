@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: Modules.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -26,7 +26,6 @@ This module controls the compilation of modules.
 > import IntfEquiv(fixInterface,intfEquiv)
 > import Imports(importInterface,importInterfaceIntf,importUnifyData)
 > import Exports(exportInterface)
-> import Eval(evalEnv,evalEnvGoal)
 > import Trust(trustEnv,trustEnvGoal)
 > import Qual(qual,qualGoal)
 > import Desugar(desugar,desugarGoal)
@@ -123,13 +122,11 @@ declaration to the module.
 >             -> Module -> (Either CFile [CFile],[(Dump,Doc)])
 > transModule split debug tr mEnv tcEnv tyEnv (Module m es is ds) =
 >   (ccode,dumps)
->   where evEnv = evalEnv ds
->         trEnv = trustEnv tr ds
+>   where trEnv = trustEnv tr ds
 >         (desugared,tyEnv') = desugar tcEnv tyEnv (Module m es is ds)
->         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
->         (lifted,tyEnv''',evEnv',trEnv') =
->           lift tyEnv'' evEnv trEnv simplified
->         il = ilTrans tyEnv''' evEnv' lifted
+>         (simplified,tyEnv'') = simplify tyEnv' desugared
+>         (lifted,tyEnv''',trEnv') = lift tyEnv'' trEnv simplified
+>         il = ilTrans tyEnv''' lifted
 >         ilDbg
 >           | debug = dTransform (trustedFun trEnv') il
 >           | otherwise = il
@@ -250,13 +247,11 @@ compilation of a goal is similar to that of a module.
 >           -> Ident -> Goal -> (CFile,[(Dump,Doc)])
 > transGoal debug tr run mEnv tcEnv tyEnv goalId g = (ccode,dumps)
 >   where m = emptyMIdent
->         evEnv = evalEnvGoal g
 >         trEnv = bindEnv goalId Suspect (trustEnvGoal tr g)
 >         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
->         (simplified,tyEnv'') = simplify tyEnv' evEnv desugared
->         (lifted,tyEnv''',evEnv',trEnv') =
->           lift tyEnv'' evEnv trEnv simplified
->         il = ilTrans tyEnv''' evEnv' lifted
+>         (simplified,tyEnv'') = simplify tyEnv' desugared
+>         (lifted,tyEnv''',trEnv') = lift tyEnv'' trEnv simplified
+>         il = ilTrans tyEnv''' lifted
 >         ilDbg
 >           | debug = dAddMain goalId (dTransform (trustedFun trEnv') il)
 >           | otherwise = il

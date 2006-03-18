@@ -1,4 +1,4 @@
--- $Id: Ports.curry 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: Ports.curry 1875 2006-03-18 18:43:27Z wlux $
 --
 -- Copyright (c) 2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -58,11 +58,11 @@ streamPort hClose h =
     hSetBuffering h LineBuffering
     doSolve (openPort p ms)
     spawnConstraint (unsafePerformIO (backgroundTask ms)) (return p)
-  where backgroundTask, msg eval rigid
-  	-- NB Don't try to ``simplify'' backgroundTask using map, foldr,
-        -- or mapIO_, since all of them are flexible functions.
-	backgroundTask [] = hClose h >> return success
-	backgroundTask (m:ms) = msg m >> backgroundTask ms
+  where backgroundTask ms =
+	  do
+	     mapIO_ (msg . ensureNotFree) (ensureSpine ms)
+	     hClose h
+	     return success
 	msg (SP_Put s) = hPutStrLn h s
 	msg (SP_GetLine s) = hGetLine h >>= doSolve . (s =:=)
 	msg (SP_GetChar c) = hGetChar h >>= doSolve . (c =:=)
@@ -77,9 +77,10 @@ streamPort hClose h =
    is not yet supported
 
 choiceSPEP :: Port SP_Msg -> [a] -> Either String [a]
-choiceSPEP eval choice
-choiceSPEP _ ms@(_:_) = Right ms
-choiceSPEP sp | send (SP_GetLine s) sp = Left s where s free
+choiceSPEP sp ms = commit [
+    let m',ms' free in (ms =:= m':ms', Right ms),
+    let s free in (send (SP_GetLine s) sp, Left s)
+  ]
 
    here is a workaround using the unsafe isVar primitive
  -}

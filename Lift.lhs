@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: Lift.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -31,12 +31,11 @@ lifted to the top-level.
 > import Subst
 > import Utils
 
-> lift :: ValueEnv -> EvalEnv -> TrustEnv -> Module
->      -> (Module,ValueEnv,EvalEnv,TrustEnv)
-> lift tyEnv evEnv trEnv (Module m es is ds) =
->   (Module m es is (concatMap liftTopDecl ds'),tyEnv',evEnv',trEnv')
->   where (ds',tyEnv',evEnv',trEnv') =
->           runSt (callSt (callSt (abstractModule m ds) tyEnv) evEnv) trEnv
+> lift :: ValueEnv -> TrustEnv -> Module -> (Module,ValueEnv,TrustEnv)
+> lift tyEnv trEnv (Module m es is ds) =
+>   (Module m es is (concatMap liftTopDecl ds'),tyEnv',trEnv')
+>   where (ds',tyEnv',trEnv') =
+>           runSt (callSt (abstractModule m ds) tyEnv) trEnv
 
 \end{verbatim}
 \paragraph{Abstraction}
@@ -46,26 +45,25 @@ reflect the new types of the abstracted functions. Furthermore,
 functions are renamed during abstraction by adding the name of their
 enclosing function as prefix to their name. This is done in order to
 disambiguate local function names in debugging sessions, but means
-that the evaluation and trust annotation environments must be updated,
-too. As usual we use nested state monad transformers in order to pass
-the environments through. The abstraction phase also uses a local
+that the trust annotation environment must be updated, too. As usual
+we use nested state monad transformers in order to pass the
+environments through. The abstraction phase also uses a local
 environment that maps each local function declaration onto its
 replacement expression, i.e. the function applied to its free
 variables.
 \begin{verbatim}
 
-> type AbstractState a = StateT ValueEnv (StateT EvalEnv (StateT TrustEnv Id)) a
+> type AbstractState a = StateT ValueEnv (StateT TrustEnv Id) a
 > type AbstractEnv = Env Ident Expression
 
 > abstractModule :: ModuleIdent -> [TopDecl]
->                -> AbstractState ([TopDecl],ValueEnv,EvalEnv,TrustEnv)
+>                -> AbstractState ([TopDecl],ValueEnv,TrustEnv)
 > abstractModule m ds =
 >   do
 >     ds' <- mapM (abstractTopDecl m) ds
 >     tyEnv' <- fetchSt
->     evEnv' <- liftSt fetchSt
->     trEnv' <- liftSt (liftSt fetchSt)
->     return (ds',tyEnv',evEnv',trEnv')
+>     trEnv' <- liftSt fetchSt
+>     return (ds',tyEnv',trEnv')
 
 > abstractTopDecl :: ModuleIdent -> TopDecl -> AbstractState TopDecl
 > abstractTopDecl m (BlockDecl d) =
@@ -196,10 +194,8 @@ is no need for reordering.
 >         fs' <- liftM (\tyEnv -> filter (not . isLifted tyEnv) fs) fetchSt
 >         -- update type environment
 >         updateSt_ (abstractFunTypes m pre fvs fs')
->         -- update evaluation annotation environment
->         liftSt (updateSt_ (abstractFunAnnots m pre fs'))
 >         -- update trust annotation environment
->         liftSt (liftSt (updateSt_ (abstractFunAnnots m pre fs')))
+>         liftSt (updateSt_ (abstractFunAnnots m pre fs'))
 >         fds' <- mapM (abstractFunDecl m pre fvs lvs env')
 >                      [d | d <- fds, any (`elem` fs') (bv d)]
 >         e' <- abstractFunDecls m pre lvs env' fdss vds e

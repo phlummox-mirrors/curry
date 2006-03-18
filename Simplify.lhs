@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 1872 2006-03-16 10:11:43Z wlux $
+% $Id: Simplify.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -30,12 +30,11 @@ Currently, the following optimizations are implemented:
 > import Typing
 > import Utils
 
-> type SimplifyState a = StateT ValueEnv (ReaderT EvalEnv (StateT Int Id)) a
+> type SimplifyState a = StateT ValueEnv (StateT Int Id) a
 > type InlineEnv = Env Ident Expression
 
-> simplify :: ValueEnv -> EvalEnv -> Module -> (Module,ValueEnv)
-> simplify tyEnv evEnv m =
->   runSt (callRt (callSt (simplifyModule m) tyEnv) evEnv) 1
+> simplify :: ValueEnv -> Module -> (Module,ValueEnv)
+> simplify tyEnv m = runSt (callSt (simplifyModule m) tyEnv) 1
 
 > simplifyModule :: Module -> SimplifyState (Module,ValueEnv)
 > simplifyModule (Module m es is ds) =
@@ -45,8 +44,7 @@ Currently, the following optimizations are implemented:
 >     return (Module m es is ds',tyEnv)
 
 > simplifyTopDecl :: ModuleIdent -> TopDecl -> SimplifyState TopDecl
-> simplifyTopDecl m (BlockDecl d) =
->   liftM BlockDecl (simplifyDecl m emptyEnv d)
+> simplifyTopDecl m (BlockDecl d) = liftM BlockDecl (simplifyDecl m emptyEnv d)
 > simplifyTopDecl _ d = return d
 
 > simplifyDecl :: ModuleIdent -> InlineEnv -> Decl -> SimplifyState Decl
@@ -76,13 +74,7 @@ definitions whose right-hand side is a $\lambda$-expression, e.g.,
 \verb|(.) f g x = let lambda x = f (g x) in lambda x| by desugaring
 and in turn is optimized into \verb|(.) f g x = f (g x)|, here. The
 transformation can obviously be generalized to the case where $f'$ is
-defined by more than one equation. However, we must be careful not to
-change the evaluation mode of arguments. Therefore, the transformation
-is applied only if $f$ and $f'$ use them same evaluation mode or all
-of the arguments $t'_1,\dots,t'_k$ are variables. Actually, the
-transformation could be applied to the case where the arguments
-$t_1,\dots,t_{k-k'}$ are all variables as well, but in this case the
-evaluation mode of $f$ may have to be changed to match that of $f'$.
+defined by more than one equation.
 
 We have to be careful with this optimization in conjunction with
 newtype constructors. It is possible that the local function is
@@ -134,17 +126,13 @@ explicitly in a Curry expression.
 >   do
 >     rhs' <- simplifyRhs m env rhs
 >     tyEnv <- fetchSt
->     evEnv <- liftSt envRt
->     return (inlineFun m tyEnv evEnv p lhs rhs')
+>     return (inlineFun m tyEnv p lhs rhs')
 
-> inlineFun :: ModuleIdent -> ValueEnv -> EvalEnv -> Position -> Lhs -> Rhs
->           -> [Equation]
-> inlineFun m tyEnv evEnv p (FunLhs f ts)
+> inlineFun :: ModuleIdent -> ValueEnv -> Position -> Lhs -> Rhs -> [Equation]
+> inlineFun m tyEnv p (FunLhs f ts)
 >           (SimpleRhs _ (Let [FunctionDecl _ f' eqs'] e) _)
 >   | f' `notElem` qfv m eqs' && e' == Variable (qualify f') &&
->     n == arrowArity (rawType (varType f' tyEnv)) &&
->     (evMode evEnv f == evMode evEnv f' ||
->      and [all isVarPattern ts | Equation _ (FunLhs _ ts) _ <- eqs']) =
+>     n == arrowArity (rawType (varType f' tyEnv)) =
 >     map (merge p f ts' vs') eqs'
 >   where n :: Int                      -- type signature necessary for nhc
 >         (n,vs',ts',e') = etaReduce 0 [] (reverse ts) e
@@ -153,7 +141,7 @@ explicitly in a Curry expression.
 >         etaReduce n vs (VariablePattern v : ts) (Apply e (Variable v'))
 >           | qualify v == v' = etaReduce (n+1) (v:vs) ts e
 >         etaReduce n vs ts e = (n,vs,reverse ts,e)
-> inlineFun _ _ _ p lhs rhs = [Equation p lhs rhs]
+> inlineFun _ _ p lhs rhs = [Equation p lhs rhs]
 
 > simplifyRhs :: ModuleIdent -> InlineEnv -> Rhs -> SimplifyState Rhs
 > simplifyRhs m env (SimpleRhs p e _) =
@@ -496,20 +484,11 @@ selector functions.
 Auxiliary functions
 \begin{verbatim}
 
-> isVarPattern :: ConstrTerm -> Bool
-> isVarPattern (VariablePattern _) = True
-> isVarPattern (AsPattern _ t) = isVarPattern t
-> isVarPattern (ConstructorPattern _ _) = False
-> isVarPattern (LiteralPattern _) = False
-
-> evMode :: EvalEnv -> Ident -> Maybe EvalAnnotation
-> evMode evEnv f = lookupEnv f evEnv
-
 > freshIdent :: ModuleIdent -> (Int -> Ident) -> TypeScheme
 >            -> SimplifyState Ident
 > freshIdent m f ty =
 >   do
->     x <- liftM f (liftSt (liftRt (updateSt (1 +))))
+>     x <- liftM f (liftSt (updateSt (1 +)))
 >     updateSt_ (bindFun m x ty)
 >     return x
 

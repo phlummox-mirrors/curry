@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1843 2006-01-31 19:22:48Z wlux $
+% $Id: ILTrans.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -38,24 +38,22 @@ include any alias types. On the other hand, we introduce new type
 synonyms in place of newtype declarations (see Sect.~\ref{sec:IL}).
 \begin{verbatim}
 
-> ilTrans :: ValueEnv -> EvalEnv -> Module -> IL.Module
-> ilTrans tyEnv evEnv (Module m _ _ ds) = IL.Module m (imports m ds') ds'
->   where ds' = concatMap (translTopDecl m tyEnv evEnv) ds
+> ilTrans :: ValueEnv -> Module -> IL.Module
+> ilTrans tyEnv (Module m _ _ ds) = IL.Module m (imports m ds') ds'
+>   where ds' = concatMap (translTopDecl m tyEnv) ds
 
-> translTopDecl :: ModuleIdent -> ValueEnv -> EvalEnv -> TopDecl -> [IL.Decl]
-> translTopDecl m tyEnv _ (DataDecl _ tc tvs cs) =
->   [translData m tyEnv tc tvs cs]
-> translTopDecl m tyEnv _ (NewtypeDecl _ tc tvs nc) =
+> translTopDecl :: ModuleIdent -> ValueEnv -> TopDecl -> [IL.Decl]
+> translTopDecl m tyEnv (DataDecl _ tc tvs cs) = [translData m tyEnv tc tvs cs]
+> translTopDecl m tyEnv (NewtypeDecl _ tc tvs nc) =
 >   translNewtype m tyEnv tc tvs nc
-> translTopDecl _ _ _ (TypeDecl _ _ _ _) = []
-> translTopDecl m tyEnv evEnv (BlockDecl d) = translDecl m tyEnv evEnv d
+> translTopDecl _ _ (TypeDecl _ _ _ _) = []
+> translTopDecl m tyEnv (BlockDecl d) = translDecl m tyEnv d
 
-> translDecl :: ModuleIdent -> ValueEnv -> EvalEnv -> Decl -> [IL.Decl]
-> translDecl m tyEnv evEnv (FunctionDecl _ f eqs) =
->   [translFunction m tyEnv evEnv f eqs]
-> translDecl m tyEnv _ (ForeignDecl _ cc ie f _) =
+> translDecl :: ModuleIdent -> ValueEnv -> Decl -> [IL.Decl]
+> translDecl m tyEnv (FunctionDecl _ f eqs) = [translFunction m tyEnv f eqs]
+> translDecl m tyEnv (ForeignDecl _ cc ie f _) =
 >   [translForeign m tyEnv f cc (fromJust ie)]
-> translDecl _ _ _ _ = []
+> translDecl _ _ _ = []
 
 > translData :: ModuleIdent -> ValueEnv -> Ident -> [Ident] -> [ConstrDecl]
 >            -> IL.Decl
@@ -159,27 +157,17 @@ and their repeated occurrences in the remaining arguments must be
 preserved. This means that the second and following arguments of a
 selector function have to be renamed according to the name mapping
 computed for its first argument.
-
-If an evaluation annotation is available for a function, it determines
-the evaluation mode of the case expression. Otherwise, the function
-uses flexible matching.
 \begin{verbatim}
 
 > type RenameEnv = Env Ident Ident
 
-> translFunction :: ModuleIdent -> ValueEnv -> EvalEnv
->                -> Ident -> [Equation] -> IL.Decl
-> translFunction m tyEnv evEnv f eqs =
+> translFunction :: ModuleIdent -> ValueEnv -> Ident -> [Equation] -> IL.Decl
+> translFunction m tyEnv f eqs =
 >   IL.FunctionDecl (qualifyWith m f) vs (translType ty)
->                   (match ev vs (map (translEquation tyEnv vs vs'') eqs))
+>                   (match IL.Flex vs (map (translEquation tyEnv vs vs'') eqs))
 >   where ty = rawType (varType f tyEnv)
->         ev = maybe IL.Flex evalMode (lookupEnv f evEnv)
 >         vs = if isSelectorId f then translArgs eqs vs' else vs'
 >         (vs',vs'') = splitAt (arrowArity ty) (argNames (mkIdent ""))
-
-> evalMode :: EvalAnnotation -> IL.Eval
-> evalMode EvalRigid = IL.Rigid
-> evalMode EvalChoice = error "eval choice is not yet supported"
 
 > translArgs :: [Equation] -> [Ident] -> [Ident]
 > translArgs [Equation _ (FunLhs _ (t:ts)) _] (v:_) =
@@ -270,7 +258,7 @@ position in the remaining arguments. If one is found,
 > isDefaultMatch = isDefaultPattern . fst
 
 > match :: IL.Eval -> [Ident] -> [Match] -> IL.Expression
-> match ev [] alts = foldl1 IL.Or (map snd alts)
+> match _  []     alts = foldl1 IL.Or (map snd alts)
 > match ev (v:vs) alts
 >   | null vars = e1
 >   | null nonVars = e2
@@ -281,9 +269,9 @@ position in the remaining arguments. If one is found,
 >         tagAlt (t:ts,e) = (pattern t,(arguments t ++ ts,e))
 >         skipArg (t:ts,e) = ((t:),ts,e)
 
-> optMatch :: IL.Eval -> IL.Expression -> ([Ident] -> [Ident]) -> [Ident] ->
->     [Match'] -> IL.Expression
-> optMatch ev e prefix [] alts = e
+> optMatch :: IL.Eval -> IL.Expression -> ([Ident] -> [Ident]) -> [Ident]
+>          -> [Match'] -> IL.Expression
+> optMatch _  e _      []     _ = e
 > optMatch ev e prefix (v:vs) alts
 >   | null vars = matchInductive ev prefix v vs nonVars
 >   | otherwise = optMatch ev e (prefix . (v:)) vs (map skipArg alts)
@@ -291,14 +279,14 @@ position in the remaining arguments. If one is found,
 >         tagAlt (prefix,t:ts,e) = (pattern t,(prefix (arguments t ++ ts),e))
 >         skipArg (prefix,t:ts,e) = (prefix . (t:),ts,e)
 
-> matchInductive :: IL.Eval -> ([Ident] -> [Ident]) -> Ident -> [Ident] ->
->     [(IL.ConstrTerm,Match)] -> IL.Expression
+> matchInductive :: IL.Eval -> ([Ident] -> [Ident]) -> Ident -> [Ident]
+>                -> [(IL.ConstrTerm,Match)] -> IL.Expression
 > matchInductive ev prefix v vs alts =
 >   IL.Case ev (IL.Variable v) (matchAlts ev prefix vs alts)
 
-> matchAlts :: IL.Eval -> ([Ident] -> [Ident]) -> [Ident] ->
->     [(IL.ConstrTerm,Match)] -> [IL.Alt]
-> matchAlts ev prefix vs [] = []
+> matchAlts :: IL.Eval -> ([Ident] -> [Ident]) -> [Ident]
+>           -> [(IL.ConstrTerm,Match)] -> [IL.Alt]
+> matchAlts _  _      _  [] = []
 > matchAlts ev prefix vs ((t,alt):alts) =
 >   IL.Alt t (match ev (prefix (vars t ++ vs)) (alt : map snd same)) :
 >   matchAlts ev prefix vs others

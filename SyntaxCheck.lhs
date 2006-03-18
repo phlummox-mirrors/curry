@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
+% $Id: SyntaxCheck.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -115,13 +115,13 @@ declarations. The final environment can be discarded.
 >     return (Goal p e' ds')
 
 \end{verbatim}
-In each a declaration group, first the left hand sides of all
+In each declaration group, first the left hand sides of all
 declarations are checked and adjacent equations for the same function
 are merged into a single definition. Next, the compiler checks that
-there is a corresponding value definition for every type signature,
-evaluation annotation, and infix operator declaration in this group
-and that there are no duplicate definitions. Finally, the right hand
-sides are checked.
+there is a corresponding value definition for every fixity
+declaration, type signature, and trust annotation in this group and
+that there are no duplicate definitions. Finally, the right hand sides
+are checked.
 
 The function \texttt{checkDeclLhs} also handles the case where a
 pattern declaration is recognized as a function declaration by the
@@ -146,10 +146,6 @@ top-level.
 >   do
 >     checkVars "type signature" p env vs
 >     return (TypeSig p vs ty)
-> checkDeclLhs _ env (EvalAnnot p fs ev) =
->   do
->     checkVars "evaluation annotation" p env fs
->     return (EvalAnnot p fs ev)
 > checkDeclLhs top env (FunctionDecl p _ eqs) = checkEquationLhs top env p eqs
 > checkDeclLhs _ env (ForeignDecl p cc ie f ty) =
 >   do
@@ -221,32 +217,28 @@ top-level.
 >         Linear ->
 >           case linear tys of
 >             Linear ->
->               case linear evs of
+>               case linear trs of
 >                 Linear ->
->                   case linear trs of
->                     Linear ->
->                       case [p | TrustAnnot p _ Nothing <- ds] of
->                         (p : _ : _) -> errorAt p duplicateDefaultTrustAnnot
->                         _ ->
->                           case filter (`notElem` cs ++ bvs) ops ++
->                                filter (`notElem` bvs) (tys ++ evs ++ trs) of
->                             [] -> return (foldr bindVar env bvs)
->                             P p v : _ -> errorAt p (noBody v)
->                     NonLinear (P p f) -> errorAt p (duplicateTrustAnnot f)
->                 NonLinear (P p v) -> errorAt p (duplicateEvalAnnot v)
+>                   case [p | TrustAnnot p _ Nothing <- ds] of
+>                     (p : _ : _) -> errorAt p duplicateDefaultTrustAnnot
+>                     _ ->
+>                       case filter (`notElem` cs ++ bvs) ops ++
+>                            filter (`notElem` bvs) (tys ++ trs) of
+>                         [] -> return (foldr bindVar env bvs)
+>                         P p v : _ -> errorAt p (noBody v)
+>                 NonLinear (P p f) -> errorAt p (duplicateTrustAnnot f)
 >             NonLinear (P p v) -> errorAt p (duplicateTypeSig v)
 >         NonLinear (P p v) -> errorAt p (duplicateDefinition v)
 >     NonLinear (P p op) -> errorAt p (duplicatePrecedence op)
 >   where bvs = concatMap vars (filter isValueDecl ds)
 >         tys = concatMap vars (filter isTypeSig ds)
->         evs = concatMap vars (filter isEvalAnnot ds)
 >         trs = concatMap vars (filter isTrustAnnot ds)
 >         ops = concatMap vars (filter isInfixDecl ds)
 
 \end{verbatim}
-\ToDo{The syntax checker might accept evaluation and trust annotations
-  only for defined functions because they have no effect on local
-  variables and foreign functions, respectively.}
+\ToDo{The syntax checker should accept trust annotations only for
+  defined functions because they have no effect on local variables and
+  foreign functions.}
 \begin{verbatim}
 
 > checkDeclRhs :: VarEnv -> Decl -> Error Decl
@@ -530,7 +522,6 @@ Auxiliary definitions.
 > vars :: Decl -> [P Ident]
 > vars (InfixDecl p _ _ ops) = map (P p) ops
 > vars (TypeSig p fs _) = map (P p) fs
-> vars (EvalAnnot p fs _) = map (P p) fs
 > vars (FunctionDecl p f _) = [P p f]
 > vars (ForeignDecl p _ _ f _) = [P p f]
 > vars (PatternDecl p t _) = map (P p) (bv t)
@@ -604,9 +595,6 @@ Error messages.
 
 > duplicateTypeSig :: Ident -> String
 > duplicateTypeSig v = "More than one type signature for " ++ name v
-
-> duplicateEvalAnnot :: Ident -> String
-> duplicateEvalAnnot v = "More than one eval annotation for " ++ name v
 
 > duplicateDefaultTrustAnnot :: String
 > duplicateDefaultTrustAnnot =

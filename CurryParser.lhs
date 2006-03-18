@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1868 2006-03-02 23:28:17Z wlux $
+% $Id: CurryParser.lhs 1875 2006-03-18 18:43:27Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -202,10 +202,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
 > funListDecl = typeSig <$-> token DoubleColon <*> type0
->           <|> evalAnnot <$-> token KW_eval <*> tokenOps evalKW
 >   where typeSig ty vs p = TypeSig p vs ty
->         evalAnnot ev vs p = EvalAnnot p vs ev
->         evalKW = [(Id_rigid,EvalRigid),(Id_choice,EvalChoice)]
 
 > valListDecl :: Parser Token ([Ident] -> Position -> Decl) a
 > valListDecl = funListDecl
@@ -644,8 +641,8 @@ prefix of a let expression.
 > gconop = gConSym <|> backquotes (qConId <?> "operator name expected")
 
 > specialIdents, specialSyms :: [Category]
-> specialIdents = [Id_as,Id_ccall,Id_choice,Id_forall,Id_hiding,Id_interface,
->                  Id_primitive,Id_qualified,Id_rigid,Id_safe,Id_unsafe]
+> specialIdents = [Id_as,Id_ccall,Id_forall,Id_hiding,Id_interface,
+>                  Id_primitive,Id_qualified,Id_safe,Id_unsafe]
 > specialSyms = [Sym_Dot,Sym_Minus,Sym_MinusDot]
 
 > ident :: Parser Token Ident a
