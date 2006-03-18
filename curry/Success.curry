@@ -1,10 +1,13 @@
--- $Id: Success.curry 1873 2006-03-16 12:01:05Z wlux $
+-- $Id: Success.curry 1874 2006-03-18 14:46:46Z wlux $
 --
 -- Copyright (c) 2002-2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module Success(module Success, Success, success, (&), (&>), ground) where
 infix  0 ==>, <==
+
+{- Redefinition of Prelude entity for backward compatibility -}
+ground = ensureGround
 
 -- Computes the concurrent conjunction of a list of constraints
 andC :: [Success] -> Success

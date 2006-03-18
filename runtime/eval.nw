@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1872 2006-03-16 10:11:43Z wlux $
+% $Id: eval.nw 1874 2006-03-18 14:46:46Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -562,14 +562,14 @@ FUNCTION(__ensureNotFree)
 }
 
 @ 
-The polymorphic function \texttt{ground} ensures that the normal form
-of its argument is a ground data term. This is done lazily so that
-\texttt{ground} is semantically equivalent to \texttt{Prelude.id}
-otherwise.
+The polymorphic function \texttt{ensureGround} ensures that the normal
+form of its argument is a ground data term. This is done lazily so
+that \texttt{ensureGround} is semantically equivalent to
+\texttt{Prelude.id} otherwise.
 
 <<eval.c>>=
-DECLARE_ENTRYPOINT(__ground);
-DECLARE_LABEL(__ground_1);
+DECLARE_ENTRYPOINT(__ensureGround);
+DECLARE_LABEL(__ensureGround_1);
 
 DECLARE_LABEL(eval_lazy_1);
 
@@ -626,23 +626,24 @@ FUNCTION(eval_lazy_1)
     GOTO(entry);
 }
 
-FUNCTION(__ground)
+FUNCTION(__ensureGround)
 {
-    EXPORT_LABEL(__ground)
- ENTRY_LABEL(__ground)
-    TRACE_FUN("ground", 1);
-    GOTO(__ground_1);
+    EXPORT_LABEL(__ensureGround)
+ ENTRY_LABEL(__ensureGround)
+    TRACE_FUN("ensureGround", 1);
+    GOTO(__ensureGround_1);
 }
 
 static
-FUNCTION(__ground_1)
+FUNCTION(__ensureGround_1)
 {
     boolean	    is_vect;
     unsigned int    n, sz;
     Node	    *node, **argp, *susp;
-    static NodeInfo ground_lazy_info_table[] = LAZYINFO("ground", __ground, 1);
- ENTRY_LABEL(__ground_1)
-    EVAL_RIGID_POLY(__ground_1);
+    static NodeInfo ensureGround_lazy_info_table[] =
+	LAZYINFO("ensureGround", __ensureGround, 1);
+ ENTRY_LABEL(__ensureGround_1)
+    EVAL_RIGID_POLY(__ensureGround_1);
     node = sp[0];
     if ( is_boxed(node) )
     {
@@ -678,7 +679,7 @@ FUNCTION(__ground_1)
 		  argp++, n-- )
 	    {
 		susp		= (Node *)hp;
-		susp->info	= ground_lazy_info_table;
+		susp->info	= ensureGround_lazy_info_table;
 		susp->s.spc	= ss;
 		susp->s.args[0]	= *argp;
 		hp	       += suspend_node_size(1);

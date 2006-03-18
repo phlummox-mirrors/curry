@@ -1,4 +1,4 @@
--- $Id: Prelude.curry 1873 2006-03-16 12:01:05Z wlux $
+-- $Id: Prelude.curry 1874 2006-03-18 14:46:46Z wlux $
 module Prelude where
 
 -- Lines beginning with "--++" are part of the prelude, but are already
@@ -58,9 +58,9 @@ foreign import primitive seq :: a -> b -> b
 --- until x is instantiated to a non-variable term.
 foreign import primitive ensureNotFree :: a -> a
 
---- (ground x) is equivalent to (id x) except that it ensures that the
+--- (ensureGround x) is equivalent to (id x) except that it ensures that the
 --- result is a ground term.
-foreign import primitive ground :: a -> a
+foreign import primitive ensureGround :: a -> a
 
 
 --- Right-associative application.
@@ -84,7 +84,7 @@ f $# x		= f $! ensureNotFree x
 --- Right-associative application with strict evaluation of its argument
 --- to ground normal form.
 ($##)		:: (a -> b) -> a -> b
-f $## x		= f $!! ground x
+f $## x		= f $!! ensureGround x
 
 
 --- Abort the execution with an error message.
