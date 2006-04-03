@@ -1,6 +1,6 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 1872 2006-03-16 10:11:43Z wlux $
+# $Id: Makefile.in 1882 2006-04-03 11:04:54Z wlux $
 #
 # Copyright (c) 2004-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -67,6 +67,7 @@ curry_stdlib_SRCS  = \
 	MarshalUtils.curry \
 	Maybe.curry \
 	Monad.curry \
+	NameSupply.curry \
 	Numeric.curry \
 	Parser.curry \
 	Ports.curry \
