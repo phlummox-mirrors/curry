@@ -1,6 +1,6 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 1882 2006-04-03 11:04:54Z wlux $
+# $Id: Makefile.in 1883 2006-04-03 12:50:41Z wlux $
 #
 # Copyright (c) 2004-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -61,6 +61,7 @@ curry_stdlib_SRCS  = \
 	IOVector.curry \
 	Ix.curry \
 	Integer.curry \
+	Lexing.curry \
 	List.curry \
 	MarshalAlloc.curry \
 	MarshalError.curry \
