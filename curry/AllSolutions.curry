@@ -1,11 +1,12 @@
--- $Id: AllSolutions.curry 1819 2005-11-07 15:56:02Z wlux $
+-- $Id: AllSolutions.curry 1878 2006-04-03 09:06:10Z wlux $
 --
 -- Copyright (c) 2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module AllSolutions(SearchTree(..), getSearchTree, allValuesD, allValuesB,
-                    getFirstSolution, getAllSolutions,
-                    getAllValues, getAllFailures) where
+                    getOneSolution, getAllSolutions,
+                    getOneValue, getAllValues,
+                    getAllFailures) where
 import Maybe
 import Monad
 
@@ -32,11 +33,14 @@ allValuesB t = all [t]
           | null ts = []
           | otherwise = [x | Val x <- ts] ++ all [t | Or ts' <- ts, t <- ts']
 
-getFirstSolution :: (a -> Success) -> IO (Maybe a)
-getFirstSolution g = liftM listToMaybe (getAllSolutions g)
+getOneSolution :: (a -> Success) -> IO (Maybe a)
+getOneSolution g = liftM listToMaybe (getAllSolutions g)
 
 getAllSolutions :: (a -> Success) -> IO [a]
 getAllSolutions g = getAllValues (unpack g)
+
+getOneValue :: a -> IO (Maybe a)
+getOneValue x = liftM listToMaybe (getAllValues x)
 
 getAllValues :: a -> IO [a]
 getAllValues x = liftM allValuesD (getSearchTree x)
