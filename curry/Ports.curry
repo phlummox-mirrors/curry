@@ -1,13 +1,13 @@
--- $Id: Ports.curry 1877 2006-04-03 08:01:16Z wlux $
+-- $Id: Ports.curry 1880 2006-04-03 09:11:31Z wlux $
 --
--- Copyright (c) 2004, Wolfgang Lux
+-- Copyright (c) 2004-2006, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 -- Ports implementation for MCC
 
 module Ports(Port, SP_Msg(..),
              openPort, closePort, send, doSend, choiceSPEP,
-             openProcessPort, openSocketConnectPort) where
+             openProcessPort, openSocketConnectPort, newObject) where
 
 import IO
 import IOExts
@@ -84,3 +84,10 @@ choiceSPEP sp ep
         ms@(_:_) -> Right ms
         _ -> chooseSP sp
   where chooseSP sp | send (SP_GetLine s) sp = Left s where s free
+
+
+-- Active objects
+
+newObject :: (a -> [b] -> Success) -> a -> Port b -> Success
+newObject f s p = openPort p ms & f s (map ensureNotFree (ensureSpine ms))
+  where ms free
