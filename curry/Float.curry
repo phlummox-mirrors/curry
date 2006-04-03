@@ -1,4 +1,4 @@
--- $Id: Float.curry 1872 2006-03-16 10:11:43Z wlux $
+-- $Id: Float.curry 1881 2006-04-03 09:21:01Z wlux $
 --
 -- Copyright (c) 2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -37,7 +37,6 @@ round = roundFloat
 x ^ n
   | n > 0 = f x (n - 1) x
   | n == 0 = 1
-  | otherwise = error "(^): negative exponent"
   where f x n y
           | n == 0 = y
           | otherwise = g x n y

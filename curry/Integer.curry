@@ -1,4 +1,4 @@
--- $Id: Integer.curry 1877 2006-04-03 08:01:16Z wlux $
+-- $Id: Integer.curry 1881 2006-04-03 09:21:01Z wlux $
 --
 -- Copyright (c) 2004-2006, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -15,15 +15,14 @@ pow m n
   | n > 0 = let n' = pow m (n `quot` 2) in
   	    if even n then n' * n' else n' * n' * m
   | n == 0 = 1
-  | otherwise = 0
 
 --- (ilog n) returns the floor of the logarithm in base 10 of n
 ilog :: Int -> Int
-ilog n = truncate (log10 (i2f n))
+ilog n | n > 0 = truncate (log10 (i2f n))
 
 --- (isqrt n) returns the floor of the square root of n.
 isqrt :: Int -> Int
-isqrt n = truncate (sqrt (i2f n))
+isqrt n | n >= 0 = truncate (sqrt (i2f n))
 
 --- (factorial n) returns the factorial of n
 factorial :: Int -> Int
