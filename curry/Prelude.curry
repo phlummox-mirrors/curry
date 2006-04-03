@@ -1,4 +1,4 @@
--- $Id: Prelude.curry 1875 2006-03-18 18:43:27Z wlux $
+-- $Id: Prelude.curry 1877 2006-04-03 08:01:16Z wlux $
 module Prelude where
 
 -- Lines beginning with "--++" are part of the prelude, but are already
@@ -150,25 +150,36 @@ foreign import primitive (==) :: a -> a -> Bool
 -- Ordering
 data Ordering = LT | EQ | GT
 
---- Polymorphic comparisons
+--- Comparison of arbitrary ground data terms.
+--- Data constructors are compared in the order of their definition
+--- in the datatype decalrations and recursively in the arguments.
 foreign import primitive compare :: a -> a -> Ordering
 
---- Polymorphic less-than
+--- Less-than on ground data terms
 (<) :: a -> a -> Bool
 x < y = case compare x y of LT -> True; _ -> False
 
---- Polymorphic greater-than
+--- Greater-than on ground data terms
 (>) :: a -> a -> Bool
 x > y = case compare x y of GT -> True; _ -> False
 
---- Polymorphic less-or-equal
+--- Less-or-equal on ground data terms
 (<=) :: a -> a -> Bool
 x <= y = not (x > y)
 
---- Polymorphic greater-or-equal
+--- Greater-or-equal on ground data terms
 (>=) :: a -> a -> Bool
 x >= y = not (x < y)
 
+--- Maximum of ground data terms
+max :: a -> a -> a
+max x y = if x >= y then x else y
+
+--- Minimum of ground data terms
+min :: a -> a -> a
+min x y = if x <= y then x else y
+
+ 
 -- Pairs
 
 --++ data (a,b) = (a,b)
@@ -679,26 +690,6 @@ solveAll g = all (try g) []
 once :: (a -> Success) -> a -> Success
 once g = head (solveAll g)
 
-{-
---- Primitive operation for committed choice
-foreign import primitive commit :: [(Success,a)] -> a
-
---- Try to find a solution to a search goal via a fair search.
---- Fail if there is no solution.
-tryone         :: (a -> Success) -> a
-tryone g       = commit [let x free in (g x, x)]
-
---- Search for one solution via a fair strategy ("tryone").
---- To control failure and to return the solution in a lambda abstraction,
---- encapsulate the search with "solveAll".
-one     :: (a -> Success) -> [a -> Success]
-one g   = solveAll (\x -> x =:= tryone g)
-
---- Search the first solution that meets a specified condition.
---- "cond" must be a unary Boolean function.
-condSearch        :: (a -> Success) -> (a -> Bool) -> [a -> Success]
-condSearch g cond = one (\x -> g x & cond x =:= True)
- -}
 
 --- Get the best solution via left-to-right strategy according to
 --- a specified operator that can always take a decision which
@@ -730,11 +721,11 @@ best g compare = bestHelp [] (try g) []
 findall :: (a -> Success) -> [a]
 findall g = map unpack (solveAll g)
 
-
 --- Get the first solution via left-to-right strategy
 --- and unpack the values from the search goals.
 findfirst :: (a -> Success) -> a
 findfirst g = head (findall g)
+
 
 --- Show the solution of a solved constraint.
 browse  :: (a -> Success) -> IO ()

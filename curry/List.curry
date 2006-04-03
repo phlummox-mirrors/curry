@@ -1,5 +1,5 @@
 module List(module List,
-	    {- re-exported Prelude entities -}
+	    {- entities re-exported from Prelude-}
 	    map, (++), concat, filter,
 	    head, {-last,-} tail, {-init,-} null, length, (!!),
 	    foldl, foldl1, {-scanl, scanl1,-} foldr, foldr1, {-scanr, scanr1,-}
@@ -55,11 +55,9 @@ sum, product :: [Int] -> Int
 sum = foldr (+) 0
 product = foldr (*) 1
 
-maximum, minimum :: [Int] -> Int
-maximum (x:xs) = foldr max x xs
-  where max x y = if x >= y then x else y
-minimum (x:xs) = foldr min x xs
-  where min x y = if x <= y then x else y
+maximum, minimum :: [a] -> a
+maximum xs = foldr1 max xs
+minimum xs = foldr1 min xs
 
 {- end of supposed Prelude functions -}
 

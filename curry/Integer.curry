@@ -1,9 +1,9 @@
--- $Id: Integer.curry 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: Integer.curry 1877 2006-04-03 08:01:16Z wlux $
 --
--- Copyright (c) 2004-2005, Wolfgang Lux
+-- Copyright (c) 2004-2006, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
-module Integer(pow, ilog, isqrt, factorial, binomial, abs, max, min,
+module Integer(pow, ilog, isqrt, factorial, binomial, abs,
 	       max3, min3, maxlist, minlist, bitTrunc, bitAnd, bitOr,
 	       bitNot, bitXor, even, odd) where
 import Bits
@@ -39,26 +39,20 @@ binomial n m = foldr1 (*) [n-m+1 .. n] `quot` foldr1 (*) [1 .. m]
 abs :: Int -> Int
 abs n = if n >= 0 then n else -n
 
---- (max m n) returns the maximum of m and n
-max :: Int -> Int -> Int
-max m n = if m >= n then m else n
-
---- (min m n) return the minimum of m and n
-min :: Int -> Int -> Int
-min m n = if m <= n then m else n
-
 --- (max3 m n o) returns the maximum of m, n, and o
-max3 :: Int -> Int -> Int -> Int
+max3 :: a -> a -> a -> a
 max3 m n o = max (max m n) o
 
 --- (min3 m n o) returns the maximum of m, n, and o
-min3 :: Int -> Int -> Int -> Int
+min3 :: a -> a -> a -> a
 min3 m n o = min (min m n) o
 
 --- (maxlist l) returns the maximum integer from the list l
+maxlist :: [a] -> a
 maxlist = foldr1 max
 
 --- (minlist l) returns the minimum integer from the list l
+minlist :: [a] -> a
 minlist = foldr1 min
 
 --- (bitTrunc m n) returns the m least significant bits of n

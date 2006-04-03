@@ -1,4 +1,4 @@
--- $Id: Ports.curry 1875 2006-03-18 18:43:27Z wlux $
+-- $Id: Ports.curry 1877 2006-04-03 08:01:16Z wlux $
 --
 -- Copyright (c) 2004, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -73,18 +73,9 @@ streamPort hClose h =
 
 -- Merging
 
-{- the following definition does not work because committed choice
-   is not yet supported
-
-choiceSPEP :: Port SP_Msg -> [a] -> Either String [a]
-choiceSPEP sp ms = commit [
-    let m',ms' free in (ms =:= m':ms', Right ms),
-    let s free in (send (SP_GetLine s) sp, Left s)
-  ]
-
-   here is a workaround using the unsafe isVar primitive
- -}
-
+{- NB The function choiceSPEP should use a fair choice. However, since
+      committed choice is currently not supported, the unsafe primitive
+      isVar is used as a (poor) workaround. -}
 choiceSPEP :: Port SP_Msg -> [a] -> Either String [a]
 choiceSPEP sp ep
   | isVar ep = chooseSP sp

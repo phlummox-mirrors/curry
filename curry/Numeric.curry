@@ -1,4 +1,4 @@
--- $Id: Numeric.curry 1859 2006-02-22 20:56:28Z wlux $
+-- $Id: Numeric.curry 1877 2006-04-03 08:01:16Z wlux $
 --
 -- Copyright (c) 2003-2005, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -11,7 +11,6 @@ import Char
 
 {- Missing Haskell Prelude definitions -}
 type ReadS a = String -> [(a,String)]
-max x y = if x < y then y else x
 {- end of Haskell Prelude definitions -}
 
 showSigned :: (Int -> ShowS) -> Int -> Int -> ShowS
