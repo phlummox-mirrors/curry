@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1875 2006-03-18 18:43:27Z wlux $
+% $Id: Modules.lhs 1884 2006-04-05 16:48:01Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -37,7 +37,7 @@ This module controls the compilation of modules.
 > import DTransform(dTransform,dAddMain)
 > import ILCompile(camCompile,camCompileData,fun)
 > import qualified CamPP(ppModule)
-> import CGen(genMain,genEntry,genModule,genSplitModule)
+> import CGen(genMain,genModule,genSplitModule)
 > import CCode(CFile,mergeCFile)
 > import CPretty(ppCFile)
 > import CurryPP(ppModule,ppInterface,ppIDecl,ppGoal)
@@ -73,17 +73,13 @@ declaration to the module.
 >     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule id paths fn
 >     mEnv' <- importDebugPrelude paths dbg fn mEnv
 >     let (ccode,dumps) = transModule split dbg tr mEnv' tcEnv tyEnv m
->         ccode' = compileDefaultGoal dbg tr mEnv' intf
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               unless (noInterface opts) (updateInterface fn intf) >>
->               writeCode (output opts) fn (merge ccode ccode')
+>               writeCode (output opts) fn ccode
 >   where paths = importPath opts
 >         split = splitCode opts
 >         dbg = debug opts
 >         tr = if trusted opts then Trust else Suspect
->         merge ccode = maybe ccode (merge' ccode)
->         merge' (Left cf1) = Left . mergeCFile cf1
->         merge' (Right cfs) = Right . (cfs ++) . return
 
 > loadModule :: (Module -> Module) -> [FilePath] -> FilePath
 >            -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,Module,Interface)
@@ -188,43 +184,46 @@ compilation of a goal is similar to that of a module.
 \begin{verbatim}
 
 > compileGoal :: Options -> Maybe String -> Maybe FilePath -> ErrorT IO ()
-> compileGoal opts (Just g) fn =
+> compileGoal opts g fn =
 >   do
 >     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths g fn
 >     mEnv' <- importDebugPrelude paths dbg "" mEnv
->     let (ccode,dumps) =
->           transGoal dbg tr run mEnv' tcEnv tyEnv (mkIdent "goal") g'
+>     let (ccode,dumps) = transGoal dbg tr mEnv' tcEnv tyEnv g'
 >     liftErr $ mapM_ (doDump opts) dumps >>
->               writeGoalCode (output opts) (mergeCFile (genMain run) ccode)
->   where run = "curry_goal"
->         dbg = debug opts
+>               writeGoalCode (output opts) ccode
+>   where dbg = debug opts
 >         tr = if trusted opts then Trust else Suspect
 >         paths = importPath opts
-> compileGoal opts Nothing fn =
->   liftErr $ writeGoalCode (output opts) (genMain "curry_main")
 
 > typeGoal :: Options -> String -> Maybe FilePath -> ErrorT IO ()
 > typeGoal opts g fn =
 >   do
->     (_,_,tyEnv,m,Goal _ e _) <- loadGoal (importPath opts) g fn
+>     (_,_,tyEnv,m,Goal _ e _) <- loadGoal (importPath opts) (Just g) fn
 >     liftErr $ print (ppType m (typeOf tyEnv e))
 
-> loadGoal :: [FilePath] -> String -> Maybe FilePath
+> loadGoal :: [FilePath] -> Maybe String -> Maybe FilePath
 >          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,ModuleIdent,Goal)
 > loadGoal paths g fn =
 >   do
->     (mEnv,m,is) <- loadGoalModule paths fn
->     (tcEnv,tyEnv,g') <- okM $ parseGoal g >>= checkGoal mEnv is
+>     (mEnv,m,is) <- loadGoalModule paths g fn
+>     (tcEnv,tyEnv,g') <-
+>       okM $ maybe (return mainGoal) parseGoal g >>= checkGoal mEnv is
 >     return (mEnv,tcEnv,tyEnv,m,g')
+>   where mainGoal = Goal (first "") (Variable (qualify mainId)) []
 
-> loadGoalModule :: [FilePath] -> Maybe FilePath
+> loadGoalModule :: [FilePath] -> Maybe String -> Maybe FilePath
 >                -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
-> loadGoalModule paths (Just fn) =
+> loadGoalModule paths (Just _) (Just fn) =
 >   do
 >     (mEnv,_,_,Module m _ is _,_) <- loadModule transparent paths fn
 >     return (mEnv,m,is ++ [importDecl (first "") m])
 >   where transparent (Module m _ is ds) = Module m Nothing is ds
-> loadGoalModule paths Nothing =
+> loadGoalModule paths Nothing (Just fn) =
+>   do
+>     mEnv <- compileInterface paths [] emptyEnv m (interfaceName fn)
+>     return (mEnv,emptyMIdent,[importDecl (first "") m])
+>   where m = mainMIdent
+> loadGoalModule paths _ Nothing =
 >   do
 >     mEnv <- loadInterface paths [] emptyEnv (P p m)
 >     return (mEnv,emptyMIdent,[importDecl p m])
@@ -243,10 +242,12 @@ compilation of a goal is similar to that of a module.
 >     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv emptyMIdent pEnv tcEnv tyEnv'
 >     return (tcEnv',tyEnv'',qualGoal tyEnv' g')
 
-> transGoal :: Bool -> Trust -> String -> ModuleEnv -> TCEnv -> ValueEnv
->           -> Ident -> Goal -> (CFile,[(Dump,Doc)])
-> transGoal debug tr run mEnv tcEnv tyEnv goalId g = (ccode,dumps)
+> transGoal :: Bool -> Trust -> ModuleEnv -> TCEnv -> ValueEnv -> Goal
+>           -> (CFile,[(Dump,Doc)])
+> transGoal debug tr mEnv tcEnv tyEnv g = (mergeCFile ccode ccode',dumps)
 >   where m = emptyMIdent
+>         goalId = mainId
+>         qGoalId = qualifyWith m goalId
 >         trEnv = bindEnv goalId Suspect (trustEnvGoal tr g)
 >         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
 >         (simplified,tyEnv'') = simplify tyEnv' desugared
@@ -258,9 +259,8 @@ compilation of a goal is similar to that of a module.
 >         ilNormal = liftProg ilDbg
 >         cam = camCompile ilNormal
 >         imports = camCompileData (ilImports mEnv ilNormal)
->         ccode =
->           genModule imports cam ++
->           genEntry run (fun (qualifyWith m goalId)) (fmap (map name) vs)
+>         ccode = genModule imports cam
+>         ccode' = genMain (fun qGoalId) (fmap (map name) vs)
 >         dumps =
 >           [(DumpRenamed,ppGoal g),
 >            (DumpTypes,ppTypes m (localBindings tyEnv)),
@@ -271,24 +271,6 @@ compilation of a goal is similar to that of a module.
 >           [(DumpTransformed,ILPP.ppModule ilDbg) | debug ] ++
 >           [(DumpNormalized,ILPP.ppModule ilNormal),
 >            (DumpCam,CamPP.ppModule cam)]
-
-\end{verbatim}
-The compiler adds a startup function for the default goal
-\texttt{main.main} to the \texttt{main} module. Thus, there is no need
-to determine the type of the goal when linking the program.
-\begin{verbatim}
-
-> compileDefaultGoal :: Bool -> Trust -> ModuleEnv -> Interface -> Maybe CFile
-> compileDefaultGoal debug tr mEnv (Interface m is ds)
->   | m == mainMIdent && any (qMainId ==) [f | IFunctionDecl _ f _ <- ds] =
->       Just ccode
->   | otherwise = Nothing
->   where qMainId = qualify mainId
->         mEnv' = bindModule (Interface m is ds) mEnv
->         (tcEnv,tyEnv,g) = ok $
->           checkGoal mEnv' [importDecl (first "") m]
->                     (Goal (first "") (Variable qMainId) [])
->         (ccode,_) = transGoal debug tr "curry_main" mEnv' tcEnv tyEnv mainId g
 
 \end{verbatim}
 The function \texttt{importModules} brings the declarations of all
@@ -418,7 +400,7 @@ the file is closed.
 >   do
 >     eq <- catch (matchInterface ifn i) (const (return False))
 >     unless eq (writeInterface ifn i)
->   where ifn = rootname sfn ++ intfExt
+>   where ifn = interfaceName sfn
 
 > matchInterface :: FilePath -> Interface -> IO Bool
 > matchInterface ifn i =
@@ -431,6 +413,9 @@ the file is closed.
 
 > writeInterface :: FilePath -> Interface -> IO ()
 > writeInterface ifn = writeFile ifn . showln . ppInterface
+
+> interfaceName :: FilePath -> FilePath
+> interfaceName fn = rootname fn ++ intfExt
 
 \end{verbatim}
 The compiler searches for interface files in the import search path

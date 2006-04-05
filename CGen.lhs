@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1872 2006-03-16 10:11:43Z wlux $
+% $Id: CGen.lhs 1884 2006-04-05 16:48:01Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -8,7 +8,7 @@
 \section{Generating C Code}
 \begin{verbatim}
 
-> module CGen(genMain,genEntry,genModule,genSplitModule) where
+> module CGen(genMain,genModule,genSplitModule) where
 > import Cam
 > import CCode
 > import CPS
@@ -22,18 +22,20 @@
 
 \end{verbatim}
 \subsection{Start-up Code}
-The functions \texttt{genMain} and \texttt{genEntry} generate the
-start-up code for a Curry program. The function \texttt{genMain}
-defines the main function of the program and also the global variables
-that hold the default sizes of the heap, stack, and trail. The main
-function initializes the runtime system by calling \verb|curry_init|,
-then calls the specified function that executes the Curry program, and
-finally calls \verb|curry_terminate|, which eventually prints the
-statistics for the run.
+The function \texttt{genMain} generates the start-up code for a Curry
+program. It defines the main function of the program and also the
+global variables that hold the default sizes of the heap, the stack,
+and the trail. The main function first initializes the runtime system
+by calling \verb|curry_init|, then executes the main function of the
+Curry program by invoking \verb|curry_exec| for a monadic goal and
+\verb|curry_eval| for a non-monadic goal, respectively, and finally
+calls \verb|curry_terminate|, which eventually prints the statistics
+for the run. In case of a non-monadic goal, the main function also
+defines the array holding the names of the goal's free variables.
 \begin{verbatim}
 
-> genMain :: String -> [CTopDecl]
-> genMain run = CppInclude "curry.h" : defaultVars ++ mainFunction run
+> genMain :: Name -> Maybe [String] -> [CTopDecl]
+> genMain f fvs = CppInclude "curry.h" : defaultVars ++ mainFunction f fvs
 
 > defaultVars :: [CTopDecl]
 > defaultVars =
@@ -47,29 +49,16 @@ statistics for the run.
 >           ]
 >         defaultValue v = "DEFAULT_" ++ map toUpper v
 
-> mainFunction :: String -> [CTopDecl]
-> mainFunction run =
->   [CMainDecl run ["argc","argv"],
->    CMainFunc "main" ["argc","argv"]
+> mainFunction :: Name -> Maybe [String] -> [CTopDecl]
+> mainFunction f fvs =
+>   [CMainFunc "main" ["argc","argv"]
+>     (maybe [] (return . fvDecl "fv_names") fvs ++
 >      [procCall "curry_init" ["&argc","argv"],
->       CLocalVar intType "rc" (Just (funCall run ["argc","argv"])),
+>       CLocalVar intType "rc"
+>         (Just (curry_main fvs (nodeInfo f) "fv_names" ["argc","argv"])),
 >       procCall "curry_terminate" [],
 >       procCall "exit" ["rc"],
->       CReturn (CInt 0)]]
-
-\end{verbatim}
-The function \texttt{genEntry} generates the C function that executes
-the Curry program. This is done by invoking \verb|curry_exec| for a
-monadic goal and \verb|curry_eval| for a non-monadic goal,
-respectively. In the latter case, the code also defines the array
-holding the names of the goal's free variables.
-\begin{verbatim}
-
-> genEntry :: String -> Name -> Maybe [String] -> [CTopDecl]
-> genEntry run f fvs =
->   [CMainFunc run ["argc","argv"]
->     (maybe [] (return . fvDecl "fv_names") fvs ++
->      [CReturn (curry_main fvs (nodeInfo f) "fv_names" ["argc","argv"])])]
+>       CReturn (CInt 0)])]
 >   where fvDecl v vs =
 >           CStaticArray (CPointerType (CConstType "char")) v
 >                        (map CInit (map CString vs ++ [CNull]))
@@ -134,7 +123,7 @@ function because there is not much chance for them to be shared.
 
 > switchTags :: [Stmt] -> [(Name,Int)]
 > switchTags sts =
->   [(c,length vs) | Switch _ _ cs <- sts,  Case (ConstrCase c vs) _ <- cs]
+>   [(c,length vs) | Switch _ _ cs <- sts, Case (ConstrCase c vs) _ <- cs]
 
 > nodes :: [Stmt] -> [Expr]
 > nodes sts = [n | Return n <- sts]

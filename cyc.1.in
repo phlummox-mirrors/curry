@@ -4,7 +4,7 @@
 .\"man mdoc for the short list of editing options
 .\"/usr/share/misc/mdoc.template
 .\"
-.\" $Id: cyc.1.in 1838 2005-11-17 08:03:45Z wlux $
+.\" $Id: cyc.1.in 1884 2006-04-05 16:48:01Z wlux $
 .\"
 .\" Copyright (c) 2004-2005, Wolfgang Lux
 .\" See LICENSE for the full license.
@@ -71,7 +71,14 @@ for some arbitrary type
 .Ar t ,
 the program executes the corresponding I/O action. Otherwise, the goal
 is evaluated and its solutions are presented incrementally on the
-standard output.
+standard output. In order to determine the type of
+.Li main.main ,
+the compiler must know the main module of the program. The compiler
+assumes that the last Curry source file appearing on the command line
+defines the main module. The main module can also be specified
+explicitly with the
+.Fl M
+option.
 .Pp
 .Ss Overall Options
 The following options control the general processing of source files.
@@ -285,28 +292,37 @@ instead of
 .Li main.main .
 The
 .Ar goal
-is evaluated with respect to the Curry module that occurs last on the
-command line, the module specified with the
+is evaluated with respect to the Curry module specified explicitly
+with the
 .Fl M
-option, or the Curry prelude otherwise.
+option, the last module occurring on the command line, or the
+.Li Prelude
+otherwise.
 .It Fl T Ar goal
 Compute the type of
 .Ar goal .
 The
 .Ar goal Ns No 's
-type is computed with respect to the Curry module that occurs last on
-the command line, the module specified with the
+type is computed with respect to the Curry module specified explicitly
+with the
 .Fl M
-option, or the Curry prelude otherwise.
+option, the last module occurring on the command line, or the
+.Li Prelude
+otherwise.
 .It Fl M Ar module
-An explicit goal specified with the
+Use
+.Ar module
+as main module of the program. An explicit goal specified with the
 .Fl e
-option is evaluated with respect to the module
-.Ar module
-if no other Curry module occurs on the command line.
+option is evaluated in the context of
+.Ar module .
+By default, the compiler assumes that the last Curry source file
+appearing on the command line contains the main module of the
+program. It may be necessary to specify the main module explicitly
+when there are no source file arguments.
 .Pp
-.Ar module
-is either the name of the source file (ending in
+.Ar Module
+is either the name of a source file (ending in 
 .Pa .lcurry
 or
 .Pa .curry )
@@ -488,7 +504,7 @@ This command compiles and links the Curry modules in
 .Pa A.lcurry
 and
 .Pa B.lcurry
-in that order. Both files are taken to contain literate Curry
+in that order. Both files are assumed to contain literate Curry
 source. The code is optimized by the C compiler using optimization
 level 2. The executable is put in file
 .Pa B .
@@ -496,7 +512,7 @@ It evaluates the goal
 .Li main.main
 and uses a larger default heap (12 MBytes). File
 .Pa B.lcurry
-should define the
+should define the module
 .Li main .
 .Pp
 .It Li cyc -c nat.curry

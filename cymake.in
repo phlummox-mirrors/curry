@@ -3,7 +3,7 @@
 #
 # Shell script for building Curry programs
 #
-# $Id: cymake.in 1839 2006-01-07 12:14:21Z wlux $
+# $Id: cymake.in 1884 2006-04-05 16:48:01Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -86,8 +86,8 @@ link ( ) {
     $echo $cyc $cyopts -T "$typeIt" -M "$target"
     $exec $cyc $cyopts -T "$typeIt" -M "$target"
   else
-    $echo $cyc $cyopts $ldopts "$@" $libs
-    $exec $cyc $cyopts $ldopts "$@" $libs
+    $echo $cyc $cyopts $ldopts -M "$target" "$@" $libs
+    $exec $cyc $cyopts $ldopts -M "$target" "$@" $libs
   fi
 }
 

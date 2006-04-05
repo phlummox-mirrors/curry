@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: cam2c.lhs 1838 2005-11-17 08:03:45Z wlux $
+% $Id: cam2c.lhs 1884 2006-04-05 16:48:01Z wlux $
 %
 % Copyright (c) 2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -148,8 +148,8 @@ constructor tags in the code.
 >             [FunctionDecl (Name "curry_eval") (Name "_1" : map Name vs)
 >               (Seq (Let [Bind (Name "_2") (Closure (Name f) (map Name vs))])
 >                    (Exec (mangle "=:=") [Name "_1",Name "_2"]))] ++
->   genEntry "curry_main" (Name "curry_eval") (Just vs)
-> genGoal f Nothing = genEntry "curry_main" (Name f) Nothing
+>   genMain (Name "curry_eval") (Just vs)
+> genGoal f Nothing = genMain (Name f) Nothing
 
 > parseInput :: IO Module
 > parseInput = liftM (ok . parseModule "") getContents
