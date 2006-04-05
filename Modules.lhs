@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1884 2006-04-05 16:48:01Z wlux $
+% $Id: Modules.lhs 1885 2006-04-05 21:23:18Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -220,9 +220,8 @@ compilation of a goal is similar to that of a module.
 >   where transparent (Module m _ is ds) = Module m Nothing is ds
 > loadGoalModule paths Nothing (Just fn) =
 >   do
->     mEnv <- compileInterface paths [] emptyEnv m (interfaceName fn)
+>     (mEnv,m) <- compileInterface paths [] emptyEnv (interfaceName fn)
 >     return (mEnv,emptyMIdent,[importDecl (first "") m])
->   where m = mainMIdent
 > loadGoalModule paths _ Nothing =
 >   do
 >     mEnv <- loadInterface paths [] emptyEnv (P p m)
@@ -342,7 +341,15 @@ it is found.
 >   | otherwise =
 >       liftErr (lookupInterface paths m) >>=
 >       maybe (errorAt p (interfaceNotFound m))
->             (compileInterface paths ctxt mEnv m)
+>             (compileModuleInterface paths ctxt mEnv m)
+
+> compileModuleInterface :: [FilePath] -> [ModuleIdent] -> ModuleEnv
+>                        -> ModuleIdent -> FilePath -> ErrorT IO ModuleEnv
+> compileModuleInterface paths ctxt mEnv m fn =
+>   do
+>     (mEnv',m') <- compileInterface paths ctxt mEnv fn
+>     unless (m == m') (errorAt (first fn) (wrongInterface m m'))
+>     return mEnv'
 
 \end{verbatim}
 After parsing an interface, all imported interfaces are recursively
@@ -353,15 +360,14 @@ that is needed for compiling a module is present in the interfaces
 that are imported directly from that module.}
 \begin{verbatim}
 
-> compileInterface :: [FilePath] -> [ModuleIdent] -> ModuleEnv -> ModuleIdent
->                  -> FilePath -> ErrorT IO ModuleEnv
-> compileInterface paths ctxt mEnv m fn =
+> compileInterface :: [FilePath] -> [ModuleIdent] -> ModuleEnv
+>                  -> FilePath -> ErrorT IO (ModuleEnv,ModuleIdent)
+> compileInterface paths ctxt mEnv fn =
 >   do
->     i@(Interface m' _ _) <- liftErr (readFile fn) >>= okM . parseInterface fn
->     unless (m == m') (errorAt (first fn) (wrongInterface m m'))
+>     i <- liftErr (readFile fn) >>= okM . parseInterface fn
 >     mEnv' <- loadIntfInterfaces paths ctxt mEnv i
->     i' <- okM (checkInterface mEnv' i)
->     return (bindModule i' mEnv')
+>     Interface m is ds <- okM (checkInterface mEnv' i)
+>     return (bindModule (Interface m is ds) mEnv',m)
 
 > loadIntfInterfaces :: [FilePath] -> [ModuleIdent] -> ModuleEnv -> Interface
 >                    -> ErrorT IO ModuleEnv

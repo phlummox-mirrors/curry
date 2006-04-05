@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1875 2006-03-18 18:43:27Z wlux $
+% $Id: CurryParser.lhs 1885 2006-04-05 21:23:18Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -18,6 +18,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 > import LLParseComb
 > import CurrySyntax
 > import CurryLexer
+> import PathUtils
 
 > instance Symbol Token where
 >   isEOF (Token c _) = c == EOF
@@ -27,24 +28,26 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 \begin{verbatim}
 
 > parseSource :: FilePath -> String -> Error Module
-> parseSource = applyParser parseModule lexer
+> parseSource fn = applyParser (parseModule fn) lexer fn
 
 > parseHeader :: FilePath -> String -> Error Module
-> parseHeader = prefixParser (moduleHeader <*->
->                             (leftBrace `opt` undefined) <*>
->                             many (importDecl <*-> many semicolon) <*>
->                             succeed [])
->                            lexer
+> parseHeader fn = prefixParser (moduleHeader fn <*->
+>                               (leftBrace `opt` undefined) <*>
+>                                many (importDecl <*-> many semicolon) <*>
+>                                succeed [])
+>                               lexer
+>                               fn
 
-> parseModule :: Parser Token Module a
-> parseModule = uncurry <$> moduleHeader <*> layout moduleDecls
+> parseModule :: FilePath -> Parser Token Module a
+> parseModule fn = uncurry <$> moduleHeader fn <*> layout moduleDecls
 
-> moduleHeader :: Parser Token ([ImportDecl] -> [TopDecl] -> Module) a
-> moduleHeader = Module <$-> token KW_module
->                       <*> (mIdent <?> "module name expected")
->                       <*> (Just <$> exportSpec `opt` Nothing)
->                       <*-> (token KW_where <?> "where expected")
->          `opt` Module mainMIdent Nothing
+> moduleHeader :: FilePath
+>              -> Parser Token ([ImportDecl] -> [TopDecl] -> Module) a
+> moduleHeader fn = Module <$-> token KW_module
+>                          <*> (mIdent <?> "module name expected")
+>                          <*> (Just <$> exportSpec `opt` Nothing)
+>                          <*-> (token KW_where <?> "where expected")
+>             `opt` Module (defaultMIdent fn) Nothing
 
 > exportSpec :: Parser Token ExportSpec a
 > exportSpec = Exporting <$> position <*> parens (export `sepBy` comma)
@@ -79,6 +82,16 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >               <|> flip ImportTypeWith <$> con `sepBy` comma
 
 \end{verbatim}
+If a source module has no explicit module header, the compiler
+substitutes a default module header \texttt{module} $M$
+\texttt{where} if the module is saved in file $M$\texttt{.curry}. The
+directory path to the module is ignored.
+\begin{verbatim}
+
+> defaultMIdent :: FilePath -> ModuleIdent
+> defaultMIdent fn = mkMIdent [rootname (basename fn)]
+
+\end{verbatim}
 \paragraph{Interfaces}
 \begin{verbatim}
 
@@ -89,9 +102,11 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 > parseIntf = uncurry <$> intfHeader <*> braces intfDecls
 
 > intfHeader :: Parser Token ([IImportDecl] -> [IDecl] -> Interface) a
-> intfHeader = Interface <$-> token Id_interface
->                        <*> (mIdent <?> "module name expected")
+> intfHeader = Interface <$-> token Id_interface <*> moduleName
 >                        <*-> (token KW_where <?> "where expected")
+>   where moduleName = mIdent
+>                  <|> mkMIdent . return <$> string
+>                  <?> "module name expected"
 
 > intfDecls :: Parser Token ([IImportDecl],[IDecl]) a
 > intfDecls = impDecl <$> iImportDecl

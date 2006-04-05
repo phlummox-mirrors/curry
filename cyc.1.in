@@ -4,9 +4,9 @@
 .\"man mdoc for the short list of editing options
 .\"/usr/share/misc/mdoc.template
 .\"
-.\" $Id: cyc.1.in 1884 2006-04-05 16:48:01Z wlux $
+.\" $Id: cyc.1.in 1885 2006-04-05 21:23:18Z wlux $
 .\"
-.\" Copyright (c) 2004-2005, Wolfgang Lux
+.\" Copyright (c) 2004-2006, Wolfgang Lux
 .\" See LICENSE for the full license.
 .\"
 .Dd 17.11.05               \" DATE 
@@ -60,10 +60,15 @@ are taken to be assembler programs, and
 are object files.
 .Pp
 By default, a program linked with
-.Nm 
-executes the goal
-.Li main.main .
-It is possible to specify a different goal with the
+.Nm  cyc
+executes the
+.Li main
+function in the main module of the program. The compiler assumes that
+the last Curry source file appearing on the command line defines the
+main module. A different main module can be specified explicitly with
+the
+.Fl M
+option. It is possible to specify a different goal with the
 .Fl e
 option. If the type of the goal is 
 .Nm IO Ar t ,
@@ -71,14 +76,7 @@ for some arbitrary type
 .Ar t ,
 the program executes the corresponding I/O action. Otherwise, the goal
 is evaluated and its solutions are presented incrementally on the
-standard output. In order to determine the type of
-.Li main.main ,
-the compiler must know the main module of the program. The compiler
-assumes that the last Curry source file appearing on the command line
-defines the main module. The main module can also be specified
-explicitly with the
-.Fl M
-option.
+standard output.
 .Pp
 .Ss Overall Options
 The following options control the general processing of source files.
@@ -289,7 +287,7 @@ at each garbage collection.
 Evaluate
 .Ar goal
 instead of
-.Li main.main .
+.Li main .
 The
 .Ar goal
 is evaluated with respect to the Curry module specified explicitly
@@ -490,14 +488,12 @@ been compiled with
 .It Li cyc test.curry
 This command compiles and links the Curry module in
 .Pa test.curry .
-The file
-.Pa test.curry
-must define the module
-.Li main .
 The executable is put in
 .Pa a.out
-and evaluates the goal
-.Li main.main .
+and evaluates the
+.Li main
+function in
+.Pa test.curry .
 .Pp
 .It Li cyc -h12M -O2 A.lcurry B.lcurry -o B
 This command compiles and links the Curry modules in
@@ -508,12 +504,11 @@ in that order. Both files are assumed to contain literate Curry
 source. The code is optimized by the C compiler using optimization
 level 2. The executable is put in file
 .Pa B .
-It evaluates the goal
-.Li main.main
-and uses a larger default heap (12 MBytes). File
+It evaluates the
+.Li main
+function in
 .Pa B.lcurry
-should define the module
-.Li main .
+and uses a larger default heap (12 MBytes).
 .Pp
 .It Li cyc -c nat.curry
 .It Li cyc -e "add n Z =:= S Z where n free" nat.o -Mnat -o one

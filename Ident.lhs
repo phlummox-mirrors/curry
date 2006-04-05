@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Ident.lhs 1872 2006-03-16 10:11:43Z wlux $
+% $Id: Ident.lhs 1885 2006-04-05 21:23:18Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -31,7 +31,7 @@ unqualified identifier.}
 >              mkMIdent,moduleName,moduleQualifiers,isInfixOp,isQInfixOp,
 >              qualify,qualifyWith,qualifyLike,qualQualify,isQualified,
 >              unqualify,qualUnqualify,localIdent,splitQualIdent,
->              emptyMIdent,mainMIdent,preludeMIdent,debugPreludeMIdent,
+>              emptyMIdent,preludeMIdent,debugPreludeMIdent,
 >              ptrMIdent,stablePtrMIdent,
 >              anonId,unitId,boolId,charId,intId,floatId,listId,ioId,
 >              ptrId,funPtrId,stablePtrId,
@@ -149,9 +149,8 @@ given module prefix, respectively).
 A few identifiers a predefined here.
 \begin{verbatim}
 
-> emptyMIdent, mainMIdent, preludeMIdent, debugPreludeMIdent :: ModuleIdent
+> emptyMIdent, preludeMIdent, debugPreludeMIdent :: ModuleIdent
 > emptyMIdent        = ModuleIdent []
-> mainMIdent         = ModuleIdent ["main"]
 > preludeMIdent      = ModuleIdent ["Prelude"]
 > debugPreludeMIdent = ModuleIdent ["DebugPrelude"]
 

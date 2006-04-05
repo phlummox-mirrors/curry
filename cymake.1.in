@@ -4,9 +4,9 @@
 .\"man mdoc for the short list of editing options
 .\"/usr/share/misc/mdoc.template
 .\"
-.\" $Id: cymake.1.in 1838 2005-11-17 08:03:45Z wlux $
+.\" $Id: cymake.1.in 1885 2006-04-05 21:23:18Z wlux $
 .\"
-.\" Copyright (c) 2004-2005, Wolfgang Lux
+.\" Copyright (c) 2004-2006, Wolfgang Lux
 .\" See LICENSE for the full license.
 .\"
 .Dd 17.11.05               \" DATE 
@@ -86,8 +86,8 @@ by the program is changed.
 .It Fl e Ar goal
 Evaluate
 .Ar goal
-instead of
-.Li main.main .
+instead of function
+.Li main .
 This option cannot be used when compiling more than one module.
 .It Fl T Ar goal
 Compute the type of

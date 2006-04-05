@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 1875 2006-03-18 18:43:27Z wlux $
+% $Id: CurryPP.lhs 1885 2006-04-05 21:23:18Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -14,6 +14,7 @@ Haskell parser.
 > module CurryPP(module CurryPP, Doc) where
 > import Ident
 > import CurrySyntax
+> import Char
 > import Pretty
 
 \end{verbatim}
@@ -143,9 +144,17 @@ Interfaces
 
 > ppInterface :: Interface -> Doc
 > ppInterface (Interface m is ds) =
->   text "interface" <+> ppMIdent m <+> text "where" <+> lbrace $$
+>   text "interface" <+> ppModuleIdent m <+> text "where" <+> lbrace $$
 >   vcat (punctuate semi (map ppIImportDecl is ++ map ppIDecl ds)) $$
 >   rbrace
+>   where ppModuleIdent m
+>           | isMIdent m = ppMIdent m
+>           | otherwise = text (show (moduleName m))
+>         isMIdent m = not (null ms) && all isIdent ms
+>           where ms = moduleQualifiers m
+>         isIdent "" = False
+>         isIdent (c:cs) = isAlpha c && all isAlphaNum_ cs
+>         isAlphaNum_ c = isAlphaNum c || c == '_'
 
 > ppIImportDecl :: IImportDecl -> Doc
 > ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
