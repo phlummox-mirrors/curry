@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryLexer.lhs 1875 2006-03-18 18:43:27Z wlux $
+% $Id: CurryLexer.lhs 1888 2006-04-06 16:46:09Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -566,7 +566,7 @@ backs up to the beginning of the pragma in that case so that
 > asciiEscape p0 success fail p ('G':'S':s) = success '\GS' (incr p 2) s
 > asciiEscape p0 success fail p ('R':'S':s) = success '\RS' (incr p 2) s
 > asciiEscape p0 success fail p ('U':'S':s) = success '\US' (incr p 2) s
-> asciiEscape p0 success fail p ('S':'L':s) = success '\SP' (incr p 2) s
+> asciiEscape p0 success fail p ('S':'P':s) = success '\SP' (incr p 2) s
 > asciiEscape p0 success fail p ('D':'E':'L':s) = success '\DEL' (incr p 3) s
 > asciiEscape p0 success fail p s = fail p0 "Illegal escape sequence" p s
 
