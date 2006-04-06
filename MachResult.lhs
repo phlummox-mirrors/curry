@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: MachResult.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: MachResult.lhs 1889 2006-04-06 16:55:47Z wlux $
 %
-% Copyright (c) 1998-2004, Wolfgang Lux
+% Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{MachResult.lhs}
@@ -47,8 +47,10 @@ list of variables used in the answer expression.
 >   do
 >     answer <- browseSubsts names freeVars
 >     cstrs <- browseConstraints names freeVars ptr
->     exp <- browseElem names ptr
->     return (showsAnswer (answer ++ cstrs) exp)
+>     Ptr adr ref <- derefPtr ptr
+>     node <- readRef ref
+>     exp <- browseExpression 0 names adr node
+>     return (showsAnswer (nodeTag node == successTag) (answer ++ cstrs) exp)
 >   where names = variableNames freeVars
 
 > browseExpression :: Int -> [String] -> Integer -> Node -> BrowseState ShowS
@@ -178,9 +180,10 @@ list of variables used in the answer expression.
 >     IndirNode ptr -> constrainedVars vars ptr
 >     _ -> return vars
 
-> showsAnswer :: [ShowS] -> ShowS -> ShowS
-> showsAnswer answer exp
+> showsAnswer :: Bool -> [ShowS] -> ShowS -> ShowS
+> showsAnswer isSuccess answer exp
 >   | null answer = exp
+>   | isSuccess = braces ('{','}') (catBy ", " answer)
 >   | otherwise = braces ('{','}') (catBy ", " answer) . showChar ' ' . exp
 
 > showsTerm :: Int -> String -> [ShowS] -> ShowS
@@ -229,7 +232,6 @@ variable names here, too.
 > variableNames freeVars = names ++ filter (`notElem` names) genVars
 >   where names = map fst freeVars
 >         genVars = [genName c i | i <- [0..], c <- ['a'..'z']]
->         genName c 0 = [c]
->         genName c i = c : show i
+>         genName c i = '_' : c : if i == 0 then "" else show i
 
 \end{verbatim}
