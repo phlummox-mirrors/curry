@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1869 2006-03-05 17:28:46Z wlux $
+% $Id: heap.nw 1890 2006-04-06 17:08:49Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -153,7 +153,7 @@ in an element and their offsets.
 <<heap.h>>=
 /* node types -- defined below */
 typedef union node	       Node;
-typedef const struct node_info NodeInfo;
+typedef struct node_info       NodeInfo;
 typedef union thread_node      *ThreadQueue;	/* defined in threads.h */
 typedef struct search_space    SearchSpace;	/* defined in spaces.h */
 typedef struct constraint      Constraint;
