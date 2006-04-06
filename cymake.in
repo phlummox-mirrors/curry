@@ -3,7 +3,7 @@
 #
 # Shell script for building Curry programs
 #
-# $Id: cymake.in 1884 2006-04-05 16:48:01Z wlux $
+# $Id: cymake.in 1886 2006-04-06 12:43:49Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -130,10 +130,12 @@ while test $# -gt 0; do
 
     +RTS )
 	shift
+	cyopts="$cyopts +RTS"
 	while test $# -gt 0 -a "$1" != "-RTS"; do
 	  cyopts="$cyopts $1";
 	  shift
-	done;;
+	done
+	cyopts="$cyopts -RTS";;
 
     # Pass archive files and shared libraries to the linker
     *.a | *.so | *.dylib | *.dll ) libs="$libs $1";;
