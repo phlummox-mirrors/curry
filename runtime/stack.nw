@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: stack.nw 1804 2005-10-26 13:21:33Z wlux $
+% $Id: stack.nw 1891 2006-04-10 14:06:46Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{The Stack}
@@ -84,21 +84,30 @@ stack_overflow()
 }
 
 @
-\subsubsection{Choice Points}
-Choice points are used for the implementation of non-deterministic
-computations. If a computation must proceed non-deterministically, the
-current state of the computation is saved in a choice point and can be
-restored from there in case of backtracking. The saved information
-includes a pointer to a null-terminated array of alternative
-continuations, the ready queue, the previous choice point, and the
-current top of the trail. In addition, the heap pointer is saved in
-the choice point so that all memory allocated since the choice point
-was created can be released immediately upon backtracking.
+\subsubsection{Choice Points and Search Contexts}
+Choice points are used for saving the current state of the abstract
+machine at a non-deterministic split of a computation in global
+backtracking search. A search context is used for saving the current
+state of the abstract machine before entering an encapsulated search.
+The information saved in both includes a pointer to a null-terminated
+array of alternative continuations, the ready queue, the previous
+choice point or search context, the current top of the trail, the
+current heap pointer, the current search space and the global
+non-deterministic execution handlers (see below).
 
-A pointer to the current choice point is saved in the [[bp]]
-variable.
+Saving the current heap pointer allows releasing all memory allocated
+since the choice point or search context was created immediately upon
+backtracking and when returning from a failed encapsulated search,
+respectively.
+
+A pointer to the current choice point or search context is saved in
+the [[bp]] variable. Choice points and search contexts can be
+distinguished by examining the [[btAlts]] field. It contains a null
+pointer for search contexts as there are no alternative continuations.
 
 <<stack.h>>=
+#define is_search_context(cp)	((cp)->btAlts == 0)
+
 typedef struct choicepoint {
     const Label	       *btAlts;		/* remaining alternatives */
     unsigned int       btCid;		/* id of current thread */
@@ -108,6 +117,8 @@ typedef struct choicepoint {
     struct save_rec    *btTp;		/* saved trail pointer */
     struct dict_node   *btDict;		/* saved dictionary tail pointer */
     word	       *btHp;		/* saved heap pointer */
+    SearchSpace	       *btSpc;		/* saved search space */
+    const struct nondet_handlers *btHandlers;
 } Choicepoint;
 
 extern Choicepoint *bp;
@@ -115,17 +126,6 @@ extern Choicepoint *bp;
 @
 <<stack.c>>=
 Choicepoint *bp;
-
-@
-Choice points are also used to set up search contexts. A search
-context saves the current state of the computation when an
-encapsulated search is invoked. The information saved in a search
-context is similar to that of a choice point, except that no
-alternative continuations have to be saved and the field [[btAlts]] is
-therefore always set to [[0]].
-
-<<stack.h>>=
-#define is_search_context(cp)	((cp)->btAlts == 0)
 
 @
 \subsubsection{Non-deterministic evaluation}

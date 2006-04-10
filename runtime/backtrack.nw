@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: backtrack.nw 1869 2006-03-05 17:28:46Z wlux $
+% $Id: backtrack.nw 1891 2006-04-10 14:06:46Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -41,9 +41,16 @@ DECLARE_LABEL(fail);
 In this file, we also provide the handler functions for
 non-deterministic choices, suspensions and failures in global search.
 The handler invoked for a non-deterministic choice allocates a choice
-point on the stack. The saved continuation will execute the next
-alternative either with an updated choice point or after dropping the
-choice point, depending on how many alternatives remain.
+point on the stack. Upon backtracking to the choice point, the machine
+will execute the next alternative either with an updated choice point
+or after dropping the choice point, depending on how many alternatives
+remain.
+
+Note that at present, saving the current search space and
+non-deterministic execution handlers in a choice point is rather
+redundant because they do not change. Yet, saving this information
+paves the way for implementing a predefined depth first search
+strategy for encapsulated search in a future version of the compiler.
 
 <<backtrack.c>>=
 static const struct nondet_handlers global_handlers = { choices, stop, fail };
@@ -56,7 +63,7 @@ FUNCTION(choices)
     const Label	 *choice_conts;
  ENTRY_LABEL(choices)
     choice_conts = (const Label *)*sp++;
-    ASSERT(choice_conts[1] != 0);
+    assert(choice_conts[1] != 0);
 
     TRACE(("%I try\n"));
     oldBp  = bp;
@@ -65,15 +72,17 @@ FUNCTION(choices)
 
     /* create a new choice point on the stack */
     CHECK_STACK(cp_sz);
-    bp		 = (Choicepoint *)(sp - wordsof(Choicepoint));
-    bp->btAlts	 = choice_conts + 1;
-    bp->btCid	 = cid;
-    bp->btDsBase = ds_base;
-    bp->btBp	 = oldBp;
-    bp->btRq	 = rq;
-    bp->btTp	 = tp;
-    bp->btDict	 = names_tail;
-    bp->btHp	 = hp;
+    bp		   = (Choicepoint *)(sp - wordsof(Choicepoint));
+    bp->btAlts	   = choice_conts + 1;
+    bp->btCid	   = cid;
+    bp->btDsBase   = ds_base;
+    bp->btBp	   = oldBp;
+    bp->btRq	   = rq;
+    bp->btTp	   = tp;
+    bp->btDict	   = names_tail;
+    bp->btHp	   = hp;
+    bp->btSpc	   = ss;
+    bp->btHandlers = nondet_handlers;
 
     /* create a copy of the stack below the choice point */
     memcpy(sp - cp_sz, sp, stk_sz*word_size);
@@ -107,7 +116,6 @@ FUNCTION(fail)
 
     /* restore registers from the choice point */
     cid	    = bp->btCid;
-    ds_base = bp->btDsBase;
     rq	    = bp->btRq;
 
     /* release the memory allocated since the last choice point */
@@ -116,12 +124,15 @@ FUNCTION(fail)
 
     /* if only one alternative remains, drop the choice point */
     choice_conts = bp->btAlts;
-    ASSERT(choice_conts[0] != 0);
+    assert(choice_conts[0] != 0);
     if ( choice_conts[1] == 0 )
     {
-	sp   = (Node **)bp + wordsof(Choicepoint);
-	bp   = bp->btBp;
-	hlim = bp ? bp->btHp : 0;
+	ds_base		= bp->btDsBase;
+	ss		= bp->btSpc;
+	nondet_handlers = bp->btHandlers;
+	sp		= (Node **)bp + wordsof(Choicepoint);
+	bp		= bp->btBp;
+	hlim		= bp ? bp->btHp : 0;
 	TRACE(("%I trust\n"));
     }
 
@@ -134,7 +145,7 @@ FUNCTION(fail)
 	stk_sz	 = (bp->btBp ? (Node **)bp->btBp : stack_end)
 		   - (Node **)(bp + 1);
 	sp       = (Node **)bp - stk_sz;
-	ds_base -= wordsof(Choicepoint) + stk_sz;
+	ds_base  = bp->btDsBase - wordsof(Choicepoint) - stk_sz;
 	memcpy(sp, sp + wordsof(Choicepoint) + stk_sz, stk_sz * word_size);
 	TRACE(("%I retry\n"));
     }

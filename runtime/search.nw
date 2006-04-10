@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1869 2006-03-05 17:28:46Z wlux $
+% $Id: search.nw 1891 2006-04-10 14:06:46Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -37,11 +37,6 @@ static const struct nondet_handlers search_handlers = {
     choices_search, deadlock_search, fail_search
 };
 
-struct context {
-    SearchSpace			 *spc;
-    const struct nondet_handlers *handlers;
-};
-
 @
 Search contexts are allocated on the stack in order to save the
 machine state before an encapsulated search starts and to restore the
@@ -54,11 +49,10 @@ static void
 push_search_context()
 {
     Choicepoint	   *oldBp = bp;
-    struct context *ctxt;
 
-    CHECK_STACK(wordsof(Choicepoint) + wordsof(struct context));
-    sp   -= wordsof(Choicepoint) + wordsof(struct context);
-    sp[0] = sp[wordsof(Choicepoint) + wordsof(struct context)];
+    CHECK_STACK(wordsof(Choicepoint));
+    sp   -= wordsof(Choicepoint);
+    sp[0] = sp[wordsof(Choicepoint)];
 
     /* allocate a new search context on the stack */
     bp		   = (Choicepoint *)(sp + 1);
@@ -70,11 +64,8 @@ push_search_context()
     bp->btTp	   = tp;
     bp->btDict	   = names_tail;
     bp->btHp	   = hp;
-
-    /* save the current search context */
-    ctxt	   = (struct context *)(bp + 1);
-    ctxt->spc	   = ss;
-    ctxt->handlers = nondet_handlers;
+    bp->btSpc	   = ss;
+    bp->btHandlers = nondet_handlers;
 
     /* change the current handler vector */
     nondet_handlers = &search_handlers;
@@ -89,24 +80,20 @@ push_search_context()
 static void
 pop_search_context()
 {
-    Choicepoint	   *oldBp = bp;
-    struct context *ctxt;
-
-    ASSERT(oldBp->btAlts == 0);
-
-    /* restore the old search context */
-    ctxt	    = (struct context *)(bp + 1);
-    nondet_handlers = ctxt->handlers;
-    ss		    = ctxt->spc;
+    assert(bp->btAlts == 0);
 
     /* restore the machine state from the current search context */
-    cid	    = oldBp->btCid;
-    ds_base = oldBp->btDsBase;
-    bp	    = oldBp->btBp;
-    rq	    = oldBp->btRq;
-    tp	    = oldBp->btTp;
-    hlim    = bp ? bp->btHp : heap_base;
-    sp	    = (Node **)(oldBp + 1) + wordsof(struct context);
+    cid		    = bp->btCid;
+    ds_base	    = bp->btDsBase;
+    rq 		    = bp->btRq;
+    tp		    = bp->btTp;
+    ss		    = bp->btSpc;
+    nondet_handlers = bp->btHandlers;
+    sp		    = (Node **)(bp + 1);
+
+    /* drop the search context */
+    bp	 = bp->btBp;
+    hlim = bp ? bp->btHp : heap_base;
 }
 
 @ 
