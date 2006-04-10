@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: gc_2space.nw 1891 2006-04-10 14:06:46Z wlux $
+% $Id: gc_2space.nw 1892 2006-04-10 16:33:37Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Garbage Collection}\label{sec:copying-gc}
@@ -29,9 +29,9 @@ In order to avoid these problems, we use a segment order preserving
 copying algorithm, which was proposed by Demoen, Engels, and
 Tarau~\cite{DemoenEngelsTarau96:OrderPreserving}. Their key idea is
 that it is not necessary to preserve allocation order exactly, but
-only with respect to the heap limits defined by the choicepoints.
+only with respect to the heap limits defined by the choice points.
 Therefore, the heap is divided into segments separated by
-choicepoints, and these segments are collected independently. Thus,
+choice points, and these segments are collected independently. Thus,
 their algorithm can be seen as a variant of generational garbage
 collection with the -- dynamically defined -- heap segments being the
 analogue of generations.
@@ -58,11 +58,12 @@ scattered around in the heap. Fortunately, the runtime system always
 sets the active space of a search goal to a space in the same heap
 segment as its root space. Thereby, all updates which might result in
 cross segment pointers into younger heap segments are undone, and
-therefore it is sufficient to scan the global trail. If this policy
-were changed, the runtime system would have to record -- at least --
-all root spaces with cross segment [[active]] pointers, and the
-garbage collector would have to scan the trails of those spaces as
-well. See Sect.~\ref{sec:spaces} and in particular the to do note on
+therefore it is sufficient to scan the global trail and the trails of
+the parents of the current search space. If this policy were changed,
+the runtime system would have to record -- at least -- all root spaces
+with cross segment [[active]] pointers, and the garbage collector
+would have to scan the trails of those spaces as well. See
+Sect.~\ref{sec:spaces} and in particular the to do note on
 page~\pageref{todo:lazy-spaces} for more details.
 
 With respect to downward cross generation pointers, we make no special
@@ -173,10 +174,10 @@ register_final(Node *fin)
 
 @ 
 In order to collect heap segments in bottom up order, the collector
-first reverses the chain of nested choicepoints and search contexts.
+first reverses the chain of nested choice points and search contexts.
 It then collects each segment in turn, starting at the bottom of the
-heap. At the end, the heap segment above the current choicepoint is
-collected. If no choicepoint or search context exists, the operation
+heap. At the end, the heap segment above the current choice point is
+collected. If no choice point or search context exists, the operation
 of the collector is similar to that of a conventional copying
 collector.
 
@@ -188,7 +189,8 @@ collect(unsigned int request)
     word	     *aux;
     Node	     **scan, **copy, **scan_stack, **slim;
     SaveRec	     *from_trail, *scan_trail, *copy_trail, *tlim;
-    Choicepoint	     *cp, *prev_cp, *next_cp;
+    SearchSpace	     *spc;
+    Choicepoint	     *cp, *prev_cp, *next_cp, *scan_cp;
     struct root	     *roots;
     struct dict_node *dict;
 
@@ -223,7 +225,7 @@ collect(unsigned int request)
 	    prev_cp  = cp;
 	}
     }
-    <<Collect the heap segment above the current choicepoint>>
+    <<Collect the heap segment above the current choice point>>
     <<Update the variable name dictionary>>
     <<Update the finalized objects table>>
     <<Flip the semi-spaces>>
@@ -295,10 +297,16 @@ GC_copy(Node ***p_alloc, Node *node)
 For each heap segment, the garbage collector first compacts the
 corresponding trail segment by removing redundant entries. Next, the
 external roots, the stack, and the trail are scanned and all
-referenced objects below the current choicepoint's heap limit are            %'
+referenced objects below the current choice point's heap limit are           %'
 copied into to-space. Finally, the collector copies all nodes that are
 referenced directly or indirectly from these nodes into to-space as
 well.
+
+Note that the garbage collector updates the active pointer of the root
+space of the current search space explicitly because that pointer is
+almost always a cross segment pointer into a younger heap segment and
+therefore does not get updated when the root search space is copied
+into to-space.
 
 <<Collect the heap segment below [[cp]]>>=
 hlim = cp->btHp;
@@ -312,13 +320,16 @@ cp->btSpc = (SearchSpace *)GC_copy(&copy, (Node *)cp->btSpc);
 <<Collect the current trail segment>>
 <<Collect all younger trail segments>>
 <<Scan to-space and copy all reachable nodes into to-space>>
+spc = cp->btSpc;
+if ( spc )
+    spc->root->active = spc;
 scan_stack = (Node **)cp;
 scan_trail = copy_trail;
 cp->btTp   = copy_trail;
 cp->btHp   = (word *)copy;
 
 @ 
-<<Collect the heap segment above the current choicepoint>>=
+<<Collect the heap segment above the current choice point>>=
 hlim = hp;
 tlim = tp;
 slim = sp;
@@ -329,6 +340,8 @@ rq = (ThreadQueue)GC_copy(&copy, (Node *)rq);
 ss = (SearchSpace *)GC_copy(&copy, (Node *)ss);
 <<Collect the current trail segment>>
 <<Scan to-space and copy all reachable nodes into to-space>>
+if ( ss )
+    ss->root->active = ss;
 tp = copy_trail;
 
 @ 
@@ -390,7 +403,7 @@ segment in order to copy the current bindings of all nodes that were
 updated in this segment. These bindings have not been copied up to
 this point only if they are reached by an upward cross segment pointer
 and there are no other references from older segments. Since in that
-case the last references to these bindings will be dropped upon
+case the last reference to these bindings will be dropped upon
 backtracking from the current segment, it is safe to promote them into
 the current heap segment.
 
@@ -401,18 +414,46 @@ for ( ; scan_trail < copy_trail; scan_trail++ )
 	    GC_copy(&copy, (Node *)scan_trail->addr[scan_trail->ofs]);
 
 @ 
-Finally, all younger trail segments are scanned for saved values from
-the current segment. These nodes must be retained at least as long as
-the nodes from which they were referenced before being saved on the
-trail. Since the latter nodes may be allocated in a younger heap
-segment which has not been processed yet, it is difficult to determine
-the optimal segment for the saved values. Therefore, we use a more
-conservative, but simpler strategy and retain saved values in their
-current segments.
+Finally, the garbage collector scans the saved values in all younger
+trail segments. These nodes must be retained at least as long as the
+updated nodes exist. Therefore, if there is no other reference to a
+saved value on the trail and the updated node lives in the segment
+that is just collected, the saved value is promoted into this heap
+segment, unless it is allocated in a younger heap segment. Such may
+happen when a node is updated more than once, e.g., when multiple
+threads are blocked by the same variable or queue-me node. In that
+case, the saved bindings are retained in the segments where they were
+allocated and not promoted into the older segment of the updated node.
+This is handled automatically by the address range check in the
+[[GC_copy]] function.
 
 <<Collect all younger trail segments>>=
 for ( scan_trail = cp->btTp; scan_trail < tp; scan_trail++ )
-    scan_trail->val = GC_copy(&copy, (Node *)scan_trail->val);
+    if ( scan_trail->addr < hlim )
+	scan_trail->val = GC_copy(&copy, (Node *)scan_trail->val);
+
+@ 
+Besides the younger trail segments, the garbage collector must also
+process the scripts of the current search spaces' parents, since they %'
+are (implicitly) part of the corresponding trail segments.
+
+<<Collect all younger trail segments>>=
+scan_cp = cp;
+while ( scan_cp )
+{
+    scan_cp = scan_cp->btBp;
+    for ( spc = scan_cp ? scan_cp->btSpc : ss;
+	  spc && !is_forwarded(spc);
+	  spc = spc->parent )
+	if ( spc->script )
+	{
+	    len = vector_argc(spc->script) / wordsof(ScriptRec);
+	    for ( i = 0; i < len; i++ )
+		if ( spc->script->data[i].ofs )
+		    spc->script->data[i].outVal =
+			GC_copy(&copy, (Node *)spc->script->data[i].outVal);
+	}
+}
 
 @ 
 After the roots have been processed, the collector copies all other live
@@ -507,7 +548,7 @@ cleanup_names();
 
 @ 
 If a computation fails, all memory allocated since the current
-choicepoint or search context is released immediately. All finalized
+choice point or search context is released immediately. All finalized
 objects in the released heap segment are also finalized immediately.
 To this end, we scan the finalized objects table and check their
 addresses. Because the order of the entries in the table reflects the
