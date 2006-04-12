@@ -1,22 +1,22 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1869 2006-03-05 17:28:46Z wlux $
+% $Id: spaces.nw 1893 2006-04-12 17:51:56Z wlux $
 %
-% Copyright (c) 2003-2005, Wolfgang Lux
+% Copyright (c) 2003-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Managing Search Spaces}\label{sec:spaces}
 The runtime system uses an extended trailing scheme in order to manage
 multiple bindings for variables and shared applications in an
-encapsulated search. A new search space is created at each call to
-[[try]]. Variable nodes and suspended applications are tagged with the
-search space that was active at the time of their allocation. Search
-spaces are organized in trees with the root space corresponding to the
-initial evaluation of a particular search goal, and the other nodes of
-that tree corresponding to different evaluation states of that goal.
-Within each tree, the bindings of only one space are active at each
-time. A pointer to this space is recorded in the [[active]] field of
-the root space. The current search space is maintained in the global
-variable [[ss]].
+encapsulated search. A new search space is created each time [[try]]
+is applied to a new search goal. Variable nodes and shared lazy
+applications are tagged with the search space that was active at the
+time of their allocation. Search spaces are organized in trees with
+the root space corresponding to the initial evaluation of a particular
+search goal, and the other nodes of that tree corresponding to
+different evaluation states of that goal. Within each tree, the
+bindings of only one space are active at each time. A pointer to this
+space is recorded in the [[active]] field of the root space. The
+current search space is maintained in the global variable [[ss]].
 
 Since only local variables and applications can be changed by a
 computation and their bindings are not visible outside of the search
@@ -79,10 +79,15 @@ space and the current search space have the same root.
     (ss == 0 ? (space) == 0 : (space) != 0 && (space)->root == ss->root)
 
 @ 
-When [[try]] returns, the bindings of all variables updated in the
-current space as well as their previous values, which are recorded on
-the global trail stack, are saved to the script of the current search
-space.
+When [[try]] returns, a new search space is created, which saves the
+bindings of all variables updated during the evaluation of [[try]] and
+also their previous values, which are recorded on the global trail
+stack. They are saved to the \emph{script} of the new search space.
+
+\emph{Note}: The script is not made part of the search space, but
+referenced indirectly because the garbage collector currently can
+handle only fixed size nodes and variable size nodes, which are
+composed of equally sized elements.
 
 <<spaces.h>>=
 typedef struct script_rec {
@@ -221,7 +226,7 @@ encapsulated search or within a global backtracking search, failure of
 the outer search may leave dangling pointers in the heap because the
 active space of the inner search goal may have become garbage. For that
 reason, we always set the [[active]] pointer in the root space to a
-``safe'' space, i.e., a space which is allocated in the same heap
+``safe'' space, which is a space that is allocated in the same heap
 segment as the root space.
 
 \ToDo{\label{todo:lazy-spaces}These updates could be delayed by
@@ -272,39 +277,29 @@ set_active_space(SearchSpace *space, Choicepoint *cp)
 }
 
 @ 
-The function [[new_search_space]] creates a new search space. If an
-existing space is passed as parent to [[new_search_space]], the new
-space becomes a child of that space and the parent's bindings are
-activated. Otherwise, the new space will be a root space. %'
+The function [[new_search_space]] allocates a new empty search space
+for a search goal and assigns it to the global variable [[ss]]. The
+new space is its own root and its (non-existent) bindings are
+considered active.
 
 <<spaces.h>>=
-extern void new_search_space(SearchSpace *);
+extern void new_search_space(void);
 
 @
 <<spaces.c>>=
 void
-new_search_space(SearchSpace *parentSpace)
+new_search_space()
 {
     SearchSpace *newSpace;
-    /* activate the parent's bindings */
-    if ( parentSpace )
-	switch_bindings(parentSpace);
 
-    /* allocate the new search space */
-    BEGIN_LOCAL_ROOTS1(parentSpace)
     CHECK_HEAP(wordsof(SearchSpace));
-    END_LOCAL_ROOTS
-
     ss = newSpace    = (SearchSpace *)hp;
     newSpace->info   = &search_space_info;
-    newSpace->root   = parentSpace ? parentSpace->root : newSpace;
-    newSpace->parent = parentSpace;
-    newSpace->active = 0;
+    newSpace->root   = newSpace;
+    newSpace->parent = 0;
+    newSpace->active = newSpace;
     newSpace->script = 0;
     hp		    += wordsof(SearchSpace);
-
-    /* The new space is now active */
-    newSpace->root->active = newSpace;
 }
 
 @
@@ -329,66 +324,81 @@ inject_search_space(SearchSpace *space)
     /* otherwise re-parent the current space */
     ss->root   = space->root;
     ss->parent = space;
+    ss->active = 0;
 
     /* activate the parent's bindings and succeed */
     switch_bindings(space);
+    ss->root->active = ss;
     return true;
 }
 
 @
-The function [[save_search_space]] saves the current search space
-thereby making it an immutable object.
+The function [[save_search_space]] creates a new search space that
+saves the current bindings of the local variables and lazy application
+nodes of the search goal.
 
 <<spaces.h>>=
-extern void save_search_space(void);
+extern SearchSpace *save_search_space(void);
 
 @ 
 <<spaces.c>>=
-void
+SearchSpace *
 save_search_space()
 {
-    unsigned int n;
+    unsigned int i, n;
+    SearchSpace	 *space;
     SaveRec	 *trail;
-    ScriptRec	 *script;
+    Script	 *script;
 
     assert(ss != 0);
 
-    /* save the current trail segment into the search space */
+    /* compute the size of the trail segment to be saved */
+    n = tp - bp->btTp;
+    CHECK_HEAP(wordsof(SearchSpace) + vector_node_size(n * wordsof(ScriptRec)));
+
+    /* eventually allocate a script for the search space */
+    /* NB garbage collection can decrease the size of the trail */
     n = tp - bp->btTp;
     if ( n > 0 )
     {
-	/* NB garbage collection may decrease size of the trail */
-	CHECK_HEAP(vector_node_size(n * wordsof(ScriptRec)));
-	n = tp - bp->btTp;
+	trail	       = bp->btTp;
+	script	       = (Script *)hp;
+	script->info   = &script_info;
+	script->length = vector_node_size(n * wordsof(ScriptRec));
+	hp	      += vector_node_size(n * wordsof(ScriptRec));
 
-	/* initialize the script */
-	ss->script	   = (Script *)hp;
-	ss->script->info   = &script_info;
-	ss->script->length = vector_node_size(n * wordsof(ScriptRec));
-	hp		  += vector_node_size(n * wordsof(ScriptRec));
-
-	script = ss->script->data + n;
-	trail  = tp;
-	while ( n-- > 0 )
+	for ( i = 0; i < n; i++ )
 	{
-	    trail--;
-	    script--;
-	    script->addr    = trail->addr;
-	    script->inInfo  = trail->addr[INFO_OFS];
-	    script->outInfo = trail->info;
-	    script->ofs     = trail->ofs;
-	    script->inVal   = trail->addr[trail->ofs];
-	    script->outVal  = trail->val;
+	    script->data[i].addr    = trail[i].addr;
+	    script->data[i].inInfo  = trail[i].addr[INFO_OFS];
+	    script->data[i].outInfo = trail[i].info;
+	    script->data[i].ofs     = trail[i].ofs;
+	    script->data[i].inVal   = trail[i].addr[trail[i].ofs];
+	    script->data[i].outVal  = trail[i].val;
 	}
     }
+    else
+	script = 0;
 
-    /* this search space is now active */
-    set_active_space(ss, bp->btBp);
+    /* allocate a new search space */
+    space	  = (SearchSpace *)hp;
+    space->info   = &search_space_info;
+    space->root   = ss->root;
+    space->parent = ss;
+    space->active = 0;
+    space->script = script;
+    hp		 += wordsof(SearchSpace);
+
+    /* the new search space is now active */
+    set_active_space(space, bp->btBp);
+
+    /* return the new space */
+    return space;
 }
 
 @ 
-The function [[discard_search_space]] discards the current space
-and releases all memory allocated in that space.
+The function [[discard_search_space]] discards all memory allocated
+in the current search context.
 
 <<spaces.h>>=
 extern void discard_search_space(void);
@@ -405,48 +415,55 @@ discard_search_space()
     release_names(bp->btDict);
     release_mem();
 
-    /* eventually restore a safe ancestor of the parent space */
-    if ( ss->parent )
-	set_active_space(ss->parent, bp->btBp);
+    /* eventually restore a safe ancestor of the active space */
+    set_active_space(ss, bp->btBp);
 }
 
 @
-The function [[resume_search_space]] restores a search space.
+The function [[restore_search_space]] restores the bindings of a
+search space and assigns it to the global variable [[ss]]. The
+function can optionally restore the trail from the script of the
+search space and discard the restored space. This is useful when the
+abstract machine resumes a search that has been interrupted in order
+to perform a non-local computation.
 
 <<spaces.h>>=
-extern void resume_search_space(SearchSpace *space);
+extern void restore_search_space(SearchSpace *space, boolean discard);
 
 @ 
 <<spaces.c>>=
 void
-resume_search_space(SearchSpace *space)
+restore_search_space(SearchSpace *space, boolean discard)
 {
     unsigned int i, n;
-    ScriptRec	 *script;
+    Script	 *script;
 
-    assert(space != 0);
-
-    /* change the current search space and activate its bindings */
+    /* activate the search space's bindings */
     ss = space;
-    switch_bindings(ss);
+    switch_bindings(space);
 
-    /* restore the trail */
-    if ( ss->script )
+    /* eventually restore the trail */
+    if ( discard )
     {
-	n = vector_argc(ss->script) / wordsof(ScriptRec);
-	CHECK_TRAIL(n);
-
-	script     = ss->script->data;
-	ss->script = 0;
-	for ( i = 0; i < n; i++ )
+	if ( space->script )
 	{
-	    tp->addr = script->addr;
-	    tp->info = script->outInfo;
-	    tp->ofs  = script->ofs;
-	    tp->val  = script->outVal;
-	    tp++;
-	    script++;
+	    n = vector_argc(space->script) / wordsof(ScriptRec);
+	    CHECK_TRAIL(n);
+
+	    script = space->script;
+	    for ( i = 0; i < n; i++ )
+	    {
+		tp->addr = script->data[i].addr;
+		tp->info = script->data[i].outInfo;
+		tp->ofs  = script->data[i].ofs;
+		tp->val  = script->data[i].outVal;
+		tp++;
+	    }
 	}
+
+	assert(space->parent);
+	ss		 = space->parent;
+	ss->root->active = ss;
     }
 }
 
@@ -784,7 +801,7 @@ copy_graph(Node *graph, SearchSpace *space)
 	    for ( i = 0, n = suspend_argc(node); i < n; i++ )
 		node->s.args[i] = copy_node(node->s.args[i], space);
 	    break;
-    
+
 	case VECTOR_KIND:
 	    n = vector_argc(node);
 	    for ( i = 0; i < n; i++ )

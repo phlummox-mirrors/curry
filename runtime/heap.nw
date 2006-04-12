@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1890 2006-04-06 17:08:49Z wlux $
+% $Id: heap.nw 1893 2006-04-12 17:51:56Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -401,7 +401,7 @@ Sect.~\ref{sec:foreign}).
 <<heap.h>>=
 struct foreign_ptr_node {
     NodeInfo		 *info;
-    struct search_space  *spc;
+    SearchSpace		 *spc;
     void		 *ptr;
     union finalizer_list *fptr;
 };
@@ -793,10 +793,10 @@ extern struct root *global_roots, *local_roots;
 struct root *global_roots, *local_roots;
 
 @ 
-The macros [[BEGIN_LOCAL_ROOTS1]] and [[BEGIN_LOCAL_ROOTS2]] open a
-new local block within a function and register the argument variables
-as additional roots. The macro [[END_LOCAL_ROOTS]] closes the block
-and unregisters the variables.
+The macros [[BEGIN_LOCAL_ROOTS1]], [[BEGIN_LOCAL_ROOTS2]], and
+[[BEGIN_LOCAL_ROOTS3]] open a new local block within a function and
+register their argument variables as additional roots. The macro
+[[END_LOCAL_ROOTS]] closes the block and unregisters the variables.
 
 \emph{Make sure that the variables are properly initialized before a
 garbage collection occurs in the block.}
@@ -808,6 +808,9 @@ garbage collection occurs in the block.}
 #define BEGIN_LOCAL_ROOTS2(x,y) { \
     LOCAL_ROOTS2(x,y);		  \
     local_roots = &__local_root2_;
+#define BEGIN_LOCAL_ROOTS3(x,y,z) { \
+    LOCAL_ROOTS3(x,y,z);	    \
+    local_roots = &__local_root3_;
 #define END_LOCAL_ROOTS		       \
     local_roots = __local_root__.next; \
 }
@@ -821,6 +824,11 @@ garbage collection occurs in the block.}
     LOCAL_ROOTS1(x);			   \
     __local_root2_.next = &__local_root__; \
     __local_root2_.root = (Node **)&(y)
+#define LOCAL_ROOTS3(x,y,z)		   \
+    struct root __local_root3_;		   \
+    LOCAL_ROOTS2(x,y);			   \
+    __local_root3_.next = &__local_root2_; \
+    __local_root3_.root = (Node **)&(z)
 
 @
 Global roots can be registered with the function [[add_global_root]].

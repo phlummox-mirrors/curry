@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 1829 2005-11-09 14:24:25Z wlux $
+% $Id: MachInterp.lhs 1893 2006-04-12 17:51:56Z wlux $
 %
-% Copyright (c) 1998-2005, Wolfgang Lux
+% Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{MachInterp.lhs}
@@ -1264,8 +1264,7 @@ and starts the reduction of this application.
 >             space <- read'updateState newSearchSpace
 >             goalVar <- read'updateState (allocNode (VarNode [] [] space))
 >             goalApp <- applyGoal goal goalVar space
->             updateState (pushSearchContext goalApp goalVar)
->             updateState (setCurSpace space)
+>             updateState (pushSearchContext goalApp goalVar space)
 >             updateState newThread
 >             updateState (setVar "c" goalApp)
 >             enter "c"
@@ -1384,7 +1383,7 @@ continuation for each alternative is returned from \texttt{try}.
 >               readState curSpace >>= isRootSpace >>= \so ->
 >               if so then
 >                 do
->                   readState (restoreSearchSpace space)
+>                   updateState (restoreSearchSpace space)
 >                   updateState (restoreContinuation rq)
 >                   arg <- read'updateState popNode
 >                   node <- deref arg
@@ -1427,9 +1426,10 @@ the bindings performed during copying.
 > copyGraph :: SearchSpace -> NodePtr -> MachStateT NodePtr
 > copyGraph goalSpace ptr =
 >   do
->     updateState (pushSearchContext undefined undefined)
+>     curSpace <- readState curSpace
+>     updateState (pushSearchContext undefined undefined curSpace)
 >     actBindings goalSpace
->     ptr' <- readState curSpace >>= flip (copy goalSpace) ptr
+>     ptr' <- copy goalSpace curSpace ptr
 >     readState discardSearchSpace
 >     read'updateState popSearchContext
 >     return ptr'
@@ -1511,10 +1511,9 @@ evaluated outside the local search space, respectively.
 > resumeSearch goalApp goalVar cont space =
 >   do
 >     read'updateState popNode
->     updateState (pushSearchContext goalApp goalVar)
->     space' <- read'updateState (newSearchSpace)
->     updateState (setCurSpace space')
->     readState (restoreSearchSpace space)
+>     space' <- read'updateState newSearchSpace
+>     updateState (pushSearchContext goalApp goalVar space')
+>     updateState (restoreSearchSpace space)
 >     updateState (resumeContinuation cont)
 >     switchContext
 

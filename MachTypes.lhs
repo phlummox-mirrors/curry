@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: MachTypes.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: MachTypes.lhs 1893 2006-04-12 17:51:56Z wlux $
 %
-% Copyright (c) 1998-2004, Wolfgang Lux
+% Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \subsection{Basic Types}
@@ -71,6 +71,9 @@ Indirection nodes are used when a variable or a lazy application node
 is overwritten in order to preserve the sharing of nodes. An
 indirection node solely consists of a pointer to the new node.
 
+Partial applications nodes represent partial applications of data
+constructors and functions.
+
 Closure and lazy application nodes represent functions and their
 applications. A plain function corresponds to a closure node without
 arguments. A closure node consists of the code to be executed for the
@@ -79,16 +82,18 @@ has been applied. In addition, the name of the function is included in
 order to make the output more readable. Besides that it has no
 semantic meaning.
 
-In contrast to a closure node, a lazy application node is replaced by
-the result of the application after it has been evaluated. In addition
-to the fields of a closure node, lazy application nodes also include
-the search space in which the node was constructed. In order to
-prevent multiple threads trying to evaluate the same application, the
-lazy application is replaced by a queue-me node when a thread starts
-the evaluation of the node. A wait-queue similar to variable nodes is
-used to collect the threads that have been delayed on this node. Once
-the evaluation of the node completes successfully, the node is
-overwritten by the result of the evaluation.
+In contrast to closure nodes, lazy application nodes are overwritten
+with their result after they have been evaluated. In addition to the
+fields of a closure node, lazy application nodes also include the
+search space in which the node was constructed.
+
+In order to prevent multiple threads from evaluating the same
+application, lazy application nodes are overwritten by a queue-me node
+when a thread starts their evaluation. A wait queue similar to
+variable nodes is used to collect the threads that have been delayed
+on this node. Once evaluation of a lazy application completes
+successfully, the queue-me node is overwritten by the result of the
+evaluation.
 
 Search continuation nodes are used to represent the alternative
 continuations returned by the \texttt{try} operator. A search
@@ -239,10 +244,10 @@ also saves the caller's local environment.
 >     showString "Cont <<Instruction>> " . showsPrec 10 env
 
 \end{verbatim}
-In a choice-point, all machine registers have to be saved so that the
+In a choice point, all machine registers have to be saved so that the
 machine state can be restored upon backtracking. In addition, the next
 instruction to be executed after backtracking must be saved here. Note
-that choice-points are used only in the global search space, so the
+that choice points are used only in the global search space, so the
 current search space does not have to be saved.
 \begin{verbatim}
 
@@ -306,7 +311,7 @@ machine register.
 \end{verbatim}
 \subsubsection{Local Search Spaces}
 Local search spaces are used as a foundation for the implementation of
-the encapsulated search. They serve as a means to isolate the effects
+encapsulated search. They serve as a means to isolate the effects
 of the different alternatives of a non-deterministic
 computation. Logic variables introduced during the unification of
 argument expressions are available only to the computation space in
@@ -360,33 +365,36 @@ state of the variables and lazy application nodes inside the search
 space. This is handled by adding a second trail, called the script, to
 the search space.\footnote{The name is borrowed from Amoz, the
 abstract machine for Oz~\cite{MehlScheidhauerSchule95:Amoz}, which
-uses a similar strategy.} Whereas the trail is copied when the
-search is saved, the script is created lazily when the bindings of the
-search space are actually undone for the first time. We use the fact
-that the state of a search space that was restored from a search
-continuation is shared by the current search space and maintain a
-hierarchy of search spaces, where the root of the tree is the space
-that was created when the search goal closure was passed to the
-primitive function \texttt{try} for the first time. This means that
-only the differences between the restored space and the current search
-space have to be saved. In order to implement the lazy update
-strategy, we have to keep a reference to the space whose bindings are
+uses a similar strategy.} We use the fact that the state of a search
+space that was restored from a search continuation is shared by the
+current search space and maintain a hierarchy of search spaces, where
+the root of the tree is the space that was created when the search
+goal closure was passed to the primitive function \texttt{try} for the
+first time. This means that only the differences between the restored
+space and the current search space have to be saved.
+
+Since variables, which are local to a search goal, do not affect
+computations outside an encapsulated search, it is possible to update
+the local bindings of search goal lazily, i.e. when entering an
+encapsulated search with a different search continuation of the same
+goal than used the last time before. In order to implement this lazy
+update strategy, we keep a reference to the space whose bindings are
 in effect for every such tree of search spaces. For simplicity we add
 this pointer to the search space nodes, but actually it will be used
 only on the root space.\footnote{The reason for this double
-indirection is that the root of search space may change -- viz.,
-when a search continuation is restored, the current space becomes a
-child of the restored space and therefore its root must be changed
-to the one of the restored space -- and that the current reference
-must be shared among all members of a single tree. We could have
-used a \texttt{Ref (Ref SearchSpace)} instead.}
+indirection is that the root of search space may change -- when a
+search continuation is restored, the current space becomes a child
+of the restored space and therefore its root must be changed to the
+one of the restored space -- and that the current reference must be
+shared among all members of a single tree. We could have used a
+\texttt{Ref (Ref SearchSpace)} instead.}
 
 Note that neither search contexts nor search spaces save the current
-choice-point. This is because no choice-points will be created inside a
-local space and therefore the current choice-point will not
+choice point. This is because no choice points will be created inside a
+local space and therefore the current choice point will not
 change.\footnote{Actually, it would be possible to implement search
-contexts as a special kind of choice-point, but this would require
-to check the invariant that all ``normal'' choice-points must above
+contexts as a special kind of choice point, but this would require
+to check the invariant that all ``normal'' choice points must above
 the search contexts in the control stack. It simplifies the code if we
 let the type system ensure this property.}
 \begin{verbatim}
@@ -402,10 +410,15 @@ let the type system ensure this property.}
 >   | LocalSpace { spaceId :: Integer,
 >                  root :: Ref SearchSpace,
 >                  parent :: Ref SearchSpace,
->                  trail :: Ref Trail,
->                  script :: Ref Trail,
+>                  trail :: Trail,
+>                  script :: Trail,
 >                  active :: Ref SearchSpace }
->   deriving Eq
+
+> instance Eq SearchSpace where
+>   GlobalSpace == GlobalSpace  = True
+>   GlobalSpace == LocalSpace _ _ _ _ _ _ = False
+>   LocalSpace _ _ _ _ _ _ == GlobalSpace = False
+>   LocalSpace id1 _ _ _ _ _ == LocalSpace id2 _ _ _ _ _ = id1 == id2
 
 > instance Show SearchContext where
 >   showsPrec p IOContext = showString "IOContext"
