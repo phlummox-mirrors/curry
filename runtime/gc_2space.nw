@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: gc_2space.nw 1892 2006-04-10 16:33:37Z wlux $
+% $Id: gc_2space.nw 1895 2006-04-13 18:51:34Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -306,7 +306,8 @@ Note that the garbage collector updates the active pointer of the root
 space of the current search space explicitly because that pointer is
 almost always a cross segment pointer into a younger heap segment and
 therefore does not get updated when the root search space is copied
-into to-space.
+into to-space. We make use of the invariant [[ss->root->active == ss]]
+that is preserved by the runtime system (cf. Sect.~\ref{sec:spaces}).
 
 <<Collect the heap segment below [[cp]]>>=
 hlim = cp->btHp;
@@ -321,7 +322,7 @@ cp->btSpc = (SearchSpace *)GC_copy(&copy, (Node *)cp->btSpc);
 <<Collect all younger trail segments>>
 <<Scan to-space and copy all reachable nodes into to-space>>
 spc = cp->btSpc;
-if ( spc )
+if ( spc != &global_space )
     spc->root->active = spc;
 scan_stack = (Node **)cp;
 scan_trail = copy_trail;
@@ -340,7 +341,7 @@ rq = (ThreadQueue)GC_copy(&copy, (Node *)rq);
 ss = (SearchSpace *)GC_copy(&copy, (Node *)ss);
 <<Collect the current trail segment>>
 <<Scan to-space and copy all reachable nodes into to-space>>
-if ( ss )
+if ( ss != &global_space )
     ss->root->active = ss;
 tp = copy_trail;
 

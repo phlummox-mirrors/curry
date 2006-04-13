@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1894 2006-04-13 13:27:14Z wlux $
+% $Id: spaces.nw 1895 2006-04-13 18:51:34Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -43,7 +43,8 @@ struct search_space {
     Script	*script;	/* saved local bindings */
 };
 
-extern SearchSpace *ss;
+extern SearchSpace	 *ss;
+extern const SearchSpace global_space;
 
 @ 
 <<spaces.c>>=
@@ -71,7 +72,15 @@ static NodeInfo search_space_info = {
     CAPP_KIND, 0, wordsof(struct search_space), 0, 0, no_eval, 0, 0
 };
 
-SearchSpace *ss;
+const SearchSpace global_space = {
+    &search_space_info,
+    (SearchSpace *)&global_space,
+    0,
+    (SearchSpace *)&global_space,
+    0
+};
+
+SearchSpace *ss = (SearchSpace *)&global_space;
 
 @ 
 Each variable and shared application is tagged with the search space
@@ -79,8 +88,7 @@ in which it was created. A node is considered local when its search
 space and the current search space have the same root.
 
 <<spaces.h>>=
-#define is_local_space(space) \
-    (ss == 0 ? (space) == 0 : (space) != 0 && (space)->root == ss->root)
+#define is_local_space(space) ((space)->root == ss->root)
 
 @ 
 When [[try]] returns, a new search space is created, which saves the
@@ -334,7 +342,7 @@ boolean
 inject_search_space(SearchSpace *space)
 {
     /* fail if current space is not a root space */
-    if ( ss == 0 || ss->parent )
+    if ( ss == &global_space || ss->parent )
 	return false;
 
     /* otherwise re-parent the current space */
@@ -366,7 +374,7 @@ save_search_space()
     SaveRec	 *trail;
     Script	 *script;
 
-    assert(ss != 0);
+    assert(ss != &global_space);
 
     /* compute the size of the trail segment to be saved */
     n = tp - bp->btTp;
@@ -606,17 +614,17 @@ copy_node(Node *node, SearchSpace *space)
 		break;
 
 	    case LVAR_KIND:
-		do_copy = !space || (node->v.spc && is_forwarded(node->v.spc));
+		do_copy = !space || is_forwarded(node->v.spc);
 		break;
 
 	    case LAZY_KIND:
 		do_copy = node_tag(node) == NOUPD_TAG
 		    || !space
-		    || (node->s.spc && is_forwarded(node->s.spc));
+		    || is_forwarded(node->s.spc);
 		break;
 
 	    case INDIR_KIND:
-		if ( node->n.spc && is_forwarded(node->n.spc)
+		if ( is_forwarded(node->n.spc)
 		     && space && node->n.spc->root != space->root )
 		{
 		    do_copy = true;
@@ -681,7 +689,7 @@ copy_search_space(SearchSpace *spc, SearchSpace *space)
     SearchSpace *copy;
 
     /* copy the space itself */
-    assert(spc != 0);
+    assert(spc != &global_space);
     copy = (SearchSpace *)copy_node((Node *)spc, space);
 
     /* eventually copy the active space and its parents */
@@ -715,6 +723,8 @@ copy_graph(Node *graph, SearchSpace *space)
     Node	 *copy, **scan;
     SearchSpace	 *spc;
 
+    assert(space != &global_space);
+
     /* activate the bindings of the graph's space */
     if ( space )
 	switch_bindings(space);
@@ -741,8 +751,6 @@ copy_graph(Node *graph, SearchSpace *space)
     }
 
     /* setup forwarding pointers for the graph's space and its parents */
-    /* NB we cannot register spc and its parents on the local trail
-     *    since ss could be (SearchSpace *)0 */
     for ( spc = space; spc; spc = spc->parent )
 	forward(spc, ss);
 
@@ -774,7 +782,7 @@ copy_graph(Node *graph, SearchSpace *space)
 	    break;
 
 	case LVAR_KIND:
-	    if ( node->v.spc && is_forwarded(node->v.spc) )
+	    if ( is_forwarded(node->v.spc) )
 		node->v.spc = (SearchSpace *)get_forward(node->v.spc);
 	    else
 		node->v.spc = ss;
@@ -792,7 +800,7 @@ copy_graph(Node *graph, SearchSpace *space)
 		break;
 	    case UPD_TAG:
 	    case QUEUEME_TAG:
-		if ( node->s.spc && is_forwarded(node->s.spc) )
+		if ( is_forwarded(node->s.spc) )
 		    node->s.spc = (SearchSpace *)get_forward(node->s.spc);
 		else
 		    node->s.spc = ss;
@@ -806,7 +814,7 @@ copy_graph(Node *graph, SearchSpace *space)
 	    break;
 
 	case INDIR_KIND:
-	    assert(node->n.spc && is_forwarded(node->n.spc));
+	    assert(is_forwarded(node->n.spc));
 	    node->n.spc = (SearchSpace *)get_forward(node->n.spc);
 	    for ( i = 0, n = suspend_argc(node); i < n; i++ )
 		node->s.args[i] = copy_node(node->s.args[i], space);
