@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1893 2006-04-12 17:51:56Z wlux $
+% $Id: search.nw 1894 2006-04-13 13:27:14Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -81,6 +81,9 @@ static void
 pop_search_context()
 {
     assert(bp->btAlts == 0);
+
+    /* eventually restore a safe ancestor of the current search space */
+    leave_context();
 
     /* restore the machine state from the current search context */
     cid		    = bp->btCid;
@@ -325,8 +328,7 @@ continued, too, and is terminated instantly.
 static
 FUNCTION(deadlock_search)
 {
-    Node	*goal, *sc, *clos, *list;
-    SearchSpace *spc;
+    Node *goal, *sc, *clos, *list;
  ENTRY_LABEL(deadlock_search)
     /* check for successful computation or deadlock */
     ASSERT(sp == (Node **)bp - 2);
@@ -358,17 +360,14 @@ FUNCTION(deadlock_search)
     while ( is_boxed(sp[1]) && sp[1]->info->kind == INDIR_KIND )
 	sp[1] = sp[1]->n.node;
 
-    /* leave the local space */
-    spc = save_search_space();
+    /* save the local space */
+    save_search_space();
 
     /* allocate the singleton list for the search continuation */
-    BEGIN_LOCAL_ROOTS1(spc)
     CHECK_HEAP(search_cont_node_size + closure_node_size(1) + cons_node_size);
-    END_LOCAL_ROOTS
-
     sc		= (Node *)hp;
     sc->info	= &search_cont_info;
-    sc->sc.spc	= spc;
+    sc->sc.spc	= ss;
     sc->sc.susp	= 0;
     sc->sc.var	= sp[1];
     sc->sc.code	= 0;
@@ -404,10 +403,9 @@ address [[retIp]] after [[node]] has been evaluated.
 void
 suspend_search(Label retIp, Node *node, SearchSpace *space)
 {
-    Node	*sc;
-    SearchSpace *spc = 0;
+    Node *sc;
 
-    BEGIN_LOCAL_ROOTS3(node, space, spc)
+    BEGIN_LOCAL_ROOTS2(node, space)
     while ( !is_local_space(space) )
     {
 	TRACE(("suspending encapsulated search\n"));
@@ -424,14 +422,14 @@ suspend_search(Label retIp, Node *node, SearchSpace *space)
 	while ( is_boxed(sp[1]) && sp[1]->info->kind == INDIR_KIND )
 	    sp[1] = sp[1]->n.node;
 
-	/* leave the local space */
-	spc = save_search_space();
+	/* save the local space */
+	save_search_space();
 
 	/* allocate a search continuation */
 	CHECK_HEAP(search_cont_node_size);
 	sc	    = (Node *)hp;
 	sc->info    = &search_cont_info;
-	sc->sc.spc  = spc;
+	sc->sc.spc  = ss;
 	sc->sc.susp = sp[0];
 	sc->sc.var  = sp[1];
 	sc->sc.code = retIp;
@@ -496,7 +494,6 @@ FUNCTION(choices_search)
 {
     unsigned int n_conts;
     Node	 *list, *cons, *clos, *sc;
-    SearchSpace	 *spc;
     const Label	 *conts;
  ENTRY_LABEL(choices_search)
     ASSERT(bp && is_search_context(bp));
@@ -518,21 +515,18 @@ FUNCTION(choices_search)
     while ( is_boxed(sp[1]) && sp[1]->info->kind == INDIR_KIND )
 	sp[1] = sp[1]->n.node;
 
-    /* leave the local space */
-    spc = save_search_space();
+    /* save the local space */
+    save_search_space();
 
     /* allocate the list of search continuations */
-    BEGIN_LOCAL_ROOTS1(spc)
     CHECK_HEAP(n_conts * (search_cont_node_size + closure_node_size(1)
 			  + cons_node_size));
-    END_LOCAL_ROOTS
-
     list = nil;
     while ( n_conts-- > 0 )
     {
 	sc	    = (Node *)hp;
 	sc->info    = &search_cont_info;
-	sc->sc.spc  = spc;
+	sc->sc.spc  = ss;
 	sc->sc.susp = sp[0];
 	sc->sc.var  = sp[1];
 	sc->sc.code = *--conts;
@@ -633,8 +627,7 @@ DECLARE_ENTRYPOINT(__encapsulate);
 
 FUNCTION(__encapsulate)
 {
-    Node	*susp, *var, *goal, *clos, *sc;
-    SearchSpace *spc;
+    Node *susp, *var, *goal, *clos, *sc;
     EXPORT_LABEL(__encapsulate)
  ENTRY_LABEL(__encapsulate)
     /* create a new search context for the goal */
@@ -678,18 +671,13 @@ FUNCTION(__encapsulate)
     /* save the current state */
     TRACE(("leaving encapsulated search with 1 continuation\n"));
     save_continuation();
-
-    /* leave the local space */
-    spc = save_search_space();
+    save_search_space();
 
     /* allocate a search continuation */
-    BEGIN_LOCAL_ROOTS1(spc)
     CHECK_HEAP(search_cont_node_size + closure_node_size(1));
-    END_LOCAL_ROOTS
-
     sc		= (Node *)hp;
     sc->info	= &search_cont_info;
-    sc->sc.spc	= spc;
+    sc->sc.spc	= ss;
     sc->sc.susp = sp[0];
     sc->sc.var	= sp[1];
     sc->sc.code	= ___61__58__61_;

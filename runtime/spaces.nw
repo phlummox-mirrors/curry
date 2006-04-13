@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1893 2006-04-12 17:51:56Z wlux $
+% $Id: spaces.nw 1894 2006-04-13 13:27:14Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -17,6 +17,10 @@ different evaluation states of that goal. Within each tree, the
 bindings of only one space are active at each time. A pointer to this
 space is recorded in the [[active]] field of the root space. The
 current search space is maintained in the global variable [[ss]].
+
+\textbf{Invariant}: The runtime system preserves the invariant
+[[ss->root->active == ss]]. The garbage collector makes use of this
+invariant.
 
 Since only local variables and applications can be changed by a
 computation and their bindings are not visible outside of the search
@@ -59,7 +63,7 @@ extern SearchSpace *ss;
 #include "vars.h"
 
 static void switch_bindings(SearchSpace *space);
-static void set_active_space(SearchSpace *space, Choicepoint *cp);
+static void set_safe_ancestor(SearchSpace *space, Choicepoint *cp);
 static SearchSpace *copy_search_space(SearchSpace *spc, SearchSpace *space);
 static Node *copy_node(Node *node, SearchSpace *space);
 
@@ -227,7 +231,9 @@ the outer search may leave dangling pointers in the heap because the
 active space of the inner search goal may have become garbage. For that
 reason, we always set the [[active]] pointer in the root space to a
 ``safe'' space, which is a space that is allocated in the same heap
-segment as the root space.
+segment as the root space. To that end, the runtime system must call
+the function [[leave_context]] before dropping the current search
+context.
 
 \ToDo{\label{todo:lazy-spaces}These updates could be delayed by
   recording root spaces whose active space is allocated in a younger
@@ -245,11 +251,21 @@ segment as the root space.
 Note that when a search succeeds or returns because of a
 non-deterministic split, its heap segment becomes part of the
 enclosing search space. Therefore, the choicepoint that identifies the
-top-most heap segment must be passed to [[set_active_space]].
+top-most heap segment must be passed to [[set_safe_ancestor]].
 
+<<spaces.h>>=
+extern void leave_context(void);
+
+@ 
 <<spaces.c>>=
+void
+leave_context()
+{
+    set_safe_ancestor(ss, bp->btBp);
+}
+
 static void
-set_active_space(SearchSpace *space, Choicepoint *cp)
+set_safe_ancestor(SearchSpace *space, Choicepoint *cp)
 {
     unsigned int n;
     word	 *lim;
@@ -335,14 +351,14 @@ inject_search_space(SearchSpace *space)
 @
 The function [[save_search_space]] creates a new search space that
 saves the current bindings of the local variables and lazy application
-nodes of the search goal.
+nodes of the search goal and makes it the current search space.
 
 <<spaces.h>>=
-extern SearchSpace *save_search_space(void);
+extern void save_search_space(void);
 
 @ 
 <<spaces.c>>=
-SearchSpace *
+void
 save_search_space()
 {
     unsigned int i, n;
@@ -390,10 +406,7 @@ save_search_space()
     hp		 += wordsof(SearchSpace);
 
     /* the new search space is now active */
-    set_active_space(space, bp->btBp);
-
-    /* return the new space */
-    return space;
+    ss = space->root->active = space;
 }
 
 @ 
@@ -414,9 +427,6 @@ discard_search_space()
     /* release the memory allocated in the current space */
     release_names(bp->btDict);
     release_mem();
-
-    /* eventually restore a safe ancestor of the active space */
-    set_active_space(ss, bp->btBp);
 }
 
 @
@@ -863,7 +873,7 @@ copy_graph(Node *graph, SearchSpace *space)
 
     /* eventually restore a safe ancestor of the source space */
     if ( space )
-	set_active_space(space, bp);
+	set_safe_ancestor(space, bp);
 
     /* return the copy */
     return copy;
