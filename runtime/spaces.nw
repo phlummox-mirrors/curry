@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1896 2006-04-14 18:16:33Z wlux $
+% $Id: spaces.nw 1897 2006-04-14 18:26:56Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -696,10 +696,6 @@ copy_graph(Node *graph, SearchSpace *space)
 
     assert(space != &global_space);
 
-    /* activate the bindings of the graph's space */
-    if ( space )
-	switch_bindings(space);
-
     /* handle gc request */
     BEGIN_LOCAL_ROOTS2(graph, space)
     sz = setjmp(restart_copy);
@@ -715,15 +711,24 @@ copy_graph(Node *graph, SearchSpace *space)
 	    ASSERT(is_forwarded(*ntp));
 	    (*ntp)->info = get_forward(*ntp)->info;
 	}
-	for ( spc = space; spc; spc = spc->parent )
-	    spc->info = &search_space_info;
+	if ( space )
+	{
+	    for ( spc = space; spc; spc = spc->parent )
+		spc->info = &search_space_info;
+	    set_safe_ancestor(space, bp);
+	}
 	collect(sz);
 	gc_done = true;
     }
 
-    /* setup forwarding pointers for the graph's space and its parents */
-    for ( spc = space; spc; spc = spc->parent )
-	forward(spc, ss);
+    /* activate the bindings of the graph's space and setup forwarding
+     * pointers for the graph's space and its parents */
+    if ( space )
+    {
+	switch_bindings(space);
+	for ( spc = space; spc; spc = spc->parent )
+	    forward(spc, ss);
+    }
 
     /* copy the root of the graph */
     alloc = (Node **)hp;
@@ -847,12 +852,14 @@ copy_graph(Node *graph, SearchSpace *space)
 	ASSERT(is_forwarded(*ntp));
 	(*ntp)->info = get_forward(*ntp)->info;
     }
-    for ( spc = space; spc; spc = spc->parent )
-	spc->info = &search_space_info;
 
     /* eventually restore a safe ancestor of the source space */
     if ( space )
+    {
+	for ( spc = space; spc; spc = spc->parent )
+	    spc->info = &search_space_info;
 	set_safe_ancestor(space, bp);
+    }
 
     /* return the copy */
     return copy;
