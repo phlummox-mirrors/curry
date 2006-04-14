@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1895 2006-04-13 18:51:34Z wlux $
+% $Id: spaces.nw 1896 2006-04-14 18:16:33Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -357,9 +357,12 @@ inject_search_space(SearchSpace *space)
 }
 
 @
-The function [[save_search_space]] creates a new search space that
-saves the current bindings of the local variables and lazy application
-nodes of the search goal and makes it the current search space.
+The function [[save_search_space]] saves the current bindings of the
+local variables and lazy application nodes of the search goal by
+creating a new search space. The new space then becomes the current
+search space. If the trail is empty, i.e., the goal has not bound any
+variables that could be instantiated differently in another solution
+of the goal, no new search space node is allocated.
 
 <<spaces.h>>=
 extern void save_search_space(void);
@@ -380,11 +383,12 @@ save_search_space()
     n = tp - bp->btTp;
     CHECK_HEAP(wordsof(SearchSpace) + vector_node_size(n * wordsof(ScriptRec)));
 
-    /* eventually allocate a script for the search space */
+    /* eventually allocate a new search space */
     /* NB garbage collection can decrease the size of the trail */
     n = tp - bp->btTp;
     if ( n > 0 )
     {
+	/* initialize the script of the space */
 	trail	       = bp->btTp;
 	script	       = (Script *)hp;
 	script->info   = &script_info;
@@ -400,21 +404,19 @@ save_search_space()
 	    script->data[i].inVal   = trail[i].addr[trail[i].ofs];
 	    script->data[i].outVal  = trail[i].val;
 	}
+
+	/* allocate a new search space */
+	space	      = (SearchSpace *)hp;
+	space->info   = &search_space_info;
+	space->root   = ss->root;
+	space->parent = ss;
+	space->active = 0;
+	space->script = script;
+	hp	     += wordsof(SearchSpace);
+
+	/* the new search space is now active */
+	ss = space->root->active = space;
     }
-    else
-	script = 0;
-
-    /* allocate a new search space */
-    space	  = (SearchSpace *)hp;
-    space->info   = &search_space_info;
-    space->root   = ss->root;
-    space->parent = ss;
-    space->active = 0;
-    space->script = script;
-    hp		 += wordsof(SearchSpace);
-
-    /* the new search space is now active */
-    ss = space->root->active = space;
 }
 
 @ 
@@ -439,50 +441,19 @@ discard_search_space()
 
 @
 The function [[restore_search_space]] restores the bindings of a
-search space and assigns it to the global variable [[ss]]. The
-function can optionally restore the trail from the script of the
-search space and discard the restored space. This is useful when the
-abstract machine resumes a search that has been interrupted in order
-to perform a non-local computation.
+search space and assigns it to the global variable [[ss]].
 
 <<spaces.h>>=
-extern void restore_search_space(SearchSpace *space, boolean discard);
+extern void restore_search_space(SearchSpace *space);
 
 @ 
 <<spaces.c>>=
 void
-restore_search_space(SearchSpace *space, boolean discard)
+restore_search_space(SearchSpace *space)
 {
-    unsigned int i, n;
-    Script	 *script;
-
     /* activate the search space's bindings */
     ss = space;
     switch_bindings(space);
-
-    /* eventually restore the trail */
-    if ( discard )
-    {
-	if ( space->script )
-	{
-	    n = vector_argc(space->script) / wordsof(ScriptRec);
-	    CHECK_TRAIL(n);
-
-	    script = space->script;
-	    for ( i = 0; i < n; i++ )
-	    {
-		tp->addr = script->data[i].addr;
-		tp->info = script->data[i].outInfo;
-		tp->ofs  = script->data[i].ofs;
-		tp->val  = script->data[i].outVal;
-		tp++;
-	    }
-	}
-
-	assert(space->parent);
-	ss		 = space->parent;
-	ss->root->active = ss;
-    }
 }
 
 @ 

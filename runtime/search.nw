@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1894 2006-04-13 13:27:14Z wlux $
+% $Id: search.nw 1896 2006-04-14 18:16:33Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -147,7 +147,7 @@ FUNCTION(__try)
 	sp   -= 1;
 	sp[0] = sc->sc.susp;
 	sp[1] = sc->sc.var;
-	restore_search_space(sc->sc.spc, false);
+	restore_search_space(sc->sc.spc);
 	GOTO(resume_continuation(sc->sc.code, sc->sc.rq));
     }
 
@@ -454,23 +454,20 @@ suspend_search(Label retIp, Node *node, SearchSpace *space)
 }
 
 @ 
-When a suspended search is resumed, we try to reuse its saved search
-space. However, this is possible only if no other reference to that
-search space exists. A sufficient condition to check for is the saved
-search continuation node not being protected by a choice point or
-search context.
+When an encapsulated search is resumed that was interrupted by a call
+to [[suspend_search]], the argument on the top of the stack is
+discarded. A pointer to the (non-local) application node or variable
+is found on the top of the local stack prepared by [[suspend_search]].
 
 <<search.c>>=
 static
 FUNCTION(resume_search)
 {
-    boolean do_resume;
-    Node    *sc;
+    Node *sc;
  ENTRY_LABEL(resume_search)
     sp += 1;
     sc	= sp[0];
     ASSERT(is_boxed(sc) && is_search_cont_node(sc));
-    do_resume = (word *)sc >= hlim;
 
     TRACE(("resuming encapsulated search\n"));
     push_search_context();
@@ -478,7 +475,7 @@ FUNCTION(resume_search)
     sp	 -= 1;
     sp[0] = sc->sc.susp;
     sp[1] = sc->sc.var;
-    restore_search_space(sc->sc.spc, do_resume);
+    restore_search_space(sc->sc.spc);
     GOTO(resume_continuation(sc->sc.code, sc->sc.rq));
 }
 
