@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: search.nw 1896 2006-04-14 18:16:33Z wlux $
+% $Id: search.nw 1898 2006-04-16 10:32:58Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -138,21 +138,31 @@ FUNCTION(__try)
     /* create a new search context */
     TRACE(("starting encapsulated search\n"));
     push_search_context();
+#if COPY_SEARCH_SPACE
+    new_search_space();
+#endif
 
     /* when applied to a partially solved goal continue its evaluation */
     if ( sp[0]->info->entry == search_cont )
     {
+	sc = sp[0]->c.args[0];
+#if COPY_SEARCH_SPACE
+	sc = copy_graph(sc, sc->sc.spc);
+#else
+	restore_search_space(sc->sc.spc);
+#endif
+
 	CHECK_STACK1();
-	sc    = sp[0]->c.args[0];
 	sp   -= 1;
 	sp[0] = sc->sc.susp;
 	sp[1] = sc->sc.var;
-	restore_search_space(sc->sc.spc);
 	GOTO(resume_continuation(sc->sc.code, sc->sc.rq));
     }
 
+#if !COPY_SEARCH_SPACE
     /* create a new search space */
     new_search_space();
+#endif
 
     /* allocate new goal variable and suspension */
     CHECK_HEAP(variable_node_size + queueMe_node_size);
@@ -466,16 +476,23 @@ FUNCTION(resume_search)
     Node *sc;
  ENTRY_LABEL(resume_search)
     sp += 1;
-    sc	= sp[0];
-    ASSERT(is_boxed(sc) && is_search_cont_node(sc));
+    ASSERT(is_boxed(sp[0]) && is_search_cont_node(sp[0]));
 
     TRACE(("resuming encapsulated search\n"));
     push_search_context();
+#if COPY_SEARCH_SPACE
+    new_search_space();
+    sc = sp[0];
+    sc = copy_graph(sc, sc->sc.spc);
+#else
+    sc = sp[0];
+    restore_search_space(sc->sc.spc);
+#endif
+
     CHECK_STACK1();
     sp	 -= 1;
     sp[0] = sc->sc.susp;
     sp[1] = sc->sc.var;
-    restore_search_space(sc->sc.spc);
     GOTO(resume_continuation(sc->sc.code, sc->sc.rq));
 }
 

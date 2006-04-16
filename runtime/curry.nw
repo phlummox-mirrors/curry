@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: curry.nw 1855 2006-02-18 22:58:00Z wlux $
+% $Id: curry.nw 1898 2006-04-16 10:32:58Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -79,6 +79,14 @@ Currently, the following configuration options are supported.
   numbers are implemented as (boxed) nodes in the heap or by encoding
   their values in the pointers. This flag is controlled by the
   \texttt{--disable-unboxed} option of \texttt{configure}.
+\item [[COPY_SEARCH_SPACE]]: If this flag is non-zero, a copying
+  implementation of encapsulated search is
+  used~\cite{Lux04:CopyTrail}. In this configuration, the runtime
+  system uses a copy of the search goal when the evaluation of a
+  partially solved search goal is continued. Thus, every branch in
+  the goal's search tree uses its own memory and therefore updates to
+  the local variables no longer need to be recorded on the trail. Note
+  that the trail itself is still necessary because of global search. %'
 \item [[YIELD_NONDET]]: If this flag is non-zero, the abstract machine
   prioritizes deterministic threads over non-deterministic threads. By
   enabling this flag, unnecessary non-deterministic splittings may be
@@ -112,10 +120,10 @@ from   n = n : from (n + 1)
   Sect.~\ref{sec:unification}).
 \end{itemize}
 The template definitions below ensure that the symbols
-[[USE_TRAMPOLINE]], [[ONLY_BOXED_OBJECTS]], [[YIELD_NONDET]], and
-[[NO_OCCURS_CHECK]] are always defined. This will ensure a consistent
-use of these options throughout the runtime system, as a redefinition
-will raise a compilation error.
+[[USE_TRAMPOLINE]], [[ONLY_BOXED_OBJECTS]], [[COPY_SEARCH_SPACE]],
+[[YIELD_NONDET]], and [[NO_OCCURS_CHECK]] are always defined. This
+will ensure a consistent use of these options throughout the runtime
+system, as a redefinition will raise a compilation error.
 
 <<Configuration options>>=
 /* Define to empty if doubles have alignment constraints */
@@ -126,6 +134,9 @@ will raise a compilation error.
 
 /* Define as 1 to use a boxed representation for all objects */
 #define ONLY_BOXED_OBJECTS 0
+
+/* Define as 1 to copy search goals when they are restored */
+#define COPY_SEARCH_SPACE 0
 
 /* Define as 1 to enable stability */
 #define YIELD_NONDET 0

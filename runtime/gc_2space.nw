@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: gc_2space.nw 1895 2006-04-13 18:51:34Z wlux $
+% $Id: gc_2space.nw 1898 2006-04-16 10:32:58Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -189,8 +189,11 @@ collect(unsigned int request)
     word	     *aux;
     Node	     **scan, **copy, **scan_stack, **slim;
     SaveRec	     *from_trail, *scan_trail, *copy_trail, *tlim;
+#if !COPY_SEARCH_SPACE
     SearchSpace	     *spc;
-    Choicepoint	     *cp, *prev_cp, *next_cp, *scan_cp;
+    Choicepoint	     *scan_cp;
+#endif
+    Choicepoint	     *cp, *prev_cp, *next_cp;
     struct root	     *roots;
     struct dict_node *dict;
 
@@ -251,7 +254,7 @@ pointers.
 #define GC_FLAGS                0x03
 #define FORWARD_FLAG            0x01
 #define is_forwarded(node)      ((*(long *)(node)) & FORWARD_FLAG)
-#define forward(node,new)	((*(long *)(node)) = (long)(new) | FORWARD_FLAG)
+#define forward(node, new)	((*(long *)(node)) = (long)(new) | FORWARD_FLAG)
 #define get_forward(node)       ((Node *)(*(long *)(node) & ~GC_FLAGS))
 
 @
@@ -321,9 +324,11 @@ cp->btSpc = (SearchSpace *)GC_copy(&copy, (Node *)cp->btSpc);
 <<Collect the current trail segment>>
 <<Collect all younger trail segments>>
 <<Scan to-space and copy all reachable nodes into to-space>>
+#if !COPY_SEARCH_SPACE
 spc = cp->btSpc;
 if ( spc != &global_space )
     spc->root->active = spc;
+#endif
 scan_stack = (Node **)cp;
 scan_trail = copy_trail;
 cp->btTp   = copy_trail;
@@ -341,8 +346,10 @@ rq = (ThreadQueue)GC_copy(&copy, (Node *)rq);
 ss = (SearchSpace *)GC_copy(&copy, (Node *)ss);
 <<Collect the current trail segment>>
 <<Scan to-space and copy all reachable nodes into to-space>>
+#if !COPY_SEARCH_SPACE
 if ( ss != &global_space )
     ss->root->active = ss;
+#endif
 tp = copy_trail;
 
 @ 
@@ -439,6 +446,7 @@ process the scripts of the current search spaces' parents, since they %'
 are (implicitly) part of the corresponding trail segments.
 
 <<Collect all younger trail segments>>=
+#if !COPY_SEARCH_SPACE
 scan_cp = cp;
 while ( scan_cp )
 {
@@ -455,6 +463,7 @@ while ( scan_cp )
 			GC_copy(&copy, (Node *)spc->script->data[i].outVal);
 	}
 }
+#endif
 
 @ 
 After the roots have been processed, the collector copies all other live

@@ -1,4 +1,4 @@
-dnl $Id: configure.in 1847 2006-02-04 10:11:04Z wlux $
+dnl $Id: configure.in 1898 2006-04-16 10:32:58Z wlux $
 dnl
 dnl Copyright (c) 2002-2006, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -32,6 +32,12 @@ AC_ARG_ENABLE(unboxed,
  [  --disable-unboxed       do not use unboxed integer representation])
 case $enable_unboxed in
    no ) AC_DEFINE(ONLY_BOXED_OBJECTS);;
+esac
+
+AC_ARG_ENABLE(copying,
+ [  --enable-copying        enable a purely copying implementation of encapsulsted search])
+case $enable_copying in
+  yes ) AC_DEFINE(COPY_SEARCH_SPACE);;
 esac
 
 AC_ARG_ENABLE(stability,
