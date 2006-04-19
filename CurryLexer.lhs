@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryLexer.lhs 1888 2006-04-06 16:46:09Z wlux $
+% $Id: CurryLexer.lhs 1900 2006-04-19 17:44:40Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -571,11 +571,10 @@ backs up to the beginning of the pragma in that case so that
 > asciiEscape p0 success fail p s = fail p0 "Illegal escape sequence" p s
 
 \end{verbatim}
-The \texttt{numEscape} lexer accepts only character codes in the range
-between 0 and 255 because the runtime system currently is restricted
-to 8-bit characters.
-
-\ToDo{Support the full Unicode character set.}
+The \texttt{numEscape} lexer accepts character codes in the character
+range supported by the Haskell compiler. Note that hbc and nhc98 up to
+(at least) version 1.18 report \texttt{(maxBound::Char) == 255}, even
+though they actually support a larger character set range.
 \begin{verbatim}
 
 > numEscape :: Position -> (Char -> L a) -> FailL a -> Int
@@ -585,7 +584,7 @@ to 8-bit characters.
 >   | otherwise = fail p0 "Numeric escape out-of-range" p s
 >   where (digits,rest) = span isDigit s
 >         n = convertIntegral b digits
->         min = 0 -- ord minBound
->         max = 255 -- ord maxBound
+>         min = ord minBound
+>         max = ord maxBound
 
 \end{verbatim}

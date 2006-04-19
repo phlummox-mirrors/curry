@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: prims.nw 1744 2005-08-23 16:17:12Z wlux $
+% $Id: prims.nw 1900 2006-04-19 17:44:40Z wlux $
 %
 % Copyright (c) 2004-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -195,12 +195,12 @@ primRound(double d)
 
 @ 
 Conversions between characters and integer numbers are implemented
-here, too. At present, the character range is limited to 8-bit
-characters. If [[primChr]] is passed an argument outside of this
-range, it raises an exception. Future versions will support the full
-Unicode character set.
+here, too. The function [[primChr]] reports an error when it is
+applied to a code outside of the Unicode character set range.
 
 <<prims.h>>=
+#define primMinChar() 0
+#define primMaxChar() 0x10ffff
 #define primOrd(c) (c)
 extern int primChr(long);
 
@@ -209,7 +209,7 @@ extern int primChr(long);
 int
 primChr(long c)
 {
-    if ( c < 0 || c > 255 )
+    if ( c < primMinChar() || c > primMaxChar() )
 	fail_with("chr: code %ld is out-of-range", c);
     return c;
 }

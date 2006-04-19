@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1899 2006-04-19 10:50:11Z wlux $
+% $Id: CGen.lhs 1900 2006-04-19 17:44:40Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -170,15 +170,15 @@ determine the tag value of a constructor when it is used.
 
 In addition to the tag enumerations, the compiler also defines node
 info structures for every data constructor and preallocates constant
-constructors and literal constants. Note that character constants are
-allocated in a table defined by the runtime system. Integer constants
-need to be allocated only if they cannot be represented in $n-1$ bits
-where $n$ is the bit size of the target machine. The generated code
-uses the preprocessor macro \texttt{is\_large\_int} defined in the
-runtime system (see Sect.~\ref{sec:heap}) in order to determine
-whether allocation is necessary. Note that this macro always returns
-true if the system was configured with the \texttt{--disable-unboxed}
-configuration option.
+constructors and literal constants. Character constants with codes
+below 256 are allocated in a table defined by the runtime system.
+Integer constants need to be allocated only if they cannot be
+represented in $n-1$ bits where $n$ is the bit size of the target
+machine. The generated code uses the preprocessor macro
+\texttt{is\_large\_int} defined in the runtime system (see
+Sect.~\ref{sec:heap}) in order to determine whether allocation is
+necessary. Note that this macro always returns true if the system was
+configured with the \texttt{--disable-unboxed} configuration option.
 \begin{verbatim}
 
 > genTypes :: [Decl] -> [(Name,[Name],[ConstrDecl])] -> [Stmt] -> [Expr]
@@ -245,8 +245,14 @@ configuration option.
 
 > literals :: [Literal] -> [CTopDecl]
 > literals cs =
+>   map charConstant (nub [c | Char c <- cs, ord c >= 0x100]) ++
 >   map intConstant (nub [i | Int i <- cs]) ++
 >   map floatConstant (nub [f | Float f <- cs])
+
+> charConstant :: Char -> CTopDecl
+> charConstant c =
+>   CVarDef CPrivate (CConstType "struct char_node") (constChar c)
+>           (CStruct $ map CInit [CAddr (CExpr "char_info"),CInt (ord c)])
 
 > intConstant :: Int -> CTopDecl
 > intConstant i =
@@ -648,7 +654,7 @@ because constants are allocated per block, not per CPS function.
 
 > ctypeSize :: CArgType -> CExpr
 > ctypeSize TypeBool = CInt 0
-> ctypeSize TypeChar = CInt 0
+> ctypeSize TypeChar = CExpr "char_node_size"
 > ctypeSize TypeInt = CExpr "int_node_size"
 > ctypeSize TypeFloat = CExpr "float_node_size"
 > ctypeSize TypePtr = CExpr "ptr_node_size"
@@ -742,7 +748,9 @@ split into minimal binding groups.
 >         isConst vs0 (Var v) = v `elemSet` vs0
 
 > literal :: Literal -> CExpr
-> literal (Char c) = asNode (CAdd (CExpr "char_table") (CInt (ord c)))
+> literal (Char c)
+>   | ord c < 0x100 = asNode (CAdd (CExpr "char_table") (CInt (ord c)))
+>   | otherwise = constRef (constChar c)
 > literal (Int i) = CExpr (constInt i)
 > literal (Float f) = constRef (constFloat f)
 
@@ -1171,9 +1179,14 @@ first loads this address into a temporary variable and then boxes it.
 >              (Just (CCond (CExpr v2) (const prelTrue) (const prelFalse)))]
 >   where const = constRef . constNode
 > box (Just TypeChar) v1 v2 =
->   [CLocalVar nodePtrType v1
->              (Just (asNode (CAdd (CExpr "char_table")
->                                  (CRel (CExpr v2) "&" (CInt 0xff)))))]
+>   [CLocalVar nodePtrType v1 Nothing,
+>    CIf (CRel (CRel (CExpr v2) ">=" (CInt 0)) "&&"
+>              (CRel (CExpr v2) "<" (CInt 0x100)))
+>      [CAssign (LVar v1) (asNode (CExpr "char_table" `CAdd` CExpr v2))]
+>      [CAssign (LVar v1) (asNode (CExpr "hp")),
+>       CAssign (LField (LVar v1) "info") (CAddr (CExpr "char_info")),
+>       CAssign (LField (LVar v1) "ch.ch") (CExpr v2),
+>       CIncrBy (LVar "hp") (ctypeSize TypeChar)]]
 > box (Just TypeInt) v1 v2 =
 >   [CLocalVar nodePtrType v1 Nothing,
 >    CIf (funCall "is_large_int" [v2])
@@ -1288,7 +1301,7 @@ used for constant constructors and functions, respectively.
 > instFunc c = cName c ++ "_unify"
 
 > litInstFunc :: Literal -> String
-> litInstFunc (Char c) = "char_" ++ show (ord c) ++ "_unify"
+> litInstFunc (Char c) = constChar c ++ "_unify"
 > litInstFunc (Int i) = constInt i ++ "_unify"
 > litInstFunc (Float f) = constFloat f ++ "_unify"
 
@@ -1360,7 +1373,7 @@ special case for \texttt{@}, which is used instead of \texttt{@}$_1$.
 > apName n = mangle ('@' : if n == 2 then "" else show (n - 1))
 
 > constChar :: Char -> String
-> constChar c = "char_table[" ++ show (ord c) ++ "]"
+> constChar c = "char_" ++ show (ord c)
 
 > constInt :: Int -> String
 > constInt i = "int_" ++ mangle (show i)

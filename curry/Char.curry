@@ -1,6 +1,16 @@
+-- $Id: Char.curry 1900 2006-04-19 17:44:40Z wlux $
+--
+-- Copyright (c) 2002-2006, Wolfgang Lux
+-- See ../LICENSE for the full license.
+
 module Char(module Char, ord, chr) where
 
 {- To do: Unicode support -}
+
+{- MCC extensions -}
+foreign import ccall "prims.h primMinChar" minChar :: Char
+foreign import ccall "prims.h primMaxChar" maxChar :: Char
+{- end of extensions -}
 
 isAscii c = c <= '\x80'
 isLatin1 c = c <= '\xff'
