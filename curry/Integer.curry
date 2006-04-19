@@ -1,13 +1,19 @@
--- $Id: Integer.curry 1881 2006-04-03 09:21:01Z wlux $
+-- $Id: Integer.curry 1901 2006-04-19 18:16:24Z wlux $
 --
 -- Copyright (c) 2004-2006, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
-module Integer(pow, ilog, isqrt, factorial, binomial, abs,
+module Integer(minInt, maxInt, pow, ilog, isqrt, factorial, binomial, abs,
 	       max3, min3, maxlist, minlist, bitTrunc, bitAnd, bitOr,
 	       bitNot, bitXor, even, odd) where
 import Bits
 import Float
+
+--- (minInt) returns the smallest Int value
+foreign import ccall "prims.h primMinInt" minInt :: Int
+
+--- (maxInt) returns the largest Int value
+foreign import ccall "prims.h primMaxInt" maxInt :: Int
 
 --- (pow m n) returns the m raised to the power of n
 pow :: Int -> Int -> Int

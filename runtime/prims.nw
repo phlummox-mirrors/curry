@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: prims.nw 1900 2006-04-19 17:44:40Z wlux $
+% $Id: prims.nw 1901 2006-04-19 18:16:24Z wlux $
 %
 % Copyright (c) 2004-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -48,6 +48,9 @@ infinity.\footnote{One might think of using the \texttt{ldiv} function
   \texttt{div} and \texttt{mod} or \texttt{quot} and \texttt{rem}.}
 
 <<prims.h>>=
+#define primMinInt() LONG_MIN
+#define primMaxInt() LONG_MAX
+      
 #define primAddInt(x,y) (x + y)
 #define primSubInt(x,y) (x - y)
 #define primMulInt(x,y) (x * y)
