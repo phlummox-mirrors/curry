@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 1893 2006-04-12 17:51:56Z wlux $
+% $Id: heap.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -93,7 +93,7 @@ enum {
     PTR_KIND,			/* foreign pointer */
     FOREIGN_PTR_KIND,		/* finalized foreign pointer */
     ABSTRACT_KIND,		/* external objects */
-    THREAD_KIND,		/* threadqueue node */
+    THREAD_KIND,		/* thread queue node */
     SEARCH_CONT_KIND,		/* search continuation */
     SCRIPT_KIND			/* saved script/trail */
 };
@@ -424,7 +424,9 @@ indirection info vectors that match the size of the overwritten node.
 extern NodeInfo indir_info;
 struct indir_node {
     NodeInfo	*info;
+#if !COPY_SEARCH_SPACE
     SearchSpace	*spc;		/* defining search space (of original node) */
+#endif
     Node	*node;		/* referenced node */
 };
 #define indir_node_size		wordsof(struct indir_node)
@@ -454,10 +456,16 @@ struct variable_node {
 
 @
 <<heap.c>>=
+#if !COPY_SEARCH_SPACE
 NodeInfo variable_info_table[] = {
     { LVAR_KIND, 0, variable_node_size, 0, 0, eval_whnf, 0, 0 },
     { INDIR_KIND, 0, variable_node_size, 0, 0, eval_indir, 0, 0 }
 };
+#else
+NodeInfo variable_info_table[] = {
+    { LVAR_KIND, 0, variable_node_size, 0, 0, eval_whnf, 0, 0 }
+};
+#endif
 
 @
 At present, the abstract machine supports only disequality constraints.
@@ -548,10 +556,16 @@ struct queueMe_node {
 
 @
 <<heap.c>>=
+#if !COPY_SEARCH_SPACE
 NodeInfo queueMe_info_table[] = {
     { LAZY_KIND, QUEUEME_TAG, queueMe_node_size, 0, 0, eval_queueMe, 0, 0 },
     { INDIR_KIND, 0, queueMe_node_size, 0, 0, eval_indir, 0, 0 }
 };
+#else
+NodeInfo queueMe_info_table[] = {
+    { LAZY_KIND, QUEUEME_TAG, queueMe_node_size, 0, 0, eval_queueMe, 0, 0 }
+};
+#endif
 
 @ 
 Search continuations.
@@ -652,13 +666,20 @@ can be used to initialize this table. It assumes that the entry point
 is named by adding the function's arity to the prefix [[eval_lazy_]].        %'
 
 <<heap.h>>=
-#define LAZYINFO(fname,entrypoint,arity) { \
+#if !COPY_SEARCH_SPACE
+# define LAZYINFO(fname,entrypoint,arity) { \
     { LAZY_KIND, UPD_TAG, suspend_node_size(arity), 0, fname, \
       eval_lazy_##arity, entrypoint, 0 }, \
     { LAZY_KIND, QUEUEME_TAG, suspend_node_size(arity), 0, 0, \
       eval_queueMe, 0, 0 },					\
     { INDIR_KIND, 0, suspend_node_size(arity), 0, 0, eval_indir, 0, 0 } \
 }
+#else
+# define LAZYINFO(fname,entrypoint,arity) { \
+    { LAZY_KIND, UPD_TAG, suspend_node_size(arity), 0, fname, \
+      eval_lazy_##arity, entrypoint, 0 } \
+}
+#endif
 
 @ 
 For benefit of the printing code, the runtime system implements two

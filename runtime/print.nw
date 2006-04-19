@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: print.nw 1889 2006-04-06 16:55:47Z wlux $
+% $Id: print.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -42,14 +42,9 @@ The function [[print_result]] prints the computed result and the
 bindings of the global variables. Only those variables which have been
 bound by the program are actually printed. In order to assign names to
 the unbound variables, a dictionary is used (see below). This
-dictionary is initialized before printing the nodes and reset
-afterwards.
-
-Note that it is safe to enter the names of the goal's free variables
-into the dictionary because these entries are never going to be
-released. This is prevented by keeping a pointer to the initial
-closure at the bottom of the stack. This closure is used to access the
-bindings of the free variables when the computation succeeds.                %'
+dictionary is initialized with the names of the goal's free variables %'
+when the initial goal application is allocated (see
+Sect.~\ref{sec:global-search}).
 
 <<print.c>>=
 void
@@ -62,7 +57,7 @@ print_result(const char **var_names, Node **vars, Node *result)
     tail      = names_tail;
     hasAnswer = false;
     for ( n = 0; var_names[n]; n++ )
-	if ( !is_variable_node(vars[n]) )
+	if ( is_unboxed(vars[n]) || !is_variable_node(vars[n]) )
 	{
 	    if ( !hasAnswer )
 	    {

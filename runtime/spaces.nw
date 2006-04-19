@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: spaces.nw 1898 2006-04-16 10:32:58Z wlux $
+% $Id: spaces.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -410,7 +410,7 @@ of the goal, no new search space node is allocated.
 #if !COPY_SEARCH_SPACE
 extern void save_search_space(void);
 #else
-# define save_search_space()  assert(tp == bp->btTp)
+# define save_search_space()  /* empty */
 #endif
 
 @ 
@@ -479,11 +479,9 @@ extern void discard_search_space(void);
 void
 discard_search_space()
 {
-    /* undo the bindings of the current space */
 #if !COPY_SEARCH_SPACE
+    /* undo the bindings of the current space */
     RESTORE(bp->btTp);
-#else
-    assert(tp == bp->btTp);
 #endif
 
     /* release the memory allocated in the current space */
@@ -498,6 +496,8 @@ search space and assigns it to the global variable [[ss]].
 <<spaces.h>>=
 #if !COPY_SEARCH_SPACE
 extern void restore_search_space(SearchSpace *space);
+#else
+# define restore_search_space(space)  (ss = (space))
 #endif
 
 @ 
@@ -513,10 +513,15 @@ restore_search_space(SearchSpace *space)
 #endif
 
 @ 
-When a search continuation is restored into another search space that
+When a search goal is restored into another search space that
 is not a root space, it must be copied into that search space. Copying
 is performed by the function [[copy_graph]], which is also used for
-copying the solution of a solved goal into the current search space.
+copying the solution of a solved goal into the current search
+space. As a special case, [[copy_graph]] copies all nodes on the stack
+and the ready queue if [[graph == 0]] and the runtime system has been
+configured with the [[--enable-copying]] option. This special case is
+used in order to create a copy of the current state of the computation
+at a non-deterministic choice in global search.
 
 <<spaces.h>>=
 extern Node *copy_graph(Node *graph, SearchSpace *space);
@@ -761,8 +766,9 @@ copy_graph(Node *graph, SearchSpace *space)
     Node	 *copy, **scan;
 #if !COPY_SEARCH_SPACE
     SearchSpace	 *spc;
-#endif
 
+    assert(graph != 0);
+#endif
     assert(space != &global_space);
 
     /* handle gc request */
@@ -811,6 +817,18 @@ copy_graph(Node *graph, SearchSpace *space)
     alloc = (Node **)hp;
     ntp	  = (Node **)heap_end;
     copy  = copy_node(graph, space);
+#if COPY_SEARCH_SPACE
+    if ( !copy )
+    {
+	/* NB don't update the stack here because the copied pointers would
+	 *    not be followed during a garbage collection */
+	assert(bp != 0);
+	for ( scan = (Node **)bp; scan-- > sp; )
+	    copy_node(*scan, space);
+	copy_node((Node *)rq, space);
+	copy = 0;
+    }
+#endif
 
     /* copy all children */
     for ( scan = (Node **)hp; scan < alloc; scan += sz )
@@ -929,6 +947,16 @@ copy_graph(Node *graph, SearchSpace *space)
     END_LOCAL_ROOTS
     hp = (word *)alloc;
 
+    /* eventually update the stack */
+#if COPY_SEARCH_SPACE
+    if ( !copy )
+    {
+	for ( scan = (Node **)bp; scan-- > sp; )
+	    *scan = copy_node(*scan, space);
+	rq = (ThreadQueue)copy_node((Node *)rq, space);
+    }
+#endif
+    
     /* restore the old graph */
     for ( ; ntp < (Node **)heap_end; ntp++ )
     {

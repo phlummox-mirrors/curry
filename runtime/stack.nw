@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: stack.nw 1891 2006-04-10 14:06:46Z wlux $
+% $Id: stack.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -114,7 +114,9 @@ typedef struct choicepoint {
     Node	       **btDsBase;	/* saved thread stack base */
     struct choicepoint *btBp;		/* previous choice point */
     union thread_node  *btRq;		/* saved run queue */
+#if !COPY_SEARCH_SPACE
     struct save_rec    *btTp;		/* saved trail pointer */
+#endif
     struct dict_node   *btDict;		/* saved dictionary tail pointer */
     word	       *btHp;		/* saved heap pointer */
     SearchSpace	       *btSpc;		/* saved search space */

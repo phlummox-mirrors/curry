@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: curry.nw 1898 2006-04-16 10:32:58Z wlux $
+% $Id: curry.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -80,13 +80,12 @@ Currently, the following configuration options are supported.
   their values in the pointers. This flag is controlled by the
   \texttt{--disable-unboxed} option of \texttt{configure}.
 \item [[COPY_SEARCH_SPACE]]: If this flag is non-zero, a copying
-  implementation of encapsulated search is
-  used~\cite{Lux04:CopyTrail}. In this configuration, the runtime
-  system uses a copy of the search goal when the evaluation of a
-  partially solved search goal is continued. Thus, every branch in
-  the goal's search tree uses its own memory and therefore updates to
-  the local variables no longer need to be recorded on the trail. Note
-  that the trail itself is still necessary because of global search. %'
+  implementation is used for encapsulated
+  search~\cite{Lux04:CopyTrail} as well as for global search. In this
+  configuration, the runtime system does not use a trail stack in
+  order to record destructive updates of the search goal's graph but
+  rather uses independent copies for each branch of the goal's search
+  tree.
 \item [[YIELD_NONDET]]: If this flag is non-zero, the abstract machine
   prioritizes deterministic threads over non-deterministic threads. By
   enabling this flag, unnecessary non-deterministic splittings may be
@@ -135,7 +134,7 @@ system, as a redefinition will raise a compilation error.
 /* Define as 1 to use a boxed representation for all objects */
 #define ONLY_BOXED_OBJECTS 0
 
-/* Define as 1 to copy search goals when they are restored */
+/* Define as 1 to use a copying implementation for non-deterministic search */
 #define COPY_SEARCH_SPACE 0
 
 /* Define as 1 to enable stability */

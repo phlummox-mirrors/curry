@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: gc_2space.nw 1898 2006-04-16 10:32:58Z wlux $
+% $Id: gc_2space.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -188,8 +188,8 @@ collect(unsigned int request)
     unsigned int     i, j, len;
     word	     *aux;
     Node	     **scan, **copy, **scan_stack, **slim;
-    SaveRec	     *from_trail, *scan_trail, *copy_trail, *tlim;
 #if !COPY_SEARCH_SPACE
+    SaveRec	     *from_trail, *scan_trail, *copy_trail, *tlim;
     SearchSpace	     *spc;
     Choicepoint	     *scan_cp;
 #endif
@@ -200,7 +200,9 @@ collect(unsigned int request)
     stats_begin_gc(hp - heap_base);
     assert(hp <= heap_end);
     assert(stack_base <= sp && sp <= stack_end);
+#if !COPY_SEARCH_SPACE
     assert(trail_base <= tp && tp <= trail_end);
+#endif
 
 #ifdef HAVE_MPROTECT
     mprotect(to_space, heap_size * word_size, PROT_READ | PROT_WRITE);
@@ -208,7 +210,9 @@ collect(unsigned int request)
     in_gc      = true;
     scan       = copy	    = (Node **)to_space;
     scan_stack = stack_end;
+#if !COPY_SEARCH_SPACE
     from_trail = scan_trail = copy_trail = trail_base;
+#endif
 
     prev_cp = next_cp = 0;
     if ( bp )
@@ -258,22 +262,45 @@ pointers.
 #define get_forward(node)       ((Node *)(*(long *)(node) & ~GC_FLAGS))
 
 @
-Before copying an object, we must check whether its info pointer is
+Before copying a node, we must check whether its info pointer is
 already replaced by a forwarding pointer. In that case, only the
-pointer to the object is updated to point to the new location.
-Otherwise, a binary copy of the object is created at the top of
-to-space and its info pointer is replaced. Pointers to objects outside
-of the heap as well as pointers to objects above the current heap
-segment are not followed at all.
+pointer to the node is updated to point to the new location.
+Otherwise, a binary copy of the node is created at the top of
+to-space and its info pointer is replaced. Pointers to nodes outside
+of the heap as well as pointers to nodes above the current heap
+segment are not followed at all. We also shorten indirection chains,
+but only if the runtime system was configured with the
+\texttt{--enable-copying} option. It is not safe to shorten
+indirection chains in general when trailing is used, as the following
+example demonstrates.
+\begin{verbatim}
+  coin = 0; coin = 1
+  f x | z =:= y &> x =:= y = Just (x + z) where y,z free
+  main = f coin
+\end{verbatim}
+If a garbage collection happens in the body of \texttt{f} just after
+evaluating the guard \verb|z =:= y| \verb|&>| \verb|x =:= y| and
+indirection chains were shortened, the variable \texttt{z} would be
+bound to the selected result of \texttt{coin} and this binding would
+not be undone when switching to the other solution because \texttt{z}
+is allocated in the top-most heap segment when it is bound and
+therefore it is not recorded on the trail.
 
 <<Garbage collector definitions>>=
 static inline Node *
 GC_copy(Node ***p_alloc, Node *node)
 {
-    if ( is_boxed(node) && node >= (Node *)heap_base && node < (Node *)hlim )
+    while ( is_boxed(node) && node >= (Node *)heap_base && node < (Node *)hlim )
     {
         if ( is_forwarded(node) )
             node = get_forward(node);
+#if COPY_SEARCH_SPACE
+	else if ( node_kind(node) == INDIR_KIND )
+	{
+	    node = node->n.node;
+	    continue;
+	}
+#endif
         else
 	{
 	    unsigned int sz;
@@ -291,6 +318,7 @@ GC_copy(Node ***p_alloc, Node *node)
             node     = (Node *)alloc;
             *p_alloc = alloc + sz;
         }
+	break;
     }
 
     return node;
@@ -314,15 +342,21 @@ that is preserved by the runtime system (cf. Sect.~\ref{sec:spaces}).
 
 <<Collect the heap segment below [[cp]]>>=
 hlim = cp->btHp;
-tlim = cp->btTp;
 slim = (Node **)(cp + 1);
+#if !COPY_SEARCH_SPACE
+tlim = cp->btTp;
 <<Compact the current trail segment>>
+#endif
 <<Collect the external roots>>
 <<Collect the current stack segment>>
 cp->btRq  = (ThreadQueue)GC_copy(&copy, (Node *)cp->btRq);
 cp->btSpc = (SearchSpace *)GC_copy(&copy, (Node *)cp->btSpc);
+#if !COPY_SEARCH_SPACE
 <<Collect the current trail segment>>
 <<Collect all younger trail segments>>
+scan_trail = copy_trail;
+cp->btTp   = copy_trail;
+#endif
 <<Scan to-space and copy all reachable nodes into to-space>>
 #if !COPY_SEARCH_SPACE
 spc = cp->btSpc;
@@ -330,27 +364,29 @@ if ( spc != &global_space )
     spc->root->active = spc;
 #endif
 scan_stack = (Node **)cp;
-scan_trail = copy_trail;
-cp->btTp   = copy_trail;
 cp->btHp   = (word *)copy;
 
 @ 
 <<Collect the heap segment above the current choice point>>=
 hlim = hp;
-tlim = tp;
 slim = sp;
+#if !COPY_SEARCH_SPACE
+tlim = tp;
 <<Compact the current trail segment>>
+#endif
 <<Collect the external roots>>
 <<Collect the current stack segment>>
 rq = (ThreadQueue)GC_copy(&copy, (Node *)rq);
 ss = (SearchSpace *)GC_copy(&copy, (Node *)ss);
+#if !COPY_SEARCH_SPACE
 <<Collect the current trail segment>>
+tp = copy_trail;
+#endif
 <<Scan to-space and copy all reachable nodes into to-space>>
 #if !COPY_SEARCH_SPACE
 if ( ss != &global_space )
     ss->root->active = ss;
 #endif
-tp = copy_trail;
 
 @ 
 All nodes referenced from the additional global and local roots are
@@ -446,7 +482,6 @@ process the scripts of the current search spaces' parents, since they %'
 are (implicitly) part of the corresponding trail segments.
 
 <<Collect all younger trail segments>>=
-#if !COPY_SEARCH_SPACE
 scan_cp = cp;
 while ( scan_cp )
 {
@@ -463,7 +498,6 @@ while ( scan_cp )
 			GC_copy(&copy, (Node *)spc->script->data[i].outVal);
 	}
 }
-#endif
 
 @ 
 After the roots have been processed, the collector copies all other live

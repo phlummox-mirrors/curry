@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1870 2006-03-08 22:49:17Z wlux $
+% $Id: show.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -110,12 +110,14 @@ FUNCTION(eval_lazy_3)
 	CHECK_STACK(2);
 	sp -= 2;
 
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, n.node);
 	    susp->info += 2;
 	}
 	else
+#endif
 	    susp->info = &indir_info;
 	assert(is_queueMe_node(sp[4]));
 	susp->n.node = sp[4];
@@ -128,12 +130,14 @@ FUNCTION(eval_lazy_3)
 	sp   -= 4;
 	sp[3] = (Node *)update;
 
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, q.wq);
 	    susp->info++;
 	}
 	else
+#endif
 	    susp->info = queueMe_info_table;
 	susp->q.wq = 0;
     }
@@ -171,12 +175,14 @@ FUNCTION(eval_lazy_4)
 	CHECK_STACK(3);
 	sp -= 3;
 
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, n.node);
 	    susp->info += 2;
 	}
 	else
+#endif
 	    susp->info = &indir_info;
 	assert(is_queueMe_node(sp[5]));
 	susp->n.node = sp[5];
@@ -189,12 +195,14 @@ FUNCTION(eval_lazy_4)
 	sp   -= 5;
 	sp[4] = (Node *)update;
 
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, q.wq);
 	    susp->info++;
 	}
 	else
+#endif
 	    susp->info = queueMe_info_table;
 	susp->q.wq = 0;
     }
@@ -983,11 +991,11 @@ FUNCTION(showTail_1)
 	    tail = sp[2];
 	    sp  += 3;
 
-	    cons		= (Node *)hp;
-	    cons->info	= &cons_info;
+	    cons	    = (Node *)hp;
+	    cons->info	    = &cons_info;
 	    cons->c.args[0] = rbracket;
 	    cons->c.args[1] = tail;
-	    hp	       += cons_node_size;
+	    hp		   += cons_node_size;
 	    break;
 
 	case CONS_TAG:
@@ -999,28 +1007,28 @@ FUNCTION(showTail_1)
 	    tail = sp[2];
 	    sp  += 3;
 
-	    susp	   	= (Node *)hp;
-	    susp->info 	= showTail_lazy_info_table;
-	    susp->s.spc	= ss;
+	    susp	    = (Node *)hp;
+	    susp->info	    = showTail_lazy_info_table;
+	    susp->s.spc	    = ss;
 	    susp->s.args[0] = list->c.args[1];
 	    susp->s.args[1] = show;
 	    susp->s.args[2] = tail;
-	    hp	       += suspend_node_size(3);
+	    hp		   += suspend_node_size(3);
 
-	    susp2		 = (Node *)hp;
-	    susp2->info	 = showp_lazy_info_table;
-	    susp2->s.spc	 = ss;
+	    susp2	     = (Node *)hp;
+	    susp2->info	     = showp_lazy_info_table;
+	    susp2->s.spc     = ss;
 	    susp2->s.args[0] = list->c.args[0];
 	    susp2->s.args[1] = zero;
 	    susp2->s.args[2] = show;
 	    susp2->s.args[3] = susp;
-	    hp		+= suspend_node_size(4);
+	    hp		    += suspend_node_size(4);
 
-	    cons		= (Node *)hp;
-	    cons->info	= &cons_info;
+	    cons	    = (Node *)hp;
+	    cons->info	    = &cons_info;
 	    cons->c.args[0] = comma;
 	    cons->c.args[1] = susp2;
-	    hp	       += cons_node_size;
+	    hp		   += cons_node_size;
 	    break;
 
 	default:

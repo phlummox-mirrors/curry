@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: eval.nw 1874 2006-03-18 14:46:46Z wlux $
+% $Id: eval.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -134,8 +134,12 @@ FUNCTION(eval_queueMe)
 	if ( is_local_space(susp->q.spc) || !susp2->q.wq )
 	{
 	    wq = susp2->q.wq;
+#if !COPY_SEARCH_SPACE
 	    SAVE(susp2, n.node);
 	    susp2->info++;
+#else
+	    susp2->info	  = &indir_info;
+#endif
 	    susp2->n.node = susp;
 
 	    if ( wq )
@@ -226,8 +230,12 @@ FUNCTION(update)
     /* update the suspended application */
     TRACE(("%I %N = %N\n", susp, result));
     wq = susp->q.wq;
+#if !COPY_SEARCH_SPACE
     SAVE(susp, q.wq);
     susp->info++;
+#else
+    susp->info	 = &indir_info;
+#endif
     susp->n.node = result;
     sp[0]	 = result;
 
@@ -388,12 +396,14 @@ FUNCTION(eval_lazy_2)
 	CHECK_STACK1();
 	sp -= 1;
 
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, n.node);
 	    susp->info += 2;
 	}
 	else
+#endif
 	    susp->info = &indir_info;
 	assert(is_queueMe_node(sp[3]));
 	susp->n.node = sp[3];
@@ -406,12 +416,14 @@ FUNCTION(eval_lazy_2)
 	sp   -= 3;
 	sp[2] = (Node *)update;
 
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, q.wq);
 	    susp->info++;
 	}
 	else
+#endif
 	    susp->info = queueMe_info_table;
 	susp->q.wq = 0;
     }
@@ -593,12 +605,14 @@ FUNCTION(eval_lazy_1)
     /* create an indirection if there is an update frame immediately above */
     if ( local && (Label)sp[1] == update )
     {
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, n.node);
 	    susp->info += 2;
 	}
 	else
+#endif
 	    susp->info = &indir_info;
 	assert(is_queueMe_node(sp[2]));
 	susp->n.node = sp[2];
@@ -611,12 +625,14 @@ FUNCTION(eval_lazy_1)
 	sp   -= 2;
 	sp[1] = (Node *)update;
 
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, q.wq);
 	    susp->info++;
 	}
 	else
+#endif
 	    susp->info = queueMe_info_table;
 	susp->q.wq = 0;
     }

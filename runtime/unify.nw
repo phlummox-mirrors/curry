@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: unify.nw 1872 2006-03-16 10:11:43Z wlux $
+% $Id: unify.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -841,6 +841,7 @@ FUNCTION(bind_var)
 
     /* update the variable */
     TRACE(("%I %N = %N\n", var, node));
+#if !COPY_SEARCH_SPACE
     if ( (word *)var < hlim )
     {
 	if ( (word *)&var->v.wq == (word *)&var->n.node )
@@ -856,6 +857,7 @@ FUNCTION(bind_var)
 	var->info++;
     }
     else
+#endif
 	var->info = &indir_info;
     var->n.node = node;
 

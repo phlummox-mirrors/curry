@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1872 2006-03-16 10:11:43Z wlux $
+% $Id: files.nw 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -645,7 +645,9 @@ FUNCTION(__hGetLine)
 	    CHECK_HEAP(indir_node_size);
 	    tail	 = (Node *)hp;
 	    tail->info	 = &indir_info;
+#if !COPY_SEARCH_SPACE
 	    tail->n.spc	 = ss;
+#endif
 	    tail->n.node = nil;
 	    hp		+= indir_node_size;
 	}
@@ -712,12 +714,14 @@ FUNCTION(eval_lazy_1)
     /* create an indirection if there is an update frame immediately above */
     if ( local && (Label)sp[1] == update )
     {
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, n.node);
 	    susp->info += 2;
 	}
 	else
+#endif
 	    susp->info = &indir_info;
 	assert(is_queueMe_node(sp[2]));
 	susp->n.node = sp[2];
@@ -730,12 +734,14 @@ FUNCTION(eval_lazy_1)
 	sp   -= 2;
 	sp[1] = (Node *)update;
 
+#if !COPY_SEARCH_SPACE
 	if ( (word *)susp < hlim )
 	{
 	    DO_SAVE(susp, q.wq);
 	    susp->info++;
 	}
 	else
+#endif
 	    susp->info = queueMe_info_table;
 	susp->q.wq = 0;
     }

@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: threads.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: threads.nw 1899 2006-04-19 10:50:11Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Thread Management}
@@ -638,8 +638,9 @@ Also note that [[restore_continuation]] creates a new head for the
 ready queue before updating the continuation address. This is to
 prevent accidental overwriting of the address if another related
 continuation is restored before the thread is actually woken. No such
-precaution is necessary in [[resume_continuation]] as the first thread
-is woken immediately.
+precaution is necessary when the runtime system was configured with
+the \texttt{--enable-copying} option and neither in function
+[[resume_continuation]] as it activates the first thread immediately.
 
 <<threads.c>>=
 void
@@ -681,13 +682,15 @@ restore_continuation(Label l, ThreadQueue tq)
     assert(tq && tq->t.id != 0);
 
     /* update the continuation address of the first restored thread */
+#if !COPY_SEARCH_SPACE
     BEGIN_LOCAL_ROOTS1(tq)
     CHECK_HEAP(thread_node_size);
     memcpy(hp, tq, thread_node_size * word_size);
-    tq	     = (ThreadQueue)hp;
-    tq->t.ip = l;
-    hp	    += thread_node_size;
+    tq	= (ThreadQueue)hp;
+    hp += thread_node_size;
     END_LOCAL_ROOTS
+#endif
+    tq->t.ip = l;
 
     /* wake all threads of the search space and add them to the ready queue */
     wake_threads(tq);

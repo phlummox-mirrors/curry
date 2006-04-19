@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1884 2006-04-05 16:48:01Z wlux $
+% $Id: CGen.lhs 1899 2006-04-19 10:50:11Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -387,8 +387,11 @@ is generated.
 
 > lazyDef :: CVisibility -> Name -> Int -> CTopDecl
 > lazyDef vb f n =
->   CArrayDef vb nodeInfoType (lazyInfoTable f)
->             (map (CStruct . map CInit) [suspinfo,queuemeinfo,indirinfo])
+>   CppCondDecls (CExpr "!COPY_SEARCH_SPACE")
+>     [CArrayDef vb nodeInfoType (lazyInfoTable f)
+>                (map (CStruct . map CInit) [suspinfo,queuemeinfo,indirinfo])]
+>     [CArrayDef vb nodeInfoType (lazyInfoTable f)
+>                [CStruct (map CInit suspinfo)]]
 >   where suspinfo =
 >           [CExpr "LAZY_KIND",CExpr "UPD_TAG",suspendNodeSize n,
 >            gcPointerTable,CString (undecorate (demangle f)),
@@ -905,10 +908,12 @@ translation function.
 >   [rtsAssertList[isBoxed v',CRel (nodeKind v') "==" (CExpr "LAZY_KIND"),
 >                  CRel (nodeTag v') "==" (CExpr "UPD_TAG"),
 >                  CFunCall "is_local_space" [field v' "s.spc"]],
->    CIf (CRel (CCast wordPtrType (CExpr v')) "<" (CExpr "hlim"))
->        [procCall "DO_SAVE" [v',"q.wq"],
->         CIncrBy (LField (LVar v') "info") (CInt 1)]
->        [CAssign (LField (LVar v') "info") (CExpr "queueMe_info_table")],
+>    CppCondStmts "!COPY_SEARCH_SPACE"
+>      [CIf (CRel (CCast wordPtrType (CExpr v')) "<" (CExpr "hlim"))
+>           [procCall "DO_SAVE" [v',"q.wq"],
+>            CIncrBy (LField (LVar v') "info") (CInt 1)]
+>           [CAssign (LField (LVar v') "info") (CExpr "queueMe_info_table")]]
+>      [CAssign (LField (LVar v') "info") (CExpr "queueMe_info_table")],
 >    CAssign (LField (LVar v') "q.wq") CNull]
 >   where v' = show v
 
@@ -918,8 +923,10 @@ translation function.
 >                  CRel (nodeTag v1') "==" (CExpr "QUEUEME_TAG"),
 >                  CFunCall "is_local_space" [field v1' "q.spc"]],
 >    CLocalVar (CType "ThreadQueue") wq (Just (CField (CExpr v1') "q.wq")),
->    procCall "SAVE" [v1',"q.wq"],
->    CIncrBy (LField (LVar v1') "info") (CInt 1),
+>    CppCondStmts "!COPY_SEARCH_SPACE"
+>      [procCall "SAVE" [v1',"q.wq"],
+>       CIncrBy (LField (LVar v1') "info") (CInt 1)]
+>      [CAssign (LField (LVar v1') "info") (CAddr (CExpr "indir_info"))],
 >    CAssign (LField (LVar v1') "n.node") (CExpr (show v2)),
 >    CIf (CExpr wq) [procCall "wake_threads" [wq]] []]
 >   where v1' = show v1
@@ -929,10 +936,12 @@ translation function.
 > lockIndir v1 v2 =
 >   [rtsAssertList [CRel (field v2' "info->kind") "==" (CExpr "LAZY_KIND"),
 >                   CRel (field v2' "info->tag") "==" (CExpr "QUEUEME_TAG")],
->    CIf (CRel (CCast wordPtrType (CExpr v1')) "<" (CExpr "hlim"))
->             [procCall "DO_SAVE" [v1',"n.node"],
->              CIncrBy (LField (LVar v1') "info") (CInt 2)]
->             [CAssign (LField (LVar v1') "info") (CAddr (CExpr "indir_info"))],
+>    CppCondStmts "!COPY_SEARCH_SPACE"
+>       [CIf (CRel (CCast wordPtrType (CExpr v1')) "<" (CExpr "hlim"))
+>           [procCall "DO_SAVE" [v1',"n.node"],
+>            CIncrBy (LField (LVar v1') "info") (CInt 2)]
+>           [CAssign (LField (LVar v1') "info") (CAddr (CExpr "indir_info"))]]
+>       [CAssign (LField (LVar v1') "info") (CAddr (CExpr "indir_info"))],
 >    CAssign (LVar "susp->n.node") (CExpr v2')]
 >   where v1' = show v1
 >         v2' = show v2

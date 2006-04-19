@@ -1,10 +1,10 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: backtrack.nw 1891 2006-04-10 14:06:46Z wlux $
+% $Id: backtrack.nw 1899 2006-04-19 10:50:11Z wlux $
 %
-% Copyright (c) 2002-2005, Wolfgang Lux
+% Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
-\subsection{Global Search}
+\subsection{Global Search}\label{sec:global-search}
 In global search mode, the abstract machine uses backtracking for the
 implementation of non-deterministic computations because it is more
 efficient than a depth-first search strategy implemented on top of
@@ -55,6 +55,10 @@ strategy for encapsulated search in a future version of the compiler.
 <<backtrack.c>>=
 static const struct nondet_handlers global_handlers = { choices, stop, fail };
 
+#if COPY_SEARCH_SPACE
+static void copy_goal_names(void);
+#endif
+
 static
 FUNCTION(choices)
 {
@@ -78,19 +82,25 @@ FUNCTION(choices)
     bp->btDsBase   = ds_base;
     bp->btBp	   = oldBp;
     bp->btRq	   = rq;
+#if !COPY_SEARCH_SPACE
     bp->btTp	   = tp;
+#endif
     bp->btDict	   = names_tail;
     bp->btHp	   = hp;
     bp->btSpc	   = ss;
     bp->btHandlers = nondet_handlers;
 
+    /* adjust the heap limit */
+    hlim = hp;
+
     /* create a copy of the stack below the choice point */
     memcpy(sp - cp_sz, sp, stk_sz*word_size);
     sp	    -= cp_sz;
     ds_base -= cp_sz;
-
-    /* adjust the trail limit */
-    hlim = hp;
+#if COPY_SEARCH_SPACE
+    (void)copy_graph(0, 0);
+    copy_goal_names();
+#endif
 
     /* continue at the first alternative */
     GOTO(choice_conts[0]);
@@ -111,8 +121,10 @@ FUNCTION(fail)
 	halt();
     }
 
+#if !COPY_SEARCH_SPACE
     /* restore the old bindings from the trail */
     RESTORE(bp->btTp);
+#endif
 
     /* restore registers from the choice point */
     cid	    = bp->btCid;
@@ -147,12 +159,33 @@ FUNCTION(fail)
 	sp       = (Node **)bp - stk_sz;
 	ds_base  = bp->btDsBase - wordsof(Choicepoint) - stk_sz;
 	memcpy(sp, sp + wordsof(Choicepoint) + stk_sz, stk_sz * word_size);
+#if COPY_SEARCH_SPACE
+	(void)copy_graph(0, 0);
+	copy_goal_names();
+#endif
 	TRACE(("%I retry\n"));
     }
 
     /* continue at the next alternative */
     GOTO(choice_conts[0]);
 }
+
+#if COPY_SEARCH_SPACE
+static void
+copy_goal_names()
+{
+    unsigned int i, n;
+    Node	 *old_goal, *goal;
+
+    /* insert the copied global variables into the dictionary */
+    /* NB: copied names must be strdup'ed so that they can be
+     *     released with free(3) upon backtracking */
+    old_goal = bp->btBp ? ((Node **)bp->btBp)[-2] : stack_end[-2];
+    goal     = ((Node **)bp)[-2];
+    for ( i = 1, n = closure_argc(goal); i < n; i++ )
+	add_name(goal->c.args[i], strdup(lookup_name(old_goal->c.args[i])));
+}
+#endif
 
 @
 The function [[curry_eval]] is the main function for a program which
@@ -182,21 +215,25 @@ solutions are computed. The interactive and non-interactive operation
 can be enforced by passing the options \texttt{-i} and \texttt{-n},
 respectively, to the program.
 
-Note that [[eval_first]] and [[eval_next]] use [[cid == 0]] in order
-to check whether the execution has stopped without a failure. The
+The functions [[eval_first]] and [[eval_next]] use [[cid == 0]] in
+order to check whether execution has stopped without a failure. The
 [[fail]] code above does not reset the machine registers; therefore,
 if no alternative continuation is available in [[fail]] and the
 machine is halted, [[cid]] contains a valid thread id. On the other
 hand, the [[stop]] code, which is invoked when a deadlock occurs in
 global search mode, sets [[cid]] to [[0]]. Both [[eval_first]] and
-[[eval_next]] return the suspended application node that was created
-for the goal. It is used to distinguish normal termination from a
-deadlock.
+[[eval_next]] return the goal application upon successful termination.
+Note that this node may be different from the one passed to
+[[eval_first]] when the runtime system was configured with the
+\texttt{--enable-copying} option. The special values [[-1]] and [[0]]
+are returned when a deadlock has occurred and when the are no
+solutions, respectively.
 
 <<backtrack.c>>=
 static Node    *eval_apply(NodeInfo *, const char **);
 static Node    *eval_first(Node *);
 static Node    *eval_next(void);
+static Node    *do_eval(Label ip);
 static boolean eval_continue(boolean *);
 static void    bad_usage(const char *) __attribute__((noreturn));
 
@@ -214,7 +251,7 @@ curry_eval(NodeInfo *goal_info, const char *fv_names[], int argc, char **argv)
 {
     int	    opt;
     boolean first = true, interactive;
-    Node    *susp, *goal;
+    Node    *goal;
 
     /* check if process is connected to a terminal */
     interactive = isatty(0) == 1;
@@ -241,10 +278,8 @@ curry_eval(NodeInfo *goal_info, const char *fv_names[], int argc, char **argv)
     }
 
     /* evaluate and display solutions of the goal */
-    goal = eval_apply(goal_info, fv_names);
-    BEGIN_LOCAL_ROOTS1(goal)
-    susp = eval_first(goal);
-    if ( susp )
+    goal = eval_first(eval_apply(goal_info, fv_names));
+    if ( goal )
 	for ( ;; )
 	{
 	    if ( !interactive )
@@ -254,7 +289,7 @@ curry_eval(NodeInfo *goal_info, const char *fv_names[], int argc, char **argv)
 		else
 		    printf(" | ");
 	    }
-	    if ( is_indir_node(susp) )
+	    if ( goal != (Node *)-1 )
 		print_result(fv_names, goal->c.args + 1, goal->c.args[0]);
 	    else
 		printf("Suspended");
@@ -262,8 +297,8 @@ curry_eval(NodeInfo *goal_info, const char *fv_names[], int argc, char **argv)
 	    if ( !eval_continue(&interactive) )
 		break;
 
-	    susp = eval_next();
-	    if ( susp == 0 )
+	    goal = eval_next();
+	    if ( goal == 0 )
 	    {
 		printf("%s\n", interactive ? "No more solutions" : "");
 		break;
@@ -271,7 +306,6 @@ curry_eval(NodeInfo *goal_info, const char *fv_names[], int argc, char **argv)
 	}
     else
 	fprintf(interactive ? stdout : stderr, "No solution\n");
-    END_LOCAL_ROOTS
 
     /* execute finalization functions of the live objects */
     hlim = heap_base;
@@ -333,15 +367,31 @@ eval_first(Node *goal)
     sp[0] = goal;
     sp[1] = susp;
 
-    run(start);
-    return cid == 0 ? stack_end[-1] : 0;
+    return do_eval(start);
 }
 
 static Node *
 eval_next()
 {
-    run(fail);
-    return cid == 0 ? stack_end[-1] : 0;
+    return do_eval(fail);
+}
+
+static Node *
+do_eval(Label ip)
+{
+    Node *susp;
+
+    run(ip);
+    if ( cid != 0 )
+	return 0;
+
+    susp = bp ? ((Node **)bp)[-1] : stack_end[-1];
+    while ( is_boxed(susp) && is_indir_node(susp) )
+	susp = susp->n.node;
+    if ( is_boxed(susp) && is_lazy_node(susp) )
+	return (Node *)-1;
+
+    return bp ? ((Node **)bp)[-2] : stack_end[-2];
 }
 
 static boolean
@@ -393,8 +443,8 @@ FUNCTION(start)
     susp = sp[1];
     eval = goal->info->eval;
 
-    CHECK_STACK(3);
-    sp	 -= 3;
+    CHECK_STACK(4);
+    sp	 -= 4;
     sp[0] = goal;
     sp[1] = (Node *)update;
     sp[2] = susp;
