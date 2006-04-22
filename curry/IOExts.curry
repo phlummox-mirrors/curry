@@ -1,13 +1,13 @@
--- $Id: IOExts.curry 1861 2006-02-24 17:29:05Z wlux $
+-- $Id: IOExts.curry 1902 2006-04-22 18:13:50Z wlux $
 --
--- Copyright (c) 2004, Wolfgang Lux
+-- Copyright (c) 2004-2006, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module IOExts(fixIO, unsafePerformIO,unsafeInterleaveIO,
  	      IORef, newIORef,readIORef,writeIORef,modifyIORef,
 	      IOArray, newIOArray,boundsIOArray,readIOArray,writeIOArray,
 	      freezeIOArray,thawIOArray, unsafeFreezeIOArray,unsafeThawIOArray,
- 	      hIsTerminalDevice, openProcess, pClose, connectTcpSocket,
+ 	      hIsTerminalDevice, openFd, openProcess, pClose, connectTcpSocket,
 	      trace, performGC) where
 
 import Array
@@ -68,6 +68,7 @@ unsafeThawIOArray a =
 
 -- assorted IO functions
 foreign import primitive hIsTerminalDevice :: Handle -> IO Bool
+foreign import primitive openFd :: Int -> IOMode -> IO Handle
 foreign import primitive openProcess :: String -> IOMode -> IO Handle
 foreign import primitive pClose :: Handle -> IO Int
 foreign import primitive connectTcpSocket :: String -> Int -> IOMode -> IO Handle

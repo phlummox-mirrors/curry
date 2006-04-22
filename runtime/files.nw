@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 1899 2006-04-19 10:50:11Z wlux $
+% $Id: files.nw 1902 2006-04-22 18:13:50Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -284,6 +284,94 @@ FUNCTION(__openFile_2)
     fn = to_string(sp[1]);
     fp = fopen(fn, mode);
     free((char *)fn);
+    if ( fp == NULL )
+    {
+	*++sp = from_string(strerror(errno));
+	GOTO(__ioError);
+    }
+    else
+	sp += 3;
+
+    /* create the file node */
+    CHECK_HEAP(file_node_size);
+    file	 = (Handle *)hp;
+    file->info	 = &file_info;
+    file->fp	 = fp;
+    file->flags  = flags;
+    file->bmode  = -1;
+    file->bsize  = 0;
+    file->buffer = NULL;
+    hp		+= file_node_size;
+    register_final((Node *)file);
+
+    /* return the file */
+    RETURN((Node *)file);
+}
+
+@ 
+The function [[openFd]] is a variant of [[openFile]] that creates a
+new file node for a file descriptor.
+
+<<files.c>>=
+DECLARE_ENTRYPOINT(__openFd);
+DECLARE_LABEL(__openFd_1);
+DECLARE_LABEL(__openFd_2);
+
+
+FUNCTION(__openFd)
+{
+    EXPORT_LABEL(__openFd)
+ ENTRY_LABEL(__openFd)
+    TRACE_FUN("openFd", 3);
+    GOTO(__openFd_1);
+}
+
+static
+FUNCTION(__openFd_1)
+{
+    Node *fd;
+ ENTRY_LABEL(__openFd_1)
+    EVAL_RIGID_INT(__openFd_1);
+    fd	  = sp[0];
+    sp[0] = sp[1];
+    sp[1] = fd;
+    GOTO(__openFd_2);
+}
+
+static
+FUNCTION(__openFd_2)
+{
+    const char *mode;
+    int	       flags;
+    FILE       *fp;
+    Handle     *file;
+ ENTRY_LABEL(__openFd_2)
+    /* determine the access mode */
+    EVAL_RIGID_DATA(__openFd_2);
+    switch ( node_tag(sp[0]) )
+    {
+    case ReadMode_tag:
+	mode  = "r";
+	flags = mask(readable);
+	break;
+    case WriteMode_tag:
+	mode  = "w";
+	flags = mask(writable);
+	break;
+    case AppendMode_tag:
+	mode  = "a";
+	flags = mask(writable);
+	break;
+    case ReadWriteMode_tag:
+	mode  = "r+";
+	flags = mask(readable) | mask(writable);
+	break;
+    default:
+	unexpected_tag("openFd (mode)", node_tag(sp[0]));
+    }
+
+    /* open the file */
+    fp = fdopen(long_val(sp[1]), mode);
     if ( fp == NULL )
     {
 	*++sp = from_string(strerror(errno));
