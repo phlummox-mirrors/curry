@@ -1,6 +1,6 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 1883 2006-04-03 12:50:41Z wlux $
+# $Id: Makefile.in 1903 2006-04-22 18:49:09Z wlux $
 #
 # Copyright (c) 2004-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -27,7 +27,7 @@ debug = @DEBUG@
 
 # compiler definitions
 CC = @CC@
-CPPFLAGS = -I../runtime -I$(top_srcdir)/runtime @CPPFLAGS@
+CPPFLAGS = -I. -I../runtime -I$(top_srcdir)/runtime @CPPFLAGS@
 CFLAGS = @CFLAGS@
 
 AR = ar
@@ -76,13 +76,18 @@ curry_stdlib_SRCS  = \
 	Random.curry \
 	Read.curry \
 	Set.curry \
+	Socket.curry \
 	StablePtr.curry \
 	Success.curry \
 	System.curry \
 	Time.curry \
 	Trace.curry \
 	Unsafe.curry
+curry_stdlib_HDRS = \
+	Socket.h
+
 curry_SRCS = $(curry_prelude_SRCS) $(curry_$(stdlib)_SRCS)
+curry_HDRS = $(curry_$(stdlib)_HDRS)
 curry_INTF = $(curry_SRCS:.curry=.icurry)
 curry_CSRC = $(curry_INTF:.icurry=.c)
 curry_DCSRC= $(curry_INTF:.icurry=.d.c)
@@ -96,7 +101,8 @@ debug_CSRC = $(debug_INTF:.icurry=.c)
 debug_OBJS = $(debug_INTF:.icurry=.o)
 debug_LIBS = libcurry_g.a
 
-DISTFILES = Makefile.in $(curry_prelude_SRCS) $(curry_stdlib_SRCS) $(debug_SRCS)
+DISTFILES = Makefile.in $(curry_prelude_SRCS) $(curry_stdlib_SRCS) \
+	    $(curry_stdlib_HDRS) $(debug_SRCS)
 DISTFILES_PATH = $(DISTFILES:%=@srcdir@/%)
 BINDISTFILES = $(curry_SRCS) $($(debug)_SRCS) \
 	       $(curry_INTF) $($(debug)_INTF) \
@@ -230,7 +236,8 @@ mostlyclean:
 	rm -rf $(curry_OBJS:%.o=.%) $(curry_DOBJS:%.o=.%) $(debug_OBJS:%.o=.%)
 	rm -f $(curry_LIBS) $(debug_LIBS) core *.core
 clean: mostlyclean
-	for f in $(curry_prelude_SRCS) $(curry_stdlib_SRCS) $(debug_SRCS); do \
+	for f in $(curry_prelude_SRCS) $(curry_stdlib_SRCS) \
+		 $(curry_stdlib_HDRS) $(debug_SRCS); do \
 		if test -h $$f; then rm $$f; fi; \
 	done
 distclean: clean
@@ -252,3 +259,6 @@ depend: $(curry_SRCS) $($(debug)_SRCS)
 
 # include computed dependencies
 include .depend
+
+# additional foreign header dependencies
+Socket.o: Socket.h

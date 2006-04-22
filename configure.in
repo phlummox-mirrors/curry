@@ -1,4 +1,4 @@
-dnl $Id: configure.in 1899 2006-04-19 10:50:11Z wlux $
+dnl $Id: configure.in 1903 2006-04-22 18:49:09Z wlux $
 dnl
 dnl Copyright (c) 2002-2006, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -204,14 +204,22 @@ AC_SEARCH_LIBS(socket, socket)
 
 
 dnl Checks for header files.
+AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([ieeefp.h])
 
 
-dnl Checks for typedefs, structures, and compiler characteristics.
+dnl Checks for compiler characteristics.
 AC_C_CONST
 AC_C_VOLATILE
 AC_C_INLINE
 CURRY_UNALIGNED_DOUBLE
+
+
+dnl Check for typedefs and structures
+AC_CHECK_TYPES([socklen_t],,,[AC_INCLUDES_DEFAULT
+#ifdef HAVE_SYS_SOCKET_H
+# include <sys/socket.h>
+#endif])
 
 
 dnl Checks for library functions.
@@ -224,6 +232,7 @@ case $enable_mprotect in
     AC_CHECK_FUNCS(mprotect)
     ;;
 esac
+
 
 dnl Generate output files
 AC_SUBST(ARCH_CFLAGS)
