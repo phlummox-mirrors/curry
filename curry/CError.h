@@ -1,19 +1,12 @@
-% -*- noweb-code-mode: c-mode -*-
-% $Id: prim_errno.nw 1744 2005-08-23 16:17:12Z wlux $
-%
-% Copyright (c) 2005, Wolfgang Lux
-% See ../LICENSE for the full license.
-%
-\subsection{Error Numbers}
-The header file [[prim_errno.h]] provides macros for defining the error
-value constants in module \texttt{CError}. Since the error list is
-fixed, but not all errors might be defined on the target system, we
-use conditional macros for all of them.
+/*
+ * $Id: CError.h 1904 2006-04-23 17:44:42Z wlux $
+ *
+ * Copyright (c) 2005, Wolfgang Lux
+ * See ../LICENSE for the full license.
+ *
+ * Foreign function wrappers for the CError library module
+ */
 
-\ToDo{This file should probably be generated automatically from the
-  list of errors in the \texttt{CError} module.}
-
-<<prim_errno.h>>=
 #include <errno.h>
 
 #ifndef E2BIG

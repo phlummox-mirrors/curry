@@ -1,6 +1,6 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 1903 2006-04-22 18:49:09Z wlux $
+# $Id: Makefile.in 1904 2006-04-23 17:44:42Z wlux $
 #
 # Copyright (c) 2004-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -84,6 +84,7 @@ curry_stdlib_SRCS  = \
 	Trace.curry \
 	Unsafe.curry
 curry_stdlib_HDRS = \
+	CError.h \
 	Socket.h
 
 curry_SRCS = $(curry_prelude_SRCS) $(curry_$(stdlib)_SRCS)
@@ -261,4 +262,5 @@ depend: $(curry_SRCS) $($(debug)_SRCS)
 include .depend
 
 # additional foreign header dependencies
+CError.o: CError.h
 Socket.o: Socket.h

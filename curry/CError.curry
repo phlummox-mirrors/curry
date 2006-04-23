@@ -1,4 +1,4 @@
--- $Id: CError.curry 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: CError.curry 1904 2006-04-23 17:44:42Z wlux $
 --
 -- Copyright (c) 2005, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -36,201 +36,201 @@ newtype Errno = Errno CInt
 
 eOK = Errno 0
 e2BIG = Errno e2BIG
-  where foreign import ccall "prim_errno.h" e2BIG :: Int
+  where foreign import ccall "CError.h" e2BIG :: Int
 eACCES = Errno eACCES
-  where foreign import ccall "prim_errno.h" eACCES :: Int
+  where foreign import ccall "CError.h" eACCES :: Int
 eADDRINUSE = Errno eADDRINUSE
-  where foreign import ccall "prim_errno.h" eADDRINUSE :: Int
+  where foreign import ccall "CError.h" eADDRINUSE :: Int
 eADDRNOTAVAIL = Errno eADDRNOTAVAIL
-  where foreign import ccall "prim_errno.h" eADDRNOTAVAIL :: Int
+  where foreign import ccall "CError.h" eADDRNOTAVAIL :: Int
 eADV = Errno eADV
-  where foreign import ccall "prim_errno.h" eADV :: Int
+  where foreign import ccall "CError.h" eADV :: Int
 eAFNOSUPPORT = Errno eAFNOSUPPORT
-  where foreign import ccall "prim_errno.h" eAFNOSUPPORT :: Int
+  where foreign import ccall "CError.h" eAFNOSUPPORT :: Int
 eAGAIN = Errno eAGAIN
-  where foreign import ccall "prim_errno.h" eAGAIN :: Int
+  where foreign import ccall "CError.h" eAGAIN :: Int
 eALREADY = Errno eALREADY
-  where foreign import ccall "prim_errno.h" eALREADY :: Int
+  where foreign import ccall "CError.h" eALREADY :: Int
 eBADF = Errno eBADF
-  where foreign import ccall "prim_errno.h" eBADF :: Int
+  where foreign import ccall "CError.h" eBADF :: Int
 eBADMSG = Errno eBADMSG
-  where foreign import ccall "prim_errno.h" eBADMSG :: Int
+  where foreign import ccall "CError.h" eBADMSG :: Int
 eBADRPC = Errno eBADRPC
-  where foreign import ccall "prim_errno.h" eBADRPC :: Int
+  where foreign import ccall "CError.h" eBADRPC :: Int
 eBUSY = Errno eBUSY
-  where foreign import ccall "prim_errno.h" eBUSY :: Int
+  where foreign import ccall "CError.h" eBUSY :: Int
 eCHILD = Errno eCHILD
-  where foreign import ccall "prim_errno.h" eCHILD :: Int
+  where foreign import ccall "CError.h" eCHILD :: Int
 eCOMM = Errno eCOMM
-  where foreign import ccall "prim_errno.h" eCOMM :: Int
+  where foreign import ccall "CError.h" eCOMM :: Int
 eCONNABORTED = Errno eCONNABORTED
-  where foreign import ccall "prim_errno.h" eCONNABORTED :: Int
+  where foreign import ccall "CError.h" eCONNABORTED :: Int
 eCONNREFUSED = Errno eCONNREFUSED
-  where foreign import ccall "prim_errno.h" eCONNREFUSED :: Int
+  where foreign import ccall "CError.h" eCONNREFUSED :: Int
 eCONNRESET = Errno eCONNRESET
-  where foreign import ccall "prim_errno.h" eCONNRESET :: Int
+  where foreign import ccall "CError.h" eCONNRESET :: Int
 eDEADLK = Errno eDEADLK
-  where foreign import ccall "prim_errno.h" eDEADLK :: Int
+  where foreign import ccall "CError.h" eDEADLK :: Int
 eDESTADDRREQ = Errno eDESTADDRREQ
-  where foreign import ccall "prim_errno.h" eDESTADDRREQ :: Int
+  where foreign import ccall "CError.h" eDESTADDRREQ :: Int
 eDIRTY = Errno eDIRTY
-  where foreign import ccall "prim_errno.h" eDIRTY :: Int
+  where foreign import ccall "CError.h" eDIRTY :: Int
 eDOM = Errno eDOM
-  where foreign import ccall "prim_errno.h" eDOM :: Int
+  where foreign import ccall "CError.h" eDOM :: Int
 eDQUOT = Errno eDQUOT
-  where foreign import ccall "prim_errno.h" eDQUOT :: Int
+  where foreign import ccall "CError.h" eDQUOT :: Int
 eEXIST = Errno eEXIST
-  where foreign import ccall "prim_errno.h" eEXIST :: Int
+  where foreign import ccall "CError.h" eEXIST :: Int
 eFAULT = Errno eFAULT
-  where foreign import ccall "prim_errno.h" eFAULT :: Int
+  where foreign import ccall "CError.h" eFAULT :: Int
 eFBIG = Errno eFBIG
-  where foreign import ccall "prim_errno.h" eFBIG :: Int
+  where foreign import ccall "CError.h" eFBIG :: Int
 eFTYPE = Errno eFTYPE
-  where foreign import ccall "prim_errno.h" eFTYPE :: Int
+  where foreign import ccall "CError.h" eFTYPE :: Int
 eHOSTDOWN = Errno eHOSTDOWN
-  where foreign import ccall "prim_errno.h" eHOSTDOWN :: Int
+  where foreign import ccall "CError.h" eHOSTDOWN :: Int
 eHOSTUNREACH = Errno eHOSTUNREACH
-  where foreign import ccall "prim_errno.h" eHOSTUNREACH :: Int
+  where foreign import ccall "CError.h" eHOSTUNREACH :: Int
 eIDRM = Errno eIDRM
-  where foreign import ccall "prim_errno.h" eIDRM :: Int
+  where foreign import ccall "CError.h" eIDRM :: Int
 eILSEQ = Errno eILSEQ
-  where foreign import ccall "prim_errno.h" eILSEQ :: Int
+  where foreign import ccall "CError.h" eILSEQ :: Int
 eINPROGRESS = Errno eINPROGRESS
-  where foreign import ccall "prim_errno.h" eINPROGRESS :: Int
+  where foreign import ccall "CError.h" eINPROGRESS :: Int
 eINTR = Errno eINTR
-  where foreign import ccall "prim_errno.h" eINTR :: Int
+  where foreign import ccall "CError.h" eINTR :: Int
 eINVAL = Errno eINVAL
-  where foreign import ccall "prim_errno.h" eINVAL :: Int
+  where foreign import ccall "CError.h" eINVAL :: Int
 eIO = Errno eIO
-  where foreign import ccall "prim_errno.h" eIO :: Int
+  where foreign import ccall "CError.h" eIO :: Int
 eISCONN = Errno eISCONN
-  where foreign import ccall "prim_errno.h" eISCONN :: Int
+  where foreign import ccall "CError.h" eISCONN :: Int
 eISDIR = Errno eISDIR
-  where foreign import ccall "prim_errno.h" eISDIR :: Int
+  where foreign import ccall "CError.h" eISDIR :: Int
 eLOOP = Errno eLOOP
-  where foreign import ccall "prim_errno.h" eLOOP :: Int
+  where foreign import ccall "CError.h" eLOOP :: Int
 eMFILE = Errno eMFILE
-  where foreign import ccall "prim_errno.h" eMFILE :: Int
+  where foreign import ccall "CError.h" eMFILE :: Int
 eMLINK = Errno eMLINK
-  where foreign import ccall "prim_errno.h" eMLINK :: Int
+  where foreign import ccall "CError.h" eMLINK :: Int
 eMSGSIZE = Errno eMSGSIZE
-  where foreign import ccall "prim_errno.h" eMSGSIZE :: Int
+  where foreign import ccall "CError.h" eMSGSIZE :: Int
 eMULTIHOP = Errno eMULTIHOP
-  where foreign import ccall "prim_errno.h" eMULTIHOP :: Int
+  where foreign import ccall "CError.h" eMULTIHOP :: Int
 eNAMETOOLONG = Errno eNAMETOOLONG
-  where foreign import ccall "prim_errno.h" eNAMETOOLONG :: Int
+  where foreign import ccall "CError.h" eNAMETOOLONG :: Int
 eNETDOWN = Errno eNETDOWN
-  where foreign import ccall "prim_errno.h" eNETDOWN :: Int
+  where foreign import ccall "CError.h" eNETDOWN :: Int
 eNETRESET = Errno eNETRESET
-  where foreign import ccall "prim_errno.h" eNETRESET :: Int
+  where foreign import ccall "CError.h" eNETRESET :: Int
 eNETUNREACH = Errno eNETUNREACH
-  where foreign import ccall "prim_errno.h" eNETUNREACH :: Int
+  where foreign import ccall "CError.h" eNETUNREACH :: Int
 eNFILE = Errno eNFILE
-  where foreign import ccall "prim_errno.h" eNFILE :: Int
+  where foreign import ccall "CError.h" eNFILE :: Int
 eNOBUFS = Errno eNOBUFS
-  where foreign import ccall "prim_errno.h" eNOBUFS :: Int
+  where foreign import ccall "CError.h" eNOBUFS :: Int
 eNODATA = Errno eNODATA
-  where foreign import ccall "prim_errno.h" eNODATA :: Int
+  where foreign import ccall "CError.h" eNODATA :: Int
 eNODEV = Errno eNODEV
-  where foreign import ccall "prim_errno.h" eNODEV :: Int
+  where foreign import ccall "CError.h" eNODEV :: Int
 eNOENT = Errno eNOENT
-  where foreign import ccall "prim_errno.h" eNOENT :: Int
+  where foreign import ccall "CError.h" eNOENT :: Int
 eNOEXEC = Errno eNOEXEC
-  where foreign import ccall "prim_errno.h" eNOEXEC :: Int
+  where foreign import ccall "CError.h" eNOEXEC :: Int
 eNOLCK = Errno eNOLCK
-  where foreign import ccall "prim_errno.h" eNOLCK :: Int
+  where foreign import ccall "CError.h" eNOLCK :: Int
 eNOLINK = Errno eNOLINK
-  where foreign import ccall "prim_errno.h" eNOLINK :: Int
+  where foreign import ccall "CError.h" eNOLINK :: Int
 eNOMEM = Errno eNOMEM
-  where foreign import ccall "prim_errno.h" eNOMEM :: Int
+  where foreign import ccall "CError.h" eNOMEM :: Int
 eNOMSG = Errno eNOMSG
-  where foreign import ccall "prim_errno.h" eNOMSG :: Int
+  where foreign import ccall "CError.h" eNOMSG :: Int
 eNONET = Errno eNONET
-  where foreign import ccall "prim_errno.h" eNONET :: Int
+  where foreign import ccall "CError.h" eNONET :: Int
 eNOPROTOOPT = Errno eNOPROTOOPT
-  where foreign import ccall "prim_errno.h" eNOPROTOOPT :: Int
+  where foreign import ccall "CError.h" eNOPROTOOPT :: Int
 eNOSPC = Errno eNOSPC
-  where foreign import ccall "prim_errno.h" eNOSPC :: Int
+  where foreign import ccall "CError.h" eNOSPC :: Int
 eNOSR = Errno eNOSR
-  where foreign import ccall "prim_errno.h" eNOSR :: Int
+  where foreign import ccall "CError.h" eNOSR :: Int
 eNOSTR = Errno eNOSTR
-  where foreign import ccall "prim_errno.h" eNOSTR :: Int
+  where foreign import ccall "CError.h" eNOSTR :: Int
 eNOSYS = Errno eNOSYS
-  where foreign import ccall "prim_errno.h" eNOSYS :: Int
+  where foreign import ccall "CError.h" eNOSYS :: Int
 eNOTBLK = Errno eNOTBLK
-  where foreign import ccall "prim_errno.h" eNOTBLK :: Int
+  where foreign import ccall "CError.h" eNOTBLK :: Int
 eNOTCONN = Errno eNOTCONN
-  where foreign import ccall "prim_errno.h" eNOTCONN :: Int
+  where foreign import ccall "CError.h" eNOTCONN :: Int
 eNOTDIR = Errno eNOTDIR
-  where foreign import ccall "prim_errno.h" eNOTDIR :: Int
+  where foreign import ccall "CError.h" eNOTDIR :: Int
 eNOTEMPTY = Errno eNOTEMPTY
-  where foreign import ccall "prim_errno.h" eNOTEMPTY :: Int
+  where foreign import ccall "CError.h" eNOTEMPTY :: Int
 eNOTSOCK = Errno eNOTSOCK
-  where foreign import ccall "prim_errno.h" eNOTSOCK :: Int
+  where foreign import ccall "CError.h" eNOTSOCK :: Int
 eNOTTY = Errno eNOTTY
-  where foreign import ccall "prim_errno.h" eNOTTY :: Int
+  where foreign import ccall "CError.h" eNOTTY :: Int
 eNXIO = Errno eNXIO
-  where foreign import ccall "prim_errno.h" eNXIO :: Int
+  where foreign import ccall "CError.h" eNXIO :: Int
 eOPNOTSUPP = Errno eOPNOTSUPP
-  where foreign import ccall "prim_errno.h" eOPNOTSUPP :: Int
+  where foreign import ccall "CError.h" eOPNOTSUPP :: Int
 ePERM = Errno ePERM
-  where foreign import ccall "prim_errno.h" ePERM :: Int
+  where foreign import ccall "CError.h" ePERM :: Int
 ePFNOSUPPORT = Errno ePFNOSUPPORT
-  where foreign import ccall "prim_errno.h" ePFNOSUPPORT :: Int
+  where foreign import ccall "CError.h" ePFNOSUPPORT :: Int
 ePIPE = Errno ePIPE
-  where foreign import ccall "prim_errno.h" ePIPE :: Int
+  where foreign import ccall "CError.h" ePIPE :: Int
 ePROCLIM = Errno ePROCLIM
-  where foreign import ccall "prim_errno.h" ePROCLIM :: Int
+  where foreign import ccall "CError.h" ePROCLIM :: Int
 ePROCUNAVAIL = Errno ePROCUNAVAIL
-  where foreign import ccall "prim_errno.h" ePROCUNAVAIL :: Int
+  where foreign import ccall "CError.h" ePROCUNAVAIL :: Int
 ePROGMISMATCH = Errno ePROGMISMATCH
-  where foreign import ccall "prim_errno.h" ePROGMISMATCH :: Int
+  where foreign import ccall "CError.h" ePROGMISMATCH :: Int
 ePROGUNAVAIL = Errno ePROGUNAVAIL
-  where foreign import ccall "prim_errno.h" ePROGUNAVAIL :: Int
+  where foreign import ccall "CError.h" ePROGUNAVAIL :: Int
 ePROTO = Errno ePROTO
-  where foreign import ccall "prim_errno.h" ePROTO :: Int
+  where foreign import ccall "CError.h" ePROTO :: Int
 ePROTONOSUPPORT = Errno ePROTONOSUPPORT
-  where foreign import ccall "prim_errno.h" ePROTONOSUPPORT :: Int
+  where foreign import ccall "CError.h" ePROTONOSUPPORT :: Int
 ePROTOTYPE = Errno ePROTOTYPE
-  where foreign import ccall "prim_errno.h" ePROTOTYPE :: Int
+  where foreign import ccall "CError.h" ePROTOTYPE :: Int
 eRANGE = Errno eRANGE
-  where foreign import ccall "prim_errno.h" eRANGE :: Int
+  where foreign import ccall "CError.h" eRANGE :: Int
 eREMCHG = Errno eREMCHG
-  where foreign import ccall "prim_errno.h" eREMCHG :: Int
+  where foreign import ccall "CError.h" eREMCHG :: Int
 eREMOTE = Errno eREMOTE
-  where foreign import ccall "prim_errno.h" eREMOTE :: Int
+  where foreign import ccall "CError.h" eREMOTE :: Int
 eROFS = Errno eROFS
-  where foreign import ccall "prim_errno.h" eROFS :: Int
+  where foreign import ccall "CError.h" eROFS :: Int
 eRPCMISMATCH = Errno eRPCMISMATCH
-  where foreign import ccall "prim_errno.h" eRPCMISMATCH :: Int
+  where foreign import ccall "CError.h" eRPCMISMATCH :: Int
 eRREMOTE = Errno eRREMOTE
-  where foreign import ccall "prim_errno.h" eRREMOTE :: Int
+  where foreign import ccall "CError.h" eRREMOTE :: Int
 eSHUTDOWN = Errno eSHUTDOWN
-  where foreign import ccall "prim_errno.h" eSHUTDOWN :: Int
+  where foreign import ccall "CError.h" eSHUTDOWN :: Int
 eSOCKTNOSUPPORT = Errno eSOCKTNOSUPPORT
-  where foreign import ccall "prim_errno.h" eSOCKTNOSUPPORT :: Int
+  where foreign import ccall "CError.h" eSOCKTNOSUPPORT :: Int
 eSPIPE = Errno eSPIPE
-  where foreign import ccall "prim_errno.h" eSPIPE :: Int
+  where foreign import ccall "CError.h" eSPIPE :: Int
 eSRCH = Errno eSRCH
-  where foreign import ccall "prim_errno.h" eSRCH :: Int
+  where foreign import ccall "CError.h" eSRCH :: Int
 eSRMNT = Errno eSRMNT
-  where foreign import ccall "prim_errno.h" eSRMNT :: Int
+  where foreign import ccall "CError.h" eSRMNT :: Int
 eSTALE = Errno eSTALE
-  where foreign import ccall "prim_errno.h" eSTALE :: Int
+  where foreign import ccall "CError.h" eSTALE :: Int
 eTIME = Errno eTIME
-  where foreign import ccall "prim_errno.h" eTIME :: Int
+  where foreign import ccall "CError.h" eTIME :: Int
 eTIMEDOUT = Errno eTIMEDOUT
-  where foreign import ccall "prim_errno.h" eTIMEDOUT :: Int
+  where foreign import ccall "CError.h" eTIMEDOUT :: Int
 eTOOMANYREFS = Errno eTOOMANYREFS
-  where foreign import ccall "prim_errno.h" eTOOMANYREFS :: Int
+  where foreign import ccall "CError.h" eTOOMANYREFS :: Int
 eTXTBSY = Errno eTXTBSY
-  where foreign import ccall "prim_errno.h" eTXTBSY :: Int
+  where foreign import ccall "CError.h" eTXTBSY :: Int
 eUSERS = Errno eUSERS
-  where foreign import ccall "prim_errno.h" eUSERS :: Int
+  where foreign import ccall "CError.h" eUSERS :: Int
 eWOULDBLOCK = Errno eWOULDBLOCK
-  where foreign import ccall "prim_errno.h" eWOULDBLOCK :: Int
+  where foreign import ccall "CError.h" eWOULDBLOCK :: Int
 eXDEV = Errno eXDEV
-  where foreign import ccall "prim_errno.h" eXDEV :: Int
+  where foreign import ccall "CError.h" eXDEV :: Int
 
 isValidErrno :: Errno -> Bool
 isValidErrno (Errno e) = e >= 0
