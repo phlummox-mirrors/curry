@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 1875 2006-03-18 18:43:27Z wlux $
+# $Id: Makefile.in 1905 2006-04-27 08:26:02Z wlux $
 #
 # Copyright (c) 2000-2006 Wolfgang Lux
 # See LICENSE for the full license.
@@ -209,9 +209,14 @@ all: scripts programs runtime curry mans
 programs: $(PROGRAMS)
 scripts: $(SCRIPTS)
 
+# non-existent target for forcing the execution of target
+# NB this is necessary on Solaris because System V makes do not
+#    understand .PHONY
+FORCE:
+
 # runtime library
 .PHONY: runtime
-runtime rts:
+runtime: FORCE
 	cd runtime && $(MAKE) $(MFLAGS)
 
 # Curry library
@@ -243,7 +248,7 @@ curry.dvi: newer makedoc tex
 curry.pdf: newer makedoc tex
 	./makedoc pdflatex
 
-tex:
+tex: FORCE
 	cd runtime; $(MAKE) $(MFLAGS) tex
 
 makedoc: Makefile $(srcdir)/makedoc.in
