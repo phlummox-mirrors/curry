@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1872 2006-03-16 10:11:43Z wlux $
+# $Id: cyi.in 1906 2006-04-27 09:21:00Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -21,7 +21,8 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 libdir=@libdir@
 # DO NOT DELETE: Beginning of in-place configuration
-. @abs_top_builddir@/inplace-config
+srcdir="@srcdir@"
+@in_place_config@
 # DO NOT DELETE: End of in-place configuration
 
 echo "    _____ __ __"

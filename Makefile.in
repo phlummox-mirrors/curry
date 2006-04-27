@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 1905 2006-04-27 08:26:02Z wlux $
+# $Id: Makefile.in 1906 2006-04-27 09:21:00Z wlux $
 #
 # Copyright (c) 2000-2006 Wolfgang Lux
 # See LICENSE for the full license.
@@ -36,7 +36,7 @@ INSTALL_DIR = @INSTALL_DIR@
 
 # file lists
 PROGRAMS = cycc cymk newer @CAM2C@ @MACH@
-SCRIPTS = inplace-config cyc cymake cyi
+SCRIPTS = cyc cymake cyi
 man_MANS = cyc.1 cymake.1 cyi.1
 SUBDIRS = doc runtime curry
 
@@ -197,8 +197,8 @@ OBJS = $(cycc_OBJS) $(cymk_OBJS) $(newer_OBJS) $(cam2c_OBJS) $(mach_OBJS)
 
 DISTFILES = README LICENSE NEWS curry.tex curry.bib \
 	configure configure.in aclocal.m4 config.guess config.sub install-sh \
-	Makefile.in ghc.mk ghc-make.mk hbc.mk nhc.mk makedoc.in \
-	configure-bin.in Makefile-bin.in inplace-config-bin.in \
+	Makefile.in ghc.mk ghc-make.mk hbc.mk nhc.mk makedoc.in in-place-config \
+	configure-bin.in Makefile-bin.in in-place-config-bin \
 	$(SCRIPTS:=.in) $(man_MANS:=.in) $(SRCS) $(IOEXTS_SRCS)
 
 # default target, build all programs and the library
@@ -344,7 +344,7 @@ bindistdir: cycc cymk newer runtime curry
 	    -e 's/%USE_CYGPATH_WORKAROUND%/@USE_CYGPATH_WORKAROUND@/' \
 	    $(srcdir)/configure-bin.in > $(bindistdir)/configure.in
 	cp $(srcdir)/Makefile-bin.in $(bindistdir)/Makefile.in
-	cp $(srcdir)/inplace-config-bin.in $(bindistdir)/inplace-config.in
+	cp $(srcdir)/in-place-config-bin $(bindistdir)/in-place-config
 	sed -e "s/%BUILD_DATE%/`date`/" $(srcdir)/cyc.in > $(bindistdir)/bin/cyc.in
 	sed -e "s/%BUILD_DATE%/`date`/" $(srcdir)/cymake.in > $(bindistdir)/bin/cymake.in
 	cp $(srcdir)/cyi.in $(bindistdir)/bin
@@ -366,16 +366,13 @@ Makefile: $(srcdir)/Makefile.in config.status
 	./config.status $@
 	$(MAKE) $(MFLAGS) depend
 
-inplace-config: $(srcdir)/inplace-config.in config.status
+cyc: $(srcdir)/cyc.in $(srcdir)/in-place-config config.status
 	./config.status $@
 
-cyc: $(srcdir)/cyc.in config.status
+cymake: $(srcdir)/cymake.in $(srcdir)/in-place-config config.status
 	./config.status $@
 
-cymake: $(srcdir)/cymake.in config.status
-	./config.status $@
-
-cyi: $(srcdir)/cyi.in config.status
+cyi: $(srcdir)/cyi.in $(srcdir)/in-place-config config.status
 	./config.status $@
 
 .PRECIOUS: config.status

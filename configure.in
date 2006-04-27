@@ -1,4 +1,4 @@
-dnl $Id: configure.in 1903 2006-04-22 18:49:09Z wlux $
+dnl $Id: configure.in 1906 2006-04-27 09:21:00Z wlux $
 dnl
 dnl Copyright (c) 2002-2006, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -247,6 +247,9 @@ AC_SUBST(CAM2C)
 AC_SUBST(MACH)
 AC_SUBST(USE_CYGPATH_WORKAROUND)
 
+AC_SUBST_FILE(in_place_config)
+in_place_config=$srcdir/in-place-config
+
 AC_CONFIG_COMMANDS_PRE([
 $TANGLE -c -L -Rconfig.h.in $srcdir/runtime/curry.nw | $CPIF -ne $srcdir/runtime/config.h.in])
 
@@ -256,7 +259,6 @@ AC_CONFIG_FILES([runtime/Makefile],
 	        [test -f runtime/.depend || touch runtime/.depend])
 AC_CONFIG_FILES([curry/Makefile],
 		[test -f curry/.depend || touch curry/.depend])
-AC_CONFIG_FILES([inplace-config])
 AC_CONFIG_FILES([cyc], [chmod +x cyc])
 AC_CONFIG_FILES([cymake], [chmod +x cymake])
 AC_CONFIG_FILES([cyi], [chmod +x cyi])

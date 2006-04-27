@@ -1,5 +1,0 @@
-srcdir=@abs_srcdir@
-builddir=@abs_builddir@
-
-bindir=$builddir/bin
-: ${CURRY_PATH=$srcdir/lib}

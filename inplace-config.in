@@ -1,8 +1,0 @@
-srcdir=@abs_srcdir@
-builddir=@abs_builddir@
-
-bindir=$builddir
-: ${CURRY_PATH=$builddir}
-: ${CURRY_IMPORT_PATH=$builddir/curry}
-: ${CURRY_INCLUDE_PATH=$builddir/runtime:$srcdir/runtime}
-: ${CURRY_LIBRARY_PATH=$builddir/curry}

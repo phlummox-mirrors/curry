@@ -1,0 +1,11 @@
+bindir=`dirname $0`
+case $bindir in
+  /* ) ;;
+  * ) bindir=`(cd "$bindir"; pwd)`;;
+esac
+case $srcdir in
+  /* ) ;;
+  * ) srcdir=$bindir/../$srcdir;;
+esac
+
+: ${CURRY_PATH=$srcdir/lib}

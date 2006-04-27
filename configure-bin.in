@@ -1,4 +1,4 @@
-dnl $Id: configure-bin.in 1839 2006-01-07 12:14:21Z wlux $
+dnl $Id: configure-bin.in 1906 2006-04-27 09:21:00Z wlux $
 dnl
 dnl Copyright (c) 2002-2006, Wolfgang Lux
 dnl
@@ -37,8 +37,10 @@ CURRY_CYI_SHELL
 AC_SUBST(ARCH_CFLAGS)
 AC_SUBST(INSTALL_DIR)
 AC_SUBST(USE_CYGPATH_WORKAROUND)
+AC_SUBST_FILE(in_place_config)
+in_place_config=$srcdir/in-place-config
+
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([inplace-config])
 AC_CONFIG_FILES([bin/cyc], [chmod +x bin/cyc])
 AC_CONFIG_FILES([bin/cymake], [chmod +x bin/cymake])
 AC_CONFIG_FILES([bin/cyi], [chmod +x bin/cyi])
