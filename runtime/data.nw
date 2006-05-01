@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: data.nw 1856 2006-02-19 10:36:44Z wlux $
+% $Id: data.nw 1910 2006-05-01 09:37:16Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -138,7 +138,7 @@ NodeInfo ___58__papp_info_table[] = {
     PAPPINFO(":", 0, ___58_, 2)
     PAPPINFO(":", 1, ___58_, 2)
 };
-const struct closure_node ___58__function = { ___58__papp_info_table, { } };
+const struct closure_node ___58__function = { ___58__papp_info_table, { 0 } };
 
 static
 FUNCTION(___58_)

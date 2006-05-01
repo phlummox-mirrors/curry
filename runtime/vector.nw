@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: vector.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: vector.nw 1910 2006-05-01 09:37:16Z wlux $
 %
 % Copyright (c) 2002-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -32,7 +32,7 @@ this will make the printing code treat vectors as tuples.
 
 static NodeInfo vector_info = { VECTOR_KIND, 0, 0, 0, "(,)", eval_whnf, 0, 0 };
 static const struct vector_node empty = {
-    &vector_info, vector_node_size(0), { }
+    &vector_info, vector_node_size(0), { 0 }
 };
 
 @ 
