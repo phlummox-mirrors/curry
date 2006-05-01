@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: curry.nw 1903 2006-04-22 18:49:09Z wlux $
+% $Id: curry.nw 1909 2006-05-01 09:31:58Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -64,6 +64,7 @@ the [[configure]] script using the template found in [[config.h.in]].
 #endif /* _CONFIG_H */
 
 @ 
+\subsubsection{Configuration options}
 Currently, the following configuration options are supported.
 \begin{itemize}
 \item [[UNALIGNED_DOUBLE]]: If this flag is set, variables of type
@@ -144,6 +145,19 @@ system, as a redefinition will raise a compilation error.
 #define NO_OCCURS_CHECK 0
 
 @ 
+\subsubsection{Portability definitions}
+The Gnu C compiler allows the programmer to specify certain function
+attributes in declarations, which help the compiler to generate better
+code and to check the code more carefully. Since attribute
+annotations are peculiar to Gnu C, we set up a pre-processor macro
+that ignores them when another C compiler is used.
+
+<<Portability definitions>>=
+#if __GNUC__ < 2
+# define __attribute__(attrs)
+#endif
+
+@ 
 All ANSI compliant compilers should support the [[const]] and
 [[volatile]] keywords. However, the [[inline]] keyword is not
 necessarily supported so we have to check for it.
@@ -186,9 +200,10 @@ On many systems, the prototypes of these functions are defined in
 #undef HAVE_IEEEFP_H
 
 @
-Most current operating systems use [[socklen_t *]] as parameter to
-[[accept]], [[getsockname]], [[getpeername]], etc. However, this type
-may not be defined on older systems where [[int *]] is used instead.
+Traditionally, the socket functions [[accept]], [[getsockname]],
+[[getpeername]], etc.\ were using [[int *]] as parameter. However,
+since the size of [[int]] can differ on 64-bit systems, newer
+operating systems use [[socklen_t *]] instead.
 
 <<Portability definitions>>=
 /* Define to empty if socklen_t is not defined */
