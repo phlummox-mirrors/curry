@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ImportSyntaxCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
+% $Id: ImportSyntaxCheck.lhs 1911 2006-05-02 10:15:23Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -145,25 +145,24 @@ data constructors are added.
 > expandTypeWith :: Position -> ModuleIdent -> ExpTypeEnv -> Ident -> [Ident]
 >                -> Error [Import]
 > expandTypeWith p m tEnv tc cs =
->   case lookupEnv tc tEnv of
->     Just (Data _ cs') ->
->       do
->         checkConstrs cs' cs''
->         return [ImportTypeWith tc cs'']
->     Just (Alias _) -> errorAt p (nonDataType m tc)
->     Nothing -> errorAt p (undefinedType m tc)
->   where cs'' = nub cs
->         checkConstrs cs' cs =
->           case filter (`notElem` cs') cs of
->             [] -> return ()
->             c:_ -> errorAt p (undefinedDataConstr m tc c)
+>   do
+>     cs' <- constrs p m tEnv tc
+>     case filter (`notElem` cs') cs of
+>       [] -> return [ImportTypeWith tc (nub cs)]
+>       c:_ -> errorAt p (undefinedDataConstr m tc c)
 
 > expandTypeAll :: Position -> ModuleIdent -> ExpTypeEnv -> Ident
 >               -> Error [Import]
 > expandTypeAll p m tEnv tc =
+>   do
+>     cs <- constrs p m tEnv tc
+>     return [ImportTypeWith tc cs]
+
+> constrs :: Position -> ModuleIdent -> ExpTypeEnv -> Ident -> Error [Ident]
+> constrs p m tEnv tc =
 >   case lookupEnv tc tEnv of
->     Just (Data _ cs) -> return [ImportTypeWith tc cs]
->     Just (Alias _) -> errorAt p (nonDataType m tc)
+>     Just (Data _ cs) -> return cs
+>     Just (Alias _) -> return []
 >     Nothing -> errorAt p (undefinedType m tc)
 
 \end{verbatim}
@@ -180,9 +179,6 @@ Error messages.
 > undefinedDataConstr :: ModuleIdent -> Ident -> Ident -> String
 > undefinedDataConstr m tc c =
 >   name c ++ " is not a data constructor of type " ++ name tc
-
-> nonDataType :: ModuleIdent -> Ident -> String
-> nonDataType m tc = name tc ++ " is not a data type"
 
 > importDataConstr :: ModuleIdent -> Ident -> String
 > importDataConstr m c = "Explicit import for data constructor " ++ name c

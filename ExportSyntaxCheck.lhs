@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1842 2006-01-31 14:22:53Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1911 2006-05-02 10:15:23Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -96,26 +96,24 @@ export a type constructor \texttt{x} \emph{and} a global function
 > expandTypeWith :: Position -> TypeEnv -> QualIdent -> [Ident]
 >                -> Error [Export]
 > expandTypeWith p tEnv tc cs =
->   case qualLookupTopEnv tc tEnv of
->     [] -> errorAt p (undefinedType tc)
->     [Data tc' cs'] ->
->       do
->         checkConstrs cs' cs''
->         return [ExportTypeWith tc' cs'']
->     [Alias _] -> errorAt p (nonDataType tc)
->     _ -> errorAt p (ambiguousType tc)
->   where cs'' = nub cs
->         checkConstrs cs' cs =
->           case filter (`notElem` cs') cs of
->             [] -> return ()
->             c:_ -> errorAt p (undefinedDataConstr tc c)
+>   do
+>     (tc',cs') <- constrs p tEnv tc
+>     case filter (`notElem` cs') cs of
+>       [] -> return [ExportTypeWith tc' (nub cs)]
+>       c:_ -> errorAt p (undefinedDataConstr tc c)
 
 > expandTypeAll :: Position -> TypeEnv -> QualIdent -> Error [Export]
 > expandTypeAll p tEnv tc =
+>   do
+>     (tc',cs) <- constrs p tEnv tc
+>     return [ExportTypeWith tc' cs]
+
+> constrs :: Position -> TypeEnv -> QualIdent -> Error (QualIdent,[Ident])
+> constrs p tEnv tc =
 >   case qualLookupTopEnv tc tEnv of
 >     [] -> errorAt p (undefinedType tc)
->     [Data tc' cs'] -> return [ExportTypeWith tc' cs']
->     [Alias _] -> errorAt p (nonDataType tc)
+>     [Data tc cs] -> return (tc,cs)
+>     [Alias tc] -> return (tc,[])
 >     _ -> errorAt p (ambiguousType tc)
 
 > expandLocalModule :: TypeEnv -> FunEnv -> [Export]
@@ -179,9 +177,6 @@ Error messages.
 
 > exportDataConstr :: QualIdent -> String
 > exportDataConstr c = "Data constructor " ++ qualName c ++ " in export list"
-
-> nonDataType :: QualIdent -> String
-> nonDataType tc = qualName tc ++ " is not a data type"
 
 > undefinedDataConstr :: QualIdent -> Ident -> String
 > undefinedDataConstr tc c =
