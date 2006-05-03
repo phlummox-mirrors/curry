@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: mach.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: mach.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
-% Copyright (c) 1998-2003, Wolfgang Lux
+% Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{mach.lhs}
@@ -240,7 +240,7 @@ possibility to enter a little interactive top-level.
 >     s <- readFile script
 >     case parseModule script s of
 >       Ok p -> return (loadModule tracer cEnv fEnv p)
->       Error msg -> do putErrLn msg; return (cEnv,fEnv)
+>       Errors msgs -> do mapM_ putErrLn msgs; return (cEnv,fEnv)
 
 > evaluateGoal :: Bool -> String -> [String] -> (ConstrEnv,FunEnv) -> IO ()
 > evaluateGoal monadic goal vars (cEnv,fEnv) =
@@ -250,7 +250,11 @@ possibility to enter a little interactive top-level.
 >           | otherwise = start goal vars
 >         evaluate Nothing = fail ("undefined goal: " ++ show goal)
 >         showResult (Ok result) = putStr (result "")
->         showResult (Error msg) = mapM_ putErrLn ["", "ERROR: " ++ msg, ""]
+>         showResult (Errors msgs) =
+>           do
+>             putErrLn ""
+>             mapM_ (putErrLn . ("ERROR: " ++)) msgs
+>             putErrLn ""
 
 > tracer :: MachOpts -> Maybe Instrument
 > tracer opts = tracer' (traceKind opts)

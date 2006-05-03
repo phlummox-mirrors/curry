@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryDeps.lhs 1757 2005-09-02 13:22:53Z wlux $
+% $Id: CurryDeps.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
 % Copyright (c) 2002-2004, Wolfgang Lux
 % See LICENSE for the full license.
@@ -92,9 +92,8 @@ directories more than twice.
 > lookupModule :: [FilePath] -> [FilePath] -> ModuleIdent
 >              -> IO (Maybe FilePath)
 > lookupModule paths libPaths m =
->   lookupFile [p `catPath` fn ++ e | p <- "" : paths, e <- moduleExts] >>=
->   maybe (lookupFile [p `catPath` fn ++ icurryExt | p <- libPaths])
->         (return . Just)
+>   lookupFile ([p `catPath` fn ++ e | p <- "" : paths, e <- moduleExts] ++
+>               [p `catPath` fn ++ icurryExt | p <- libPaths])
 >   where fn = foldr1 catPath (moduleQualifiers m)
 
 \end{verbatim}
@@ -130,7 +129,7 @@ prelude itself. Any errors reported by the parser are ignored.
 >       Ok (Module m' _ is _) ->
 >         let ms = imports m' is in
 >         foldM (moduleDeps paths libPaths) (bindEnv m (Source fn ms) mEnv) ms
->       Error _ -> return (bindEnv m (Source fn []) mEnv)
+>       Errors _ -> return (bindEnv m (Source fn []) mEnv)
 
 > imports :: ModuleIdent -> [ImportDecl] -> [ModuleIdent]
 > imports m ds = nub $

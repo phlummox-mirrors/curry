@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1875 2006-03-18 18:43:27Z wlux $
+% $Id: Base.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,6 +19,7 @@ in various phases of the compiler.
 > import Env
 > import TopEnv
 > import NestEnv
+> import List
 > import Maybe
 > import Monad
 > import Set
@@ -513,17 +514,18 @@ expression.
 > infixOp (InfixConstr op) = Constructor op
 
 \end{verbatim}
-The function \texttt{linear} checks whether a list of entities is
-linear, i.e., if every entity in the list occurs only once. If it is
-non-linear, the first duplicate object is returned.
+The function \texttt{duplicates} returns a list containing all
+duplicate items from its input list. The result is a list of pairs
+whose first element contains the first occurrence of a duplicate item
+and whose second element contains a list of all remaining occurrences
+of that item.
 \begin{verbatim}
 
-> data Linear a = Linear | NonLinear a
-
-> linear :: Eq a => [a] -> Linear a
-> linear (x:xs)
->   | x `elem` xs = NonLinear x
->   | otherwise = linear xs
-> linear [] = Linear
+> duplicates :: Eq a => [a] -> [(a,[a])]
+> duplicates [] = []
+> duplicates (x:xs)
+>   | null ys = duplicates xs
+>   | otherwise = (x,ys) : duplicates zs
+>   where (ys,zs) = partition (x ==) xs
 
 \end{verbatim}

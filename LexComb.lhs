@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: LexComb.lhs 1783 2005-10-06 20:35:55Z wlux $
+% $Id: LexComb.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -37,7 +37,7 @@ Monad functions for the lexer.
 \begin{verbatim}
 
 > returnL :: a -> L a
-> returnL x _ _ _ _ = Ok x
+> returnL x _ _ _ _ = return x
 
 > thenL :: L a -> (a -> L b) -> L b
 > thenL lex k pos s bol ctxt = lex pos s bol ctxt >>= \x -> k x pos s bol ctxt
@@ -46,13 +46,13 @@ Monad functions for the lexer.
 > l1 `thenL_` l2 = l1 `thenL` \_ -> l2
 
 > failL :: Position -> String -> L a
-> failL pos msg _ _ _ _ = Error (atP pos msg)
+> failL pos msg _ _ _ _ = fail (atP pos msg)
 
 > closeL0 :: L a -> L (L a)
-> closeL0 lex pos s bol ctxt = Ok (\_ _ _ _ -> lex pos s bol ctxt)
+> closeL0 lex pos s bol ctxt = return (\_ _ _ _ -> lex pos s bol ctxt)
 
 > closeL1 :: (a -> L b) -> L (a -> L b)
-> closeL1 f pos s bol ctxt = Ok (\x _ _ _ _ -> f x pos s bol ctxt)
+> closeL1 f pos s bol ctxt = return (\x _ _ _ _ -> f x pos s bol ctxt)
 
 \end{verbatim}
 Combinators that handle layout.

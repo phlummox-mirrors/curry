@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1885 2006-04-05 21:23:18Z wlux $
+% $Id: Modules.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -279,13 +279,14 @@ imported modules into scope in the current module.
 > importModules :: ModuleEnv -> [ImportDecl] -> Error (PEnv,TCEnv,ValueEnv)
 > importModules mEnv ds =
 >   do
->     (pEnv,tcEnv,tyEnv) <- foldM importModule initEnvs ds
+>     ds' <- mapE checkImportDecl ds
+>     let (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs ds'
 >     return (pEnv,importUnifyData tcEnv,tyEnv)
->   where importModule envs (ImportDecl _ m q asM is) =
->           do
->             is' <- checkImports i is
->             return (importInterface (fromMaybe m asM) q is' envs i)
->           where i = moduleInterface m mEnv
+>   where checkImportDecl (ImportDecl p m q asM is) =
+>           liftE (ImportDecl p m q asM)
+>                 (checkImports (moduleInterface m mEnv) is)
+>         importModule envs (ImportDecl _ m q asM is) =
+>           importInterface (fromMaybe m asM) q is envs (moduleInterface m mEnv)
 
 > moduleInterface :: ModuleIdent -> ModuleEnv -> Interface
 > moduleInterface m mEnv =
@@ -381,10 +382,8 @@ that are imported directly from that module.}
 >     intfCheck m pEnv tcEnv tyEnv ds'
 >     return (Interface m is ds')
 >   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs is
->         importModule envs (IImportDecl p m) =
->           case lookupEnv m mEnv of
->             Just i -> importInterfaceIntf envs i
->             Nothing -> internalError "checkInterface"
+>         importModule envs (IImportDecl _ m) =
+>           importInterfaceIntf envs (moduleInterface m mEnv)
 
 \end{verbatim}
 After checking a module successfully, the compiler may need to update

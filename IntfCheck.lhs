@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1867 2006-03-02 18:35:01Z wlux $
+% $Id: IntfCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -54,7 +54,7 @@ interface module only. However, this has not been implemented yet.
 > import TypeTrans
 
 > intfCheck :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> [IDecl] -> Error ()
-> intfCheck m pEnv tcEnv tyEnv = mapM_ (checkImport m pEnv tcEnv tyEnv)
+> intfCheck m pEnv tcEnv tyEnv = mapE_ (checkImport m pEnv tcEnv tyEnv)
 
 > checkImport :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> IDecl -> Error ()
 > checkImport _ pEnv _ _ (IInfixDecl p fix pr op) =

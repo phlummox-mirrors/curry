@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Combined.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Combined.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
 % Copyright (c) 1998-2003, Wolfgang Lux
 % See LICENSE for the full license.
@@ -227,11 +227,11 @@ the error monad.
 >   fmap f (ErrorT m) = ErrorT (fmap (fmap f) m)
 
 > instance Monad m => Monad (ErrorT m) where
->   return = ErrorT . return . Ok
->   fail = ErrorT . return . Error
+>   return = ErrorT . return . return
+>   fail = ErrorT . return . fail
 >   ErrorT m >>= f = ErrorT (m >>= k)
 >     where k (Ok x) = unErrorT (f x)
->           k (Error msg) = return (Error msg)
+>           k (Errors msgs) = return (Errors msgs)
 
 > instance MonadPlus m => MonadPlus (ErrorT m) where
 >   mzero = ErrorT mzero

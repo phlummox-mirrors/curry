@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1911 2006-05-02 10:15:23Z wlux $
+% $Id: ExportSyntaxCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
-% Copyright (c) 2000-2005, Wolfgang Lux
+% Copyright (c) 2000-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ExportSyntaxCheck.lhs}
@@ -19,7 +19,6 @@ entities.
 > import List
 > import Map
 > import Maybe
-> import Monad
 > import Set
 > import TopEnv
 
@@ -28,7 +27,7 @@ entities.
 > checkExports m is tEnv fEnv =
 >   maybe (return (Exporting noPos (expandLocalModule tEnv fEnv)))
 >         (\es -> do
->                   es' <- liftM nubExports (expandSpecs ms m tEnv fEnv es)
+>                   es' <- liftE nubExports (expandSpecs ms m tEnv fEnv es)
 >                   checkInterface es'
 >                   return es')
 >   where ms = fromListSet [fromMaybe m asM | ImportDecl _ m _ asM _ <- is]
@@ -36,13 +35,11 @@ entities.
 
 > checkInterface :: ExportSpec -> Error ()
 > checkInterface (Exporting p es) =
->   case linear [unqualify tc | ExportTypeWith tc _ <- es] of
->     Linear ->
->       case linear ([c | ExportTypeWith _ cs <- es, c <- cs] ++
->                    [unqualify f | Export f <- es]) of
->         Linear -> return ()
->         NonLinear v -> errorAt p (ambiguousExportValue v)
->     NonLinear tc -> errorAt p (ambiguousExportType tc)
+>   mapE_ (errorAt p . ambiguousExportType . fst)
+>         (duplicates [unqualify tc | ExportTypeWith tc _ <- es]) &&>
+>   mapE_ (errorAt p . ambiguousExportValue . fst)
+>         (duplicates ([c | ExportTypeWith _ cs <- es, c <- cs] ++
+>                      [unqualify f | Export f <- es]))
 
 \end{verbatim}
 While checking all export specifications, the compiler expands
@@ -61,7 +58,7 @@ export a type constructor \texttt{x} \emph{and} a global function
 > expandSpecs :: Set ModuleIdent -> ModuleIdent -> TypeEnv -> FunEnv
 >             -> ExportSpec -> Error ExportSpec
 > expandSpecs ms m tEnv fEnv (Exporting p es) =
->   liftM (Exporting p . concat) (mapM (expandExport p ms m tEnv fEnv) es)
+>   liftE (Exporting p . concat) (mapE (expandExport p ms m tEnv fEnv) es)
 
 > expandExport :: Position -> Set ModuleIdent -> ModuleIdent -> TypeEnv
 >              -> FunEnv -> Export -> Error [Export]
@@ -97,10 +94,10 @@ export a type constructor \texttt{x} \emph{and} a global function
 >                -> Error [Export]
 > expandTypeWith p tEnv tc cs =
 >   do
->     (tc',cs') <- constrs p tEnv tc
->     case filter (`notElem` cs') cs of
->       [] -> return [ExportTypeWith tc' (nub cs)]
->       c:_ -> errorAt p (undefinedDataConstr tc c)
+>     (tc',cs'') <- constrs p tEnv tc
+>     mapE_ (errorAt p . undefinedDataConstr tc) (filter (`notElem` cs'') cs')
+>     return [ExportTypeWith tc' cs']
+>   where cs' = nub cs
 
 > expandTypeAll :: Position -> TypeEnv -> QualIdent -> Error [Export]
 > expandTypeAll p tEnv tc =

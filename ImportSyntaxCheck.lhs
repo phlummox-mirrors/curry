@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ImportSyntaxCheck.lhs 1911 2006-05-02 10:15:23Z wlux $
+% $Id: ImportSyntaxCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
 %
-% Copyright (c) 2000-2005, Wolfgang Lux
+% Copyright (c) 2000-2006, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ImportSyntaxCheck.lhs}
@@ -17,11 +17,10 @@ import declarations.
 > import Env
 > import List
 > import Maybe
-> import Monad
 
 > checkImports :: Interface -> Maybe ImportSpec -> Error (Maybe ImportSpec)
 > checkImports (Interface m _ ds) =
->   maybe (return Nothing) (liftM Just . expandSpecs m tEnv vEnv)
+>   maybe (return Nothing) (liftE Just . expandSpecs m tEnv vEnv)
 >   where tEnv = foldr (bindType m) emptyEnv ds
 >         vEnv = foldr (bindValue m) emptyEnv ds
 
@@ -94,9 +93,9 @@ data constructors are added.
 > expandSpecs :: ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> ImportSpec
 >             -> Error ImportSpec
 > expandSpecs m tEnv vEnv (Importing p is) =
->   liftM (Importing p . concat) (mapM (expandImport p m tEnv vEnv) is)
+>   liftE (Importing p . concat) (mapE (expandImport p m tEnv vEnv) is)
 > expandSpecs m tEnv vEnv (Hiding p is) =
->   liftM (Hiding p . concat) (mapM (expandHiding p m tEnv vEnv) is)
+>   liftE (Hiding p . concat) (mapE (expandHiding p m tEnv vEnv) is)
 
 > expandImport :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Import
 >              -> Error [Import]
@@ -146,10 +145,10 @@ data constructors are added.
 >                -> Error [Import]
 > expandTypeWith p m tEnv tc cs =
 >   do
->     cs' <- constrs p m tEnv tc
->     case filter (`notElem` cs') cs of
->       [] -> return [ImportTypeWith tc (nub cs)]
->       c:_ -> errorAt p (undefinedDataConstr m tc c)
+>     cs'' <- constrs p m tEnv tc
+>     mapE_ (errorAt p . undefinedDataConstr m tc) (filter (`notElem` cs'') cs')
+>     return [ImportTypeWith tc cs']
+>   where cs' = nub cs
 
 > expandTypeAll :: Position -> ModuleIdent -> ExpTypeEnv -> Ident
 >               -> Error [Import]
@@ -170,17 +169,18 @@ Error messages.
 \begin{verbatim}
 
 > undefinedEntity :: ModuleIdent -> Ident -> String
-> undefinedEntity m x = name x ++ " is not defined in module " ++ moduleName m
+> undefinedEntity m x =
+>   "Module " ++ moduleName m ++ " does not export " ++ name x
 
 > undefinedType :: ModuleIdent -> Ident -> String
 > undefinedType m tc =
->   "Type " ++ name tc ++ " is not defined in module " ++ moduleName m
+>   "Module " ++ moduleName m ++ " does not export type " ++ name tc
 
 > undefinedDataConstr :: ModuleIdent -> Ident -> Ident -> String
 > undefinedDataConstr m tc c =
 >   name c ++ " is not a data constructor of type " ++ name tc
 
 > importDataConstr :: ModuleIdent -> Ident -> String
-> importDataConstr m c = "Explicit import for data constructor " ++ name c
+> importDataConstr m c = "Explicit import of data constructor " ++ name c
 
 \end{verbatim}

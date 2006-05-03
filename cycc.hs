@@ -1,6 +1,6 @@
--- $Id: cycc.hs 1838 2005-11-17 08:03:45Z wlux $
+-- $Id: cycc.hs 1912 2006-05-03 14:53:33Z wlux $
 --
--- Copyright (c) 1999-2005, Wolfgang Lux
+-- Copyright (c) 1999-2006, Wolfgang Lux
 -- See LICENSE for the full license.
 
 import Modules
@@ -10,6 +10,7 @@ import Combined
 import Error
 import GetOpt
 import IO
+import List
 import Maybe
 import System
 
@@ -72,7 +73,8 @@ processFiles opts prog files =
 compile :: ErrorT IO a -> IO a
 compile c = callErr c >>= checkOk
   where checkOk (Ok x) = return x
-        checkOk (Error msg) = putErrLn msg >> exitWith (ExitFailure 1)
+        checkOk (Errors msgs) =
+          putErr (unlines (nub msgs)) >> exitWith (ExitFailure 1)
 
 putErr, putErrLn :: String -> IO ()
 putErr = hPutStr stderr
