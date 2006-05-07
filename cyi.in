@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1906 2006-04-27 09:21:00Z wlux $
+# $Id: cyi.in 1915 2006-05-07 14:48:36Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -236,8 +236,12 @@ show_options ( ) {
 }
 
 set_options ( ) {
-  test $# -eq 0 || cyopts="$cyopts $*"
-  show_options
+  if test $# -eq 0; then
+    show_options
+  else
+    cyopts="$cyopts $*"
+    if tty -s; then show_options; fi
+  fi
 }
 
 unset_options ( ) {
@@ -250,7 +254,7 @@ unset_options ( ) {
       shift
     done
   done
-  show_options
+  if tty -s; then show_options; fi
 }
 
 chdir ( ) {
@@ -278,8 +282,6 @@ while test $# -gt 0; do
   esac
   shift
 done
-
-load "$1"
 
 if tty -s; then
   if test -n "${BASH_VERSION+set}"; then
@@ -313,7 +315,13 @@ else
   }
 fi
 
-while do_read line; do
+quit ( ) {
+    echo "[Leaving $cyi]"
+    exit 0
+}
+
+interpret ( ) {
+  line=$1
   set -- $line
   case $1 in
     "" ) ;;
@@ -330,13 +338,24 @@ while do_read line; do
     :cd ) line=`expr "$line" : $1'\([^;]*\)'`; chdir "$line";;
     :!* ) line=`expr "$line" : ':![ 	]*\(.*\)'`; system "$line";;
     :v | :version ) $cyc -v;;
-    :q | :quit ) break;;
+    :q | :quit ) quit;;
     :d ) line=`expr "$line" : ':d\(.*\)'`; debug "  $line";;
     :debug ) line=`expr "$line" : ':debug\(.*\)'`; debug "      $line";;
     ':^'* ) line=`expr "$line" : ':^\(.*\)'`; evaluate "  $line";;
     :* ) echo "unknown command, use :h for help";;
     * ) evaluate "$line";;
   esac
-done
+}
 
-echo "[Leaving $cyi]"
+if test -r .cyirc; then
+  while read line; do interpret "$line"; done < .cyirc
+elif test -r "$HOME"/.cyirc; then
+  while read line; do interpret "$line"; done < "$HOME"/.cyirc
+fi
+
+load "$1"
+
+while do_read line; do
+  interpret "$line"
+done
+quit

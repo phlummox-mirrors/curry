@@ -4,7 +4,7 @@
 .\"man mdoc for the short list of editing options
 .\"/usr/share/misc/mdoc.template
 .\"
-.\" $Id: cyi.1.in 1837 2005-11-17 07:49:28Z wlux $
+.\" $Id: cyi.1.in 1915 2006-05-07 14:48:36Z wlux $
 .\"
 .\" Copyright (c) 2004-2005, Wolfgang Lux
 .\" See LICENSE for the full license.
@@ -24,10 +24,13 @@
 is an interactive environment that allows evaluating and debugging
 Curry goals with respect to a Curry module loaded into the
 interpreter. At startup,
-.Nm cyi
-loads either the
-.Ar module
-specified on the command line or the Curry prelude.
+.Nm
+reads and interprets commands from the file 
+.Pa .cyirc
+in the current directory if it exists, or from
+.Pa .cyirc
+in your home directory otherwise, and then loads either the first
+module specified on the command line or the Curry prelude.
 .Pp
 .Ss Goals
 A goal is a Curry expression optionally followed by a where-clause
@@ -131,7 +134,14 @@ and
 .Ic :clean ,
 may be abbreviated to their first letter.
 .Sh FILES
-.Bl -tag -width -indent
+.Bl -tag -width -indent -compact
+.It Pa .cyirc
+.It Pa ~/.cyirc
+Commands from these files are read and interpreted on startup. If both
+files exist, only
+.Pa .cyirc
+is used.
+.Pp
 .It Pa ~/.cyi_history
 The command line history is stored in file
 .Pa ~/.cyi_history .
