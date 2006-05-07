@@ -100,7 +100,9 @@ getNext a            rest _        = (NonOpt a,rest)
 longOpt :: String -> [String] -> [OptDescr a] -> (OptKind a,[String])
 longOpt xs rest optDescr = long ads arg rest
    where (opt,arg) = break (=='=') xs
-         options   = [ o  | o@(Option _ ls _ _) <- optDescr, l <- ls, opt `isPrefixOf` l ]
+         exact     = [ o  | o@(Option _ ls _ _) <- optDescr, l <- ls, opt == l ]
+         prefix    = [ o  | o@(Option _ ls _ _) <- optDescr, l <- ls, opt `isPrefixOf` l ]
+         options   = if null exact then prefix else exact
          ads       = [ ad | Option _ _ ad _ <- options ]
          optStr    = ("--"++opt)
 
