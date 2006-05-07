@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Options.lhs 1744 2005-08-23 16:17:12Z wlux $
+% $Id: Options.lhs 1913 2006-05-07 13:44:36Z wlux $
 %
 % Copyright (c) 2001-2003, Wolfgang Lux
 % See LICENSE for the full license.
@@ -26,6 +26,8 @@ all compiler options.
 >     splitCode :: Bool,                -- split object code
 >     debug :: Bool,                    -- add debugging transformation
 >     trusted :: Bool,                  -- trusted module for debugging
+>     caseMode :: CaseMode,             -- case mode
+>     warn :: [Warn],                   -- warnings
 >     dump :: [Dump]                    -- dumps
 >   }
 >   deriving Show
@@ -40,8 +42,26 @@ all compiler options.
 >     splitCode = False,
 >     debug = False,
 >     trusted = False,
+>     caseMode = FreeMode,
+>     warn = [],
 >     dump = []
 >   }
+
+> data CaseMode =
+>   FreeMode | HaskellMode | PrologMode | GoedelMode
+>   deriving (Eq,Show)
+
+> data Warn =
+>     WarnUnusedData                    -- warnings for unused data constructors
+>   | WarnUnusedDecl                    -- warnings for unused declarations
+>   | WarnUnusedVar                     -- warnings for all unused variables
+>   | WarnShadow                        -- warnings for shadowing definitions
+>   | WarnOverlap                       -- warnings for overlapping patterns
+>   deriving (Eq,Bounded,Enum,Show)
+
+> minUnused, maxUnused :: Warn
+> minUnused = WarnUnusedData
+> maxUnused = WarnUnusedVar
 
 > data Dump =
 >     DumpRenamed                       -- dump source after renaming
@@ -65,7 +85,8 @@ library.
 >     Help
 >   | ImportPath FilePath | Output FilePath
 >   | Eval (Maybe String) | Type String
->   | SplitCode | NoInterface | Debug | Trusted | Dump [Dump]
+>   | SplitCode | NoInterface | Debug | Trusted
+>   | CaseMode CaseMode | Warn [Warn] | Dump [Dump]
 >   deriving (Eq,Show)
 
 \end{verbatim}
@@ -90,6 +111,26 @@ recognized by the compiler.
 >            "transform code for debugging",
 >     Option "" ["trusted"] (NoArg Trusted)
 >            "trust this module (if compiled with -g/--debug)",
+>     Option "" ["haskell-mode"] (NoArg (CaseMode HaskellMode))
+>            "use Haskell naming conventions",
+>     Option "" ["prolog-mode"] (NoArg (CaseMode PrologMode))
+>            "use Prolog naming conventions",
+>     Option "" ["goedel-mode"] (NoArg (CaseMode GoedelMode))
+>            "use Goedel naming conventions",
+>     Option "" ["warn-all"] (NoArg (Warn [minBound..maxBound]))
+>            "enable all warnings",
+>     Option "" ["warn-unused"] (NoArg (Warn [minUnused..maxUnused]))
+>            "enable all unused warnings",
+>     Option "" ["warn-unused-data"] (NoArg (Warn [WarnUnusedData]))
+>            "enable unused data constructor warnings",
+>     Option "" ["warn-unused-decls"] (NoArg (Warn [WarnUnusedDecl]))
+>            "enable unused declaration warnings",
+>     Option "" ["warn-unused-vars"] (NoArg (Warn [WarnUnusedVar]))
+>            "enable unused variable warnings",
+>     Option "" ["warn-shadow"] (NoArg (Warn [WarnShadow]))
+>            "enable shadowing definitions warnings",
+>     Option "" ["warn-overlap"] (NoArg (Warn [WarnOverlap]))
+>            "enable overlapping patterns warnings",
 >     Option "" ["dump-all"] (NoArg (Dump [minBound..maxBound]))
 >            "dump everything",
 >     Option "" ["dump-renamed"] (NoArg (Dump [DumpRenamed]))
@@ -131,6 +172,8 @@ print its usage message and terminate.
 > selectOption SplitCode opts = opts{ splitCode = True }
 > selectOption Debug opts = opts{ debug = True }
 > selectOption Trusted opts = opts{ trusted = True }
+> selectOption (CaseMode cm) opts = opts{ caseMode = cm }
+> selectOption (Warn ws) opts = opts{ warn = ws ++ warn opts }
 > selectOption (Dump ds) opts = opts{ dump = ds ++ dump opts }
 
 \end{verbatim}

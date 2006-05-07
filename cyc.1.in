@@ -4,7 +4,7 @@
 .\"man mdoc for the short list of editing options
 .\"/usr/share/misc/mdoc.template
 .\"
-.\" $Id: cyc.1.in 1885 2006-04-05 21:23:18Z wlux $
+.\" $Id: cyc.1.in 1913 2006-05-07 13:44:36Z wlux $
 .\"
 .\" Copyright (c) 2004-2006, Wolfgang Lux
 .\" See LICENSE for the full license.
@@ -145,10 +145,12 @@ the directories specifying the import search path.
 .Pp
 The following options control the compilation of Curry source into C
 code.
-.Bl -tag -width -indent
+.Pp
+.Bl -tag -width -indent -compact
 .It Fl g
 Deprecated synonym for
 .Fl -debug .
+.Pp
 .It Fl -debug
 Prepare the compiled code for executing the program with the
 declarative debugger.
@@ -156,11 +158,13 @@ declarative debugger.
 Note that code compiled with this option is incompatible with code
 compiled without this option. This option must therefore be used
 consistently for compiling and linking all modules of a program.
+.Pp
 .It Fl -trusted
 This flag has an effect only in conjunction with one of previous
 options. It tells that debugger that it can trust all functions from a
 module compiled with this flag. The debugger will not ask questions
 about such functions.
+.Pp
 .It Fl i Ar dir
 Add directory
 .Ar dir
@@ -168,6 +172,35 @@ to the list of paths used to locate interface files. By default, the
 compiler searches for interface files in the current directory and in
 its standard library directory
 .Pa @libdir@/curry .
+.Pp
+.It Fl Whaskell
+.It Fl Wprolog
+.It Fl Wgoedel
+Warn whenever a definition does not obey the selected case mode
+(cf. Sect. C.1 of the Curry report).
+.Pp
+.It Fl Wall
+ Enable all warnings below.
+.Pp
+.It Fl Wunused
+Enable all unused warnings below.
+.Pp
+.It Fl Wunused-data
+Warn whenever a data constructor is not used.
+.Pp
+.It Fl Wunused-decl
+Warn whenever a function or pattern declaration is not used.
+.Pp
+.It Fl Wunused-var
+Warn whenever a function or pattern argument is not used.
+.Pp
+.It Fl Wshadow
+Warn whenever a local declaration shadows a declaration from an outer
+scope.
+.Pp
+.It Fl Woverlap
+Warn whenever a function's equations have overlapping left hand sides.
+.Pp
 .It Fl H Ar size
 Change the heap size used by the compiler to
 .Ar size .
@@ -182,6 +215,7 @@ executable. Use
 .Fl h Ar size
 for this (see below). 
 .El
+.Pp
 .Ss Compiling C Files
 The following list describes only the most common options understood
 by

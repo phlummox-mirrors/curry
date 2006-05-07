@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: Modules.lhs 1913 2006-05-07 13:44:36Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -21,6 +21,10 @@ This module controls the compilation of modules.
 > import PrecCheck(precCheck,precCheckGoal)
 > import KindCheck(kindCheck,kindCheckGoal)
 > import TypeCheck(typeCheck,typeCheckGoal)
+> import CaseCheck(caseCheck,caseCheckGoal)
+> import UnusedCheck(unusedCheck,unusedCheckGoal)
+> import ShadowCheck(shadowCheck,shadowCheckGoal)
+> import OverlapCheck(overlapCheck,overlapCheckGoal)
 > import IntfSyntaxCheck(intfSyntaxCheck)
 > import IntfCheck(intfCheck)
 > import IntfEquiv(fixInterface,intfEquiv)
@@ -42,7 +46,7 @@ This module controls the compilation of modules.
 > import CPretty(ppCFile)
 > import CurryPP(ppModule,ppInterface,ppIDecl,ppGoal)
 > import qualified ILPP(ppModule)
-> import Options(Options(..),Dump(..))
+> import Options(Options(..),CaseMode(..),Warn(..),Dump(..))
 > import Env
 > import TopEnv
 > import Combined
@@ -70,7 +74,7 @@ declaration to the module.
 > compileModule :: Options -> FilePath -> ErrorT IO ()
 > compileModule opts fn =
 >   do
->     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule id paths fn
+>     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule id paths cm ws fn
 >     mEnv' <- importDebugPrelude paths dbg fn mEnv
 >     let (ccode,dumps) = transModule split dbg tr mEnv' tcEnv tyEnv m
 >     liftErr $ mapM_ (doDump opts) dumps >>
@@ -80,14 +84,18 @@ declaration to the module.
 >         split = splitCode opts
 >         dbg = debug opts
 >         tr = if trusted opts then Trust else Suspect
+>         cm = caseMode opts
+>         ws = warn opts
 
-> loadModule :: (Module -> Module) -> [FilePath] -> FilePath
+> loadModule :: (Module -> Module) -> [FilePath] -> CaseMode -> [Warn]
+>            -> FilePath
 >            -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,Module,Interface)
-> loadModule f paths fn =
+> loadModule f paths caseMode warn fn =
 >   do
 >     m <- liftM f $ liftErr (readFile fn) >>= okM . parseModule fn
 >     mEnv <- loadInterfaces paths m
 >     (tcEnv,tyEnv,m',intf) <- okM $ checkModule mEnv m
+>     liftErr $ mapM_ putErrLn $ warnModule caseMode warn m'
 >     return (bindModule intf mEnv,tcEnv,tyEnv,m',intf)
 
 > parseModule :: FilePath -> String -> Error Module
@@ -113,6 +121,11 @@ declaration to the module.
 >     return (tcEnv'',tyEnv'',
 >             Module m (Just es') is (qual tyEnv' ds'''),
 >             exportInterface m es' pEnv'' tcEnv'' tyEnv'')
+
+> warnModule :: CaseMode -> [Warn] -> Module -> [String]
+> warnModule caseMode warn m =
+>   caseCheck caseMode m ++ unusedCheck warn m ++
+>   shadowCheck warn m ++ overlapCheck warn m
 
 > transModule :: Bool -> Bool -> Trust -> ModuleEnv -> TCEnv -> ValueEnv
 >             -> Module -> (Either CFile [CFile],[(Dump,Doc)])
@@ -186,28 +199,32 @@ compilation of a goal is similar to that of a module.
 > compileGoal :: Options -> Maybe String -> Maybe FilePath -> ErrorT IO ()
 > compileGoal opts g fn =
 >   do
->     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths g fn
+>     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths cm ws g fn
 >     mEnv' <- importDebugPrelude paths dbg "" mEnv
 >     let (ccode,dumps) = transGoal dbg tr mEnv' tcEnv tyEnv g'
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeGoalCode (output opts) ccode
->   where dbg = debug opts
+>   where paths = importPath opts
+>         dbg = debug opts
 >         tr = if trusted opts then Trust else Suspect
->         paths = importPath opts
+>         cm = caseMode opts
+>         ws = warn opts
 
 > typeGoal :: Options -> String -> Maybe FilePath -> ErrorT IO ()
 > typeGoal opts g fn =
 >   do
->     (_,_,tyEnv,m,Goal _ e _) <- loadGoal (importPath opts) (Just g) fn
+>     (_,_,tyEnv,m,Goal _ e _) <-
+>       loadGoal (importPath opts) (caseMode opts) (warn opts) (Just g) fn
 >     liftErr $ print (ppType m (typeOf tyEnv e))
 
-> loadGoal :: [FilePath] -> Maybe String -> Maybe FilePath
+> loadGoal :: [FilePath] -> CaseMode -> [Warn] -> Maybe String -> Maybe FilePath
 >          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,ModuleIdent,Goal)
-> loadGoal paths g fn =
+> loadGoal paths caseMode warn g fn =
 >   do
 >     (mEnv,m,is) <- loadGoalModule paths g fn
 >     (tcEnv,tyEnv,g') <-
 >       okM $ maybe (return mainGoal) parseGoal g >>= checkGoal mEnv is
+>     liftErr $ mapM_ putErrLn $ warnGoal caseMode warn g'
 >     return (mEnv,tcEnv,tyEnv,m,g')
 >   where mainGoal = Goal (first "") (Variable (qualify mainId)) []
 
@@ -215,7 +232,8 @@ compilation of a goal is similar to that of a module.
 >                -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
 > loadGoalModule paths (Just _) (Just fn) =
 >   do
->     (mEnv,_,_,Module m _ is _,_) <- loadModule transparent paths fn
+>     (mEnv,_,_,Module m _ is _,_) <-
+>       loadModule transparent paths FreeMode [] fn
 >     return (mEnv,m,is ++ [importDecl (first "") m])
 >   where transparent (Module m _ is ds) = Module m Nothing is ds
 > loadGoalModule paths Nothing (Just fn) =
@@ -240,6 +258,11 @@ compilation of a goal is similar to that of a module.
 >               typeCheckGoal tcEnv tyEnv g'
 >     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv emptyMIdent pEnv tcEnv tyEnv'
 >     return (tcEnv',tyEnv'',qualGoal tyEnv' g')
+
+> warnGoal :: CaseMode -> [Warn] -> Goal -> [String]
+> warnGoal caseMode warn g =
+>   caseCheckGoal caseMode g ++ unusedCheckGoal warn g ++
+>   shadowCheckGoal warn g ++ overlapCheckGoal warn g
 
 > transGoal :: Bool -> Trust -> ModuleEnv -> TCEnv -> ValueEnv -> Goal
 >           -> (CFile,[(Dump,Doc)])
@@ -489,6 +512,17 @@ Various filename extensions.
 > cExt = ".c"
 > intfExt = ".icurry"
 > litExt = ".lcurry"
+
+\end{verbatim}
+Auxiliary functions. Unfortunately, hbc's \texttt{IO} module lacks a
+definition of \texttt{hPutStrLn}.
+\begin{verbatim}
+
+> putErr :: String -> IO ()
+> putErr = hPutStr stderr
+
+> putErrLn :: String -> IO ()
+> putErrLn s = putErr (unlines [s])
 
 \end{verbatim}
 Error messages.
