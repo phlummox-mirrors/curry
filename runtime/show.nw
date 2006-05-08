@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 1899 2006-04-19 10:50:11Z wlux $
+% $Id: show.nw 1916 2006-05-08 21:36:20Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -21,6 +21,7 @@ declarative debugger.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 #include <math.h>
 #include "debug.h"
 #include "run.h"
@@ -1136,10 +1137,11 @@ FUNCTION(__showEFloat)
 static
 FUNCTION(__showEFloat_1)
 {
-    int    p, n;
-    double d;
-    char   fmt[20], *buf;
-    Node   *str;
+    int	       p, n;
+    double     d;
+    char       fmt[20], *buf;
+    const char *loc;
+    Node       *str;
  ENTRY_LABEL(__showEFloat_1)
     EVAL_RIGID_FLOAT(__showEFloat_1);
     get_double_val(d, sp[0]->f);
@@ -1153,7 +1155,10 @@ FUNCTION(__showEFloat_1)
     buf = (char *)malloc(n);
     if ( buf == NULL )
 	sys_error("showEFloat");
+    loc = setlocale(LC_NUMERIC, NULL);
+    setlocale(LC_NUMERIC, "C");
     sprintf(buf, fmt, d);
+    setlocale(LC_NUMERIC, loc);
 
     sp += 3;
     str = prefix_string(buf, str);
@@ -1177,10 +1182,11 @@ FUNCTION(__showFFloat)
 static
 FUNCTION(__showFFloat_1)
 {
-    int    p, n;
-    double d;
-    char   fmt[20], *buf;
-    Node   *str;
+    int	       p, n;
+    double     d;
+    char       fmt[20], *buf;
+    const char *loc;
+    Node       *str;
  ENTRY_LABEL(__showFFloat_1)
     EVAL_RIGID_FLOAT(__showFFloat_1);
     get_double_val(d, sp[0]->f);
@@ -1198,7 +1204,10 @@ FUNCTION(__showFFloat_1)
     buf = (char *)malloc(n);
     if ( buf == NULL )
 	sys_error("showFFloat");
+    loc = setlocale(LC_NUMERIC, NULL);
+    setlocale(LC_NUMERIC, "C");
     sprintf(buf, fmt, d);
+    setlocale(LC_NUMERIC, loc);
 
     sp += 3;
     str = prefix_string(buf, str);
@@ -1208,9 +1217,9 @@ FUNCTION(__showFFloat_1)
 
 @ 
 Due to lack of a better place, we also implement the primitive
-\verb|convertToFloat|, which implements the conversion from strings
-into floating-point numbers, here. The conversion is based on the C
-function [[strtod]].
+\verb|convertToFloat| here, which converts a string into a
+floating-point number. The conversion is based on the C function
+[[strtod]].
 
 <<show.c>>=
 DECLARE_ENTRYPOINT(__convertToFloat);
@@ -1230,9 +1239,10 @@ FUNCTION(__convertToFloat)
 static
 FUNCTION(__convertToFloat_1)
 {
-    char   *buf;
-    double d;
-    Node   *s, *r;
+    char       *buf;
+    const char *loc;
+    double     d;
+    Node       *s, *r;
  ENTRY_LABEL(__convertToFloat_1)
     /* drop leading zeros */
     s = *sp++;
@@ -1254,7 +1264,10 @@ FUNCTION(__convertToFloat_1)
     if ( s != nil )
     {
 	buf = to_string(s);
+	loc = setlocale(LC_NUMERIC, NULL);
+	setlocale(LC_NUMERIC, "C");
 	d   = strtod(buf, NULL);
+	setlocale(LC_NUMERIC, loc);
 	free(buf);
     }
     else

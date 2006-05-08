@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cstring.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: cstring.nw 1916 2006-05-08 21:36:20Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -30,6 +30,7 @@ DECLARE_ENTRYPOINT(nf_string);
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 #include <ctype.h>
 #include <limits.h>
 #include <math.h>
@@ -281,7 +282,7 @@ FUNCTION(__newCStringLen_1)
     unsigned int l;
     char	 *cp;
     Node	 *p, *i, *r;
-    ENTRY_LABEL(__newCStringLen_1)
+ ENTRY_LABEL(__newCStringLen_1)
     l  = string_length(sp[0]);
     cp = (char *)malloc(l + 1);
     if ( cp == NULL )
@@ -451,7 +452,7 @@ lit_char(char *buf, int c0, int c, int q)
 @ 
 The function [[lit_double]] converts a floating-point value into a
 string. The conversion essentially uses the [[%g]] format of
-[[sprintf]], but appends a \verb|.0| suffix to the number if there is
+[[sprintf]], but appends a suffix \verb|.0| to the number if there is
 no fraction and no exponent in the printed representation. Infinities
 and NaNs are handled specially because their printed representation
 depends on the operating systems and no \verb|.0| suffix must be
@@ -482,13 +483,20 @@ function [[strtod]].
 char *
 lit_double(char *buf, double d)
 {
+    const char *loc;
+
     if ( finite(d) )
     {
+	loc = setlocale(LC_NUMERIC, NULL);
+	setlocale(LC_NUMERIC, "C");
+
 	sprintf(buf, "%.16g", d);
 	if ( strtod(buf, NULL) != d )
 	    sprintf(buf, "%.17g", d);
 	if ( !strpbrk(buf, ".e") )
 	    strcat(buf, ".0");
+
+	setlocale(LC_NUMERIC, loc);
     }
     else if ( isnan(d) )
 	strcpy(buf, "NaN");
