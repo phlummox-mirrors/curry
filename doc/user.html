@@ -15,7 +15,7 @@
 
 <title> Münster Curry User's Guide</title>
  
-<h1 align="center">Münster Curry <br />User's Guide <br /><font size="+0">Release 0.9.9</font> </h1>
+<h1 align="center">Münster Curry <br />User's Guide <br /><font size="+0">Release 0.9.10</font> </h1>
 
 <h3 align="center">Wolfgang Lux </h3>
 
@@ -48,22 +48,28 @@
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc3.4"
 >3.4&nbsp; Linking</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc3.5"
->3.5&nbsp; Examples</a><br />
+>3.5&nbsp; Environment</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc3.6"
->3.6&nbsp; Running Programs</a><br />
+>3.6&nbsp; Examples</a><br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc3.7"
+>3.7&nbsp; Running Programs</a><br />
 
 <a href="#tth_sEc4"
 >4&nbsp; Using the Debugger</a><br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc4.1"
+>4.1&nbsp; Trusted functions</a><br />
 <a href="#tth_sEc5"
 >5&nbsp; Building programs with <tt>cymake</tt></a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.1"
 >5.1&nbsp; Options</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.2"
->5.2&nbsp; Modules and the Filesystem</a><br />
+>5.2&nbsp; Environment</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.3"
->5.3&nbsp; Using Libraries</a><br />
+>5.3&nbsp; Modules and the Filesystem</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.4"
->5.4&nbsp; Using <tt>make</tt></a><br />
+>5.4&nbsp; Using Libraries</a><br />
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.5"
+>5.5&nbsp; Using <tt>make</tt></a><br />
 <a href="#tth_sEc6"
 >6&nbsp; Using the Interactive Environment</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1"
@@ -163,7 +169,9 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.4.7"
 >7.4.7&nbsp; Read</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.4.8"
->7.4.8&nbsp; Unsafe</a><br />
+>7.4.8&nbsp; Socket</a><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.4.9"
+>7.4.9&nbsp; Unsafe</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.5"
 >7.5&nbsp; Library Modules Specific to the M&#252;nster Curry Compiler</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.5.1"
@@ -173,11 +181,15 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.5.3"
 >7.5.3&nbsp; IOVector</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.5.4"
->7.5.4&nbsp; Set</a><br />
+>7.5.4&nbsp; Lexing</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.5.5"
->7.5.5&nbsp; Success</a><br />
+>7.5.5&nbsp; NameSupply</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.5.6"
->7.5.6&nbsp; Trace</a><br />
+>7.5.6&nbsp; Set</a><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.5.7"
+>7.5.7&nbsp; Success</a><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc7.5.8"
+>7.5.8&nbsp; Trace</a><br />
 <a href="#tth_sEc8"
 >8&nbsp; Extensions and Limitations</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1"
@@ -187,33 +199,31 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.2"
 >8.1.2&nbsp; Disequality Constraints</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.3"
->8.1.3&nbsp; Partial Applications in Equality and Disequality Constraints</a><br />
+>8.1.3&nbsp; Existentially Quantified Types</a><br />
+
+
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.4"
->8.1.4&nbsp; General Let Expressions with Free Variables</a><br />
+>8.1.4&nbsp; Partial Applications in Equality and Disequality Constraints</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.5"
 >8.1.5&nbsp; Local Fixity Declarations</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.6"
->8.1.6&nbsp; As-Patterns</a><br />
+>8.1.6&nbsp; Lazy Patterns</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.7"
->8.1.7&nbsp; Lazy Patterns</a><br />
+>8.1.7&nbsp; Type Renamings</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.8"
->8.1.8&nbsp; Type Renamings</a><br />
+>8.1.8&nbsp; Expression Type Signatures</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.9"
->8.1.9&nbsp; Expression Type Signatures</a><br />
+>8.1.9&nbsp; Constraint Guards in Case Expressions</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.10"
->8.1.10&nbsp; Guards and Local Declaration Groups in Case Expressions</a><br />
+>8.1.10&nbsp; Constructor Operators</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.11"
->8.1.11&nbsp; Constructor Operators</a><br />
+>8.1.11&nbsp; Generalized Function Left-Hand Sides</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.12"
->8.1.12&nbsp; Generalized Function Left-Hand Sides</a><br />
+>8.1.12&nbsp; Mutually Recursive Variable Bindings</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.13"
->8.1.13&nbsp; Polymorphic Comparisons</a><br />
+>8.1.13&nbsp; Extended Import/Export Specifications</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.14"
->8.1.14&nbsp; Mutually Recursive Variable Bindings</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.15"
->8.1.15&nbsp; Extended Import/Export Specifications</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.16"
->8.1.16&nbsp; Foreign Function Interface</a><br />
+>8.1.14&nbsp; Foreign Function Interface</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.2"
 >8.2&nbsp; Limitiations and Incompatibilities</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.3"
@@ -237,10 +247,15 @@
 
 
 
+
+
+
+
+
 <div class="p"><!----></div>
  <h2><a name="tth_sEc1">
 1</a>&nbsp;&nbsp;Overview</h2>
-The Münster Curry compiler is a mature native code compiler for the declarative multi-paradigm language <a href="http://www.informatik.uni-kiel.de/~mh/curry/">Curry</a>&nbsp;[<a href="#Hanus03:Report" name="CITEHanus03:Report">Han03</a>]. The compiler supports the Curry language as defined by release 0.8.1 of the Curry report except for committed choice. Many syntax extensions including <tt>newtype</tt> declarations, infix constructors, as-patterns and lazy patterns, recursive pattern bindings, and guards in case expressions are available for compatibility with Haskell&nbsp;[<a href="#PeytonJones03:Haskell98" name="CITEPeytonJones03:Haskell98">Pey03</a>].<a href="#tthFtNtAAB" name="tthFrefAAB"><sup>1</sup></a> Other supported extensions are disequality constraints and I/O exceptions. A distinctive feature of the Münster Curry compiler is the integration of a declarative debugger of wrong answers&nbsp;[<a href="#CL02:ENTCS76" name="CITECL02:ENTCS76">CL02</a>]. An interactive Curry environment and a make-like build tool for Curry programs are also included in the distribution. A graphical user interface is available separately for Mac OS X.
+The Münster Curry compiler is a mature native code compiler for the declarative multi-paradigm language <a href="http://www.informatik.uni-kiel.de/~mh/curry/">Curry</a>&nbsp;[<a href="#Hanus06:Report" name="CITEHanus06:Report">Han06</a>]. The language supported by the compiler is compatible with version 0.8.2 of the Curry report except for some minor differences with respect to the module system. Many syntax extensions including <tt>newtype</tt> declarations, infix data constructors, lazy patterns, and recursive pattern bindings are available for compatibility with Haskell&nbsp;[<a href="#PeytonJones03:Haskell98" name="CITEPeytonJones03:Haskell98">Pey03</a>].<a href="#tthFtNtAAB" name="tthFrefAAB"><sup>1</sup></a> Other supported extensions include existentially quantified data types, disequality constraints, and I/O exceptions. A distinctive feature of the Münster Curry compiler is the integration of a declarative debugger of wrong answers&nbsp;[<a href="#CL02:ENTCS76" name="CITECL02:ENTCS76">CL02</a>]. An interactive Curry environment and a make-like build tool for Curry programs are also part of the distribution. A graphical user interface is available separately for Mac OS X.
 
 <div class="p"><!----></div>
 The Münster Curry compiler is portable to many Unix operating systems with precompiled binaries being available for Linux (i386), Mac OS X, and eventually other Unix variants. It is possible to build and use the Münster Curry compiler on Windows systems using the CygWin environment. The only additional software needed for compiling and running Curry programs is the Gnu C compiler. Building and installing the Münster Curry compiler from its sources requires a Haskell 98 compiler, too. Building and installing the compiler from source and binary distributions can be achieved with the commands
@@ -262,22 +277,22 @@ Source and binary distributions as well as further information can be found at <
      <h3><a name="tth_sEc2.1">
 2.1</a>&nbsp;&nbsp;Binary Distribution</h3><a name="sec:binary">
 </a>
-Precompiled binary distributions are available for Linux (i386), Mac OS X, and eventually other systems. After unpacking the archive, change into the directory corresponding to your platform, run the configure script in that directory, and then execute <tt>make install</tt> to install the compiler. It is possible to uninstall the compiler with the command <tt>make uninstall</tt>. By default, the compiler binaries are installed in the directory <tt>/usr/local/bin</tt>, interface files, header files, and libraries in <tt>/usr/local/lib/curry</tt>, and manual pages in <tt>/usr/local/man/man1</tt>.
+Precompiled binary distributions are available for Linux (i386), Mac OS X, and eventually other systems. After unpacking the archive, change into the directory corresponding to your platform and run the configure script in that directory. You can then use the scripts <tt>cyc</tt>, <tt>cymake</tt>, and <tt>cyi</tt> from the <tt>bin</tt> directory (e.g., by setting up soft links from a directory which is included in <tt>$PATH</tt>) or install the compiler with <tt>make install</tt>. It is possible to uninstall the compiler with the command <tt>make uninstall</tt>. By default, the compiler binaries are installed in the directory <tt>/usr/local/bin</tt>, interface files, header files, and libraries in <tt>/usr/local/lib/curry</tt>, and manual pages in <tt>/usr/local/man/man1</tt>.
 
 <div class="p"><!----></div>
-It is recommended to uninstall a previous release of the Münster Curry compiler before installing a new version in the same directory. You can use <tt>make uninstall</tt> from the unpacked and configured binary distribution for that purpose. This command will correctly remove older releases of the compiler.
+It is recommended that you uninstall a previous release of the Münster Curry compiler before installing a new version in the same directory. You can use <tt>make uninstall</tt> from the unpacked and configured binary distribution for that purpose. This command will correctly remove older releases of the compiler.
 
 <div class="p"><!----></div>
 The configure script is a standard Gnu configure script that understands the following options:
 
 <dl compact="compact">
- <dt><b><tt>-prefix=</tt><em>prefix</em></b></dt>
+ <dt><b><tt>--prefix=</tt><em>prefix</em></b></dt>
 	<dd> Use <em>prefix</em> instead of <tt>/usr/local</tt> as base directory for the installation. For instance, in order to install the compiler in the directories <tt>bin</tt> and <tt>lib/curry</tt> in your home directory, you can use the command <tt>configure --prefix=$HOME</tt>.</dd>
- <dt><b><tt>-bindir=</tt><em>bindir</em></b></dt>
+ <dt><b><tt>--bindir=</tt><em>bindir</em></b></dt>
 	<dd> Install the compiler binaries in directory <em>bindir</em> instead of <tt>/usr/local/bin</tt>.</dd>
- <dt><b><tt>-libdir=</tt><em>libdir</em></b></dt>
+ <dt><b><tt>--libdir=</tt><em>libdir</em></b></dt>
 	<dd> Install the library files in directory <em>libdir</em><tt>/curry</tt> instead of <tt>/usr/local/lib/curry</tt>.</dd>
- <dt><b><tt>-mandir=</tt><em>mandir</em></b></dt>
+ <dt><b><tt>--mandir=</tt><em>mandir</em></b></dt>
 	<dd> Install the manual pages in directory <em>mandir</em><tt>/man1</tt> instead of <tt>/usr/local/man/man1</tt>.</dd>
 </dl>
 
@@ -298,7 +313,7 @@ Compilation from the unpacked source directory is achieved with the commands
 make
 
 </pre>
-After successful compilation, <tt>make install</tt> can be used to install the compiler and <tt>make uninstall</tt> uninstalls the compiler. The latter is generally recommended before installing a new version of the compiler.
+After successful compilation, you can use the scripts <tt>cyc</tt>, <tt>cymake</tt>, and <tt>cyi</tt> from the build directory (e.g., by setting up soft links from a directory which is included in <tt>$PATH</tt>) or install the compiler with the command <tt>make install</tt>. An installed compiler can be uninstalled with the command <tt>make uninstall</tt>. This is generally recommended before installing a new version of the compiler.
 
 <div class="p"><!----></div>
 The configure script automatically determines the required software. In particular, it will check for one of the supported Haskell compilers in the path, trying <tt>ghc</tt>, <tt>hbc</tt>, and <tt>nhc98</tt> in that order. It is also possible to select a particular compiler with the <tt>--with-hc</tt> option.
@@ -307,23 +322,31 @@ The configure script automatically determines the required software. In particul
 The configure script understands the following options.
 
 <dl compact="compact">
- <dt><b><tt>-prefix=</tt><em>prefix</em></b></dt>
+ <dt><b><tt>--prefix=</tt><em>prefix</em></b></dt>
 	<dd> Use <em>prefix</em> instead of <tt>/usr/local</tt> as base directory for the installation. For instance, in order to install the compiler in the directories <tt>bin</tt> and <tt>lib/curry</tt> in your home directory, you can use the command <tt>configure --prefix=$HOME</tt>.</dd>
- <dt><b><tt>-bindir=</tt><em>bindir</em></b></dt>
+ <dt><b><tt>--bindir=</tt><em>bindir</em></b></dt>
 	<dd> Install the compiler binaries in directory <em>bindir</em> instead of <tt>/usr/local/bin</tt>.</dd>
- <dt><b><tt>-libdir=</tt><em>libdir</em></b></dt>
+ <dt><b><tt>--libdir=</tt><em>libdir</em></b></dt>
 	<dd> Install the library files in directory <em>libdir</em><tt>/curry</tt> instead of <tt>/usr/local/lib/curry</tt>.</dd>
- <dt><b><tt>-mandir=</tt><em>mandir</em></b></dt>
+ <dt><b><tt>--mandir=</tt><em>mandir</em></b></dt>
 	<dd> Install the manual pages in directory <em>mandir</em><tt>/man1</tt> instead of <tt>/usr/local/man/man1</tt>.</dd>
- <dt><b><tt>-with-hc=</tt><em>hc</em></b></dt>
+ <dt><b><tt>--with-hc=</tt><em>hc</em></b></dt>
 	<dd> Use the command <em>hc</em> for compiling Haskell sources. E.g., if you have <tt>ghc</tt> and <tt>hbc</tt> installed on your machine and prefer building the compiler with <tt>hbc</tt>, you can use <tt>configure --with-hc=hbc</tt>. <tt>configure</tt> will check that the compiler <em>hc</em> is a supported Haskell 98 compiler.</dd>
- <dt><b><tt>-disable-stdlib</tt></b></dt>
+ <dt><b><tt>--disable-ghc-make</tt></b></dt>
+	<dd> With this option, you can specify that ghc's <tt>--make</tt> option should not be used and Haskell source files are compiled individually. The advantage of this configuration is that it allows you to specify options for particular source files on the make command line. E.g., if you want to build a compiler for profiling and get profiling data for all top-level functions in file <tt>TypeCheck.lhs</tt>, you can use the command
+
+<pre>
+  make HCFLAGS='-prof -auto' TypeCheck_HCFLAGS=-auto-all
+
+</pre>
+This option has no effect when hbc or nhc98 are used.</dd>
+ <dt><b><tt>--disable-stdlib</tt></b></dt>
 	<dd> This option disables compilation of all library modules except for the prelude.</dd>
- <dt><b><tt>-disable-debug</tt></b></dt>
+ <dt><b><tt>--disable-debug</tt></b></dt>
 	<dd> This option disables compilation of the Curry libraries with debugging information. Note that the compiler still can be used for compiling modules with debugging information, but you will be unable to build programs from these modules due to missing definitions for the standard library. This option is useful in order to speed up compilation on a slow machine if you do not intend to use the debugger.</dd>
- <dt><b><tt>-disable-occurs-check</tt></b></dt>
+ <dt><b><tt>--disable-occurs-check</tt></b></dt>
 	<dd> The semantics of Curry requires performing an occurs check in equality and disequality constraints in order to avoid constructing cyclic data terms. With this option, the occurs check can be disabled. This can improve performance on some examples, but may lead to worse performance and non-termination on others. Using this option is not recommended.</dd>
- <dt><b><tt>-enable-stability</tt></b></dt>
+ <dt><b><tt>--enable-stability</tt></b></dt>
 	<dd> This flag enables some experimental code that suspends threads performing a non-deterministic instantiation of variables while other deterministic computations can be run. This strategy is known as stability from AKL and Oz. For instance, given the definitions
 
 <pre>
@@ -333,31 +356,35 @@ nat (S n) = nat n
 
 </pre>
 the expression <tt>let n free in nat n &amp; n =:= S Z</tt> is evaluated deterministically because the deterministic binding of <tt>n</tt> in the equality constraint will get precedence over the non-deterministic instantiation of <tt>n</tt> in <tt>nat</tt>.</dd>
- <dt><b><tt>-enable-trampoline</tt></b></dt>
+ <dt><b><tt>--enable-copying</tt></b></dt>
+	<dd> By default, the bindings of local variables in different solutions of a search goal are managed with an extended trailing scheme. This option enables an alternative implementation, where independent copies of the search goal are used for each branch of the goal's search tree. This allows for a slightly more efficient execution of deterministic code, but can slow down non-deterministic code considerably in some situations. See&nbsp;[<a href="#Lux04:Compare" name="CITELux04:Compare">Lux04</a>] for a comparison of both configurations.</dd>
+ <dt><b><tt>--enable-trampoline</tt></b></dt>
 	<dd> By default, the compiler uses some extensions of the Gnu C compiler in order to implement tail calls efficiently by inserting assembler jump instructions into the code. This trick works on many architectures, but is not fully portable. For instance, it does not work under Mac OS X and is also incompatible with building code for shared libraries on most systems.
 
 <div class="p"><!----></div>
-If the compiler is configured with <tt>-enable-trampoline</tt>, it uses a portable but slower implementation where a global loop (the so-called trampoline) is used for dispatching tail calls. If your Curry programs keep crashing with bus errors or segmentation faults try reconfiguring the compiler with this option. Note that <tt>-enable-trampoline</tt> is the default on Mac OS X.</dd>
- <dt><b><tt>-disable-unboxed</tt></b></dt>
+If the compiler is configured with <tt>--enable-trampoline</tt>, it uses a portable but slower implementation where a global loop (the so-called trampoline) is used for dispatching tail calls. If your Curry programs keep crashing with bus errors or segmentation faults try reconfiguring the compiler with this option. Note that <tt>--enable-trampoline</tt> is the default when using a C compiler other than Gnu C and also on Mac OS X.</dd>
+ <dt><b><tt>--disable-unboxed</tt></b></dt>
 	<dd> Normally, the runtime system encodes integer values that fit into n<font face="symbol">-</font
->1 bits, where n is the number of bits in a machine word, in pointers rather than allocating a node in the heap for them. This improves efficiency mostly due to the avoided allocations, but makes pattern matching and integer operations slightly more complex. When the system is configured with <tt>-disable-unboxed</tt> all integer numbers are allocated in the heap. This option is useful only for measuring the performance gain of the default configuration and should not be used otherwise.</dd>
- <dt><b><tt>-disable-mprotect</tt></b></dt>
-	<dd> In order to detect errors in the two-space copying garbage collector early, the runtime system makes the inactive semi-space of the heap inaccessible using the <tt>mprotect</tt>(2) system call. This requires that <tt>mprotect</tt> is able to protect individual memory pages, which should be the case on most operating systems. The configure script checks only for the availability of the <tt>mprotect</tt> call, but does not check whether it actually works. On systems where <tt>mprotect</tt> exists, but is not able to protect individual pages, its use can be disabled by passing the <tt>-disable-mprotect</tt> option to <tt>configure</tt>.</dd>
- <dt><b><tt>-enable-mach</tt></b></dt>
-	<dd> The source distribution also includes an interpreter for the abstract machine underlying the implementation of the Münster Curry compiler. This interpreter is built when the <tt>-enable-mach</tt> option is passed to <tt>configure</tt>. Note that the interpreter is poorly maintained and may be removed in a future release.</dd>
+>1 bits, where n is the number of bits in a machine word, in pointers rather than allocating a node in the heap for them. This improves efficiency mostly due to the avoided allocations, but makes pattern matching and integer operations slightly more complex. When the system is configured with <tt>--disable-unboxed</tt> all integer numbers are allocated in the heap. This option is useful only for measuring the performance gain of the default configuration and should not be used otherwise.</dd>
+ <dt><b><tt>--disable-mprotect</tt></b></dt>
+	<dd> In order to detect errors in the two-space copying garbage collector early, the runtime system makes the inactive semi-space of the heap inaccessible using the <tt>mprotect</tt>(2) system call. This requires that <tt>mprotect</tt> is able to protect individual memory pages, which should be the case on most operating systems. The configure script checks only for the availability of the <tt>mprotect</tt> call, but does not check whether it actually works. On systems where <tt>mprotect</tt> exists, but is not able to protect individual pages, its use can be disabled by passing the <tt>--disable-mprotect</tt> option to <tt>configure</tt>.</dd>
+ <dt><b><tt>--enable-cam2c</tt></b></dt>
+	<dd> The source distribution includes a compiler from abstract machine code to C. This compiler is built by default only when the <tt>--enable-cam2c</tt> option is passed to <tt>configure</tt>. Note that this compiler is mainly intended for testing the C code generator of the Curry compiler and is not other integrated with the compiler.</dd>
+ <dt><b><tt>--enable-mach</tt></b></dt>
+	<dd> The source distribution also includes an interpreter for the abstract machine underlying the implementation of the Münster Curry compiler. This interpreter is built when the <tt>--enable-mach</tt> option is passed to <tt>configure</tt>. Note that the interpreter is poorly maintained and may be removed in a future release.</dd>
 </dl>
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc2.2.1">
 2.2.1</a>&nbsp;&nbsp;Porting to a New Architecture</h4><a name="sec:source-porting">
 </a>
-The Münster Curry compiler was designed to be as portable as possible and should work on systems where an ANSI C compiler and a POSIX compatible environment are available. It has been tested on different 32-bit architectures and also on the AMD x86-64 architecture, but should work on all 32-bit and 64-bit systems where the size of a C <tt>long</tt> is equal to that of a pointer.
+The Münster Curry compiler was designed to be as portable as possible and should work on systems where an ANSI C compiler and a POSIX compatible environment are available. It has been tested on different 32-bit and 64-bit architectures, and should work on all 32-bit and 64-bit systems where the size of a C <tt>long</tt> is equal to that of a pointer.
 
 <div class="p"><!----></div>
 In order to generate efficient code, the Münster Curry compiler uses some Gnu C extensions which work on a lot of architectures, but are not strictly portable. In particular, the default code generation model is incompatible with position independent code on most architectures. On systems where position independent code is the default - e.g., Apple's Mac OS X and IBM's AIX - and eventually on other systems, the compiler may have to be configured with the <tt>--enable-trampoline</tt> option in order to produce working executables.<a href="#tthFtNtAAC" name="tthFrefAAC"><sup>2</sup></a>
 
 <div class="p"><!----></div>
-You can test the compiler without installing it by using the scripts <tt>cyc-inplace</tt>, <tt>cymake-inplace</tt>, and <tt>cyi-inplace</tt> in the build directory instead of <tt>cyc</tt>, <tt>cymake</tt>, and <tt>cyi</tt>, respectively. In order to test the compiler on an unsupported architecture, you can use the test suites in <a href="http://danae.uni-muenster.de/~lux/curry/examples.tar.gz"><tt>http://danae.uni-muenster.de/~lux/curry/examples.tar.gz</tt></a> and <a href="http://danae.uni-muenster.de/~lux/curry/more-examples.tar.gz"><tt>http://danae.uni-muenster.de/~lux/curry/more-examples.tar.gz</tt></a>. After unpacking the archives, execute <tt>make test CYC=</tt><em>path-to-cyc</em> for both of them. This should report <tt>All tests completed successfully</tt> at the end. In that case, you can ignore the error messages produced while running the tests. Otherwise, send a bug report to <a href="mailto:wlux@uni-muenster.de">wlux@uni-muenster.de</a>.
+In order to test the compiler on an unsupported architecture, you can use the test suites in <a href="http://danae.uni-muenster.de/~lux/curry/examples.tar.gz"><tt>http://danae.uni-muenster.de/~lux/curry/examples.tar.gz</tt></a> and <a href="http://danae.uni-muenster.de/~lux/curry/more-examples.tar.gz"><tt>http://danae.uni-muenster.de/~lux/curry/more-examples.tar.gz</tt></a>. After unpacking the archives, execute <tt>make test CYC=</tt><em>path-to-cyc</em> for both of them. This should report <tt>All tests completed successfully</tt> at the end. In that case, you can ignore the error messages produced while running the tests. Otherwise, send a bug report to <a href="mailto:wlux@uni-muenster.de">wlux@uni-muenster.de</a>.
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc2.2.2">
@@ -384,7 +411,7 @@ Note: In the following, <tt>&lt;CYGWIN&gt;</tt> represents the directory where C
 
 <li> Add <tt>/usr/local/ghc/bin</tt> to the path. Make sure that the executable is found by typing <tt>ghc -v</tt> in the CygWin console. This should print out a long list configuration and package information for ghc.<br /><br /></li>
 
-<li> Unpack the sources of the Münster Curry compiler in some convenient place and change into the <tt>curry-0.9.9</tt> directory.<br /><br /></li>
+<li> Unpack the sources of the Münster Curry compiler in some convenient place and change into the <tt>curry-0.9.10</tt> directory.<br /><br /></li>
 
 <li> Configure, compile, and install the compiler:
 
@@ -417,7 +444,7 @@ The order of file names does matter as it determines the order in which the file
 The source language of a file and the associated processing is determined by the file name extension. Argument names which end with <tt>.curry</tt> are taken to be Curry source, names ending in <tt>.lcurry</tt> are taken to be literate Curry source, names ending in <tt>.c</tt> are taken to be C code, names ending in <tt>.s</tt> are taken to be assembler programs, and <tt>.o</tt> are object files.
 
 <div class="p"><!----></div>
-By default, a program linked with <tt>cyc</tt> executes the goal <tt>main.main</tt>. It is possible to specify a different goal with the <tt>-e</tt> option. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the syntax of goals. If the type of the goal is <tt>IO</tt>&nbsp;t, for some arbitrary type t, the program executes the corresponding I/O action. Otherwise, the goal is evaluated and its solutions are presented incrementally on the standard output.
+By default, a program linked with <tt>cyc</tt> executes the <tt>main</tt> function in the main module of the program. The compiler assumes that the last Curry source file appearing on the command line defines the main module. A different main module can be specified explicitly with the <tt>-M</tt> option. It is possible to specify a different goal with the <tt>-e</tt> option. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the syntax of goals. If the type of the goal is <tt>IO</tt>&nbsp;t, for some arbitrary type t, the program executes the corresponding I/O action. Otherwise, the goal is evaluated and its solutions are presented incrementally on the standard output.
 
 <div class="p"><!----></div>
      <h3><a name="tth_sEc3.1">
@@ -464,6 +491,26 @@ Note that code compiled with this option is incompatible with code compiled with
 	<dd> This flag has an effect only in conjunction with one of previous options. It tells that debugger that it can trust all functions from a module compiled with this flag. The debugger will not ask questions about such functions.</dd>
  <dt><b>-i<em>dir</em></b></dt>
 	<dd> Add directory <em>dir</em> to the list of paths used to locate interface files. By default, the compiler searches for interface files in the current directory and in its standard library directory (usually <tt>/usr/local/lib/curry</tt>).</dd>
+ <dt><b>-Whaskell</b></dt>
+	<dd></dd>
+ <dt><b>-Wprolog</b></dt>
+	<dd>  </dd>
+ <dt><b>-Wgoedel</b></dt>
+	<dd>  Warn whenever a definition does not obey the selected case mode (cf. Sect. C.1 of the Curry report&nbsp;[<a href="#Hanus06:Report" name="CITEHanus06:Report">Han06</a>]).</dd>
+ <dt><b>-Wall</b></dt>
+	<dd> Enable all warnings below.</dd>
+ <dt><b>-Wunused</b></dt>
+	<dd> Enable all unused warnings below.</dd>
+ <dt><b>-Wunused-data</b></dt>
+	<dd> Warn whenever a data constructor is not used.</dd>
+ <dt><b>-Wunused-decl</b></dt>
+	<dd> Warn whenever a function or pattern declaration is not used.</dd>
+ <dt><b>-Wunused-var</b></dt>
+	<dd> Warn whenever a function or pattern argument is not used.</dd>
+ <dt><b>-Wshadow</b></dt>
+	<dd> Warn whenever a local declaration shadows a declaration from an outer scope.</dd>
+ <dt><b>-Woverlap</b></dt>
+	<dd> Warn whenever a function's equations have overlapping left hand sides.</dd>
  <dt><b>-H<em>size</em></b></dt>
 	<dd> Change the heap size used by the compiler to <em>size</em>. It is possible to use the abbreviations <em>size</em><tt>k</tt> and <em>size</em><tt>M</tt> to specify the heap size in kBytes and MBytes, respectively.
 
@@ -514,14 +561,14 @@ The following options are relevant while linking a program. The compiler creates
  <dt><b>-p</b></dt>
 	<dd> Print cumulated execution times and memory usage statistics at the end of the run. If specified more than once, also print memory statistics at each garbage collection.</dd>
  <dt><b>-e<em>goal</em></b></dt>
-	<dd> Evaluate <em>goal</em> instead of <tt>main.main</tt>. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the goal syntax. The <em>goal</em> is evaluated with respect to the Curry module that occurs last on the command line, the module specified with the <tt>-M</tt> option, or the Curry prelude otherwise.</dd>
+	<dd> Evaluate <em>goal</em> instead of <tt>main</tt>. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the goal syntax. The <em>goal</em> is evaluated with respect to the Curry module specified explicitly with the <tt>-M</tt> option, the last module occurring on the command line, or the <tt>Prelude</tt> otherwise.</dd>
  <dt><b>-T<em>goal</em></b></dt>
-	<dd> Compute the type of <em>goal</em>. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the goal syntax. The <em>goal</em>'s type is computed with respect to the Curry module that occurs last on the command line, the module specified with the <tt>-M</tt> option, or the Curry prelude otherwise.</dd>
+	<dd> Compute the type of <em>goal</em>. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the goal syntax. The <em>goal</em>'s type is computed with respect to the Curry module specified explicitly with the <tt>-M</tt> option, the last module occurring on the command line, or the <tt>Prelude</tt> otherwise.</dd>
  <dt><b>-M<em>module</em></b></dt>
-	<dd> An explicit goal specified with the <tt>-e</tt> option is evaluated with respect to the module <em>module</em> if no other Curry module occurs on the command line.
+	<dd> Use <em>module</em> as main module of the program. An explicit goal specified with the <tt>-e</tt> option is evaluated in the context of <em>module</em>. By default, the compiler assumes that the last Curry source file appearing on the command line contains the main module of the program. It may be necessary to specify the main module explicitly when there are no source file arguments.
 
 <div class="p"><!----></div>
-  <em>module</em> is either the name of the source file (ending in <tt>.lcurry</tt> or <tt>.curry</tt>) or the name of a module whose source can be located in the current directory.</dd>
+  <em>Module</em> is either the name of a source file (ending in <tt>.lcurry</tt> or <tt>.curry</tt>) or the name of a module whose source can be located in the current directory.</dd>
  <dt><b>-L<em>dir</em></b></dt>
 	<dd> Add directory <em>dir</em> to the list of paths used to locate libraries specified with <tt>-l</tt> options. The standard library directory (in the standard configuration: <tt>/usr/local/lib/curry</tt>) is always included in this list.</dd>
  <dt><b>-l<em>lib</em></b></dt>
@@ -532,19 +579,35 @@ The following options are relevant while linking a program. The compiler creates
 
 <div class="p"><!----></div>
      <h3><a name="tth_sEc3.5">
-3.5</a>&nbsp;&nbsp;Examples</h3>
+3.5</a>&nbsp;&nbsp;Environment</h3>
+
+<dl compact="compact">
+ <dt><b>CURRY_PATH</b></dt>
+	<dd> The environment variable <tt>CURRY_PATH</tt> is used to locate the compiler executables. The default value is <tt>/usr/local/lib/curry</tt>.</dd>
+ <dt><b>CURRY_IMPORT_PATH</b></dt>
+	<dd></dd>
+ <dt><b>CURRY_INCLUDE_PATH</b></dt>
+	<dd>  </dd>
+ <dt><b>CURRY_LIBRARY_PATH</b></dt>
+	<dd>  
+The environment variables <tt>CURRY_IMPORT_PATH</tt>, <tt>CURRY_INCLUDE_PATH</tt>, and <tt>CURRY_LIBRARY_PATH</tt> contain colon-separated lists of directories that are searched for imported interfaces, included header files, and library files, respectively. Their default value is <tt>$CURRY_PATH</tt>.</dd>
+</dl>
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc3.6">
+3.6</a>&nbsp;&nbsp;Examples</h3>
 
 <pre>
 cyc test.curry
 
 </pre>
-This command compiles and links the Curry module in <tt>test.curry</tt>. The file <tt>test.curry</tt> must define the module <tt>main</tt>. The executable is put in <tt>a.out</tt> and evaluates the goal <tt>main.main</tt>.
+This command compiles and links the Curry module in <tt>test.curry</tt>. The executable is put in <tt>a.out</tt> and evaluates the <tt>main</tt> function in <tt>test.curry</tt>.
 
 <pre>
 cyc -h12M -O2 A.lcurry B.lcurry -o B
 
 </pre>
-This command compiles and links the Curry modules in <tt>A.lcurry</tt> and <tt>B.lcurry</tt> in that order. Both files are taken to contain literate Curry source. The code is optimized by the C compiler using optimization level 2. The executable is put in file <tt>B</tt>. It evaluates the goal <tt>main.main</tt> and uses a larger default heap (12 MBytes). File <tt>B.lcurry</tt> should define the <tt>main</tt> module.
+This command compiles and links the Curry modules in <tt>A.lcurry</tt> and <tt>B.lcurry</tt> in that order. Both files are assumed to contain literate Curry source. The code is optimized by the C compiler using optimization level 2. The executable is put in file <tt>B</tt>. It evaluates the <tt>main</tt> function in <tt>B.lcurry</tt> and uses a larger default heap (12 MBytes).
 
 <pre>
 cyc -c nat.curry
@@ -560,8 +623,8 @@ cyc -e "length Xs where Xs free"
 This command compiles and links a program that evaluates the goal <tt>length Xs where Xs free</tt>. The executable is placed in <tt>a.out</tt>.
 
 <div class="p"><!----></div>
-     <h3><a name="tth_sEc3.6">
-3.6</a>&nbsp;&nbsp;Running Programs</h3><a name="sec:running">
+     <h3><a name="tth_sEc3.7">
+3.7</a>&nbsp;&nbsp;Running Programs</h3><a name="sec:running">
 </a>
 The operation of a Curry program depends on the type of the goal being evaluated. If it is of type <tt>IO</tt>&nbsp;t, the I/O action described by the goal is executed. All command line arguments except for the runtime system options (see below) are available to the program and can be accessed with the function <tt>System.getArgs</tt>.
 
@@ -621,10 +684,46 @@ The Münster Curry compiler includes a declarative debugger of wrong answers. Thi
 The debugger will ask questions about the correctness of these basic facts in order to find (an instance of) a program rule which computes a value that does not match the intended semantics of the program.
 
 <div class="p"><!----></div>
-In order to debug a program, all of its modules have to be recompiled with the <tt>--debug</tt> command line flag. In addition, you may use the flag <tt>--trusted</tt> for those modules whose implementation you trust. If a function is compiled with the <tt>--trusted</tt> flag, the debugger assumes that all basic facts for this function are correct and will not ask questions about them. Note that the prelude and the standard library modules have been compiled with the <tt>--trusted</tt> option.
-
+In order to debug a program, all of its modules have to be recompiled with the <tt>--debug</tt> command line flag. 
 <div class="p"><!----></div>
 The debugger is capable of handling programs which use encapsulated search. Note that wrong answers whose cause is actually a missing answer in a search goal cannot be detected. The debugger cannot yet handle programs involving I/O.
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc4.1">
+4.1</a>&nbsp;&nbsp;Trusted functions</h3><a name="sec:trusted">
+</a>
+When debugging larger programs, it is very inconvenient to answer questions about lot of functions which are supposed to be correct. In order to narrow down the region of the program that is explored in the debugger, the compiler allows annotating whole modules as well as individual functions as trusted. The debugger assumes that basic facts for trusted function are always correct and will not ask any questions for them. Note that the prelude and the standard libraries are always trusted.
+
+<div class="p"><!----></div>
+A whole module can be trusted by invoking with the compiler with the <tt>--trusted</tt> option in addition to <tt>--debug</tt>.  Individual functions can be trusted by means of trust annotations in the source code.
+
+<div class="p"><!----></div>
+Lexically, trust annotations appear as nested comments using <tt>{-#</tt> and <tt>#-}</tt> as delimiters<a href="#tthFtNtAAE" name="tthFrefAAE"><sup>4</sup></a>. Syntactically, trust annotations are declarations that can appear where a function declaration is allowed. To this end, the Curry grammar is extended as follows (cf. appendix C.3 in&nbsp;[<a href="#Hanus06:Report" name="CITEHanus06:Report">Han06</a>]).
+
+<br clear="all" /><table border="0" cellspacing="0" cellpadding="0" width="100%">
+<table border="0" cellspacing="0" cellpadding="0">
+ <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+ <i>FunctionDeclaration</i> </td></tr></table></td><td nowrap="nowrap" align="left">
+<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+:: = </td></tr></table></td><td nowrap="nowrap" align="left">
+<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+<i>Signature</i>  | <i>TrustAnnot</i>  | <i>Equat</i> </td></tr></table><td width="50%"></td></tr>
+ <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+ <i>TrustAnnot</i> </td></tr></table></td><td nowrap="nowrap" align="left">
+<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+:: = </td></tr></table></td><td nowrap="nowrap" align="left">
+<table><tr><td nowrap="nowrap" align="right" colspan="1">{<font face="symbol">-</font
+><tt>#</tt> <span class="roman">(</span><tt>TRUST</tt>  | <tt>SUSPECT</tt><span class="roman">)</span> <span class="roman">(</span><i>FunctionNames</i>  | _<span class="roman">)</span> <tt>#</tt><font face="symbol">-</font
+>}</td></tr></table><td width="50%"></td></tr></table></table>
+
+
+
+
+<div class="p"><!----></div>
+An explicit trust annotation <tt>{-# TRUST</tt> f<sub>1</sub>, ..., f<sub>n</sub> <tt>#-}</tt> declares f<sub>1</sub>,...,f<sub>n</sub> as trusted functions. The annotation <tt>{-# TRUST _ #-}</tt> declares all functions in its declaration group, which are not listed in an explicit trust annotation, as trusted functions. Local functions are trusted automatically when their enclosing function is trusted. Thus, adding an annotation <tt>{-# TRUST _ #-}</tt> at the top-level of a module is equivalent to compiling the module with <tt>--trusted</tt>.
+
+<div class="p"><!----></div>
+<tt>{-# SUSPECT</tt> ... <tt>#-}</tt> annotations have the opposite effect as <tt>TRUST</tt>  annotations, i.e., they declare functions as untrusted. This is useful in order to narrow down the set of functions where a bug is suspected when a module is compiled with <tt>--trusted</tt>. In some sense, adding a <tt>SUSPECT</tt> annotation to an otherwise trusted module is the equivalent of setting a breakpoint in a conventional debugger for an imperative language.
 
 <div class="p"><!----></div>
  <h2><a name="tth_sEc5">
@@ -656,7 +755,7 @@ The debugger is capable of handling programs which use encapsulated search. Note
  <dt><b>-a</b></dt>
 	<dd> Always link the executable, even if it is not out of date with respect to its object files. This is useful if only the goal to be evaluated by the program is changed.</dd>
  <dt><b>-e <em>goal</em></b></dt>
-	<dd> Evaluate <em>goal</em> instead of <tt>main.main</tt>. This option cannot be used when compiling more than one module. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the syntax of goals.</dd>
+	<dd> Evaluate <em>goal</em> instead of function <tt>main</tt>. This option cannot be used when compiling more than one module. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the syntax of goals.</dd>
  <dt><b>-T<em>goal</em></b></dt>
 	<dd> Compute the type of <em>goal</em>. This option cannot be used when compiling more than one module. See Sect.&nbsp;<a href="#sec:goals">6.1</a> for a description of the goal syntax.</dd>
  <dt><b>--debug</b></dt>
@@ -677,7 +776,22 @@ Most other flags are assumed to be compiler options and are passed to <tt>cyc</t
 
 <div class="p"><!----></div>
      <h3><a name="tth_sEc5.2">
-5.2</a>&nbsp;&nbsp;Modules and the Filesystem</h3><a name="sec:hierarchical">
+5.2</a>&nbsp;&nbsp;Environment</h3>
+
+<dl compact="compact">
+ <dt><b>CURRY_PATH</b></dt>
+	<dd> The environment variable <tt>CURRY_PATH</tt> is used to locate the auxiliary executables used by <tt>cymake</tt>.  The default value is <tt>/usr/local/lib/curry</tt>.</dd>
+ <dt><b>CURRY_IMPORT_PATH</b></dt>
+	<dd></dd>
+ <dt><b>CURRY_INCLUDE_PATH</b></dt>
+	<dd>  </dd>
+ <dt><b>CURRY_LIBRARY_PATH</b></dt>
+	<dd>  The environment variables <tt>CURRY_IMPORT_PATH</tt>, <tt>CURRY_INCLUDE_PATH</tt>, and <tt>CURRY_LIBRARY_PATH</tt> contain colon-separated lists of directories that are searched for imported interfaces, included header files, and library files, respectively. Their default value is <tt>$CURRY_PATH</tt>.</dd>
+</dl>
+
+<div class="p"><!----></div>
+     <h3><a name="tth_sEc5.3">
+5.3</a>&nbsp;&nbsp;Modules and the Filesystem</h3><a name="sec:hierarchical">
 </a>
 Starting with release 0.9.6, the Münster Curry compiler maps hierarchical module names onto the filesystem as in Java. This is of particular importance in conjunction with <tt>cymake</tt> which tries to find sources for imported modules. For instance, the source for an imported module <tt>Lib.Data.Set</tt> is expected in one of the files <tt>Lib/Data/Set.lcurry</tt> and <tt>Lib/Data/Set.curry</tt>. This path is relative to the directory where <tt>cymake</tt> is invoked or one of the directories specified with the <tt>-i</tt> option and does not depend on the path of the source file or target being compiled. This makes it possible to import modules of one subproject into sources of another subproject. The compiler uses the same procedure for locating interface files of imported modules. Therefore, you should always compile the sources of hierarchical modules from the base directory of the project.
 
@@ -702,8 +816,8 @@ and the following association between files and modules
 it is possible to rebuild the program and all of its imported modules using the single command <tt>cymake -iSub main</tt>.
 
 <div class="p"><!----></div>
-     <h3><a name="tth_sEc5.3">
-5.3</a>&nbsp;&nbsp;Using Libraries</h3>
+     <h3><a name="tth_sEc5.4">
+5.4</a>&nbsp;&nbsp;Using Libraries</h3>
 The <tt>-i</tt> and <tt>-P</tt> options of <tt>cymake</tt> allow searching for imported Curry modules and library interfaces in various directories besides the current directory and the standard library directory. Imported source files, which are found in the current directory and along the paths specified with <tt>-i</tt> options, are updated as necessary and the compiled object files are automatically included when linking the executable program.
 
 <div class="p"><!----></div>
@@ -735,8 +849,8 @@ cymake -imodules -Plibrary prog library/Lib.a
 Note that this command will not recompile the files <tt>L1.curry</tt> and <tt>L2.curry</tt> if they are newer than the corresponding object files in directory <tt>library</tt>. Nevertheless, the interface files <tt>L1.icurry</tt> and <tt>L2.icurry</tt> can cause a recompilation of <tt>prog.curry</tt>, <tt>M1.curry</tt>, and <tt>M2.curry</tt>, respectively, if these modules are out of date with respect to the interfaces.
 
 <div class="p"><!----></div>
-     <h3><a name="tth_sEc5.4">
-5.4</a>&nbsp;&nbsp;Using <tt>make</tt></h3>
+     <h3><a name="tth_sEc5.5">
+5.5</a>&nbsp;&nbsp;Using <tt>make</tt></h3>
 When <tt>cymake</tt> is invoked with the <tt>-M</tt> option, it generates <tt>make</tt> style dependencies which can be included in a  <tt>Makefile</tt>. The generated dependencies assume that the Makefile contains definitions similar to
 
 <pre>
@@ -757,13 +871,13 @@ in order to compile Curry modules. The <tt>.o.icurry</tt> rule is essential for 
  <h2><a name="tth_sEc6">
 6</a>&nbsp;&nbsp;Using the Interactive Environment</h2><a name="sec:cyi">
 </a>
-<tt>cyi</tt> is an interactive environment that allows evaluating and debugging Curry goals with respect to a Curry module loaded into the interpreter. At startup, <tt>cyi</tt> loads either the first module specified on the command line or the Curry prelude.
+<tt>cyi</tt> is an interactive environment that allows evaluating and debugging Curry goals with respect to a Curry module loaded into the interpreter. At startup, <tt>cyi</tt> reads and interprets commands from the file <tt>.cyirc</tt> in the current directory if it exists, or from <tt>.cyirc</tt> in your home directory otherwise, and then loads either the first module specified on the command line or the Curry prelude.
 
 <div class="p"><!----></div>
      <h3><a name="tth_sEc6.1">
 6.1</a>&nbsp;&nbsp;Goals</h3><a name="sec:goals">
 </a>
-A goal is a Curry expression optionally followed by a where-clause that can be used for providing local definitions for the goal (see appendix C.3 in&nbsp;[<a href="#Hanus03:Report" name="CITEHanus03:Report">Han03</a>] for the context free syntax of Curry).
+A goal is a Curry expression optionally followed by a where-clause that can be used for providing local definitions for the goal (see appendix C.3 in&nbsp;[<a href="#Hanus06:Report" name="CITEHanus06:Report">Han06</a>] for the context free syntax of Curry).
 
 <br clear="all" /><table border="0" cellspacing="0" cellpadding="0" width="100%">
 <table border="0" cellspacing="0" cellpadding="0">
@@ -830,7 +944,7 @@ All commands, except for <tt>:cd</tt> and <tt>:clean</tt>, may be abbreviated to
 <div class="p"><!----></div>
      <h3><a name="tth_sEc6.3">
 6.3</a>&nbsp;&nbsp;Limitations</h3>
-<tt>cyi</tt> is implemented as a shell script which invokes <tt>cymake</tt> and <tt>cyc</tt> for compiling modules and goals. Commands are read from the standard input using the shell's builtin <tt>read</tt> command. Some shells, e.g. <tt>/bin/sh</tt> on Solaris, cannot read raw input but apply backslash processing to the input. When <tt>cyi</tt> is executed under such a shell, all backslash characters on the command line must be escaped by another backslash character; i.e., you have to enter <tt>\\x -&gt; x</tt> in a goal instead of <tt>\x -&gt; x</tt> and <tt>ord '\\n'</tt> instead of <tt>ord '\n'</tt>. In order to remind you of this limitation, <tt>cyi</tt> displays the following warning at startup when it is appropriate.
+<tt>cyi</tt> is implemented as a shell script which invokes <tt>cymake</tt> and <tt>cyc</tt> for compiling modules and goals. Commands are read from the standard input using the shell's builtin <tt>read</tt> command. Some shells, e.g. <tt>/bin/sh</tt> on Solaris, cannot read raw input but apply backslash processing to the input. When <tt>cyi</tt> is executed by such a shell, all backslash characters on the command line must be escaped by another backslash character; i.e., you have to enter <tt>\\x -&gt; x</tt> in a goal instead of <tt>\x -&gt; x</tt> and <tt>ord '\\n'</tt> instead of <tt>ord '\n'</tt>. In order to remind you of this limitation, <tt>cyi</tt> displays the following warning at startup when it is appropriate.
 
 <pre>
 Warning: Backslashes on the command line must be escaped
@@ -841,6 +955,9 @@ Warning: Backslashes on the command line must be escaped
 
 <div class="p"><!----></div>
 On most systems you should not see the above warning and can enter your goals as expected because the configure scripts of the Münster Curry compiler will look for a shell that supports raw reads. If this is not the case, you may want to install a modern shell, e.g., Gnu bash, on your system and reinstall the compiler. Be careful to remove the file <tt>config.cache</tt> if it exists in your build directory before running <tt>configure</tt> again.
+
+<div class="p"><!----></div>
+Command line editing and history require support from the <tt>read</tt> command of the shell, which executes the <tt>cyi</tt> script. This is available only for Gnu Bash and Korn shells except for the public domain version. Command line editing also works for the Z shell, but without history.
 
 <div class="p"><!----></div>
      <h3><a name="tth_sEc6.4">
@@ -867,27 +984,27 @@ Note that <tt>add</tt> deliberately contains an error, which is corrected during
 lux@localhost:~ % cyi
     _____ __ __
    / ___/ |  / _               Muenster Curry Compiler
-  / /     | / | |              Version 0.9.9, Copyright (c) 1998-2005
+  / /     | / | |              Version 0.9.10, Copyright (c) 1998-2006
  / /___  / /  | |
  \____/ /_/   |_|              Type :h for help
 
-prelude&#62; <i>length [1,2,3,4]</i>
+Prelude&#62; <i>length [1,2,3,4]</i>
 4
-prelude&#62; <i>length Xs where Xs free</i>
+Prelude&#62; <i>length Xs where Xs free</i>
 {Xs = []} 0
 More solutions? [Y(es)/n(o)/a(ll)] 
 {Xs = [_a]} 1
 More solutions? [Y(es)/n(o)/a(ll)] 
 {Xs = [_a, _b]} 2
 More solutions? [Y(es)/n(o)/a(ll)] <i>n</i>
-prelude&#62; <i>:l nat</i>
+Prelude&#62; <i>:l nat</i>
 /usr/local/bin/cyc -c nat.curry -o nat.o
-main&#62; <i>let N free in nat N</i>
-{N = Z} Success
+nat&#62; <i>let N free in nat N</i>
+{N = Z}
 More solutions? [Y(es)/n(o)/a(ll)] 
-{N = S Z} Success
+{N = S Z}
 More solutions? [Y(es)/n(o)/a(ll)] <i>n</i>
-main&#62; <i>sub (S (S Z)) X where X free</i>
+nat&#62; <i>sub (S (S Z)) X where X free</i>
 S (S Z)
 More solutions? [Y(es)/n(o)/a(ll)] <i>n</i>
 </pre>
@@ -902,35 +1019,35 @@ More solutions? [Y(es)/n(o)/a(ll)] <i>n</i>
 <div class="p"><!----></div>
 <a name="tth_fIg2">
 </a> <pre>
-main&#62; <i>:d</i>
+nat&#62; <i>:d</i>
 
 Entering debugger...
 
 Considering the following basic fact:
-1. main.sub (S (S Z)) _a  -&#62; (S (S Z))
+1. nat.sub (S (S Z)) _a  -&#62; (S (S Z))
 Is this valid? [y(es)/n(o)/a(bort)] <i>n</i>
 
 Considering the following basic fact:
-1. main.add (S (S Z)) _a  -&#62; (S (S Z))
+1. nat.add (S (S Z)) _a  -&#62; (S (S Z))
 Is this valid? [y(es)/n(o)/a(bort)] <i>n</i>
 
 Considering the following basic fact:
-1. main.add (S Z) _a  -&#62; (S Z)
+1. nat.add (S Z) _a  -&#62; (S Z)
 Is this valid? [y(es)/n(o)/a(bort)] <i>n</i>
 
 Considering the following basic fact:
-1. main.add Z _a  -&#62; Z
+1. nat.add Z _a  -&#62; Z
 Is this valid? [y(es)/n(o)/a(bort)] <i>n</i>
 
- ** Function main.add is incorrect **
- Wrong instance: main.add Z _a  -&#62; Z
+ ** Function nat.add is incorrect **
+ Wrong instance: nat.add Z _a  -&#62; Z
 
 Buggy node found
 Debugger exiting
-main&#62; <i>:e nat.curry</i>
-main&#62; <i>:r</i>
+nat&#62; <i>:e nat.curry</i>
+nat&#62; <i>:r</i>
 /usr/local/bin/cyc -c nat.curry -o nat.o
-main&#62; <i>:^</i>
+nat&#62; <i>:^</i>
 {X = S (S Z)} Z
 More solutions? [Y(es)/n(o)/a(ll)] <i>a</i>
 {X = S Z} S Z | {X = Z} S (S Z)
@@ -948,12 +1065,9 @@ In addition to the standard prelude, the Münster Curry compiler is distributed w
 
 <div class="p"><!----></div>
      <h3><a name="tth_sEc7.1">
-7.1</a>&nbsp;&nbsp;Prelude</h3><a name="sec:lib-prelude">
+7.1</a>&nbsp;&nbsp;Prelude</h3><a name="sec:lib-Prelude">
 </a>
-The <tt>prelude</tt> implements the data types and functions of appendix B of the Curry report&nbsp;[<a href="#Hanus03:Report" name="CITEHanus03:Report">Han03</a>] with the exception of the functions <tt>tryone</tt>, <tt>one</tt>, and <tt>condSearch</tt>. These functions are currently unimplemented due to the lack of committed choice.
-
-<div class="p"><!----></div>
-The Münster Curry compiler's <tt>prelude</tt> also supports the following extensions with respect to appendix B:
+The <tt>Prelude</tt> implements the data types and functions of appendix B of the Curry report&nbsp;[<a href="#Hanus06:Report" name="CITEHanus06:Report">Han06</a>]. In addition, the following extensions are implemented in the <tt>Prelude</tt> of the Münster Curry compiler.
 
 <ul>
 <li> Additional operators <tt>quot</tt> and <tt>rem</tt> for integer division.
@@ -1004,16 +1118,6 @@ roundFloat    :: Float -&#62; Int
 
 </pre><br /><br /></li>
 
-<li> The functions <tt>(&lt;)</tt>, <tt>(&lt;=)</tt>, <tt>(&gt;)</tt>, and <tt>(&gt;=)</tt> have type <tt>a -&gt; a -&gt; Bool</tt>, i.e., they can be used for comparing (ground) data terms of arbitrary types. See also Sect.&nbsp;<a href="#sec:ext-poly-compare">8.1.13</a>.
-All comparisons are actually defined in terms of
-
-<pre>
-data Ordering = LT | EQ | GT
-compare :: a -&#62; a -&#62; Ordering
-
-</pre>
-Comparison of terms without an order - notably functions - will cause a runtime error.<br /><br /></li>
-
 <li> Disequality constraints
 
 <pre>
@@ -1028,6 +1132,32 @@ See also Sect.&nbsp;<a href="#sec:ext-disequal">8.1.2</a><br /><br /></li>
 undefined = failed
 
 </pre><br /><br /></li>
+
+<li> The function
+
+<pre>
+ensureGround :: a -&#62; a
+
+</pre>
+returns its argument and ensures (lazily) that the normal form of the result is a ground term.<br /><br /></li>
+
+<li> The type
+
+<pre>
+type ShowS = String -&#62; String
+
+</pre>
+and the functions
+
+<pre>
+shows :: a -&#62; ShowS
+showChar :: Char -&#62; ShowS
+showString :: String -&#62; ShowS
+showList :: [a] -&#62; ShowS
+showParen :: Bool -&#62; ShowS -&#62; ShowS
+
+</pre>
+from the Haskell prelude are defined. Note that <tt>showList</tt> is a polymorphic function and therefore will show strings in list notation, not in string notation.<br /><br /></li>
 
 <li> Additional I/O functions:
 
@@ -1055,34 +1185,6 @@ catch :: IO a -&#62; (IOError -&#62; IO a) -&#62; IO a
 
 <div class="p"><!----></div>
 Note: The type <tt>IOError</tt> will become an abstract type in future releases for compatibility with Haskell.<br /><br /></li>
-</ul>
-The following changes implemented in the prelude of the Münster Curry compiler were proposed recently on the Curry mailing list and are expected to become part of the next release of the Curry report.
-
-<ul>
-<li> The type of <tt>(&amp;&gt;)</tt> has been generalized to <tt>Success -&gt; a -&gt; a</tt>.<br /><br /></li>
-
-<li> The non-deterministic choice operator <tt>(?) :: a -&gt; a -&gt; a</tt>.
-
-<pre>
-infixr 0 ?
-x ? _ = x
-_ ? y = y
-
-</pre><br /><br /></li>
-
-<li> The function <tt>seq</tt> is not rigid in its first argument. As a consequence, <tt>($!)</tt> is also not rigid in its second argument.<br /><br /></li>
-
-<li> The function <tt>ensureNotFree :: a -&gt; a</tt> is equivalent to the identity function except for ensuring that its result is a non-variable term. You can use this function in order to restore the old semantics of <tt>seq</tt> and <tt>($!)</tt>:
-
-<pre>
-import prelude hiding(seq,($!))
-infixr 0 `seq`, $!
-x `seq` y = rigid x `prelude.seq` y
-f $! x = f prelude.$! rigid x
-
-</pre><br /><br /></li>
-
-<li> The function <tt>ensureSpine :: [a] -&gt; [a]</tt> similarly ensures that the spine of its result (but not the elements) is instantiated to non-variable terms.<br /><br /></li>
 </ul>
 
 <div class="p"><!----></div>
@@ -1128,7 +1230,7 @@ amap :: (a-&#62;b) -&#62; Array a -&#62; Array b
 This module defines all functions except for the <tt>generic</tt>... variants. The latter are generalization of the prelude functions <tt>take</tt>, <tt>drop</tt>, etc. to arbitrary index types which are instances of the <tt>Integral</tt> class. As only <tt>Int</tt> is available in the Münster Curry compiler, there seems no point in implementing these functions.
 
 <div class="p"><!----></div>
-This module also defines all functions that are reexported from the Haskell prelude but absent from the Curry prelude, in particular the functions <tt>init</tt>, <tt>last</tt>, <tt>scanl</tt>, <tt>scanl1</tt>, <tt>scanr</tt>, <tt>scanr1</tt>, <tt>cycle</tt>, <tt>sum</tt>, <tt>product</tt>, <tt>maximum</tt>, and <tt>minimum</tt>. The last four functions are available only for lists with elements of type <tt>Int</tt>.
+This module also defines all functions that are re-exported from the Haskell prelude but absent from the Curry prelude, in particular the functions <tt>init</tt>, <tt>last</tt>, <tt>scanl</tt>, <tt>scanl1</tt>, <tt>scanr</tt>, <tt>scanr1</tt>, <tt>cycle</tt>, <tt>sum</tt>, <tt>product</tt>, <tt>maximum</tt>, and <tt>minimum</tt>. Due to the lack of type classes, the functions <tt>sum</tt> and <tt>product</tt> are available only for lists with elements of type <tt>Int</tt>.
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc7.2.7">
@@ -1141,10 +1243,20 @@ Fully implemented.
 All functions except <tt>readLitChar</tt>, <tt>showLitChar</tt>, and <tt>lexLitChar</tt> are implemented. There is no support for Unicode or other character sets at present. Reasonable results should be expected only for characters in the ASCII character range, i.e. between <tt>'\NUL'</tt> and <tt>'\DEL'</tt>.
 
 <div class="p"><!----></div>
+This module also exports the non-standard functions
+
+<pre>
+minChar :: Char
+maxChar :: Char
+
+</pre>
+which return the smallest and largest character values. These functions are provided as a temporary workaround until the Münster Curry compiler supports type classes.
+
+<div class="p"><!----></div>
       <h4><a name="tth_sEc7.2.9">
 7.2.9</a>&nbsp;&nbsp;Monad</h4><a name="sec:lib-Monad">
 </a>
-All functions except <tt>guard</tt> and <tt>msum</tt> are implemented, but are available only for <tt>IO</tt>. Note that <tt>guard</tt> and <tt>msum</tt> require an instance of <tt>MonadPlus</tt> and <tt>IO</tt> is not an instance of this class in Haskell. This module also defines the functions <tt>sequence</tt>, <tt>sequence_</tt>, <tt>mapM</tt>, and <tt>mapM_</tt> that are reexported from the Haskell prelude, but defined as <tt>sequenceIO</tt>, <tt>sequenceIO_</tt>, <tt>mapIO</tt>, and <tt>mapIO_</tt> in the Curry prelude.
+All functions except <tt>guard</tt> and <tt>msum</tt> are implemented, but are available only for <tt>IO</tt>. Note that <tt>guard</tt> and <tt>msum</tt> require an instance of <tt>MonadPlus</tt> and <tt>IO</tt> is not an instance of this class in Haskell. This module also defines the functions <tt>sequence</tt>, <tt>sequence_</tt>, <tt>mapM</tt>, and <tt>mapM_</tt> that are re-exported from the Haskell prelude, but defined as <tt>sequenceIO</tt>, <tt>sequenceIO_</tt>, <tt>mapIO</tt>, and <tt>mapIO_</tt> in the Curry prelude.
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc7.2.10">
@@ -1275,6 +1387,7 @@ Only the types <tt>CString</tt>, <tt>CStringLen</tt> and the functions <tt>peekC
 <div class="p"><!----></div>
       <h4><a name="tth_sEc7.3.16">
 7.3.16</a>&nbsp;&nbsp;CError</h4>
+
 All functions are implemented, but <tt>throwErrnoIfMinus1</tt>, <tt>throwErrnoIfMinus1_</tt>, <tt>throwErrnoIfMinus1Retry</tt>, and <tt>throwErrnoIfMinus1Retry_</tt> are restricted to <tt>IO</tt> actions returning an <tt>Int</tt> result.
 
 <div class="p"><!----></div>
@@ -1307,13 +1420,17 @@ allValuesB :: SearchTree a -&#62; [a]
 -- encapsulates all non-determinism
 getSearchTree :: a -&#62; IO (SearchTree a)
 
--- (getFirstSolution g) returns the first solution of goal g with an
+-- (getOneSolution g) returns one solution of goal g with an
 -- incomplete depth-first left-to-right strategy
-getFirstSolution :: (a -&#62; Success) -&#62; IO (Maybe a)
+getOneSolution :: (a -&#62; Success) -&#62; IO (Maybe a)
 
--- (getFirstSolution g) returns all solutions of goal g with an
+-- (getAllSolutions g) returns all solutions of goal g with an
 -- incomplete depth-first left-to-right strategy
 getAllSolutions :: (a -&#62; Success) -&#62; IO [a]
+
+-- (getOneValue x) returns one normal form of x with an incomplete
+-- depth-first left-to-right strategy
+getOneValue :: a -&#62; IO (Maybe a)
 
 -- (getAllValues x) returns all normal forms of x with an incomplete
 -- depth-first left-to-right strategy
@@ -1329,14 +1446,10 @@ getAllFailures :: a -&#62; (a -&#62; Success) -&#62; IO [a]
       <h4><a name="tth_sEc7.4.2">
 7.4.2</a>&nbsp;&nbsp;Combinatorial</h4><a name="sec:lib-Combinatorial">
 </a>
-The <tt>Combinatorial</tt> module provides some common non-deterministic operations. The non-deterministic choice operator <tt>(!)</tt> is provided solely for compatibility with PAKCS. Its use is discouraged since it is equivalent (except for its associativity) to the prelude operator <tt>(?)</tt>.
+The <tt>Combinatorial</tt> module provides some common non-deterministic operations.
 
 <pre>
 module Combinatorial where
-infixl 0 !
-
--- (x ! y) non-deterministically returns either x or y
-(!) :: a -&#62; a -&#62; a
 
 -- (permute xs) non-deterministically computes any permutation of xs
 permute :: [a] -&#62; [a]
@@ -1366,7 +1479,6 @@ This module contains a lot of useful functions on floating-point numbers.
 
 <pre>
 module Float where
-import prelude
 infixl 8 ^, ^^, **
 infixl 7 *., /.
 infixl 6 +., -.
@@ -1444,10 +1556,16 @@ The constant <tt>pi</tt>, and the functions <tt>(^)</tt>, <tt>(^^)</tt>, <tt>(**
       <h4><a name="tth_sEc7.4.4">
 7.4.4</a>&nbsp;&nbsp;Integer</h4><a name="sec:lib-Integer">
 </a>
-This module contains useful functions on integer numbers. Note that in contrast to PAKCS,  the Münster Curry compiler supports only fixed width integer numbers.
+This module contains useful functions on integer numbers. Note that in contrast to PAKCS,  the Münster Curry compiler supports only fixed width integer numbers. The smallest and largest integer values can be determined with the functions <tt>minInt</tt> and <tt>maxInt</tt>, respectively. Note that these functions are not available in PAKCS and are provided only as a temporary workaround until the Münster Curry compiler supports type classes.
 
 <pre>
 module Integer where
+
+-- (minInt) returns the smallest representable integer number 
+minInt :: Int
+
+-- (maxInt) returns the largest representable integer number
+maxInt :: Int
 
 -- (pow m n) returns the m raised to the power of n
 pow :: Int -&#62; Int -&#62; Int
@@ -1468,23 +1586,17 @@ binomial :: Int -&#62; Int -&#62; Int
 -- (abs n) returns the absolute value of n
 abs :: Int -&#62; Int
 
--- (max m n) returns the maximum of m and n
-max :: Int -&#62; Int -&#62; Int
-
--- (min m n) return the minimum of m and n
-min :: Int -&#62; Int -&#62; Int
-
 -- (max3 m n o) returns the maximum of m, n, and o
-max3 :: Int -&#62; Int -&#62; Int -&#62; Int
+max3 :: a -&#62; a -&#62; a -&#62; a
 
 -- (min3 m n o) returns the maximum of m, n, and o
-min3 :: Int -&#62; Int -&#62; Int -&#62; Int
+min3 :: a -&#62; a -&#62; a -&#62; a
 
--- (maxlist l) returns the maximum integer from list l
-maxlist :: [Int] -&#62; Int
+-- (maxlist l) returns the maximum value from list l
+maxlist :: [a] -&#62; a
 
--- (minlist l) returns the minimum integer from list l
-minlist :: [Int] -&#62; Int
+-- (minlist l) returns the minimum value from list l
+minlist :: [a] -&#62; a
 
 -- (bitTrunc m n) returns the m least significant bits of n
 bitTrunc :: Int -&#62; Int -&#62; Int
@@ -1563,7 +1675,7 @@ parseOne :: ParserRep a b -&#62; [b] -&#62; a
       <h4><a name="tth_sEc7.4.6">
 7.4.6</a>&nbsp;&nbsp;Ports</h4><a name="sec:lib-Ports">
 </a>
-The Münster Curry compiler implements a subset of PAKCS' distributed Curry functionality&nbsp;[<a href="#Hanus99:Ports" name="CITEHanus99:Ports">Han99</a>]. In particular, this module supports internal ports (created with <tt>openPort</tt>) and stream ports, which allow connecting with a subprocess (<tt>openProcessPort</tt>) and a TCP socket (<tt>openSocketConnectPort</tt>), respectively. This functionality is sufficient in order to implement graphical interfaces with PAKCS' <tt>Tk</tt> module, and also for connecting to Web servers and implementing simple Web browsers.
+The Münster Curry compiler implements a subset of PAKCS' distributed Curry functionality&nbsp;[<a href="#Hanus99:Ports" name="CITEHanus99:Ports">Han99</a>]. In particular, this module supports internal ports (created with <tt>openPort</tt>) and stream ports, which allow connecting with a subprocess (<tt>openProcessPort</tt>) and a TCP socket (<tt>openSocketConnectPort</tt>), respectively. This functionality is sufficient in order to implement graphical interfaces with PAKCS' <tt>Tk</tt> module, and also for connecting to Web servers and to implement simple Web browsers.
 
 <div class="p"><!----></div>
 Distributed ports with arbitrary argument types (<tt>openNamedPort</tt> and <tt>connectPort</tt>) are not supported because their implementation requires type information that is not available in the runtime system of the Münster Curry compiler.
@@ -1614,6 +1726,12 @@ openSocketConnectPort :: Int -&#62; String -&#62; IO (Port SP_Msg)
 -- non-variable term
 choiceSPEP :: Port SP_Msg -&#62; [a] -&#62; Either String [a]
 
+-- (newObject f s p) applies the function f to an initial state s and
+-- the messages received on the port p
+-- NB newObject constrains p to a fresh (local) port, so this argument
+--    should be a free variable
+newObject :: (a -&#62; [b] -&#62; Success) -&#62; a -&#62; Port b -&#62; Success
+
 </pre>
 The function <tt>choiceSPEP</tt> is supposed to perform a fair merge between the lines available on the stream port and the message stream. The current implementation, however, always returns the message list unless it is a variable. This may change in a future release of the Münster Curry compiler.
 
@@ -1635,7 +1753,69 @@ readHex   :: String -&#62; Int
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc7.4.8">
-7.4.8</a>&nbsp;&nbsp;Unsafe</h4><a name="sec:lib-Unsafe">
+7.4.8</a>&nbsp;&nbsp;Socket</h4><a name="sec:lib-Socket">
+</a>
+The module <tt>Socket</tt> provides an interface to the Unix socket system calls and is compatible with PAKCS. Note that only TCP sockets are supported at present and that there is no support for IPv6.
+
+<pre>
+module Socket where
+
+-- Abstract socket type
+data Socket
+
+-- Creates a new INET socket. Use socketBind, socketListen, and
+-- socketAccept for establishing a server for this socket.
+socketINET :: IO Socket
+
+-- Binds a socket to a port number. If the port number is a free
+-- variable, the system picks a port number and binds the variable
+-- to it.
+socketBind :: Socket -&#62; Int -&#62; IO ()
+
+-- Defines the maximum backlog queue of a port.
+socketListen :: Socket -&#62; Int -&#62; IO ()
+
+-- Creates a server side socket bound to a port number. If the port
+-- number is a free variable, the system picks a port number and binds
+-- the variable to it. The implementation currently sets a queue limit
+-- of 10 connections.
+listenOn :: Int -&#62; IO Socket
+
+-- Returns a connection of a client to a socket. The connection is
+-- returned as a pair consisting of a string identifying the client
+-- (the format of this string is implementation-dependent) and a handle
+-- to a stream communication with the client. The handle is both
+-- readable and writable.
+socketAccept :: Socket -&#62; IO (String, IO.Handle)
+
+-- Waits until a connection of a client to a socket is available. If
+-- no connection is available within the time limit, it returns Nothing,
+-- otherwise the connection is returned as a pair consisting of a string
+-- identifying the client (the format of this string is
+-- implementation-dependent) and a handle to a stream communication with
+-- the client.
+--
+-- Example call: (waitForSocketAccept socket timeout)
+-- Parameters:
+--   socket - a socket
+--   timeout - milliseconds to wait for input (&lt; 0 : no time out)
+waitForSocketAccept :: Socket -&#62; Int -&#62; IO (Maybe (String, IO.Handle))
+
+-- Creates a new connection to a Unix socket.
+-- Example call: (connectToSocket host port)
+-- Parameters:
+--   host - the host name of the connection
+--   port - the port number of the connection
+-- Returns:
+--   the handle of the stream (connected to the port port@host)
+--   which is both readable and writable
+connectToSocket :: String -&#62; Int -&#62; IO IO.Handle
+
+</pre>
+
+<div class="p"><!----></div>
+      <h4><a name="tth_sEc7.4.9">
+7.4.9</a>&nbsp;&nbsp;Unsafe</h4><a name="sec:lib-Unsafe">
 </a>
 Do not use this module unless you have really good reasons for doing so and can prove your program to be safe. 
 
@@ -1646,7 +1826,6 @@ spawnConstraint    :: Success -&#62; a -&#62; a
 trace              :: String -&#62; a -&#62; a
 unsafeInterleaveIO :: IO a -&#62; IO a
 unsafePerformIO    :: IO a -&#62; a
-unshare            :: a -&#62; a
 
 </pre>
 
@@ -1697,6 +1876,7 @@ toListFM   :: FM a b -&#62; [(a, b)]
 mapFM :: (a -&#62; b) -&#62; FM c a -&#62; FM c b
 
 showFM :: FM a b -&#62; [Char]
+showsFM :: FM a b -&#62; ShowS
 
 </pre>
 
@@ -1704,7 +1884,7 @@ showFM :: FM a b -&#62; [Char]
       <h4><a name="tth_sEc7.5.2">
 7.5.2</a>&nbsp;&nbsp;IOExts</h4><a name="sec:lib-IOExts">
 </a>
-The module <tt>IOExts</tt> implements a few useful functions for compatibility with Hugs and ghc. The <tt>fixIO</tt> function implements a fix-point operator in the <tt>IO</tt> monad as proposed in&nbsp;[<a href="#EL00:Recursive" name="CITEEL00:Recursive">EL00</a>]. The functions <tt>openProcess</tt>, <tt>pClose</tt>, and <tt>connectTcpSocket</tt> are only available for the Münster Curry compiler.
+The module <tt>IOExts</tt> implements a few useful functions for compatibility with Hugs and ghc. The <tt>fixIO</tt> function implements a fix-point operator in the <tt>IO</tt> monad as proposed in&nbsp;[<a href="#EL00:Recursive" name="CITEEL00:Recursive">EL00</a>]. The functions <tt>openFd</tt>, <tt>openProcess</tt>, <tt>pClose</tt>, and <tt>connectTcpSocket</tt> are only available for the Münster Curry compiler.
 
 <pre>
 module IOExts where
@@ -1735,6 +1915,9 @@ freezeIOArray :: IOArray a -&#62; IO (Array.Array a)
 thawIOArray   :: Array.Array a -&#62; IO (IOArray a)
 unsafeFreezeIOArray :: IOArray a -&#62; IO (Array.Array a)
 unsafeThawIOArray   :: Array.Array a -&#62; IO (IOArray a)
+
+-- open a file handle for a Unix file descriptor
+openFd :: Int -&#62; IO.IOMode -&#62; IO IO.Handle
 
 -- check whether a file handle is connected to a terminal
 hIsTerminalDevice :: IO.Handle -&#62; IO Bool
@@ -1782,7 +1965,96 @@ lengthIOVector :: IOVector a -&#62; Int
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc7.5.4">
-7.5.4</a>&nbsp;&nbsp;Set</h4><a name="sec:lib-Set">
+7.5.4</a>&nbsp;&nbsp;Lexing</h4><a name="sec:lib-Lexing">
+</a>
+This module implements lazy lexing combinators based on&nbsp;[<a href="#Chakravarty99:Lexing" name="CITEChakravarty99:Lexing">Cha99</a>].
+
+<pre>
+module Lexing where
+infixl 4 `star`, `plus`, `quest`
+infixl 3 +&#62;
+infixl 2 &#62;|&lt;, &#62;||&lt;
+
+type Position = (String, Int, Int)
+type LexerState a = (String, Position, a)
+
+type Regexp s t = Lexer s t -&#62; Lexer s t
+data Lexer s t
+type OneToken s t = (Maybe t, Lexer s t, LexerState s)
+
+type Action t = String -&#62; Position -&#62; Maybe t
+type Meta s t = Position -&#62; s -&#62; (Position, s, Maybe (Lexer s t))
+
+-- Regular expressions
+epsilon :: Regexp s t
+char :: Char -&#62; Regexp s t
+(+&#62;) :: Regexp s t -&#62; Regexp s t -&#62; Regexp s t
+(&#62;|&lt;) :: Regexp s t -&#62; Regexp s t -&#62; Regexp s t
+star :: Regexp s t -&#62; Regexp s t -&#62; Regexp s t
+plus :: Regexp s t -&#62; Regexp s t -&#62; Regexp s t
+quest :: Regexp s t -&#62; Regexp s t -&#62; Regexp s t
+
+alt :: String -&#62; Regexp s t
+string :: String -&#62; Regexp s t
+ident :: Regexp s t
+
+-- Lexer actions
+lexaction :: Regexp s t -&#62; Action t -&#62; Lexer s t
+(&#62;||&lt;) :: Lexer s t -&#62; Lexer s t -&#62; Lexer s t
+
+-- Meta actions
+lexmeta :: Regexp s t -&#62; Meta s t -&#62; Lexer s t
+ctrlLexer :: Lexer s t
+
+-- Lexing
+execLexer :: Lexer s t -&#62; LexerState s -&#62; [t]
+lexOne :: Lexer s t -&#62; LexerState s -&#62; OneToken s t
+
+</pre>
+
+<div class="p"><!----></div>
+      <h4><a name="tth_sEc7.5.5">
+7.5.5</a>&nbsp;&nbsp;NameSupply</h4><a name="sec:lib-NameSupply">
+</a>
+This module implements unique name supplies based on&nbsp;[<a href="#AugustssonRittriSynek94:Unique" name="CITEAugustssonRittriSynek94:Unique">ARS94</a>]. Note that all functions of this module are referentially transparent, i.e., they will return the same names when applied to the same arguments. For instance,
+
+<pre>
+  do
+    ns &lt;- initialNameSupply
+    print (getName ns,getName ns)
+
+</pre>
+will print the pair <tt>(0,0)</tt> and not <tt>(0,1)</tt>.
+
+<pre>
+module NameSupply
+
+data NameSupply
+
+-- (initialNameSupply) returns a new name supply
+initialNameSupply :: IO NameSupply
+
+-- (splitNameSupply ns) returns two name supplies, whose generated
+-- names will be distinct.
+splitNameSupply :: NameSupply -&#62; (NameSupply, NameSupply)
+
+-- (listNameSupply ns) returns an infinite list of name supplies, whose
+-- generated names will be distinct.
+listNameSupply :: NameSupply -&#62; [NameSupply]
+
+type Name = Int
+
+-- (getName ns) returns the unique name of name supply ns.
+getName :: NameSupply -&#62; Name
+
+-- (listName ns) returns an infinite list of unique names.
+listName :: NameSupply -&#62; [Name]
+
+</pre>
+
+<div class="p"><!----></div>
+      <h4><a name="tth_sEc7.5.6">
+7.5.6</a>&nbsp;&nbsp;Set</h4><a name="sec:lib-Set">
 </a>
 This module implements functions on sets. The implementation is based on finite maps (see Sect.&nbsp;<a href="#sec:lib-FiniteMap">7.5.1</a>).
 
@@ -1840,12 +2112,13 @@ mapSet :: (a -&#62; b) -&#62; Set a -&#62; Set b
 domainFM :: FiniteMap.FM a b -&#62; Set a
 
 showSet :: Set a -&#62; [Char]
+showsSet :: Set a -&#62; ShowS
 
 </pre>
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc7.5.5">
-7.5.5</a>&nbsp;&nbsp;Success</h4><a name="sec:lib-Success">
+      <h4><a name="tth_sEc7.5.7">
+7.5.7</a>&nbsp;&nbsp;Success</h4><a name="sec:lib-Success">
 </a>
 This module implements some frequently used functions for constraints.
 
@@ -1874,14 +2147,15 @@ allC :: (a -&#62; Success) -&#62; [a] -&#62; Success
 choose :: [a] -&#62; a
 
 -- (ground e) ensures that e is a ground data term; the argument is
--- evaluated lazily as with prelude.id
+-- evaluated lazily as with Prelude.id
 ground :: a -&#62; a
 
 </pre>
+Note that <tt>ground</tt> is just an alias for <tt>Prelude.ensureGround</tt>. This definition is present only for backward compatibility and will be removed in a future release.
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc7.5.6">
-7.5.6</a>&nbsp;&nbsp;Trace</h4>
+      <h4><a name="tth_sEc7.5.8">
+7.5.8</a>&nbsp;&nbsp;Trace</h4>
 This module exports the impure function <tt>trace</tt>, which is sometimes useful for debugging, although understanding the output that it produces can sometimes be a major challenge unless you are familiar with the intimate details of how programs are executed. 
 
 <div class="p"><!----></div>
@@ -1937,14 +2211,109 @@ The prefix operator <tt>-</tt> can be used for negating integer as well as float
       <h4><a name="tth_sEc8.1.2">
 8.1.2</a>&nbsp;&nbsp;Disequality Constraints</h4><a name="sec:ext-disequal">
 </a>
-The operator <tt>(=/=) :: a -&gt; a -&gt; Success</tt> implements disequality constraints between finite data terms. The constraint e<sub>1</sub>&nbsp;<tt>=/=</tt>&nbsp;e<sub>2</sub> is satisfied when e<sub>1</sub> and e<sub>2</sub> reduce to different data terms. Disequality constraints for the free variables of a solved goal are printed together with their bindings at the end of evaluation.
+The Münster Curry compiler supports disequality constraints similar to <i>TOY</i><a href="#tthFtNtAAF" name="tthFrefAAF"><sup>5</sup></a>. The constraint e<sub>1</sub>&nbsp;<tt>=/=</tt>&nbsp;e<sub>2</sub> is satisfied when e<sub>1</sub> and e<sub>2</sub> reduce to different - not necessarily finite - data terms. Disequality constraints for the free variables of a solved goal are printed together with their bindings at the end of evaluation.
 
 <div class="p"><!----></div>
-Note that disequality constraints are never instantiated by the runtime system. For instance, <tt>x =/= False</tt> will not be replaced by <tt>x =:= True</tt>. The runtime system therefore does not notice that the constraint <tt>x =/= False &amp; x =/= True</tt>, where <tt>x</tt> is unbound, cannot be satisfied.
+Disequality constraints are never instantiated by the runtime system, which can lead to problems with finite domains. For instance, <tt>x =/= False</tt> is not replaced by <tt>x =:= True</tt>. The runtime system therefore does not notice that the constraint <tt>x =/= False &amp; x =/= True</tt>, where <tt>x</tt> is unbound, cannot be satisfied. This incompleteness can even lead to wrong results. For instance, given the definition
+
+<pre>
+f x | y =/= False &amp; y =/= True = x where y free
+
+</pre>
+the goal <tt>f "Wrong"</tt> will return the string <tt>"Wrong</tt>", even though <tt>f</tt>'s guard can never be satisfied<a href="#tthFtNtAAG" name="tthFrefAAG"><sup>6</sup></a>.
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc8.1.3">
-8.1.3</a>&nbsp;&nbsp;Partial Applications in Equality and Disequality Constraints</h4><a name="sec:ext-partial">
+8.1.3</a>&nbsp;&nbsp;Existentially Quantified Types</h4><a name="sec:ext-exist">
+</a>
+The Münster Curry compiler supports existentially quantified data types as proposed by Läufer and Odersky&nbsp;[<a href="#LO94:TOPLAS" name="CITELO94:TOPLAS">LO94</a>]. The syntax of data constructor declarations has been changed to:
+
+<br clear="all" /><table border="0" cellspacing="0" cellpadding="0" width="100%">
+<table border="0" cellspacing="0" cellpadding="0">
+ <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+<em><span class="roman">ConstrDeclaration</span></em> </td></tr></table></td><td nowrap="nowrap" align="left">
+<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+:: = </td></tr></table></td><td nowrap="nowrap" align="left">
+<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+[<tt>forall</tt> <em><span class="roman">TypeVarID</span><sub><span class="roman">1</span></sub></em> ... <em><span class="roman">TypeVarID</span><sub><span class="roman">m</span></sub></em> <tt>.</tt>] </td></tr></table><td width="50%"></td></tr>
+ <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+ </td></tr></table></td><td nowrap="nowrap" align="left">
+<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
+</td></tr></table></td><td nowrap="nowrap" align="left">
+<table><tr><td nowrap="nowrap" align="right" colspan="1"><em><span class="roman">DataConstrID</span></em> <em><span class="roman">SimpleTypeExpr</span><sub><span class="roman">1</span></sub></em> ... <em><span class="roman">SimpleTypeExpr</span><sub><span class="roman">n</span></sub></em></td></tr></table><td width="50%"></td></tr></table></table>
+
+
+
+where <em>TypeVarID<sub>1</sub></em>, ..., <em>TypeVarID<sub>m</sub></em> are the names of the existentially quantified type variables that can be used in the argument types of the data constructor.<a href="#tthFtNtAAH" name="tthFrefAAH"><sup>7</sup></a>
+
+<div class="p"><!----></div>
+For instance, the declaration
+
+<pre>
+data Key a = forall b . Key b (b -&#62; a)
+
+</pre>
+introduces a polymorphic type <tt>Key</tt> with the single constructor <tt>Key</tt>. Since the type variable <tt>b</tt> is existentially quantified, it is possible to combine keys for different types in a list:
+
+<pre>
+keys = [Key "123" length, Key 2 (+ 1), Key '\ETX' ord]
+
+</pre>
+
+<div class="p"><!----></div>
+Existentially quantified types can be used in expressions and patterns just like other data constructors. However, within the scope of a pattern, existentially quantified type variables can be unified only with themselves. Thus, the definition
+
+<pre>
+keySum (Key x f) (Key y g) = f x + g y
+
+</pre>
+is valid, whereas
+
+<pre>
+invalidKeySum (Key x f) (Key y g) = f y + g x
+
+</pre>
+is rejected because <tt>f</tt>'s argument type cannot be unified with the type of <tt>y</tt> (and similarly for <tt>g</tt> and <tt>x</tt>). In addition, the compiler reports an error if an existentially quantified type variable escapes the scope in which it is visible as, for instance, in the following definition.
+
+<pre>
+badEscape (Key x f) = x
+
+</pre>
+Here, the existentially quantified type of the variable <tt>x</tt> would appear in the result of the function <tt>badEscape</tt>.
+
+<div class="p"><!----></div>
+
+<b>Limitations&nbsp;&nbsp;</b> 
+The <tt>invalidKeySum</tt> example above indicates that there is a typing issue with the polymorphic operators <tt>(=:=)</tt>, <tt>(=/=)</tt>, and <tt>(==)</tt>. For instance, given the - otherwise useless - data type definition
+
+<pre>
+data T = forall a. C a
+
+</pre>
+an expression like <tt>C 1 =:= C 'a'</tt> is accepted by the compiler because both arguments have the same type. As a consequence, the implementation must perform runtime type checking when one of the polymorphic operators is applied to an existentially quantified type. Because enough type information is available in the Münster Curry implementation only for non-variable terms, equality and disequality constraints are blocked until the arguments are sufficiently instantiated when applied to existentially quantified data types. Therefore, the expression
+
+<pre>
+let x,f free in Key x f =:= Key "abc" length
+
+</pre>
+suspends instead of binding the variables <tt>x</tt> and <tt>f</tt>. Note that this restriction does not apply when a variable is unified with a data term with an existentially quantified type, e.g.,
+
+<pre>
+let x free in x =:= Key 'a' ord
+
+</pre>
+
+<div class="p"><!----></div>
+A similar issue applies to the polymorphic function <tt>compare</tt>. However, since there is no apparent order between terms of different types, this operations fails with a runtime error when it is applied to arguments with existentially quantified types. This happens even if the arguments of the constructors happen to have compatible types at runtime as, for instance, in the expression <tt>C 1 `compare`  C 2</tt>. This restriction may be lifted in a future version of the compiler.
+
+<div class="p"><!----></div>
+
+<b>Local Universal Quantification&nbsp;&nbsp;</b>
+Local universal quantification of types is not yet supported but planned for a future release.
+
+<div class="p"><!----></div>
+      <h4><a name="tth_sEc8.1.4">
+8.1.4</a>&nbsp;&nbsp;Partial Applications in Equality and Disequality Constraints</h4><a name="sec:ext-partial">
 </a>
 It is possible to use partial applications in equality and disequality constraints; they are handled similar to data constructors. For instance,
 
@@ -1952,32 +2321,13 @@ It is possible to use partial applications in equality and disequality constrain
 let x free in x =:= id (const (2 * 2))
 
 </pre>
-will succeed and bind <tt>x</tt> to <tt>const 4</tt>. In the current implementation, equality and disequality constraints between two partial applications are restricted to ground terms. Thus,
+succeeds and binds <tt>x</tt> to <tt>const 4</tt>. In the current implementation, equality and disequality constraints between two partial applications are restricted to ground terms. Thus,
 
 <pre>
 let x free in const x =:= id (const (2 * 2))
 
 </pre>
 does not bind <tt>x</tt> to 4, but suspends. This is necessary because equality of partial applications cannot be checked without runtime type checking and the current runtime system provides enough type information only for ground terms, but not for variables. This restriction may be lifted in a future release.
-
-<div class="p"><!----></div>
-
-<div class="p"><!----></div>
-
-<div class="p"><!----></div>
-
-<div class="p"><!----></div>
-
-<div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.4">
-8.1.4</a>&nbsp;&nbsp;General Let Expressions with Free Variables</h4><a name="sec:ext-free">
-</a>
-As proposed recently on the Curry mailing list and expected to become part of the next release of the Curry report, the restriction that <tt>let</tt>-expressions with free variable declarations must have type <tt>Success</tt> has been removed. Thus, the following declaration is accepted by the compiler:
-
-<pre>
-f = let x free in x =:= 1 &amp;&#62; x 
-
-</pre>
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc8.1.5">
@@ -1992,47 +2342,11 @@ For instance, you can enter the following goal at the interactive prompt:
 length xs &lt;== xs =:= [1] where xs free; infix 0 &lt;==; x &lt;== c | c = x
 
 </pre>
-Note that the operator <tt>&lt;==</tt> is also defined in the library module <tt>Success</tt> (Sect.&nbsp;<a href="#sec:lib-Success">7.5.5</a>).
+Note that the operator <tt>&lt;==</tt> is also defined in the library module <tt>Success</tt> (Sect.&nbsp;<a href="#sec:lib-Success">7.5.7</a>).
 
 <div class="p"><!----></div>
       <h4><a name="tth_sEc8.1.6">
-8.1.6</a>&nbsp;&nbsp;As-Patterns</h4><a name="sec:ext-as-pattern">
-</a>
-The Münster Curry compiler supports as-patterns, which can be used for naming (parts of) a matched pattern. For instance, in the following naive definition of a depth first search strategy, as-patterns are used to name the list of functions returned by <tt>try</tt>:
-
-<pre>
-dfs g = evalall (try g)
-  where evalall [] = []
-        evalall gs@[_] = gs
-        evalall gs@(_:_:_) = concatMap dfs gs
-
-</pre>
-Due to this change, <tt>@</tt> is now a reserved operator name and cannot be used as a variable, function, or constructor name.
-
-<div class="p"><!----></div>
-In order to accommodate this change, the syntax of simple patterns is extended to include
-
-<br clear="all" /><table border="0" cellspacing="0" cellpadding="0" width="100%">
-<table border="0" cellspacing="0" cellpadding="0">
- <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
- <i>SimplePattern</i> </td></tr></table></td><td nowrap="nowrap" align="left">
-<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-:: = </td></tr></table></td><td nowrap="nowrap" align="left">
-<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-... </td></tr></table></td><td width="50%"></td></tr>
- <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
- </td></tr></table></td><td nowrap="nowrap" align="left">
-<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-<font face="symbol">|</font
-> </td></tr></table></td><td nowrap="nowrap" align="left">
-<table><tr><td nowrap="nowrap" align="right" colspan="1"><i>VariableID</i> @ <i>SimplePattern</i></td></tr></table></td><td width="50%"></td></tr></table></table>
-
-
-
-
-<div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.7">
-8.1.7</a>&nbsp;&nbsp;Lazy Patterns</h4><a name="sec:ext-lazy-pattern">
+8.1.6</a>&nbsp;&nbsp;Lazy Patterns</h4><a name="sec:ext-lazy-pattern">
 </a>
 The Münster Curry compiler extends pattern syntax further by supporting lazy pattern matching as in Haskell. Lazy patterns are useful for delaying pattern matching of the arguments of a function until those arguments are actually needed. A pattern is turned into a lazy pattern by prefixing it with the character <tt>~</tt>.
 
@@ -2094,8 +2408,8 @@ triple [] = (undefined,undefined,undefined)
 the evaluation of triple would become non-deterministic. 
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.8">
-8.1.8</a>&nbsp;&nbsp;Type Renamings</h4><a name="sec:ext-newtype">
+      <h4><a name="tth_sEc8.1.7">
+8.1.7</a>&nbsp;&nbsp;Type Renamings</h4><a name="sec:ext-newtype">
 </a>
 The Münster Curry compiler supports type renamings with <tt>newtype</tt> declarations as in Haskell.
 
@@ -2154,8 +2468,8 @@ we have that Stack&nbsp;&nbsp;<font face="symbol">^</font
 >. The use of a newtype is also slightly more efficient than an algebraic data type with respect to memory usage and execution time.
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.9">
-8.1.9</a>&nbsp;&nbsp;Expression Type Signatures</h4><a name="sec:ext-type-sigs">
+      <h4><a name="tth_sEc8.1.8">
+8.1.8</a>&nbsp;&nbsp;Expression Type Signatures</h4><a name="sec:ext-type-sigs">
 </a>
 Another extension supported by the Münster Curry compiler are expression type signatures:
 
@@ -2204,32 +2518,10 @@ This restriction was made for compatibility with Haskell.
 Until the Münster Curry compiler supports type classes, expression type signatures are mostly useful in order to specify the type of numeric literals (see Sect.&nbsp;<a href="#sec:ext-polyliterals">8.1.1</a>). They may be helpful for locating type errors, too.
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.10">
-8.1.10</a>&nbsp;&nbsp;Guards and Local Declaration Groups in Case Expressions</h4><a name="sec:ext-case">
+      <h4><a name="tth_sEc8.1.9">
+8.1.9</a>&nbsp;&nbsp;Constraint Guards in Case Expressions</h4><a name="sec:ext-case">
 </a>
-The Münster Curry compiler accepts guards and local declarations in alternatives of case expressions. For instance, the following expression is accepted by the compiler:
-
-<pre>
-case x of
-  Left z
-    | z &#62;= 0 -&#62; sqr z
-    | otherwise -&#62; -sqr z
-    where sqr x = x * x
-  _ -&#62; 0
-
-</pre>
-Guard expressions may be of type <tt>Bool</tt> or of type <tt>Success</tt>. As for function definitions, only a single guarded expression is allowed when the guard is of type <tt>Success</tt>.
-
-<div class="p"><!----></div>
-If all guards of a case alternative are of type <tt>Bool</tt> and evaluate to <tt>False</tt>, the match is continued with the next alternative, i.e., this is handled as if the pattern did not match at all. For instance,
-
-<pre>
-case (1,3) of
-  (x,y) | x &lt; 0 -&#62; (0,y)
-  xy -&#62; xy 
-
-</pre>
-returns the pair <tt>(1,3)</tt>. This "fall-through" semantics does not apply to constraint guards. Thus, if the case expression were changed into
+Besides boolean guard expressions, the Münster Curry compiler also allows constraint guards in case expressions. Similar to function rules, only a single constraint guard is allowed for each alternative. A guarded alternative p <span class="roman"><tt>|</tt></span> c <span class="roman"><tt>-&#62;</tt></span> e, where c is a constraint, is considered syntactic sugar for the alternative p <span class="roman"><tt>-&#62;</tt></span> c <span class="roman"><tt>&amp;&#62;</tt></span> e. This means that the case expression does not fall through to the next alternative if the constraint fails. Instead, the whole case expression fails in this case. Thus, the case expression
 
 <pre>
 case (1,3) of
@@ -2237,43 +2529,19 @@ case (1,3) of
   xy -&#62; xy
 
 </pre>
-it would <em>not</em> return the pair <tt>(1,3)</tt>, but simply fail. In fact, the second alternative of the case expression is redundant in the modified example because there are no pairs that are not matched by the pattern <tt>(x,y)</tt>.
+fails, in contrast to
+
+<pre>
+case (1,3) of
+  (x,y) | (x &lt; 0) -&#62; (0,y)
+  xy -&#62; xy
+
+</pre>
+which evaluates to the pair <tt>(1,3)</tt>.
 
 <div class="p"><!----></div>
-The syntax of alternatives is changed as follows:
-
-<br clear="all" /><table border="0" cellspacing="0" cellpadding="0" width="100%">
-<table border="0" cellspacing="0" cellpadding="0">
- <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
- <i>Alt</i> </td></tr></table></td><td nowrap="nowrap" align="left">
-<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-:: = </td></tr></table></td><td nowrap="nowrap" align="left">
-<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-<i>Pattern</i> <font face="symbol">-</font
-> &gt;  <i>Expr</i> <span class="roman">[</span><tt>where</tt> <i>LocalDefs</i><span class="roman">]</span> </td></tr></table></td><td width="50%"></td></tr>
- <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
- </td></tr></table></td><td nowrap="nowrap" align="left">
-<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-<font face="symbol">|</font
-> </td></tr></table></td><td nowrap="nowrap" align="left">
-<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-<i>Pattern</i> <i>GdAlts</i> <span class="roman">[</span><tt>where</tt> <i>LocalDefs</i><span class="roman">]</span> </td></tr></table></td><td width="50%"></td></tr>
- <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
- <i>GdAlts</i> </td></tr></table></td><td nowrap="nowrap" align="left">
-<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-:: = </td></tr></table></td><td nowrap="nowrap" align="left">
-<table><tr><td nowrap="nowrap" align="right" colspan="1"><font face="symbol">|</font
-> <i>Expr</i><font face="symbol">¢</font
-> <font face="symbol">-</font
-> &gt;  <i>Expr</i> <span class="roman">[</span><i>GdAlts</i><span class="roman">]</span></td></tr></table></td><td width="50%"></td></tr></table></table>
-
-
-
-See Sect.&nbsp;<a href="#sec:ext-type-sigs">8.1.9</a> for the relation of <span class="roman"><i>Expr</i></span> and <span class="roman"><i>Expr'</i></span>.
-
-<div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.11">
-8.1.11</a>&nbsp;&nbsp;Constructor Operators</h4><a name="sec:ext-infix">
+      <h4><a name="tth_sEc8.1.10">
+8.1.10</a>&nbsp;&nbsp;Constructor Operators</h4><a name="sec:ext-infix">
 </a>
 The Münster Curry compiler allows defining and using infix constructor operators other than the predefined constructor <tt>(:)</tt>. For instance, you can define an algebraic data type <tt>Assoc</tt>, which represents an association between two values, as follows:
 
@@ -2338,8 +2606,8 @@ In order to accommodate constructor operators, the following rules of the Curry 
 The Münster Curry compiler does not impose any restrictions on the names of constructor operators - i.e., <i>InfixConID</i> = <i>InfixOpID</i> - but it is recommended to use only names starting with a colon for infix constructors. This convention is compatible with Haskell.
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.12">
-8.1.12</a>&nbsp;&nbsp;Generalized Function Left-Hand Sides</h4><a name="sec:ext-curried-lhs">
+      <h4><a name="tth_sEc8.1.11">
+8.1.11</a>&nbsp;&nbsp;Generalized Function Left-Hand Sides</h4><a name="sec:ext-curried-lhs">
 </a>
 Similar to Haskell, the Münster Curry compiler allows using a curried style for the left-hand side of a function rule. This is very convenient for defining higher-order operator symbols. For instance, the curried syntax can be used in the definition of the function composition operator <tt>(.)</tt>.
 
@@ -2382,54 +2650,8 @@ The definition of <span class="roman"><i>FunLHS</i></span> in the Curry syntax i
 
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.13">
-8.1.13</a>&nbsp;&nbsp;Polymorphic Comparisons</h4><a name="sec:ext-poly-compare">
-</a>
-The operators <tt>(&lt;)</tt>, <tt>(&gt;)</tt>, <tt>(&lt;=)</tt>, and <tt>(&gt;=)</tt> can be applied to terms of any type. It is an error to compare two functional values.
-
-<div class="p"><!----></div>
-The prelude exports the function <tt>compare :: a -&gt; a -&gt; Ordering</tt> together with the type <tt>Ordering</tt>.
-
-<pre>
-data Ordering = LT | EQ | GT
-
-</pre>
-<tt>(&lt;)</tt>,  <tt>(&gt;)</tt>, <tt>(&lt;=)</tt>, and <tt>(&gt;=)</tt> are implemented on top of <tt>compare</tt>.
-
-<div class="p"><!----></div>
-The compiler implicitly defines an order for the data constructors of an algebraic data type by enumerating the data constructors from left to right and comparing arguments of constructors from left to right as well. Thus, given two arguments of a type T defined by
-
-<center>
-<tt>data</tt> T x<sub>1</sub> ... x<sub>m</sub> <tt>=</tt>
-C<sub>1</sub> type<sub>1,1</sub> ... type<sub>1,k<sub>1</sub></sub> <tt>|</tt> ... <tt>|</tt> C<sub>n</sub> type<sub>n,1</sub> ... type<sub>n,k<sub>n</sub></sub>
-</center>
-the result of
-<tt>compare</tt> (C<sub>m</sub> e<sub>1</sub> ... e<sub>k<sub>m</sub></sub>) (C<sub>n</sub> e<font face="symbol">¢</font
-><sub>1</sub> ... e<font face="symbol">¢</font
-><sub>k<sub>n</sub></sub>)
-is
-
-<table>
-<tr valign="top"><td><tt>LT</tt></td><td>if m &lt; n or m=n and <tt>compare</tt> e<sub>i</sub> e<font face="symbol">¢</font
-><sub>i</sub> returns <tt>LT</tt> for some 1  <font face="symbol">£</font
-> i  <font face="symbol">£</font
-> k<sub>n</sub> such that <tt>compare</tt> e<sub>j</sub> e<font face="symbol">¢</font
-><sub>j</sub> returns <tt>EQ</tt> for all 1  <font face="symbol">£</font
-> j  &lt;  i. </td></tr>
-<tr valign="top"><td><tt>EQ</tt></td><td>if m=n and <tt>compare</tt> e<sub>i</sub> e<font face="symbol">¢</font
-><sub>i</sub> returns <tt>EQ</tt> for all 1  <font face="symbol">£</font
-> i  <font face="symbol">£</font
-> k<sub>n</sub>.</td></tr>
-<tr valign="top"><td><tt>GT</tt></td><td>if m &gt; n or m=n and <tt>compare</tt> e<sub>i</sub> e<font face="symbol">¢</font
-><sub>i</sub> returns <tt>GT</tt> for some 1  <font face="symbol">£</font
-> i  <font face="symbol">£</font
-> k<sub>n</sub> such that <tt>compare</tt> e<sub>j</sub> e<font face="symbol">¢</font
-><sub>j</sub> returns <tt>EQ</tt> for all 1  <font face="symbol">£</font
-> j  &lt;  i.</tr></table>
-
-<div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.14">
-8.1.14</a>&nbsp;&nbsp;Mutually Recursive Variable Bindings</h4>
+      <h4><a name="tth_sEc8.1.12">
+8.1.12</a>&nbsp;&nbsp;Mutually Recursive Variable Bindings</h4>
 The compiler allows mutually recursive variable bindings; for instance,
 
 <pre>
@@ -2452,9 +2674,9 @@ let xs = coin : xs in xs
 returns either an infinite list of 0's or an infinite list of 1's.
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.15">
-8.1.15</a>&nbsp;&nbsp;Extended Import/Export Specifications</h4>
-As in Haskell it is possible to import or export only some of the constructors of a data type by specifying the list of visible constructors explicitly. For instance, the import declaration <tt>import prelude(Bool(True))</tt> brings the constructor <tt>True</tt> into scope but not <tt>False</tt>.
+      <h4><a name="tth_sEc8.1.13">
+8.1.13</a>&nbsp;&nbsp;Extended Import/Export Specifications</h4>
+As in Haskell it is possible to import or export only some of the constructors of a data type by specifying the list of visible constructors explicitly. For instance, the import declaration <tt>import Prelude(Bool(True))</tt> brings the constructor <tt>True</tt> into scope but not <tt>False</tt>.
 
 <div class="p"><!----></div>
 The syntax is as follows
@@ -2491,13 +2713,13 @@ The syntax is as follows
 
 
 <div class="p"><!----></div>
-      <h4><a name="tth_sEc8.1.16">
-8.1.16</a>&nbsp;&nbsp;Foreign Function Interface</h4><a name="sec:ext-ffi">
+      <h4><a name="tth_sEc8.1.14">
+8.1.14</a>&nbsp;&nbsp;Foreign Function Interface</h4><a name="sec:ext-ffi">
 </a>
 The Münster Curry compiler supports a subset of the Haskell foreign function interface&nbsp;[<a href="#Chakravarty03:FFI" name="CITEChakravarty03:FFI">Cha03</a>]. The current implementation allows only importing foreign functions and supports only calling conventions <tt>primitive</tt> and <tt>ccall</tt>. The calling convention <tt>primitive</tt> is a non-portable addition of the Münster Curry compiler and must be used only for C functions that use the calling conventions of the compiler's runtime system. Argument types of functions using the <tt>ccall</tt> calling convention are restricted to the types <tt>Bool</tt>, <tt>Char</tt>, <tt>Int</tt>, <tt>Float</tt>, <tt>Ptr</tt>&nbsp;t, <tt>FunPtr</tt>&nbsp;t, and <tt>StablePtr</tt>&nbsp;t in this release where t is an arbitrary type. In addition to these, types of the form <tt>IO</tt>&nbsp;t can be used as result types, where t must be either <tt>()</tt> or a valid argument type.
 
 <div class="p"><!----></div>
-The syntax of foreign function declarations is<a href="#tthFtNtAAE" name="tthFrefAAE"><sup>4</sup></a>
+The syntax of foreign function declarations is<a href="#tthFtNtAAI" name="tthFrefAAI"><sup>8</sup></a>
 
 <br clear="all" /><table border="0" cellspacing="0" cellpadding="0" width="100%">
 <table border="0" cellspacing="0" cellpadding="0">
@@ -2506,9 +2728,14 @@ The syntax of foreign function declarations is<a href="#tthFtNtAAE" name="tthFre
 <table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
 :: = </td></tr></table></td><td nowrap="nowrap" align="left">
 <table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
-<tt>foreign</tt> <tt>import</tt> <i>CallConv</i> <span class="roman">[</span><i>Safety</i><span class="roman">]</span> <span class="roman">[</span><i>ImpEnt</i><span class="roman">]</span> 
-<i>FunctionName</i> <tt>:</tt><tt>:</tt> <i>TypeExpr</i>
- </td></tr></table></td><td width="50%"></td></tr>
+<tt>foreign</tt> </td><td nowrap="nowrap" align="center">
+<table>
+<tr><td><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="center">
+<tt>import</tt> <i>CallConv</i> <span class="roman">[</span><i>Safety</i><span class="roman">]</span> <span class="roman">[</span><i>ImpEnt</i><span class="roman">]</span> </td></tr></table></td></tr>
+<tr><td><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="center">
+<i>FunctionName</i> <tt>:</tt><tt>:</tt> <i>TypeExpr</i> </td></tr></table></td></tr></table>
+</td><td nowrap="nowrap" align="center">
+ </td></tr></table><td width="50%"></td></tr>
  <tr><td width="50%"></td><td nowrap="nowrap" align="right" colspan="1"><table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
 <i>CallConv</i> </td></tr></table></td><td nowrap="nowrap" align="left">
 <table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap="nowrap" align="left">
@@ -2573,15 +2800,7 @@ foreign import ccall "dynamic"
 </a>
 
 <ul>
-<li> The compiler does not support committed choice and reports an error if an <tt>eval choice</tt> annotation is used in a program.<br /><br /></li>
-
-<li> The prelude functions <tt>tryone</tt>, <tt>one</tt>, and <tt>condSearch</tt>, which are supposed to use a fair search strategy, are not implemented due to the lack of committed choice.<br /><br /></li>
-
-<li> All user defined functions (including those with type <tt>IO</tt>&nbsp;t) use flexible evaluation unless an explicit evaluation annotation is present.<br /><br /></li>
-
-<li> The identifiers <tt>choice</tt> and <tt>rigid</tt> are not keywords. They have a special meaning only in evaluation annotations.<br /><br /></li>
-
-<li> The identifiers <tt>newtype</tt>, <tt>foreign</tt>, and the operator symbols <tt>@</tt> and <tt>~</tt> are keywords and cannot be used as variable, function or (type) constructor names.<br /><br /></li>
+<li> The identifiers <tt>newtype</tt> and <tt>foreign</tt> and the operator symbol <tt>~</tt> are keywords and cannot be used as variable, function or (type) constructor names.<br /><br /></li>
 
 <li> The range of <tt>Int</tt> is limited to <font face="symbol">-</font
 >2<sup>31</sup> <font face="symbol">¼</font
@@ -2593,11 +2812,10 @@ foreign import ccall "dynamic"
 
 <li> The operators <tt>div</tt> and <tt>mod</tt> truncate the quotient toward negative infinity, i.e., <tt>(-7) `div` 3</tt> yields <tt>-3</tt> and <tt>(-7) `mod` 3</tt> yields <tt>2</tt>. This semantics is compatible with the Haskell 98 report, but not with older releases of the Münster Curry compiler nor with PAKCS. Use <tt>quot</tt> and <tt>rem</tt> for division that truncates toward zero. Note that the semantics of <tt>div</tt> and <tt>mod</tt> for negative numbers is not specified in the Curry report.<br /><br /></li>
 
-<li> The compiler and runtime system do not support Unicode characters.<br /><br /></li>
-
 <li> A type, data constructor, or top-level function with the same name as an imported entity of the same kind can only be accessed using its qualified name. E.g., the compiler will report an error for the module
 
 <pre>
+module Main where
 length = foldr (const (1 +)) 0
 main = print (length [])
 
@@ -2605,18 +2823,18 @@ main = print (length [])
 to the effect that the identifier <tt>length</tt> in the body of <tt>main</tt> is ambiguous. In order to compile the module, either the <tt>length</tt> function from the prelude must be hidden by adding the import declaration
 
 <pre>
-import prelude hiding(length)
+import Prelude hiding(length)
 
 </pre>
 or <tt>length</tt> must be qualified, i.e.,
 
 <pre>
-main = print (main.length [])
+main = print (Main.length [])
 
 </pre>
-Recall that a module which lacks an explicit module header has the name <tt>main</tt> regardless of the filename in which it is defined.<br /><br /></li>
+This incompatibility, which is consistent with the Haskell 98 module system, is present because it allows better detection of unintentional name conflicts between different modules, which usually are an indication of code duplication.<br /><br /></li>
 
-<li> A hiding clause in an import declaration effects the qualified name in addition to the unqualified name. Thus, a hiding specification makes the identifier inaccessible if not brought into scope with another import declaration. While this behavior differs from the Curry report, it is consistent with the (revised) Haskell 98 language definition&nbsp;[<a href="#PeytonJones03:Haskell98" name="CITEPeytonJones03:Haskell98">Pey03</a>].<br /><br /></li>
+<li> A hiding clause in an import declaration effects the qualified name in addition to the unqualified name. Thus, a hiding specification makes the identifier inaccessible if not brought into scope with another import declaration. This behavior differs from the Curry report, but is consistent with the (revised) Haskell 98 language definition&nbsp;[<a href="#PeytonJones03:Haskell98" name="CITEPeytonJones03:Haskell98">Pey03</a>] and was chosen in order to effectively control the qualified name space inside a module. Note that the qualified names are relevant for deciding which data constructors of a type are exported.<br /><br /></li>
 
 <li> Pattern matching in list comprehensions is always performed rigidly. For instance, the evaluation of <tt>[x | True &lt;- [x]]</tt> suspends when <tt>x</tt> is an unbound variable. When following the report strictly, this expression should evaluate non-deterministically to <tt>[True]</tt> and <tt>[False]</tt>. However, note that <tt>[x | 0 &lt;- [x]]</tt> does suspend even according to the Curry report.<br /><br /></li>
 
@@ -2649,6 +2867,8 @@ Because strong encapsulation is nevertheless useful, the Münster Curry compiler 
 8.3</a>&nbsp;&nbsp;Known Bugs</h3>
 
 <ul>
+<li> When the compiler is built with hbc or nhc98, an out of range error is reported for numeric character escape sequences with character codes greater than 255.<br /><br /></li>
+
 <li> The implementation of disequality constraints is incomplete. For instance, the goal <tt>x =/= Just undefined</tt> fails even though it has a solution for <tt>x</tt>=<tt>Nothing</tt>, as can be observed with the goal <tt>x =:= Nothing &amp; x =/= Just undefined</tt>. This problem is expected to be removed in a future release.<br /><br /></li>
 
 <li> The compiler fails or enters an infinite loop for programs which contain certain kinds of cyclic variable definitions, e.g.,
@@ -2661,15 +2881,13 @@ cycle = x where { x = y; y = x }
 
 <li> The <tt>send</tt> constraint in the <tt>Ports</tt> library (Sect.&nbsp;<a href="#sec:lib-Ports">7.4.6</a>) may loose messages because of unintended sharing. For instance, <tt>foldr (&amp;) success (replicate 5 (send "Hello" p))</tt> sends the string <tt>"Hello"</tt> only once to the port and not five times.<br /><br /></li>
 
-<li> Strings containing characters with codes above 127 may be printed incorrectly. In particular, if such a character is followed immediately by a digit, no <tt>\&amp;</tt> is inserted between the character code and the digit. For instance, the string <tt>"xy\200\&amp;23"</tt> (i.e., the character list <tt>['x','y','\200','2','3']</tt>) will be shown incorrectly as <tt>"xy\20023"</tt>.<br /><br /></li>
-
 <li> Equality and disequality constraints may lead to segmentation faults when applied to cyclic data structures, e.g. in the goal <tt>xs =:= repeat 'x' where repeat x = let xs = x:xs in xs</tt>. Note that the prelude's definition of <tt>repeat</tt> does not create cyclic data structures.<br /><br /></li>
 
 <li> It is not possible to debug programs that involve cyclic data structures.<br /><br /></li>
 
-<li> The basic facts shown by the debugger can be way too complex to understand and there is no provision to omit inner terms of deeply nested data terms.<br /><br /></li>
+<li> It is not possible to debug programs that involve computations of type <tt>IO</tt>&nbsp;t in any way, including expressions using <tt>unsafePerformIO</tt>. Unfortunately, this means that the debugger cannot be used for programs that use arrays, as the Array module uses <tt>unsafePerformIO</tt> (in a safe way) in order to implement non-mutable arrays on top of mutable arrays.<br /><br /></li>
 
-<li> The interactive interpreter and <tt>cymake</tt> offer no means to trust selected modules when compiling code for the debugger.<br /><br /></li>
+<li> The basic facts shown by the debugger can be way too complex to understand and there is no provision to omit inner terms of deeply nested data terms.<br /><br /></li>
 
 <li> The debugger has insane memory demands for some non-trivial programs and goals.<br /><br /></li>
 
@@ -2683,33 +2901,20 @@ cycle = x where { x = y; y = x }
 9</a>&nbsp;&nbsp;Common Problems and Solutions</h2>
 
 <ul>
-<li> <i>When compiling and linking my program with <tt>cyc</tt> or <tt>cymake</tt> I get an undefined symbol error for <tt>curry_main</tt>.</i> <br />
-You did not specify a <tt>main</tt> function in your program and also did not use the option <tt>-e</tt>&nbsp;<span class="roman"><i>goal</i></span> for specifying a goal explicitly.
-
-<div class="p"><!----></div>
-If you do not use <tt>-e</tt>, the <tt>main</tt> function must be defined in module <tt>main</tt> and exported from this module. For instance, 
-
-<pre>
-module main() where
-main = 1
-
-</pre>
-will not work.
-
-<div class="p"><!----></div>
-Note that goals specified with the <tt>-e</tt> option ignore the export list of the module.<br /><br /></li>
+<li> <i>When compiling and linking my program with <tt>cyc</tt> or <tt>cymake</tt>, the compiler reports an error "<tt>line 1.1: main is undefined</tt>".</i> <br />
+This error means that the compiler was unable to determine the main function of your program.  In general, this error is reported when your program's main module does not define and export a function <tt>main</tt>. However, this error is also reported when you link a program with <tt>cyc</tt> from object files and did not specify the main module with the <tt>-M</tt> option (see Sect.&nbsp;<a href="#sec:linking">3.4</a>).<br /><br /></li>
 
 <li> <i>The compiler complains about my function ... being already defined.</i> <br />
 Curry requires all rules of a function to be adjacent.<br /><br /></li>
 
 <li> <i>The compiler complains about an "unexpected token qualified operator `<tt>m..</tt>'" in the expression <tt>[m..n]</tt>.</i> <br />
-The problem here is that the parser tokenizes the expression into the four tokens "[", "m..", "n", and "]", but not into "[", "m", "..", "n", and "]" as you might expect. This is due to the fact that Curry  - in contrast to Haskell - does not require module names to start with a capital letter, but we want to allow qualified uses of the dot operator (e.g., <tt>prelude..</tt>).<a href="#tthFtNtAAF" name="tthFrefAAF"><sup>5</sup></a> In order to avoid this error, always use spaces before and after the <tt>..</tt> token. See also the thread "Slight change of the Curry syntax" in the Curry mailing list.<br /><br /></li>
+The problem here is that the parser tokenizes the expression into the four tokens "[", "m..", "n", and "]", but not into "[", "m", "..", "n", and "]" as you might expect. This is due to the fact that Curry  - in contrast to Haskell - does not require module names to start with a capital letter, but we want to allow qualified uses of the dot operator (e.g., <tt>Prelude..</tt>).<a href="#tthFtNtAAJ" name="tthFrefAAJ"><sup>9</sup></a> In order to avoid this error, always use spaces before and after the <tt>..</tt> token. See also the thread "Slight change of the Curry syntax" in the Curry mailing list.<br /><br /></li>
 
 <li> <i>My program fails with a stack or trail overflow or complains that there is not enough free memory after a garbage collection.</i> <br />
 First, make sure that your program did not enter an infinite loop.
 
 <div class="p"><!----></div>
-If this is not the case, you can rerun the program with larger stack, trail, and heap sizes by passing the options <tt>-k</tt><span class="roman"><i>size</i></span>, <tt>-t</tt><span class="roman"><i>size</i></span>, and <tt>-h</tt><span class="roman"><i>size</i></span>, respectively, to the runtime system (see Sect.&nbsp;<a href="#sec:running">3.6</a>)
+If this is not the case, you can rerun the program with larger stack, trail, and heap sizes by passing the options <tt>-k</tt><span class="roman"><i>size</i></span>, <tt>-t</tt><span class="roman"><i>size</i></span>, and <tt>-h</tt><span class="roman"><i>size</i></span>, respectively, to the runtime system (see Sect.&nbsp;<a href="#sec:running">3.7</a>)
 
 <div class="p"><!----></div>
 For instance, to run your program <tt>heavyrecursion</tt> with a 2 MByte stack, use the command
@@ -2747,7 +2952,7 @@ let X free in nat X
 </pre><br /><br /></li>
 
 <li> <i>My program fails with <tt>ERROR: Cannot duplicate the world</tt>.</i> <br />
-This happens when your program performs a non-deterministic computation in an I/O context. Make sure that all non-determinism is encapsulated in a program with type <tt>IO</tt>&nbsp;t (see also the next item). Recall that the evaluation of a function can be non-deterministic for two reasons. Either it is called with an argument that is not sufficiently instantiated or the function's definition has overlapping patterns. The latter happens regularly when converting Haskell functions to Curry, since in Haskell functions are matched from top to bottom and only the first match is used, whereas in Curry all matching equations are considered. For instance, in Haskell you could define <tt>null</tt> by
+This happens when your program performs a non-deterministic computation in an I/O context. Make sure that all non-determinism is encapsulated in a program with type <tt>IO</tt>&nbsp;t (see also the next item). Recall that the evaluation of a function can be non-deterministic for two reasons. Either it is called with an argument that is not sufficiently instantiated or the function's definition has overlapping patterns.<a href="#tthFtNtABA" name="tthFrefABA"><sup>10</sup></a> The latter happens regularly when converting Haskell functions to Curry, since in Haskell functions are matched from top to bottom and only the first match is used, whereas in Curry all matching equations are considered. For instance, in Haskell you could define <tt>null</tt> by
 
 <pre>
 null [] = True
@@ -2783,6 +2988,99 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
  <h2><a name="tth_sEc10">
 10</a>&nbsp;&nbsp;Release History</h2><a name="sec:release-notes">
 </a>
+
+<h3>Release 0.9.10 (May 10, 2006)</h3>
+
+<div class="p"><!----></div>
+<b>Build Environment&nbsp;&nbsp;</b>
+  
+<ul>
+<li> The compiler can be used without installing it (see Sects.&nbsp;<a href="#sec:binary">2.1</a> and&nbsp;<a href="#sec:source">2.2</a>).<br /><br /></li>
+
+<li> Build issues with ghc 6.4 have been fixed.<br /><br /></li>
+
+<li> Use <tt>ghc -make</tt> when it is supported.<br /><br /></li>
+
+<li> Source distributions now include an abstract machine code to C compiler.<br /><br /></li>
+</ul>
+
+<div class="p"><!----></div>
+<b>Compiler&nbsp;&nbsp;</b>
+  
+<ul>
+<li> The compiler now reports all duplicate or undefined identifiers in a scope before giving up.<br /><br /></li>
+
+<li> The compiler can optionally report warnings for case mode violations, unused identifiers, shadowing definitions, and equations with overlapping left hand side patterns (see Sect.&nbsp;<a href="#sec:compiling">3.2</a>).<br /><br /></li>
+
+<li> Existentially quantified types finally enabled again (see Sect.&nbsp;<a href="#sec:ext-exist">8.1.3</a>).<br /><br /></li>
+
+<li> Trust annotations introduced (see Sect.&nbsp;<a href="#sec:trusted">4.1</a>).<br /><br /></li>
+
+<li> Evaluation annotations removed.<br /><br /></li>
+
+<li> The compiler generates better code for case expressions in some cases.<br /><br /></li>
+</ul>
+
+<div class="p"><!----></div>
+<b>Interactive Environment&nbsp;&nbsp;</b>
+  
+<ul>
+<li> On systems where GNU Bash or a Korn shell (but not the public domain version) are installed, the interpreter now supports command line editing. In addition, a history of previously entered goals and commands is maintained in file <tt>~/.cyi_history</tt>.<br /><br /></li>
+
+<li> Initialization file <tt>.cyirc</tt> or <tt>~/.cyirc</tt> is read at startup.<br /><br /></li>
+
+<li> The <tt>:cd</tt> command now works for directories whose name contains embedded blanks.<br /><br /></li>
+
+<li> The value <tt>Success</tt> is shown in the answer to a constraint expression only when there are no constraints.<br /><br /></li>
+</ul>
+
+<div class="p"><!----></div>
+<b>Curry Library and Runtime System&nbsp;&nbsp;</b>
+  
+<ul>
+<li> Module <tt>prelude</tt> renamed into <tt>Prelude</tt>.<br /><br /></li>
+
+<li> Additional prelude type: <tt>ShowS</tt> (see Sect.&nbsp;<a href="#sec:lib-Prelude">7.1</a>).<br /><br /></li>
+
+<li> New prelude functions: <tt>shows</tt>, <tt>showChar</tt>, <tt>showString</tt>, <tt>showList</tt>, <tt>showParen</tt>, <tt>($!!)</tt>, <tt>($#)</tt>, <tt>($##)</tt>, <tt>unknown</tt>, and <tt>ensureGround</tt> (see Sect.&nbsp;<a href="#sec:lib-Prelude">7.1</a>).<br /><br /></li>
+
+<li> New functions <tt>Char.minChar</tt>, <tt>Char.maxChar</tt>, <tt>Integer.minInt</tt>, and <tt>Integer.maxInt</tt> that report the smallest and largest elements of types <tt>Char</tt> and <tt>Int</tt>, respectively.<br /><br /></li>
+
+<li> Implementation of <tt>AllSolutions.getSearchTree</tt> (see Sect.&nbsp;<a href="#sec:lib-AllSolutions">7.4.1</a>) changed to use strong encapsulation for logical variables, too. In addition, the search tree now properly reflects the state of the goal at the time when the <tt>getSearchTree</tt> action is evaluated rather than fixing the state when the first solution is computed.<br /><br /></li>
+
+<li> New function <tt>IOExts.openFd</tt> (see Sect.&nbsp;<a href="#sec:lib-IOExts">7.5.2</a>).<br /><br /></li>
+
+<li> New library modules <tt>Lexing</tt> (see Sect.&nbsp;<a href="#sec:lib-Lexing">7.5.4</a>), <tt>NameSupply</tt> (see Sect.&nbsp;<a href="#sec:lib-NameSupply">7.5.5</a>), and <tt>Socket</tt> (see Sect.&nbsp;<a href="#sec:lib-Socket">7.4.8</a>).<br /><br /></li>
+
+<li> An alternative implementation of encapsulated search is available, which can be enabled with <tt>-enable-copying</tt> during configuration (see Sect.&nbsp;<a href="#sec:source">2.2</a>).<br /><br /></li>
+
+<li> The full Unicode character set range is now supported.<br /><br /></li>
+</ul>
+
+<div class="p"><!----></div>
+<b>Noteworthy Bug Fixes&nbsp;&nbsp;</b>
+  
+<ul>
+<li> A long standing issue where builds would fail when using the vendor supplied make command on Solaris systems has been fixed.<br /><br /></li>
+
+<li> Gnu C specific features are now enabled only when using the Gnu C compiler.<br /><br /></li>
+
+<li> The import and export specifications <tt>T()</tt> and <tt>T(..)</tt> are now also accepted when T is a type synonym.<br /><br /></li>
+
+<li> A potential stack overflow problem for functions returning a variable has been eliminated.<br /><br /></li>
+
+<li> A problem where programs using encapsulated search could crash in certain situations has been fixed.<br /><br /></li>
+
+<li> A problem where a program could fail when <tt>show</tt> was applied to an infix constructor application other than the list constructor <tt>(:)</tt> has been fixed.<br /><br /></li>
+
+<li> A space leak has been closed where file handles opened with one of the functions <tt>IOExts.openProcess</tt> and <tt>IOExts.openTcpSocket</tt> were not closed automatically. Note that these functions are used by the <tt>Ports</tt> module, too.<br /><br /></li>
+
+<li> The functions <tt>Integer.ilog</tt>, <tt>Integer.isqrt</tt>, and <tt>Integer.pow</tt> now fail for negative arguments.<br /><br /></li>
+
+<li> The string <tt>['x','y','\200','2','3']</tt> is now printed <tt>"xy\200\&amp;23"</tt>.<br /><br /></li>
+</ul>
+
+<div class="p"><!----></div>
 
 <h3>Release 0.9.9 (May 14, 2005)</h3>
 
@@ -2840,7 +3138,7 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 <b>Foreign Function Interface&nbsp;&nbsp;</b>
   
 <ul>
-<li> Foreign function declarations using the <tt>ccall</tt> calling convention have been extended to support the import of static addresses and dynamic function wrappers. In addition, the basic marshalable types now include pointers (see Sect.&nbsp;<a href="#sec:ext-ffi">8.1.16</a>).<br /><br /></li>
+<li> Foreign function declarations using the <tt>ccall</tt> calling convention have been extended to support the import of static addresses and dynamic function wrappers. In addition, the basic marshalable types now include pointers (see Sect.&nbsp;<a href="#sec:ext-ffi">8.1.14</a>).<br /><br /></li>
 
 <li> Most libraries from the Haskell 98 Foreign Function Interface addendum have been implemented as far as they do not require type classes (see Sect.&nbsp;<a href="#sec:lib-ffi">7.3</a>).<br /><br /></li>
 </ul>
@@ -2881,7 +3179,7 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 <b>Build Environment&nbsp;&nbsp;</b>
   
 <ul>
-<li> The compiler can now be built on Microsoft Windows with CygWin without special configuration options.<a href="#tthFtNtAAG" name="tthFrefAAG"><sup>6</sup></a><br /><br /></li>
+<li> The compiler can now be built on Microsoft Windows with CygWin without special configuration options.<a href="#tthFtNtABB" name="tthFrefABB"><sup>11</sup></a><br /><br /></li>
 
 <li> It is now possible to use g++ as backend C compiler.<br /><br /></li>
 
@@ -2895,7 +3193,7 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 <b>Compiler&nbsp;&nbsp;</b>
   
 <ul>
-<li> Let expressions with free variable declarations are no longer restricted to type <tt>Success</tt> (see Sect.&nbsp;<a href="#sec:ext-free">8.1.4</a>).<br /><br /></li>
+<li> Let expressions with free variable declarations are no longer restricted to type <tt>Success</tt>.<br /><br /></li>
 
 <li> All functions use flexible evaluation by default.<br /><br /></li>
 
@@ -2903,7 +3201,7 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 
 <li> Syntax of external declarations now uses <tt>foreign import</tt> instead of <tt>external</tt>.<br /><br /></li>
 
-<li> Partial support for <tt>ccall</tt> calling convention in foreign function declarations (see Sect.&nbsp;<a href="#sec:ext-ffi">8.1.16</a>).<br /><br /></li>
+<li> Partial support for <tt>ccall</tt> calling convention in foreign function declarations (see Sect.&nbsp;<a href="#sec:ext-ffi">8.1.14</a>).<br /><br /></li>
 
 <li> Faster code for lazy applications of nullary and unary functions.<br /><br /></li>
 </ul>
@@ -2916,13 +3214,13 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 
 <li> Type of <tt>(&amp;&gt;)</tt> generalized to <tt>Success -&gt; a -&gt; a</tt>.<br /><br /></li>
 
-<li> Non-deterministic choice operator <tt>(?)</tt> added to the prelude (see Sect.&nbsp;<a href="#sec:lib-prelude">7.1</a>).<br /><br /></li>
+<li> Non-deterministic choice operator <tt>(?)</tt> added to the prelude (see Sect.&nbsp;<a href="#sec:lib-Prelude">7.1</a>).<br /><br /></li>
 
-<li> <tt>seq</tt> and <tt>($!)</tt> are no longer rigid, new functions <tt>rigid</tt> and <tt>rigidSpine</tt> added to the prelude (see Sect.&nbsp;<a href="#sec:lib-prelude">7.1</a>).<br /><br /></li>
+<li> <tt>seq</tt> and <tt>($!)</tt> are no longer rigid, new functions <tt>rigid</tt> and <tt>rigidSpine</tt> added to the prelude (see Sect.&nbsp;<a href="#sec:lib-Prelude">7.1</a>).<br /><br /></li>
 
 <li> Equality constraints x<tt>=:=</tt>e, where x is an unbound variable and e is in normal form are evaluated more efficiently.<br /><br /></li>
 
-<li> Equality and disequality constraints between two partial applications are now restricted to ground terms (see Sect.&nbsp;<a href="#sec:ext-partial">8.1.3</a> for a rationale).<br /><br /></li>
+<li> Equality and disequality constraints between two partial applications are now restricted to ground terms (see Sect.&nbsp;<a href="#sec:ext-partial">8.1.4</a> for a rationale).<br /><br /></li>
 
 <li> <tt>(==)</tt> and <tt>(!=)</tt> can now be used for comparing partial applications and terms with abstract types (e.g. file handles) for (in)equality.<br /><br /></li>
 
@@ -2938,7 +3236,7 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 
 <li> The <tt>Read</tt> module (Sect.&nbsp;<a href="#sec:lib-Read">7.4.7</a>) has been replaced by a (mostly) PAKCS compatible one.<br /><br /></li>
 
-<li> <tt>Unsafe</tt> module (Sect.&nbsp;<a href="#sec:lib-Unsafe">7.4.8</a>) is now compatible with PAKCS.<br /><br /></li>
+<li> <tt>Unsafe</tt> module (Sect.&nbsp;<a href="#sec:lib-Unsafe">7.4.9</a>) is now compatible with PAKCS.<br /><br /></li>
 </ul>
 
 <div class="p"><!----></div>
@@ -2968,7 +3266,7 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 <h3>Release 0.9.7 (May 4, 2004)</h3>
 
 <ul>
-<li> Support for building and using the compiler on Microsoft Windows using the CygWin environment (cf. Sect.&nbsp;<a href="#sec:ins-windows">2.3</a>).<a href="#tthFtNtAAH" name="tthFrefAAH"><sup>7</sup></a><br /><br /></li>
+<li> Support for building and using the compiler on Microsoft Windows using the CygWin environment (cf. Sect.&nbsp;<a href="#sec:ins-windows">2.3</a>).<a href="#tthFtNtABC" name="tthFrefABC"><sup>12</sup></a><br /><br /></li>
 
 <li> <tt>cyc</tt>'s option <tt>-y</tt> renamed into <tt>-T</tt>. cymake now supports <tt>-T</tt>, too.<br /><br /></li>
 
@@ -2976,25 +3274,25 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 
 <li> The unary negation operator <tt>-</tt> works for integer and floating-point numbers. Use of <tt>-.</tt> for negating floating-point numbers is deprecated.<br /><br /></li>
 
-<li> The compiler no longer allows to mix import and other declarations. This change is in conformance with the Curry report and makes <tt>cymake</tt>'s dependency analysis more fault tolerant.<br /><br /></li>
+<li> The compiler no longer allows mixing import and other declarations. This change is in conformance with the Curry report and makes <tt>cymake</tt>'s dependency analysis more fault tolerant.<br /><br /></li>
 
-<li> It is now possible to define and use (infix) constructor operators (cf. Sect.&nbsp;<a href="#sec:ext-infix">8.1.11</a>).<br /><br /></li>
+<li> It is now possible to define and use (infix) constructor operators (cf. Sect.&nbsp;<a href="#sec:ext-infix">8.1.10</a>).<br /><br /></li>
 
 <li> Operator fixities must be declared in the same declaration group as the operator. To this end, fixity declarations are allowed in local declaration groups (cf. Sect.&nbsp;<a href="#sec:ext-fixity">8.1.5</a>). Fixity declarations can still be mixed freely with other declarations.<br /><br /></li>
 
-<li> Curried syntax is supported on the left-hand side of declarations (cf. Sect.&nbsp;<a href="#sec:ext-curried-lhs">8.1.12</a>).<br /><br /></li>
+<li> Curried syntax is supported on the left-hand side of declarations (cf. Sect.&nbsp;<a href="#sec:ext-curried-lhs">8.1.11</a>).<br /><br /></li>
 
 <li> Support constraint guards in case expressions. Actually, they have been supported since the introduction of guarded case alternatives in release 0.9.6, but the documentation did say otherwise.<br /><br /></li>
 
 <li> <tt>Array</tt> module (Sect.&nbsp;<a href="#sec:lib-Array">7.2.5</a>) reimplemented. This fixes, in particular, the broken <tt>accum</tt> and <tt>accumArray</tt> functions.<br /><br /></li>
 
-<li> Finite maps (Sect.&nbsp;<a href="#sec:lib-FiniteMap">7.5.1</a>) and sets (Sect.&nbsp;<a href="#sec:lib-Set">7.5.4</a>) added to the library.<br /><br /></li>
+<li> Finite maps (Sect.&nbsp;<a href="#sec:lib-FiniteMap">7.5.1</a>) and sets (Sect.&nbsp;<a href="#sec:lib-Set">7.5.6</a>) added to the library.<br /><br /></li>
 
 <li> Add module <tt>IOExts</tt> which implements a subset of the Hugs/ghc module with the same name. At present, this includes the monadic fixpoint function <tt>fixIO</tt>, mutable references, and mutable arrays (cf. Sect.&nbsp;<a href="#sec:lib-IOExts">7.5.2</a>).<br /><br /></li>
 
 <li> <tt>Random</tt> module added (cf. Sect.&nbsp;<a href="#sec:lib-Random">7.2.16</a>).<br /><br /></li>
 
-<li> Add new primitive function <tt>ground</tt> to module <tt>Success</tt> (cf. Sect.&nbsp;<a href="#sec:lib-Success">7.5.5</a>).<br /><br /></li>
+<li> Add new primitive function <tt>ground</tt> to module <tt>Success</tt> (cf. Sect.&nbsp;<a href="#sec:lib-Success">7.5.7</a>).<br /><br /></li>
 
 <li> The generated code has become slightly faster, again.<br /><br /></li>
 
@@ -3008,7 +3306,7 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 <ul>
 <li> <b>The compiler has been renamed</b>. The compiler proper must now be invoked with the name <tt>cyc</tt> (instead of <tt>cycc</tt>).<br /><br /></li>
 
-<li> Hierachical modules mapped onto the filesystem, i.e., module <tt>SubProj.Lib.Mod</tt> is now expected in one of the files <tt>Mod.curry</tt> and <tt>Mod.lcurry</tt> in the subdirectory <tt>SubProj/Lib</tt> of the current directory or of one of the directories in the import search path. (cf. Sect.&nbsp;<a href="#sec:hierarchical">5.2</a>)<br /><br /></li>
+<li> Hierachical modules mapped onto the filesystem, i.e., module <tt>SubProj.Lib.Mod</tt> is now expected in one of the files <tt>Mod.curry</tt> and <tt>Mod.lcurry</tt> in the subdirectory <tt>SubProj/Lib</tt> of the current directory or of one of the directories in the import search path. (cf. Sect.&nbsp;<a href="#sec:hierarchical">5.3</a>)<br /><br /></li>
 
 <li> Interface files are no longer created in the current directory but in the same directory as the source file.<br /><br /></li>
 
@@ -3027,15 +3325,15 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 <li> Syntax extensions:
   
 <ul>
-<li> newtype declarations (Sect.&nbsp;<a href="#sec:ext-newtype">8.1.8</a>),<br /><br /></li>
+<li> newtype declarations (Sect.&nbsp;<a href="#sec:ext-newtype">8.1.7</a>),<br /><br /></li>
 
-<li> @-patterns (Sect.&nbsp;<a href="#sec:ext-as-pattern">8.1.6</a>),<br /><br /></li>
+<li> @-patterns,<br /><br /></li>
 
-<li> lazy patterns (Sect.&nbsp;<a href="#sec:ext-lazy-pattern">8.1.7</a>),<br /><br /></li>
+<li> lazy patterns (Sect.&nbsp;<a href="#sec:ext-lazy-pattern">8.1.6</a>),<br /><br /></li>
 
-<li> guarded right hand sides for pattern declarations and case alternatives (Sect.&nbsp;<a href="#sec:ext-case">8.1.10</a>), and<br /><br /></li>
+<li> guarded right hand sides for pattern declarations and case alternatives (Sect.&nbsp;<a href="#sec:ext-case">8.1.9</a>), and<br /><br /></li>
 
-<li> expression type signatures (Sect.&nbsp;<a href="#sec:ext-type-sigs">8.1.9</a>).<br /><br /></li>
+<li> expression type signatures (Sect.&nbsp;<a href="#sec:ext-type-sigs">8.1.8</a>).<br /><br /></li>
 </ul><br /><br /></li>
 
 <li> Prelude changes
@@ -3080,9 +3378,9 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 
 <li> Restrictions on (partially) solved goals returned from <tt>try</tt> have been removed.<br /><br /></li>
 
-<li> Handle partial applications as data constructors in equality and disequality constraints (Sect.&nbsp;<a href="#sec:ext-partial">8.1.3</a>).<br /><br /></li>
+<li> Handle partial applications as data constructors in equality and disequality constraints (Sect.&nbsp;<a href="#sec:ext-partial">8.1.4</a>).<br /><br /></li>
 
-<li> IO Exceptions implemented. Use <tt>ioError</tt> for throwing I/O exceptions, and <tt>catch</tt> for catching I/O exceptions (cf. Sect.&nbsp;<a href="#sec:lib-prelude">7.1</a>).<br /><br /></li>
+<li> IO Exceptions implemented. Use <tt>ioError</tt> for throwing I/O exceptions, and <tt>catch</tt> for catching I/O exceptions (cf. Sect.&nbsp;<a href="#sec:lib-Prelude">7.1</a>).<br /><br /></li>
 
 <li> Existentially quantified data types disabled because the current implementation was unsound regarding equality constraints. They will be included in a future release after fixing the problem.<br /><br /></li>
 
@@ -3092,13 +3390,13 @@ Reconfigure the compiler with <tt>--enable-trampoline</tt> (see Sect.&nbsp;<a hr
 
 <li> The function <tt>undefined</tt> now aborts the running program with an error message. Use <tt>failed</tt> for failing only the current solution.<br /><br /></li>
 
-<li> More functions from the Haskell prelude: <tt>getContents</tt>, <tt>interact</tt> (cf. Sect.&nbsp;<a href="#sec:lib-prelude">7.1</a>).<br /><br /></li>
+<li> More functions from the Haskell prelude: <tt>getContents</tt>, <tt>interact</tt> (cf. Sect.&nbsp;<a href="#sec:lib-Prelude">7.1</a>).<br /><br /></li>
 
-<li> It is now possible to change the buffer mode used for standard input and output with a runtime system option (Sect.&nbsp;<a href="#sec:running">3.6</a>).<br /><br /></li>
+<li> It is now possible to change the buffer mode used for standard input and output with a runtime system option (Sect.&nbsp;<a href="#sec:running">3.7</a>).<br /><br /></li>
 
 <li> Module <tt>Monad</tt> from the Haskell library is now included. This module also implements the functions <tt>sequence</tt>, <tt>sequence_</tt>, <tt>mapM</tt>, and <tt>mapM_</tt> from the Haskell prelude (Sect.&nbsp;<a href="#sec:lib-Monad">7.2.9</a>).<br /><br /></li>
 
-<li> New syntax for external declarations which is closer to the proposed FFI for Haskell (Sect&nbsp;<a href="#sec:ext-ffi">8.1.16</a>).<br /><br /></li>
+<li> New syntax for external declarations which is closer to the proposed FFI for Haskell (Sect&nbsp;<a href="#sec:ext-ffi">8.1.14</a>).<br /><br /></li>
 
 <li> Bug fixes...<br /><br /></li>
 </ul>
@@ -3139,11 +3437,25 @@ This is mostly a bug-fix release.
 <h2>References</h2>
 
 <dl compact="compact">
+ <dt><a href="#CITEAugustssonRittriSynek94:Unique" name="AugustssonRittriSynek94:Unique">[ARS94]</a></dt><dd>
+L.&nbsp;Augustsson, M.&nbsp;Rittri, D.&nbsp;Synek.
+<i>On generating unique names</i>.
+Journal of Functional Programming 4(1), 1994. pp.&nbsp;117-123.
+
+<div class="p"><!----></div>
+</dd>
  <dt><a href="#CITEBrasselHanusHuch04:Encapsulating" name="BrasselHanusHuch04:Encapsulating">[BBH04]</a></dt><dd>
 B.&nbsp;Braßel, M.&nbsp;Hanus, F.&nbsp;Huch.
 <i>Encapsulating Non-Determinism in Functional Logic Computations</i>.
 Proc.&nbsp;WFLP '04, pp.&nbsp;74-90.
 Aachener Informatik Berichte AIB-2004-05.
+
+<div class="p"><!----></div>
+</dd>
+ <dt><a href="#CITEChakravarty99:Lexing" name="Chakravarty99:Lexing">[Cha99]</a></dt><dd>
+M.&nbsp;Chakravarty.
+<i>Lazy Lexing is Fast</i>.
+Proc.&nbsp;FLOPS&nbsp;'99, pp.&nbsp;68-84. Springer LNCS 1772.
 
 <div class="p"><!----></div>
 </dd>
@@ -3187,13 +3499,27 @@ Also available at: <br /><a href="http://www.informatik.uni-kiel.de/~mh/publicat
 
 <div class="p"><!----></div>
 </dd>
- <dt><a href="#CITEHanus03:Report" name="Hanus03:Report">[Han03]</a></dt><dd>
+ <dt><a href="#CITEHanus06:Report" name="Hanus06:Report">[Han06]</a></dt><dd>
 M.&nbsp;Hanus (ed.).
-<i>Curry: An Integrated Functional Logic Language. (Version 0.8.1)</i>.
+<i>Curry: An Integrated Functional Logic Language. (Version 0.8.2)</i>.
 Available at: <br />
 <a href="http://www.informatik.uni-kiel.de/~mh/curry/report.html"><tt>http://www.informatik.uni-kiel.de/~mh/curry/report.html</tt></a>
 
 <div class="p"><!----></div>
+</dd>
+ <dt><a href="#CITELO94:TOPLAS" name="LO94:TOPLAS">[LO94]</a></dt><dd>
+K.&nbsp;L&#228;ufer, M.&nbsp;Odersky.
+<i>Polymorphic Type Inference and Abstract Data Types</i>.
+ACM TOPLAS 16(5), 1994. pp&nbsp;1411-1430.
+
+<div class="p"><!----></div>
+</dd>
+ <dt><a href="#CITELux04:Compare" name="Lux04:Compare">[Lux04]</a></dt><dd>
+Wolfgang Lux.
+<i>Comparing Copying and Trailing Implementations for Encapsulated Search</i>
+Proc.&nbsp;WFLP&nbsp;'04. Aachener Informatik Berichte AIB-2004-05. pp.&nbsp;91-103.
+Also available at: <br />
+<a href="http://danae.uni-muenster.de/~lux/pubs/wflp04.html"><tt>http://danae.uni-muenster.de/~lux/pubs/wflp04.html</tt></a>
 
 <div class="p"><!----></div>
 </dd>
@@ -3214,16 +3540,26 @@ Also available at: <a href="http://haskell.org/definition/"><tt>http://haskell.o
 <div class="p"><!----></div>
 <a name="tthFtNtAAD"></a><a href="#tthFrefAAD"><sup>3</sup></a><a href="http://www.eecs.harvard.edu/~nr/noweb/"><tt>http://www.eecs.harvard.edu/~nr/noweb/</tt></a>
 <div class="p"><!----></div>
-<a name="tthFtNtAAE"></a><a href="#tthFrefAAE"><sup>4</sup></a>The identifiers <span class="roman"><tt>primitive</tt></span> and <span class="roman"><tt>ccall</tt></span> are not keywords, but given a special meaning only in foreign function declarations. For instance, the declaration <span class="roman"><tt>foreign import primitive ccall :: IO ()</tt></span> is accepted by the compiler.
+<a name="tthFtNtAAE"></a><a href="#tthFrefAAE"><sup>4</sup></a>This is deliberately modeled after Haskell's pragma notation.
 <div class="p"><!----></div>
-<a name="tthFtNtAAF"></a><a href="#tthFrefAAF"><sup>5</sup></a>Incidentally, Haskell has the same problem with enumerations for data types, e.g., <tt>[False..True]</tt>
+<a name="tthFtNtAAF"></a><a href="#tthFrefAAF"><sup>5</sup></a><a href="http://toy.sourceforge.net"><tt>http://toy.sourceforge.net</tt></a>
 <div class="p"><!----></div>
-<a name="tthFtNtAAG"></a><a href="#tthFrefAAG"><sup>6</sup></a>Thanks again to Diego Berrueta.
+<a name="tthFtNtAAG"></a><a href="#tthFrefAAG"><sup>6</sup></a>Thanks to Rafael Caballero for making me aware of this issue.
 <div class="p"><!----></div>
-<a name="tthFtNtAAH"></a><a href="#tthFrefAAH"><sup>7</sup></a>The necessary changes were kindly contributed by Diego Berrueta.
+<a name="tthFtNtAAH"></a><a href="#tthFrefAAH"><sup>7</sup></a>The <tt>forall</tt> syntax can also be used for infix data constructors, see Sect.&nbsp;<a href="#sec:ext-infix">8.1.10</a> below.
+<div class="p"><!----></div>
+<a name="tthFtNtAAI"></a><a href="#tthFrefAAI"><sup>8</sup></a>The identifiers <span class="roman"><tt>primitive</tt></span> and <span class="roman"><tt>ccall</tt></span> are not keywords, but given a special meaning only in foreign function declarations. For instance, the declaration <span class="roman"><tt>foreign import primitive ccall :: IO ()</tt></span> is accepted by the compiler.
+<div class="p"><!----></div>
+<a name="tthFtNtAAJ"></a><a href="#tthFrefAAJ"><sup>9</sup></a>Incidentally, Haskell has the same problem with enumerations for data types, e.g., <tt>[False..True]</tt>
+<div class="p"><!----></div>
+<a name="tthFtNtABA"></a><a href="#tthFrefABA"><sup>10</sup></a>The compiler emits a warning for such functions when it is invoked with options <tt>-Woverlap</tt> or <tt>-Wall</tt> (see Sect.&nbsp;<a href="#sec:compiling">3.2</a>).
+<div class="p"><!----></div>
+<a name="tthFtNtABB"></a><a href="#tthFrefABB"><sup>11</sup></a>Thanks again to Diego Berrueta.
+<div class="p"><!----></div>
+<a name="tthFtNtABC"></a><a href="#tthFrefABC"><sup>12</sup></a>The necessary changes were kindly contributed by Diego Berrueta.
 <br /><br /><hr /><small>File translated from
 T<sub><font size="-1">E</font></sub>X
 by <a href="http://hutchinson.belmont.ma.us/tth/">
 T<sub><font size="-1">T</font></sub>H</a>,
-version 3.38.<br />On 13 May 2005, 20:48.</small>
+version 3.38.<br />On 10 May 2006, 18:20.</small>
 </html>
