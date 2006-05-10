@@ -1,10 +1,10 @@
-dnl $Id: configure.in 1917 2006-05-09 12:12:04Z wlux $
+dnl $Id: configure.in 1920 2006-05-10 17:58:33Z wlux $
 dnl
 dnl Copyright (c) 2002-2006, Wolfgang Lux
 dnl See LICENSE for the full license.
 dnl
 
-AC_INIT([curry],[0.9.9],[wlux@uni-muenster.de])
+AC_INIT([curry],[0.9.10],[wlux@uni-muenster.de])
 AC_PREREQ(2.50)
 AC_CONFIG_SRCDIR(runtime/curry.nw)
 AC_CONFIG_HEADERS(runtime/config.h, [touch runtime/.config.h.stamp])

@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1915 2006-05-07 14:48:36Z wlux $
+# $Id: cyi.in 1920 2006-05-10 17:58:33Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -27,7 +27,7 @@ srcdir="@srcdir@"
 
 echo "    _____ __ __"
 echo "   / ___/ |  / _               Muenster Curry Compiler"
-echo "  / /     | / | |              Version $version, Copyright (c) 1998-2005"
+echo "  / /     | / | |              Version $version, Copyright (c) 1998-2006"
 echo " / /___  / /  | |"
 echo " \____/ /_/   |_|              Type :h for help"
 echo 

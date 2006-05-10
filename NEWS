@@ -1,3 +1,77 @@
+Main changes in release 0.9.10
+
+Build Environment:
+- The compiler can be used without installing it.
+- Build issues with ghc 6.4 have been fixed.
+- Use ghc --make when it is supported.
+- Source distributions now include an abstract machine code to C
+  compiler.
+
+Compiler:
+- The compiler now reports all duplicate or undefined identifiers in a
+  scope before giving up.
+- The compiler can optionally report warnings for case mode
+  violations, unused identifiers, shadowing definitions, and equations
+  with overlapping left hand side patterns.
+- Existentially quantified types finally enabled again.
+- Trust annotations introduced.
+- Evaluation annotations removed.
+- The compiler generates better code for case expressions in some
+  cases.
+
+Interactive Environment:
+- On systems where GNU Bash or a Korn shell (but not the public domain
+  version) are installed, the interpreter now supports command line
+  editing. In addition, a history of previously entered goals and
+  commands is maintained in file ~/.cyi_history.
+- Initialization file .cyirc or ~/.cyirc is read at startup.
+- The :cd command now works for directories whose name contains
+  embedded blanks.
+- The value Success is shown in the answer to a constraint expression
+  only when there are no constraints.
+
+Curry Library and Runtime System:
+- Module prelude renamed into Prelude.
+- Additional prelude type: ShowS.
+- New prelude functions: shows, showChar, showString, showList,
+  showParen, ($!!), ($#), ($##), unknown, and ensureGround.
+- New functions Char.minChar, Char.maxChar, Integer.minInt, and
+  Integer.maxInt that report the smallest and largest elements of
+  types Char and Int, respectively. 
+- Implementation of AllSolutions.getSearchTree changed to use strong
+  encapsulation for logical variables, too. In addition, the search
+  tree now properly reflects the state of the goal at the time when
+  the getSearchTree action is evaluated rather than fixing the state
+  when the first solution is computed.
+- New function IOExts.openFd.
+- New library modules Lexing, NameSupply, and Socket.
+- An alternative implementation of encapsulated search is available,
+  which can be enabled with --enable-copying during configuration.
+- The full Unicode character set range is now supported.
+
+Noteworthy Bug Fixes:
+- A long standing issue where builds would fail when using the vendor
+  supplied make command on Solaris systems has been fixed.
+- Gnu C specific features are now enabled only when using the Gnu C
+  compiler.
+- The import and export specifications T() and T(..) are now also
+  accepted when T is a type synonym.
+- A potential stack overflow problem for functions returning a
+  variable has been eliminated.
+- A problem where programs using encapsulated search could crash in
+  certain situations has been fixed.
+- A problem where a program could fail when show was applied to an
+  infix constructor application other than the list constructor (:)
+  has been fixed.
+- A space leak has been closed where file handles opened with one of
+  the functions IOExts.openProcess and IOExts.openTcpSocket were not
+  closed automatically. Note that these functions are used by the
+  Ports module, too.
+- The functions Integer.ilog, Integer.isqrt, and Integer.pow now fail
+  for negative arguments.
+- The string ['x','y','\200','2','3'] is now printed "xy\200\&23".
+
+
 Main changes in release 0.9.9
 
 Build Environment:
