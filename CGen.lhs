@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1900 2006-04-19 17:44:40Z wlux $
+% $Id: CGen.lhs 1923 2006-05-21 10:42:36Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -476,7 +476,7 @@ the suspend node associated with the abstract machine code function.
 
 > entryDef :: CVisibility -> Name -> [Name] -> CPSFunction -> CTopDecl
 > entryDef vb f vs k
->   | vs == cpsVars k =
+>   | null (cpsEnv k) =
 >       CFuncDef vb (cpsName k) (entryCode f (length vs) : funCode k)
 >   | otherwise = error ("internal error: entryDef " ++ demangle f)
 
@@ -503,10 +503,11 @@ beginning of the function.
 \begin{verbatim}
 
 > funCode :: CPSFunction -> [CStmt]
-> funCode (CPSFunction _ _ vs st) =
->   elimUnused (stackCheck vs st ++ heapCheck consts ds tys ++ loadVars vs ++
->               constDefs consts ds ++ cCode consts vs st [])
->   where ds = concat dss
+> funCode (CPSFunction _ _ vs ws st) =
+>   elimUnused (stackCheck us st ++ heapCheck consts ds tys ++ loadVars us ++
+>               constDefs consts ds ++ cCode consts us st [])
+>   where us = vs ++ ws
+>         ds = concat dss
 >         (tys,dss) = allocs st
 >         consts = constants dss
 
@@ -682,7 +683,7 @@ performing a stack check.
 >   where depth = stackDepth st - length vs
 
 > stackDepth :: CPSStmt -> Int
-> stackDepth (CPSJump k) = stackDepthCont k
+> stackDepth (CPSJump k) = length (contVars k)
 > stackDepth (CPSReturn _) = 0
 > stackDepth (CPSEnter _) = 1
 > stackDepth (CPSExec _ vs) = length vs
@@ -692,12 +693,9 @@ performing a stack check.
 > stackDepth (CPSDelay _) = 1
 > stackDepth (CPSDelayNonLocal _ st) = max 1 (stackDepth st)
 > stackDepth (CPSSeq _ st) = stackDepth st
-> stackDepth (CPSWithCont k st) = stackDepthCont k + stackDepth st
+> stackDepth (CPSWithCont k st) = 1 + length (contVars k) + stackDepth st
 > stackDepth (CPSSwitch _ _ _) = 0
-> stackDepth (CPSChoices _ (k:_)) = 1 + stackDepthCont k
-
-> stackDepthCont :: CPSCont -> Int
-> stackDepthCont = length . contVars
+> stackDepth (CPSChoices _ (k:_)) = 1 + length (contVars k)
 
 \end{verbatim}
 All constants that are used in a function are preallocated in a static
@@ -886,8 +884,7 @@ translation function.
 >    CAssign (LVar "sp[0]") result,
 >    goto "_ret_ip"]
 >   where result = CExpr (show v)
-> ret vs0 v (k:ks) =
->   saveCont vs0 (v : tail (contVars k)) ks ++ [goto (contName k)]
+> ret vs0 v (k:ks) = saveCont vs0 (v : contVars k) ks ++ [goto (contName k)]
 
 > enter :: [Name] -> Name -> [CPSCont] -> [CStmt]
 > enter vs0 v ks =
@@ -909,7 +906,7 @@ translation function.
 >   where ips = ["_cont_ip" ++ if n == 1 then "" else show n | n <- [1..]]
 >         withCont ip k =
 >           CLocalVar nodePtrType ip (Just (asNode (CExpr (contName k))))
->         contFrame ip k = Name ip : tail (contVars k)
+>         contFrame ip k = Name ip : contVars k
 
 > lock :: Name -> [CStmt]
 > lock v =
@@ -1283,7 +1280,7 @@ used for constant constructors and functions, respectively.
 >   | otherwise = cName f ++ '_' : show n
 
 > cpsName :: CPSFunction -> String
-> cpsName (CPSFunction f n _ _) = cPrivName f n
+> cpsName (CPSFunction f n _ _ _) = cPrivName f n
 
 > contName :: CPSCont -> String
 > contName (CPSCont f) = cpsName f
