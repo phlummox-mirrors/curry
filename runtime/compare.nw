@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1872 2006-03-16 10:11:43Z wlux $
+% $Id: compare.nw 1924 2006-05-23 16:11:37Z wlux $
 %
 % Copyright (c) 2001-2005, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -36,17 +36,16 @@ DECLARE_CONST(__Prelude__GT);
 #define pair_cons_node_size closure_node_size(3)
 static DEFINE_DATA(pair_cons, ",:", CONS_TAG, 3);
 
-DECLARE_ENTRYPOINT(__Prelude__error);
-DECLARE_ENTRYPOINT(__compare);
+DECLARE_LABEL(extern, __Prelude__error);
 
-DECLARE_LABEL(__compare_1);
-DECLARE_LABEL(__compare_2);
-DECLARE_LABEL(__compare_3);
+DECLARE_LABEL(extern, __compare);
+DECLARE_LABEL(static, __compare_1);
+DECLARE_LABEL(static, __compare_2);
+DECLARE_LABEL(static, __compare_3);
 
 FUNCTION(__compare)
 {
-    EXPORT_LABEL(__compare)
- ENTRY_LABEL(__compare)
+ ENTRY_LABEL(extern, __compare)
     TRACE_FUN("compare", 2);
     GOTO(__compare_1);
 }
@@ -55,7 +54,7 @@ static
 FUNCTION(__compare_1)
 {
     Node *aux;
- ENTRY_LABEL(__compare_1)
+ ENTRY_LABEL(static, __compare_1)
     EVAL_RIGID_POLY(__compare_1);
     aux	  = sp[0];
     sp[0] = sp[1];
@@ -74,7 +73,7 @@ FUNCTION(__compare_2)
     Node	 *arg1, *arg2;
     Node	 *next, *arglist;
     Node	 **argp1, **argp2;
- ENTRY_LABEL(__compare_2)
+ ENTRY_LABEL(static, __compare_2)
     EVAL_RIGID_POLY(__compare_2);
     n	    = 0;
     arg1    = sp[1];
@@ -231,7 +230,7 @@ static
 FUNCTION(__compare_3)
 {
     Node *cmp, *arg1, *arg2, *arglist;
- ENTRY_LABEL(__compare_3)
+ ENTRY_LABEL(static, __compare_3)
     cmp = sp[0];
     if ( cmp != CONST(__Prelude__EQ) )
     {

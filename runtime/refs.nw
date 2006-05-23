@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: refs.nw 1865 2006-03-01 22:30:38Z wlux $
+% $Id: refs.nw 1924 2006-05-23 16:11:37Z wlux $
 %
 % Copyright (c) 2004, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -42,13 +42,12 @@ The function [[newIORef]] creates a new [[IORef]] and initializes it
 with the specified value.
 
 <<refs.c>>=
-DECLARE_ENTRYPOINT(__newIORef);
+DECLARE_LABEL(extern, __newIORef);
 
 FUNCTION(__newIORef)
 {
     IORef *ref;
-    EXPORT_LABEL(__newIORef)
- ENTRY_LABEL(__newIORef)
+ ENTRY_LABEL(extern, __newIORef)
     CHECK_HEAP(ioref_node_size);
     ref	      = (IORef *)hp;
     ref->info = &ioref_info;
@@ -65,13 +64,12 @@ in a mutable reference. Note that the value is \emph{not} evaluated
 to head normal form because the \texttt{IO} monad is lazy.
 
 <<refs.c>>=
-DECLARE_ENTRYPOINT(__readIORef);
+DECLARE_LABEL(extern, __readIORef);
 
 FUNCTION(__readIORef)
 {
     IORef *ref;
-    EXPORT_LABEL(__readIORef)
- ENTRY_LABEL(__readIORef)
+ ENTRY_LABEL(extern, __readIORef)
     EVAL_RIGID_IOREF(__readIORef);
     ref = (IORef *)sp[0];
     sp += 2;
@@ -88,13 +86,12 @@ references for generating globally unique indices that are different
 even across different branches of a non-deterministic search.
 
 <<refs.c>>=
-DECLARE_ENTRYPOINT(__writeIORef);
+DECLARE_LABEL(extern, __writeIORef);
 
 FUNCTION(__writeIORef)
 {
     IORef *ref;
-    EXPORT_LABEL(__writeIORef)
- ENTRY_LABEL(__writeIORef)
+ ENTRY_LABEL(extern, __writeIORef)
     EVAL_RIGID_IOREF(__writeIORef);
     ref = (IORef *)sp[0];
     SAVE(ref, ref);
