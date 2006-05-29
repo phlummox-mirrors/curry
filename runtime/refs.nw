@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: refs.nw 1924 2006-05-23 16:11:37Z wlux $
+% $Id: refs.nw 1926 2006-05-29 19:24:12Z wlux $
 %
-% Copyright (c) 2004, Wolfgang Lux
+% Copyright (c) 2004-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Mutable References}
@@ -24,7 +24,7 @@ which are defined in this file.
 #include "data.h"
 #include "cam.h"
 
-#define EVAL_RIGID_IOREF(l)	EVAL_RIGID_ABSTRACT(l)
+#define MATCH_RIGID_IOREF(l)	MATCH_RIGID_ABSTRACT(l)
 
 typedef struct ioref_node {
     NodeInfo *info;
@@ -53,7 +53,7 @@ FUNCTION(__newIORef)
     ref->info = &ioref_info;
     ref->ref  = sp[0];
     hp	     += ioref_node_size;
-    
+
     sp += 2;
     RETURN((Node *)ref);
 }
@@ -65,12 +65,20 @@ to head normal form because the \texttt{IO} monad is lazy.
 
 <<refs.c>>=
 DECLARE_LABEL(extern, __readIORef);
+DECLARE_LABEL(static, __readIORef_1);
 
 FUNCTION(__readIORef)
 {
-    IORef *ref;
  ENTRY_LABEL(extern, __readIORef)
-    EVAL_RIGID_IOREF(__readIORef);
+    EVAL_BOXED(__readIORef_1);
+}
+
+static
+FUNCTION(__readIORef_1)
+{
+    IORef *ref;
+ ENTRY_LABEL(static, __readIORef_1)
+    MATCH_RIGID_IOREF(__readIORef_1);
     ref = (IORef *)sp[0];
     sp += 2;
     RETURN(ref->ref);
@@ -87,12 +95,20 @@ even across different branches of a non-deterministic search.
 
 <<refs.c>>=
 DECLARE_LABEL(extern, __writeIORef);
+DECLARE_LABEL(static, __writeIORef_1);
 
 FUNCTION(__writeIORef)
 {
-    IORef *ref;
  ENTRY_LABEL(extern, __writeIORef)
-    EVAL_RIGID_IOREF(__writeIORef);
+    EVAL_BOXED(__writeIORef_1);
+}
+
+static
+FUNCTION(__writeIORef_1)
+{
+    IORef *ref;
+ ENTRY_LABEL(static, __writeIORef_1)
+    MATCH_RIGID_IOREF(__writeIORef_1);
     ref = (IORef *)sp[0];
     SAVE(ref, ref);
     ref->ref = sp[1];

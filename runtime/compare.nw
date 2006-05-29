@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1924 2006-05-23 16:11:37Z wlux $
+% $Id: compare.nw 1926 2006-05-29 19:24:12Z wlux $
 %
-% Copyright (c) 2001-2005, Wolfgang Lux
+% Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Polymorphic Comparisons}
@@ -47,19 +47,16 @@ FUNCTION(__compare)
 {
  ENTRY_LABEL(extern, __compare)
     TRACE_FUN("compare", 2);
-    GOTO(__compare_1);
+    EVAL(__compare_1);
 }
 
 static
 FUNCTION(__compare_1)
 {
-    Node *aux;
  ENTRY_LABEL(static, __compare_1)
-    EVAL_RIGID_POLY(__compare_1);
-    aux	  = sp[0];
-    sp[0] = sp[1];
-    sp[1] = aux;
-    GOTO(__compare_2);
+    MATCH_RIGID(__compare_1);
+    SWAPn(1);
+    EVAL(__compare_2);
 }
 
 static
@@ -74,7 +71,7 @@ FUNCTION(__compare_2)
     Node	 *next, *arglist;
     Node	 **argp1, **argp2;
  ENTRY_LABEL(static, __compare_2)
-    EVAL_RIGID_POLY(__compare_2);
+    MATCH_RIGID(__compare_2);
     n	    = 0;
     arg1    = sp[1];
     arg2    = sp[0];
