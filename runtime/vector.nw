@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: vector.nw 1926 2006-05-29 19:24:12Z wlux $
+% $Id: vector.nw 1927 2006-05-30 19:30:54Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -30,7 +30,10 @@ this will make the printing code treat vectors as tuples.
 #include "io_monad.h"
 #include "cam.h"
 
-static NodeInfo vector_info = { VECTOR_KIND, 0, 0, 0, "(,)", eval_whnf, 0, 0 };
+static NodeInfo vector_info = {
+    VECTOR_KIND, 0, 0, 0, "(,)", eval_whnf, 0, 0, 0
+};
+
 static const struct vector_node empty = {
     &vector_info, vector_node_size(0), { 0 }
 };
