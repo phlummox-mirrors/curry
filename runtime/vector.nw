@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: vector.nw 1927 2006-05-30 19:30:54Z wlux $
+% $Id: vector.nw 1928 2006-06-02 08:40:49Z wlux $
 %
 % Copyright (c) 2002-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -237,7 +237,7 @@ FUNCTION(__lengthIOVector_1)
 
 #if !ONLY_BOXED_OBJECTS
     if ( !is_large_int(n) )
-	r = mk_unboxed(n);
+	r = mk_unboxed((long)n);
     else
 #endif
     {
