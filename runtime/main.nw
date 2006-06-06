@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: main.nw 1929 2006-06-06 09:07:47Z wlux $
+% $Id: main.nw 1930 2006-06-06 09:23:28Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -247,7 +247,7 @@ current statistics.
 void
 curry_terminate()
 {
-    stats_terminate(hp - heap_base);
+    stats_terminate();
 }
 
 @ 
