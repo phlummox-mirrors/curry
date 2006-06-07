@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1927 2006-05-30 19:30:54Z wlux $
+% $Id: CGen.lhs 1931 2006-06-07 13:18:57Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1066,7 +1066,7 @@ integer numbers when set to a non-zero value.
 
 > floatSwitch :: Name -> [(Double,[CStmt])] -> [CStmt]
 > floatSwitch v cases =
->   getFloat "d" (field (show v) "f") ++ foldr (match (CExpr "d")) [] cases
+>   getFloat "d" (CExpr (show v)) ++ foldr (match (CExpr "d")) [] cases
 >   where match v (f,stmts) rest = [CIf (CRel v "==" (CFloat f)) stmts rest]
 
 > tagSwitch :: Name -> [(Name,[CStmt])] -> CStmt
@@ -1151,7 +1151,7 @@ first loads this address into a temporary variable and then boxes it.
 >   [CLocalVar (ctype TypeChar) v1 (Just (CField (CExpr v2) "ch.ch"))]
 > unbox TypeInt v1 v2 =
 >   [CLocalVar (ctype TypeInt) v1 (Just (funCall "long_val" [v2]))]
-> unbox TypeFloat v1 v2 = getFloat v1 (CField (CExpr v2) "f")
+> unbox TypeFloat v1 v2 = getFloat v1 (CExpr v2)
 > unbox TypePtr v1 v2 =
 >   [CLocalVar (ctype TypePtr) v1 (Just (CField (CExpr v2) "p.ptr"))]
 > unbox TypeFunPtr v1 v2 =
@@ -1199,7 +1199,7 @@ first loads this address into a temporary variable and then boxes it.
 > box (Just TypeFloat) v1 v2 =
 >   [CLocalVar nodePtrType v1 (Just (asNode (CExpr "hp"))),
 >    CAssign (LField (LVar v1) "info") (CAddr (CExpr  "float_info")),
->    CProcCall "put_double_val" [CField (CExpr v1) "f",CExpr v2],
+>    CProcCall "put_double_val" [CExpr v1,CExpr v2],
 >    CIncrBy (LVar "hp") (ctypeSize TypeFloat)]
 > box (Just TypePtr) v1 v2 =
 >   [CLocalVar nodePtrType v1 Nothing,

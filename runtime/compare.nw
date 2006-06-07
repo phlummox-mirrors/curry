@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1926 2006-05-29 19:24:12Z wlux $
+% $Id: compare.nw 1931 2006-06-07 13:18:57Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -15,6 +15,7 @@ arguments.
 
 <<compare.c>>=
 #include "config.h"
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -123,8 +124,8 @@ FUNCTION(__compare_2)
 	    break;
         case FLOAT_KIND:
 	    assert(is_float_node(arg2));
-	    get_double_val(d, arg1->f);
-	    get_double_val(e, arg2->f);
+	    get_double_val(d, arg1);
+	    get_double_val(e, arg2);
 	    cmp = d == e ? CONST(__Prelude__EQ)
 		: d < e ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
             break;
