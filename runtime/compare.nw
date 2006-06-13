@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1931 2006-06-07 13:18:57Z wlux $
+% $Id: compare.nw 1934 2006-06-13 16:44:02Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -21,6 +21,7 @@ arguments.
 #include <string.h>
 #include "debug.h"
 #include "run.h"
+#include "regs.h"
 #include "heap.h"
 #include "stack.h"
 #include "eval.h"
@@ -74,8 +75,8 @@ FUNCTION(__compare_2)
  ENTRY_LABEL(static, __compare_2)
     MATCH_RIGID(__compare_2);
     n	    = 0;
-    arg1    = sp[1];
-    arg2    = sp[0];
+    arg1    = regs.sp[1];
+    arg2    = regs.sp[0];
     is_vect = false;
 
 #if !ONLY_BOXED_OBJECTS
@@ -155,11 +156,11 @@ FUNCTION(__compare_2)
 		cmp = x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
 	    break;
 	case PAPP_KIND:
-	    *++sp = from_string("compare applied to partial application");
+	    *++regs.sp = from_string("compare applied to partial application");
 	    GOTO(__Prelude__error);
 	case SEARCH_CONT_KIND:
 	case ABSTRACT_KIND:
-	    *++sp = from_string("compare applied to abstract type");
+	    *++regs.sp = from_string("compare applied to abstract type");
 	    GOTO(__Prelude__error);
 	case CAPP_KIND:
 	    assert(is_capp_node(arg2));
@@ -168,8 +169,8 @@ FUNCTION(__compare_2)
 	    if ( x < 0 )
 	    {
 		assert(y < 0);
-		*++sp = from_string("compare applied to existentially "
-				    "quantified type");
+		*++regs.sp = from_string("compare applied to existentially "
+					 "quantified type");
 		GOTO(__Prelude__error);
 	    }
 	    else if ( x == y )
@@ -189,38 +190,38 @@ FUNCTION(__compare_2)
 
     if ( cmp != CONST(__Prelude__EQ) || n == 0 )
     {
-	sp += 2;
+	regs.sp += 2;
 	RETURN(cmp);
     }
     else if ( n == 1 )
     {
-	sp[0] = is_vect? arg1->a.args[0] : arg1->c.args[0];
-	sp[1] = is_vect? arg2->a.args[0] : arg2->c.args[0];
+	regs.sp[0] = is_vect? arg1->a.args[0] : arg1->c.args[0];
+	regs.sp[1] = is_vect? arg2->a.args[0] : arg2->c.args[0];
 	GOTO(__compare);
     }
 
     arglist = nil;
     CHECK_HEAP(n * pair_cons_node_size);
-    argp1 = is_vect ? sp[1]->a.args : sp[1]->c.args;
-    argp2 = is_vect ? sp[0]->a.args : sp[0]->c.args;
+    argp1 = is_vect ? regs.sp[1]->a.args : regs.sp[1]->c.args;
+    argp2 = is_vect ? regs.sp[0]->a.args : regs.sp[0]->c.args;
 
     for ( i = n, argp1 += n, argp2 += n; i-- > 1; )
     {
-	next		= (Node *)hp;
+	next		= (Node *)regs.hp;
 	next->info	= INFO(pair_cons);
 	next->c.args[0] = *--argp1;
 	next->c.args[1] = *--argp2;
 	next->c.args[2] = arglist;
 	arglist		= next;
-	hp	       += pair_cons_node_size;
+	regs.hp	       += pair_cons_node_size;
     }
 
     CHECK_STACK(2);
-    sp	 -= 2;
-    sp[0] = *--argp1;
-    sp[1] = *--argp2;
-    sp[2] = (Node *)__compare_3;
-    sp[3] = arglist;
+    regs.sp   -= 2;
+    regs.sp[0] = *--argp1;
+    regs.sp[1] = *--argp2;
+    regs.sp[2] = (Node *)__compare_3;
+    regs.sp[3] = arglist;
     GOTO(__compare);
 }
 
@@ -229,31 +230,31 @@ FUNCTION(__compare_3)
 {
     Node *cmp, *arg1, *arg2, *arglist;
  ENTRY_LABEL(static, __compare_3)
-    cmp = sp[0];
+    cmp = regs.sp[0];
     if ( cmp != CONST(__Prelude__EQ) )
     {
-	sp += 2;
+	regs.sp += 2;
 	RETURN(cmp);
     }
 
-    ASSERT(sp[1]->info == INFO(pair_cons));
-    arglist = sp[1];
+    ASSERT(regs.sp[1]->info == INFO(pair_cons));
+    arglist = regs.sp[1];
     arg1    = arglist->c.args[0];
     arg2    = arglist->c.args[1];
     arglist = arglist->c.args[2];
 
     if ( arglist == nil )
     {
-	sp[0] = arg1;
-	sp[1] = arg2;
+	regs.sp[0] = arg1;
+	regs.sp[1] = arg2;
 	GOTO(__compare);
     }
 
     CHECK_STACK(2);
-    sp	 -= 2;
-    sp[0] = arg1;
-    sp[1] = arg2;
-    sp[2] = (Node *)__compare_3;
-    sp[3] = arglist;
+    regs.sp   -= 2;
+    regs.sp[0] = arg1;
+    regs.sp[1] = arg2;
+    regs.sp[2] = (Node *)__compare_3;
+    regs.sp[3] = arglist;
     GOTO(__compare);
 }

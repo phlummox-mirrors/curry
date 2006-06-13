@@ -1,6 +1,6 @@
 # Makefile for the Curry runtime system
 #
-# $Id: Makefile.in 1904 2006-04-23 17:44:42Z wlux $
+# $Id: Makefile.in 1934 2006-06-13 16:44:02Z wlux $
 #
 # Copyright (c) 2001-2006, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -43,8 +43,9 @@ INSTALL_DIR = @INSTALL_DIR@
 # file lists
 rts_H = curry.h \
 	debug.h \
-	run.h \
 	prims.h \
+	run.h \
+	regs.h \
 	heap.h \
 	stack.h \
 	threads.h \
@@ -68,8 +69,9 @@ rts_H = curry.h \
 	trace.h \
 	stats.h
 rts_C = debug.c \
-	run.c \
 	prims.c \
+	run.c \
+	regs.c \
 	heap.c \
 	gc_2space.c \
 	stack.c \
