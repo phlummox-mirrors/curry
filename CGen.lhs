@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1936 2006-06-20 11:20:17Z wlux $
+% $Id: CGen.lhs 1937 2006-06-22 08:21:34Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1049,8 +1049,7 @@ integer numbers when set to a non-zero value.
 >         allCases =
 >           CCase "INDIR_KIND"
 >             (CAssign (LVar v') (field v' "n.node") : upd ++ [CContinue]) :
->           cases ++
->           [CDefault [CBreak]]
+>           cases
 >         unboxedSwitch (Just sts) switch
 >           | null sts = CIf (isBoxed v') [switch] []
 >           | otherwise = CIf (isUnboxed v') sts [switch]
@@ -1059,13 +1058,10 @@ integer numbers when set to a non-zero value.
 > charSwitch :: Name -> [(Char,[CStmt])] -> CStmt
 > charSwitch v cases =
 >   CSwitch (CField (CExpr (show v)) "ch.ch")
->           ([CCase (show (ord c)) stmts | (c,stmts) <- cases] ++
->            [CDefault [CBreak]])
+>           [CCase (show (ord c)) stmts | (c,stmts) <- cases]
 
 > intSwitch :: CExpr -> [(Int,[CStmt])] -> CStmt
-> intSwitch e cases =
->   CSwitch e
->     ([CCase (show i) stmts | (i,stmts) <- cases] ++ [CDefault [CBreak]])
+> intSwitch e cases = CSwitch e [CCase (show i) stmts | (i,stmts) <- cases]
 
 > floatSwitch :: Name -> [(Double,[CStmt])] -> [CStmt]
 > floatSwitch v cases =
@@ -1074,8 +1070,7 @@ integer numbers when set to a non-zero value.
 
 > tagSwitch :: Name -> [(Name,[CStmt])] -> CStmt
 > tagSwitch v cases =
->   CSwitch (nodeTag (show v))
->     ([CCase (dataTag c) stmts | (c,stmts) <- cases] ++ [CDefault [CBreak]])
+>   CSwitch (nodeTag (show v)) [CCase (dataTag c) stmts | (c,stmts) <- cases]
 
 \end{verbatim}
 The code for \texttt{CPSApply} statements has to check to how many
