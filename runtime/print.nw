@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: print.nw 1934 2006-06-13 16:44:02Z wlux $
+% $Id: print.nw 1941 2006-06-26 09:11:38Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -279,7 +279,7 @@ is_string(Node *list)
 static void
 print_string(Node *list)
 {
-    char buf[8];
+    char buf[10];
     int	 c0, c;
     Node *head;
 
