@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1913 2006-05-07 13:44:36Z wlux $
+% $Id: Modules.lhs 1946 2006-07-08 07:27:00Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -223,10 +223,10 @@ compilation of a goal is similar to that of a module.
 >   do
 >     (mEnv,m,is) <- loadGoalModule paths g fn
 >     (tcEnv,tyEnv,g') <-
->       okM $ maybe (return mainGoal) parseGoal g >>= checkGoal mEnv is
+>       okM $ maybe (return (mainGoal m)) parseGoal g >>= checkGoal mEnv is
 >     liftErr $ mapM_ putErrLn $ warnGoal caseMode warn g'
 >     return (mEnv,tcEnv,tyEnv,m,g')
->   where mainGoal = Goal (first "") (Variable (qualify mainId)) []
+>   where mainGoal m = Goal (first "") (Variable (qualifyWith m mainId)) []
 
 > loadGoalModule :: [FilePath] -> Maybe String -> Maybe FilePath
 >                -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
@@ -238,12 +238,14 @@ compilation of a goal is similar to that of a module.
 >   where transparent (Module m _ is ds) = Module m Nothing is ds
 > loadGoalModule paths Nothing (Just fn) =
 >   do
->     (mEnv,m) <- compileInterface paths [] emptyEnv (interfaceName fn)
->     return (mEnv,emptyMIdent,[importDecl (first "") m])
+>     mEnv <- loadInterface paths [] emptyEnv (P p preludeMIdent)
+>     (mEnv',m) <- compileInterface paths [] mEnv (interfaceName fn)
+>     return (mEnv',m,[importDecl p m])
+>   where p = first ""
 > loadGoalModule paths _ Nothing =
 >   do
 >     mEnv <- loadInterface paths [] emptyEnv (P p m)
->     return (mEnv,emptyMIdent,[importDecl p m])
+>     return (mEnv,m,[importDecl p m])
 >   where p = first ""
 >         m = preludeMIdent
 
