@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 1913 2006-05-07 13:44:36Z wlux $
+% $Id: UnusedCheck.lhs 1947 2006-07-08 09:14:19Z wlux $
 %
 % Copyright (c) 2005-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -29,9 +29,9 @@ them according to the compiler options.
 >   reportUnused us $ unused (used m es (used m ds zeroSet)) noPosition ds []
 >   where noPosition = error "noPosition"
 
-> unusedCheckGoal :: [Warn] -> Goal -> [String]
-> unusedCheckGoal us (Goal p e ds) =
->   reportUnused us $ unused (used emptyMIdent g' zeroSet) p g' []
+> unusedCheckGoal :: [Warn] -> ModuleIdent -> Goal -> [String]
+> unusedCheckGoal us m (Goal p e ds) =
+>   reportUnused us $ unused (used m g' zeroSet) p g' []
 >   where g' = SimpleRhs p e ds
 
 > reportUnused :: [Warn] -> [Undef] -> [String]

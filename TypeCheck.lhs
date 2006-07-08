@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 1868 2006-03-02 23:28:17Z wlux $
+% $Id: TypeCheck.lhs 1947 2006-07-08 09:14:19Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -59,12 +59,12 @@ Type checking of a goal is simpler because there are no type
 declarations.
 \begin{verbatim}
 
-> typeCheckGoal :: TCEnv -> ValueEnv -> Goal -> Error ValueEnv
-> typeCheckGoal tcEnv tyEnv (Goal p e ds) =
->    run (tcRhs emptyMIdent tcEnv (SimpleRhs p e ds) >>=
->         checkSkolems p emptyMIdent (text "Goal:" <+> ppExpr 0 e) zeroSet >>
->         liftSt fetchSt >>= \theta -> liftM (subst theta) fetchSt)
->        tyEnv
+> typeCheckGoal :: ModuleIdent -> TCEnv -> ValueEnv -> Goal -> Error ValueEnv
+> typeCheckGoal m tcEnv tyEnv (Goal p e ds) =
+>   run (tcRhs m tcEnv (SimpleRhs p e ds) >>=
+>        checkSkolems p m (text "Goal:" <+> ppExpr 0 e) zeroSet >>
+>        liftSt fetchSt >>= \theta -> liftM (subst theta) fetchSt)
+>       tyEnv
 
 \end{verbatim}
 The type checker makes use of nested state monads in order to

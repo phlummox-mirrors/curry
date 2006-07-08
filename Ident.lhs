@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Ident.lhs 1885 2006-04-05 21:23:18Z wlux $
+% $Id: Ident.lhs 1947 2006-07-08 09:14:19Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -31,8 +31,7 @@ unqualified identifier.}
 >              mkMIdent,moduleName,moduleQualifiers,isInfixOp,isQInfixOp,
 >              qualify,qualifyWith,qualifyLike,qualQualify,isQualified,
 >              unqualify,qualUnqualify,localIdent,splitQualIdent,
->              emptyMIdent,preludeMIdent,debugPreludeMIdent,
->              ptrMIdent,stablePtrMIdent,
+>              preludeMIdent,debugPreludeMIdent,ptrMIdent,stablePtrMIdent,
 >              anonId,unitId,boolId,charId,intId,floatId,listId,ioId,
 >              ptrId,funPtrId,stablePtrId,
 >              successId,trueId,falseId,nilId,consId,mainId,
@@ -149,14 +148,11 @@ given module prefix, respectively).
 A few identifiers a predefined here.
 \begin{verbatim}
 
-> emptyMIdent, preludeMIdent, debugPreludeMIdent :: ModuleIdent
-> emptyMIdent        = ModuleIdent []
+> preludeMIdent, debugPreludeMIdent, ptrMIdent, stablePtrMIdent :: ModuleIdent
 > preludeMIdent      = ModuleIdent ["Prelude"]
 > debugPreludeMIdent = ModuleIdent ["DebugPrelude"]
-
-> ptrMIdent, stablePtrMIdent :: ModuleIdent
-> ptrMIdent       = ModuleIdent ["Ptr"]
-> stablePtrMIdent = ModuleIdent ["StablePtr"]
+> ptrMIdent          = ModuleIdent ["Ptr"]
+> stablePtrMIdent    = ModuleIdent ["StablePtr"]
 
 > anonId :: Ident
 > anonId = Ident "_" 0

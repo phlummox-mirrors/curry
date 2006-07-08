@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PrecCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: PrecCheck.lhs 1947 2006-07-08 09:14:19Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -53,11 +53,10 @@ because it is used for constructing the module's interface.
 >     return (pEnv',ds')
 >   where pEnv' = bindPrecs m [d | BlockDecl d <- ds] pEnv
 
-> precCheckGoal :: PEnv -> Goal -> Error Goal
-> precCheckGoal pEnv (Goal p e ds) =
+> precCheckGoal :: ModuleIdent -> PEnv -> Goal -> Error Goal
+> precCheckGoal m pEnv (Goal p e ds) =
 >   liftE2 (Goal p) (checkExpr m p pEnv' e) (mapE (checkDecl m pEnv') ds)
->   where m = emptyMIdent
->         pEnv' = bindPrecs m ds pEnv
+>   where pEnv' = bindPrecs m ds pEnv
 
 > checkTopDecl :: ModuleIdent -> PEnv -> TopDecl -> Error TopDecl
 > checkTopDecl m pEnv (BlockDecl d) = liftE BlockDecl (checkDecl m pEnv d)

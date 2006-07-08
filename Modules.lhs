@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1946 2006-07-08 07:27:00Z wlux $
+% $Id: Modules.lhs 1947 2006-07-08 09:14:19Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -199,12 +199,13 @@ compilation of a goal is similar to that of a module.
 > compileGoal :: Options -> Maybe String -> Maybe FilePath -> ErrorT IO ()
 > compileGoal opts g fn =
 >   do
->     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths cm ws g fn
+>     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths cm ws m g fn
 >     mEnv' <- importDebugPrelude paths dbg "" mEnv
->     let (ccode,dumps) = transGoal dbg tr mEnv' tcEnv tyEnv g'
+>     let (ccode,dumps) = transGoal dbg tr mEnv' tcEnv tyEnv m g'
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeGoalCode (output opts) ccode
->   where paths = importPath opts
+>   where m = mkMIdent []
+>         paths = importPath opts
 >         dbg = debug opts
 >         tr = if trusted opts then Trust else Suspect
 >         cm = caseMode opts
@@ -213,19 +214,22 @@ compilation of a goal is similar to that of a module.
 > typeGoal :: Options -> String -> Maybe FilePath -> ErrorT IO ()
 > typeGoal opts g fn =
 >   do
->     (_,_,tyEnv,m,Goal _ e _) <-
->       loadGoal (importPath opts) (caseMode opts) (warn opts) (Just g) fn
+>     (_,_,tyEnv,m,Goal _ e _) <- loadGoal paths cm ws (mkMIdent []) (Just g) fn
 >     liftErr $ print (ppType m (typeOf tyEnv e))
+>   where paths = importPath opts
+>         cm = caseMode opts
+>         ws = warn opts
 
-> loadGoal :: [FilePath] -> CaseMode -> [Warn] -> Maybe String -> Maybe FilePath
+> loadGoal :: [FilePath] -> CaseMode -> [Warn]
+>          -> ModuleIdent -> Maybe String -> Maybe FilePath
 >          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,ModuleIdent,Goal)
-> loadGoal paths caseMode warn g fn =
+> loadGoal paths caseMode warn m g fn =
 >   do
->     (mEnv,m,is) <- loadGoalModule paths g fn
+>     (mEnv,m',is) <- loadGoalModule paths g fn
 >     (tcEnv,tyEnv,g') <-
->       okM $ maybe (return (mainGoal m)) parseGoal g >>= checkGoal mEnv is
->     liftErr $ mapM_ putErrLn $ warnGoal caseMode warn g'
->     return (mEnv,tcEnv,tyEnv,m,g')
+>       okM $ maybe (return (mainGoal m')) parseGoal g >>= checkGoal mEnv m is
+>     liftErr $ mapM_ putErrLn $ warnGoal caseMode warn m g'
+>     return (mEnv,tcEnv,tyEnv,m',g')
 >   where mainGoal m = Goal (first "") (Variable (qualifyWith m mainId)) []
 
 > loadGoalModule :: [FilePath] -> Maybe String -> Maybe FilePath
@@ -249,28 +253,29 @@ compilation of a goal is similar to that of a module.
 >   where p = first ""
 >         m = preludeMIdent
 
-> checkGoal :: ModuleEnv -> [ImportDecl] -> Goal -> Error (TCEnv,ValueEnv,Goal)
-> checkGoal mEnv is g =
+> checkGoal :: ModuleEnv -> ModuleIdent -> [ImportDecl] -> Goal
+>           -> Error (TCEnv,ValueEnv,Goal)
+> checkGoal mEnv m is g =
 >   do
 >     (pEnv,tcEnv,tyEnv) <- importModules mEnv is
 >     g' <- typeSyntaxCheckGoal tcEnv g >>=
 >           syntaxCheckGoal tyEnv >>=
->           precCheckGoal pEnv . renameGoal
+>           precCheckGoal m pEnv . renameGoal
 >     tyEnv' <- kindCheckGoal tcEnv g' >>
->               typeCheckGoal tcEnv tyEnv g'
->     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv emptyMIdent pEnv tcEnv tyEnv'
+>               typeCheckGoal m tcEnv tyEnv g'
+>     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv m pEnv tcEnv tyEnv'
 >     return (tcEnv',tyEnv'',qualGoal tyEnv' g')
 
-> warnGoal :: CaseMode -> [Warn] -> Goal -> [String]
-> warnGoal caseMode warn g =
->   caseCheckGoal caseMode g ++ unusedCheckGoal warn g ++
+> warnGoal :: CaseMode -> [Warn] -> ModuleIdent -> Goal -> [String]
+> warnGoal caseMode warn m g =
+>   caseCheckGoal caseMode g ++ unusedCheckGoal warn m g ++
 >   shadowCheckGoal warn g ++ overlapCheckGoal warn g
 
-> transGoal :: Bool -> Trust -> ModuleEnv -> TCEnv -> ValueEnv -> Goal
+> transGoal :: Bool -> Trust -> ModuleEnv -> TCEnv -> ValueEnv
+>           -> ModuleIdent -> Goal
 >           -> (CFile,[(Dump,Doc)])
-> transGoal debug tr mEnv tcEnv tyEnv g = (mergeCFile ccode ccode',dumps)
->   where m = emptyMIdent
->         goalId = mainId
+> transGoal debug tr mEnv tcEnv tyEnv m g = (mergeCFile ccode ccode',dumps)
+>   where goalId = mainId
 >         qGoalId = qualifyWith m goalId
 >         trEnv = bindEnv goalId Suspect (trustEnvGoal tr g)
 >         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
