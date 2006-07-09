@@ -1,15 +1,20 @@
--- $Id: Random.curry 1744 2005-08-23 16:17:12Z wlux $
+-- $Id: Random.curry 1950 2006-07-09 14:08:35Z wlux $
 --
--- Copyright (c) 2004, Wolfgang Lux
+-- Copyright (c) 2004-2006, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module Random where
+import Integer
 
 data StdGen
 
-foreign import primitive genRange	   :: StdGen -> (Int,Int)
-foreign import primitive "nextStdGen" next :: StdGen -> (Int,StdGen)
-foreign import primitive mkStdGen	   :: Int -> StdGen
+foreign import primitive mkStdGen :: Int -> StdGen
+
+next :: StdGen -> (Int,StdGen)
+next rng = randomR (genRange rng) rng
+
+genRange :: StdGen -> (Int,Int)
+genRange _ = (minInt,maxInt)
 
 split :: StdGen -> (StdGen,StdGen)
 split rng = (mkStdGen x,mkStdGen y)
