@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: Base.lhs 1948 2006-07-09 09:17:43Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -34,6 +34,9 @@ imported directly or indirectly into the current module.
 
 > bindModule :: Interface -> ModuleEnv -> ModuleEnv
 > bindModule (Interface m is ds) = bindEnv m (Interface m is ds)
+
+> unbindModule :: ModuleIdent -> ModuleEnv -> ModuleEnv
+> unbindModule = unbindEnv
 
 \end{verbatim}
 \paragraph{Type constructors}
