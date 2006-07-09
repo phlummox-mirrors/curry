@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1948 2006-07-09 09:17:43Z wlux $
+% $Id: Modules.lhs 1949 2006-07-09 10:23:25Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -74,9 +74,8 @@ declaration to the module.
 > compileModule :: Options -> FilePath -> ErrorT IO ()
 > compileModule opts fn =
 >   do
->     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule id paths cm ws fn
->     mEnv' <- importDebugPrelude paths dbg fn mEnv
->     let (ccode,dumps) = transModule split dbg tr mEnv' tcEnv tyEnv m
+>     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule id paths dbg cm ws fn
+>     let (ccode,dumps) = transModule split dbg tr mEnv tcEnv tyEnv m
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               unless (noInterface opts) (updateInterface fn intf) >>
 >               writeCode (output opts) fn ccode
@@ -87,23 +86,23 @@ declaration to the module.
 >         cm = caseMode opts
 >         ws = warn opts
 
-> loadModule :: (Module -> Module) -> [FilePath] -> CaseMode -> [Warn]
+> loadModule :: (Module -> Module) -> [FilePath] -> Bool -> CaseMode -> [Warn]
 >            -> FilePath
 >            -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,Module,Interface)
-> loadModule f paths caseMode warn fn =
+> loadModule f paths debug caseMode warn fn =
 >   do
 >     Module m es is ds <-
 >       liftM f $ liftErr (readFile fn) >>= okM . parseModule fn
->     mEnv <- loadInterfaces paths [] emptyEnv m (modules is)
+>     let is' = importPrelude debug fn m is
+>     mEnv <- loadInterfaces paths [] emptyEnv m (modules is')
 >     okM $ checkInterfaces mEnv
->     (tcEnv,tyEnv,m',intf) <- okM $ checkModule mEnv (Module m es is ds)
+>     (tcEnv,tyEnv,m',intf) <- okM $ checkModule mEnv (Module m es is' ds)
 >     liftErr $ mapM_ putErrLn $ warnModule caseMode warn m'
 >     return (bindModule intf mEnv,tcEnv,tyEnv,m',intf)
 >   where modules is = [P p m | ImportDecl p m _ _ _ <- is]
 
 > parseModule :: FilePath -> String -> Error Module
-> parseModule fn s =
->   unlitLiterate fn s >>= liftM (importPrelude fn) . parseSource fn
+> parseModule fn s = unlitLiterate fn s >>= parseSource fn
 
 > checkModule :: ModuleEnv -> Module -> Error (TCEnv,ValueEnv,Module,Interface)
 > checkModule mEnv (Module m es is ds) =
@@ -200,9 +199,8 @@ module's interface.
 > compileGoal :: Options -> Maybe String -> Maybe FilePath -> ErrorT IO ()
 > compileGoal opts g fn =
 >   do
->     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths cm ws m g fn
->     mEnv' <- importDebugPrelude paths dbg "" mEnv
->     let (ccode,dumps) = transGoal dbg tr mEnv' tcEnv tyEnv m g'
+>     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths dbg cm ws m g fn
+>     let (ccode,dumps) = transGoal dbg tr mEnv tcEnv tyEnv m g'
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeGoalCode (output opts) ccode
 >   where m = mkMIdent []
@@ -215,46 +213,51 @@ module's interface.
 > typeGoal :: Options -> String -> Maybe FilePath -> ErrorT IO ()
 > typeGoal opts g fn =
 >   do
->     (_,_,tyEnv,m,Goal _ e _) <- loadGoal paths cm ws (mkMIdent []) (Just g) fn
+>     (_,_,tyEnv,m,Goal _ e _) <-
+>       loadGoal paths False cm ws (mkMIdent []) (Just g) fn
 >     liftErr $ print (ppType m (typeOf tyEnv e))
 >   where paths = importPath opts
 >         cm = caseMode opts
 >         ws = warn opts
 
-> loadGoal :: [FilePath] -> CaseMode -> [Warn]
+> loadGoal :: [FilePath] -> Bool -> CaseMode -> [Warn]
 >          -> ModuleIdent -> Maybe String -> Maybe FilePath
 >          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,ModuleIdent,Goal)
-> loadGoal paths caseMode warn m g fn =
+> loadGoal paths debug caseMode warn m g fn =
 >   do
->     (mEnv,m',is) <- loadGoalModule paths g fn
+>     (mEnv,m',is) <-
+>       case (g,fn) of
+>         (Just _,Just fn') -> loadGoalModule paths debug fn'
+>         _ -> loadGoalInterface paths debug fn
 >     (tcEnv,tyEnv,g') <-
->       okM $ maybe (return (mainGoal m')) parseGoal g >>= checkGoal mEnv m is
+>       okM $ maybe (return (mainGoal m')) parseGoal g >>=
+>             checkGoal mEnv m (importDecl (first "") m' True : is)
 >     liftErr $ mapM_ putErrLn $ warnGoal caseMode warn m g'
 >     return (mEnv,tcEnv,tyEnv,m',g')
 >   where mainGoal m = Goal (first "") (Variable (qualifyWith m mainId)) []
 
-> loadGoalModule :: [FilePath] -> Maybe String -> Maybe FilePath
+> loadGoalModule :: [FilePath] -> Bool -> FilePath
 >                -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
-> loadGoalModule paths (Just _) (Just fn) =
+> loadGoalModule paths debug fn =
 >   do
 >     (mEnv,_,_,Module m _ is _,_) <-
->       loadModule transparent paths FreeMode [] fn
->     return (mEnv,m,is ++ [importDecl (first "") m])
+>       loadModule transparent paths debug FreeMode [] fn
+>     return (mEnv,m,is)
 >   where transparent (Module m _ is ds) = Module m Nothing is ds
-> loadGoalModule paths Nothing (Just fn) =
+
+> loadGoalInterface :: [FilePath] -> Bool -> Maybe FilePath
+>                   -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
+> loadGoalInterface paths debug fn =
 >   do
->     mEnv <- loadInterface paths [] emptyEnv (P p preludeMIdent)
->     (mEnv',m) <- compileInterface paths [] mEnv (interfaceName fn)
+>     mEnv <- foldM (loadInterface paths []) emptyEnv ms
+>     (mEnv',m) <-
+>       case fn of
+>         Just fn' -> compileInterface paths [] mEnv (interfaceName fn')
+>         Nothing -> return (mEnv,preludeMIdent)
 >     okM $ checkInterfaces mEnv'
->     return (mEnv',m,[importDecl p m])
+>     return (mEnv',m,[])
 >   where p = first ""
-> loadGoalModule paths _ Nothing =
->   do
->     mEnv <- loadInterface paths [] emptyEnv (P p m)
->     okM $ checkInterfaces mEnv
->     return (mEnv,m,[importDecl p m])
->   where p = first ""
->         m = preludeMIdent
+>         ms = P p preludeMIdent : [P p debugPreludeMIdent | debug]
 
 > checkGoal :: ModuleEnv -> ModuleIdent -> [ImportDecl] -> Goal
 >           -> Error (TCEnv,ValueEnv,Goal)
@@ -352,30 +355,25 @@ with the actual definitions in the current module.
 \end{verbatim}
 The prelude is imported implicitly into every module that does not
 import the prelude explicitly with an import declaration. Obviously,
-no import declaration is added to the prelude itself.
+no import declaration is added to the prelude itself. Furthermore, the
+module \texttt{DebugPrelude} is imported into every module when it is
+compiled for debugging. However, none of its entities are brought into
+scope because the debugging transformation is applied to the
+intermediate language.
 \begin{verbatim}
 
-> importPrelude :: FilePath -> Module -> Module
-> importPrelude fn (Module m es is ds) = Module m es is' ds
->   where is'
->           | preludeMIdent `elem` (m : [m | ImportDecl _ m _ _ _ <- is]) = is
->           | otherwise = importDecl (first fn) preludeMIdent : is
+> importPrelude :: Bool -> FilePath -> ModuleIdent
+>               -> [ImportDecl] -> [ImportDecl]
+> importPrelude debug fn m is =
+>   imp True preludeMIdent True ++ imp debug debugPreludeMIdent False ++ is
+>   where p = first fn
+>         ms = m : [m | ImportDecl _ m _ _ _ <- is]
+>         imp cond m all = [importDecl p m all | cond && m `notElem` ms]
 
-> importDecl :: Position -> ModuleIdent -> ImportDecl
-> importDecl p m = ImportDecl p m False Nothing Nothing
-
-\end{verbatim}
-The module \texttt{DebugPrelude} is loaded automatically when the
-program is compiled for debugging. However, no explicit import is
-added to the source code because the debugging transformation is
-applied to the intermediate language.
-\begin{verbatim}
-
-> importDebugPrelude :: [FilePath] -> Bool -> FilePath -> ModuleEnv
->                    -> ErrorT IO ModuleEnv
-> importDebugPrelude paths dbg fn mEnv
->   | dbg = loadInterface paths [] mEnv (P (first fn) debugPreludeMIdent)
->   | otherwise = return mEnv
+> importDecl :: Position -> ModuleIdent -> Bool -> ImportDecl
+> importDecl p m all =
+>   ImportDecl p m False Nothing
+>              (if all then Nothing else Just (Importing p []))
 
 \end{verbatim}
 If an import declaration for a module is found, the compiler loads the
