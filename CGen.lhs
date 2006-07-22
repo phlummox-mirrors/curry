@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 1943 2006-06-26 16:19:36Z wlux $
+% $Id: CGen.lhs 1955 2006-07-22 08:05:14Z wlux $
 %
 % Copyright (c) 1998-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -894,13 +894,17 @@ translation function.
 >       -> [CStmt]
 > cCode _ vs0 (CPSJump k) ks = jump vs0 k ks
 > cCode consts vs0 (CPSReturn e) ks =
->   freshNode consts resName e ++ ret vs0 resName ks
+>   case e of
+>     Var v -> ret vs0 v ks
+>     _ -> freshNode consts resName e ++ ret vs0 resName ks
 > cCode _ vs0 (CPSEnter v) ks = enter vs0 v ks
 > cCode _ vs0 (CPSExec f vs) ks = exec vs0 f vs ks
 > cCode _ vs0 (CPSCCall ty cc) ks = cCall ty resName cc ++ ret vs0 resName ks
 > cCode _ vs0 (CPSApply v vs) ks = apply vs0 v vs ks
 > cCode consts vs0 (CPSUnify v e) ks =
->   freshNode consts resName e ++ unifyVar vs0 v resName ks
+>   case e of
+>     Var v' -> unifyVar vs0 v v' ks
+>     _ -> freshNode consts resName e ++ unifyVar vs0 v resName ks
 > cCode _ vs0 (CPSDelay v) ks = delay vs0 v ks
 > cCode consts vs0 (CPSDelayNonLocal v st) ks =
 >   delayNonLocal vs0 v ks ++ cCode consts vs0 st ks
@@ -1500,9 +1504,6 @@ of the abstract syntax tree.
 
 > gotoExpr :: CExpr -> CStmt
 > gotoExpr l = CProcCall "GOTO" [l]
-
-> tailCall :: String -> [CExpr] -> CStmt
-> tailCall f xs = gotoExpr (CFunCall f xs)
 
 > funCall :: String -> [String] -> CExpr
 > funCall f xs = CFunCall f (map CExpr xs)
