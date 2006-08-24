@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1920 2006-05-10 17:58:33Z wlux $
+# $Id: cyi.in 1959 2006-08-24 16:21:54Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -227,7 +227,7 @@ type_goal ( ) {
   msg_comp && 
   { test -z "$target" || (cd "$srcdir" && $cymake $cyopts -q $target); } &&
   msg_done &&
-  (cd "$srcdir"; $cyc $cyopts -m "$target" -T "$goal")
+  (cd "$srcdir"; $cyc $cyopts -M "$target" -T "$goal")
 }
 
 show_options ( ) {

@@ -3,7 +3,7 @@
 #
 # Shell script for building Curry programs
 #
-# $Id: cymake.in 1906 2006-04-27 09:21:00Z wlux $
+# $Id: cymake.in 1959 2006-08-24 16:21:54Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -118,16 +118,17 @@ while test $# -gt 0; do
     -P* ) cyopts=$cyopts\ -i`expr "$1" : '-P\(.*\)'`; imports="$imports $1";;
     
     # Linker options
-    -ldopt-* | --ldopt-* | -ldopts-* | --ldopts-* ) ldopts="$ldopts $1";;
-    -ldopt | -ldopts | -ldopts | --ldopts ) ldopts="$ldopts $1 $2"; shift;;
+    -ldopt-* | -ldopts-* | --ldopt-* | --ldopts-* ) ldopts="$ldopts $1";;
+    -ldopt | -ldopts | --ldopt | --ldopts ) ldopts="$ldopts $1 $2"; shift;;
     -L ) ldopts="$ldopts -L$2"; shift;;
     -L* ) ldopts="$ldopts $1";;
     -l ) libs="$libs -l$2"; shift;;
     -l* ) libs="$libs $1";;
 
     # Pass all other flags to the Curry compiler
-    # NB some options require an argument keep this list in sync with cyc
-    -[DUIhkt] | -cc | -ccopts | --ccopts ) cyopts="$cyopts $1 $2"; shift;;
+    # NB some options require an argument; must keep this list in sync with cyc
+    -[DUIhkt] | -cc | -ccopt | --ccopt | -ccopts | --ccopts )
+	 cyopts="$cyopts $1 $2"; shift;;
     -* ) cyopts="$cyopts $1";;
 
     +RTS )
