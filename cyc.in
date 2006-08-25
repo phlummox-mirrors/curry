@@ -3,7 +3,7 @@
 #
 # Shell script for compiling Curry modules
 #
-# $Id: cyc.in 1959 2006-08-24 16:21:54Z wlux $
+# $Id: cyc.in 1961 2006-08-25 14:17:30Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -90,6 +90,7 @@ while test $# -gt 0; do
     -o* ) ofile=`expr "$1" : '-o\(.*\)'`;;
     -n ) exec=echo;;
     -v ) verbose=-v; ccopts="$ccopts -v";;
+    -q ) ;; # option ignored for compatibility with cymake
 
     # (C-)Preprocessor definitions
     -[DU] ) ccopts="$ccopts $1 $2"; shift;;
@@ -140,7 +141,14 @@ while test $# -gt 0; do
     -I ) ccopts="$ccopts -I$2"; shift;;
     -I* ) ccopts="$ccopts $1";;
     -i ) ccopts="$ccopts -I$2"; imports="$imports -i $2"; shift;;
-    -i* ) ccopts=$ccopts\ -I`expr "$1" : '-i\(.*\)'`; imports="$imports $1";;
+    -i* ) ccopts="$ccopts -I`expr "$1" : '-i\(.*\)'`"; imports="$imports $1";;
+    -P )
+      ccopts="$ccopts -I$1"; ldopts="$ldopts -L$2"
+      imports="$imports -i $2"; shift;;
+    -P* )
+      arg=`expr "$1" : '-P\(.*\)'`
+      ccopts="$ccopts -I$arg"; ldopts="$ldopts -L$arg"
+      imports="$imports -i $arg";;
 
     # Linker options
     -ldopt-* | -ldopts-* | --ldopt-* | --ldopts-* )
