@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1949 2006-07-09 10:23:25Z wlux $
+% $Id: Modules.lhs 1960 2006-08-25 07:10:47Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -74,7 +74,7 @@ declaration to the module.
 > compileModule :: Options -> FilePath -> ErrorT IO ()
 > compileModule opts fn =
 >   do
->     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule id paths dbg cm ws fn
+>     (mEnv,tcEnv,tyEnv,m,intf) <- loadModule paths dbg cm ws fn
 >     let (ccode,dumps) = transModule split dbg tr mEnv tcEnv tyEnv m
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               unless (noInterface opts) (updateInterface fn intf) >>
@@ -86,13 +86,11 @@ declaration to the module.
 >         cm = caseMode opts
 >         ws = warn opts
 
-> loadModule :: (Module -> Module) -> [FilePath] -> Bool -> CaseMode -> [Warn]
->            -> FilePath
+> loadModule :: [FilePath] -> Bool -> CaseMode -> [Warn] -> FilePath
 >            -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,Module,Interface)
-> loadModule f paths debug caseMode warn fn =
+> loadModule paths debug caseMode warn fn =
 >   do
->     Module m es is ds <-
->       liftM f $ liftErr (readFile fn) >>= okM . parseModule fn
+>     Module m es is ds <- liftErr (readFile fn) >>= okM . parseModule fn
 >     let is' = importPrelude debug fn m is
 >     mEnv <- loadInterfaces paths [] emptyEnv m (modules is')
 >     okM $ checkInterfaces mEnv
@@ -150,7 +148,7 @@ declaration to the module.
 >            (DumpSimplified,ppModule simplified),
 >            (DumpLifted,ppModule lifted),
 >            (DumpIL,ILPP.ppModule il)] ++
->           [(DumpTransformed,ILPP.ppModule ilDbg) | debug ] ++
+>           [(DumpTransformed,ILPP.ppModule ilDbg) | debug] ++
 >           [(DumpNormalized,ILPP.ppModule ilNormal),
 >            (DumpCam,CamPP.ppModule cam)]
 
@@ -225,39 +223,31 @@ module's interface.
 >          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,ModuleIdent,Goal)
 > loadGoal paths debug caseMode warn m g fn =
 >   do
->     (mEnv,m',is) <-
->       case (g,fn) of
->         (Just _,Just fn') -> loadGoalModule paths debug fn'
->         _ -> loadGoalInterface paths debug fn
+>     (mEnv,m') <- loadGoalModule paths debug fn
 >     (tcEnv,tyEnv,g') <-
 >       okM $ maybe (return (mainGoal m')) parseGoal g >>=
->             checkGoal mEnv m (importDecl (first "") m' True : is)
+>             checkGoal mEnv m (map importModule [m',preludeMIdent])
 >     liftErr $ mapM_ putErrLn $ warnGoal caseMode warn m g'
 >     return (mEnv,tcEnv,tyEnv,m',g')
->   where mainGoal m = Goal (first "") (Variable (qualifyWith m mainId)) []
+>   where p = first ""
+>         mainGoal m = Goal p (Variable (qualifyWith m mainId)) []
+>         importModule m = importDecl p m True
 
-> loadGoalModule :: [FilePath] -> Bool -> FilePath
->                -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
+> loadGoalModule :: [FilePath] -> Bool -> Maybe FilePath
+>                -> ErrorT IO (ModuleEnv,ModuleIdent)
 > loadGoalModule paths debug fn =
 >   do
->     (mEnv,_,_,Module m _ is _,_) <-
->       loadModule transparent paths debug FreeMode [] fn
->     return (mEnv,m,is)
->   where transparent (Module m _ is ds) = Module m Nothing is ds
-
-> loadGoalInterface :: [FilePath] -> Bool -> Maybe FilePath
->                   -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
-> loadGoalInterface paths debug fn =
->   do
 >     mEnv <- foldM (loadInterface paths []) emptyEnv ms
->     (mEnv',m) <-
->       case fn of
->         Just fn' -> compileInterface paths [] mEnv (interfaceName fn')
->         Nothing -> return (mEnv,preludeMIdent)
+>     (mEnv',m') <- loadGoalInterface paths mEnv fn
 >     okM $ checkInterfaces mEnv'
->     return (mEnv',m,[])
->   where p = first ""
->         ms = P p preludeMIdent : [P p debugPreludeMIdent | debug]
+>     return (mEnv',m')
+>   where ms = map (P (first "")) (preludeMIdent : [debugPreludeMIdent | debug])
+
+> loadGoalInterface :: [FilePath] -> ModuleEnv -> Maybe FilePath
+>                   -> ErrorT IO (ModuleEnv,ModuleIdent)
+> loadGoalInterface paths mEnv (Just fn) =
+>   compileInterface paths [] mEnv (interfaceName fn)
+> loadGoalInterface _ mEnv Nothing = return (mEnv,preludeMIdent)
 
 > checkGoal :: ModuleEnv -> ModuleIdent -> [ImportDecl] -> Goal
 >           -> Error (TCEnv,ValueEnv,Goal)
@@ -278,8 +268,7 @@ module's interface.
 >   shadowCheckGoal warn g ++ overlapCheckGoal warn g
 
 > transGoal :: Bool -> Trust -> ModuleEnv -> TCEnv -> ValueEnv
->           -> ModuleIdent -> Goal
->           -> (CFile,[(Dump,Doc)])
+>           -> ModuleIdent -> Goal -> (CFile,[(Dump,Doc)])
 > transGoal debug tr mEnv tcEnv tyEnv m g = (mergeCFile ccode ccode',dumps)
 >   where goalId = mainId
 >         qGoalId = qualifyWith m goalId
@@ -303,7 +292,7 @@ module's interface.
 >            (DumpSimplified,ppModule simplified),
 >            (DumpLifted,ppModule lifted),
 >            (DumpIL,ILPP.ppModule il)] ++
->           [(DumpTransformed,ILPP.ppModule ilDbg) | debug ] ++
+>           [(DumpTransformed,ILPP.ppModule ilDbg) | debug] ++
 >           [(DumpNormalized,ILPP.ppModule ilNormal),
 >            (DumpCam,CamPP.ppModule cam)]
 
