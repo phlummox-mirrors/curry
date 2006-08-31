@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PrecCheck.lhs 1947 2006-07-08 09:14:19Z wlux $
+% $Id: PrecCheck.lhs 1965 2006-08-31 08:32:33Z wlux $
 %
 % Copyright (c) 2001-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -97,7 +97,8 @@ because it is used for constructing the module's interface.
 >   liftE (ConstructorPattern c) (mapE (checkConstrTerm p pEnv) ts)
 > checkConstrTerm p pEnv (InfixPattern t1 op t2) =
 >   do
->     (t1',t2') <- checkConstrTerm p pEnv t1 &&& checkConstrTerm p pEnv t2
+>     (t1',t2') <-
+>       liftE (,) (checkConstrTerm p pEnv t1) &&& checkConstrTerm p pEnv t2
 >     fixPrecT p pEnv t1' op t2'
 > checkConstrTerm p pEnv (ParenPattern t) =
 >   liftE ParenPattern (checkConstrTerm p pEnv t)
@@ -151,7 +152,7 @@ because it is used for constructing the module's interface.
 >   liftE2 Apply (checkExpr m p pEnv e1) (checkExpr m p pEnv e2)
 > checkExpr m p pEnv (InfixApply e1 op e2) =
 >   do
->     (e1',e2') <- checkExpr m p pEnv e1 &&& checkExpr m p pEnv e2
+>     (e1',e2') <- liftE (,) (checkExpr m p pEnv e1) &&& checkExpr m p pEnv e2
 >     fixPrec p pEnv e1' op e2'
 > checkExpr m p pEnv (LeftSection e op) =
 >   do
