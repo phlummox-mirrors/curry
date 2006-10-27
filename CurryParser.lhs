@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1957 2006-07-31 21:11:20Z wlux $
+% $Id: CurryParser.lhs 1985 2006-10-27 17:14:33Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -32,7 +32,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > parseHeader :: FilePath -> String -> Error Module
 > parseHeader fn = prefixParser (moduleHeader fn <*->
->                               (leftBrace `opt` undefined) <*>
+>                                (leftBrace `opt` NoAttributes) <*>
 >                                many (importDecl <*-> many semicolon) <*>
 >                                succeed [])
 >                               lexer
@@ -373,13 +373,12 @@ directory path to the module is ignored.
 >         constrPattern p = ConstructorPattern <$> p <*> many constrTerm2
 >         parenPattern = minus <**> minusPattern negNum
 >                    <|> fminus <**> minusPattern negFloat
->                    <|> gconPattern
 >                    <|> funSym <\> minus <\> fminus <*-> rightParen
 >                                                    <**> identPattern
+>                    <|> constrPattern (gconSym <\> funSym <*-> rightParen)
 >                    <|> parenTuplePattern <\> minus <\> fminus <*-> rightParen
 >         minusPattern p = rightParen <-*> identPattern
 >                      <|> parenMinusPattern p <*-> rightParen
->         gconPattern = constrPattern (gconId <*-> rightParen)
 >         conPattern ts = flip ConstructorPattern ts . qualify
 
 > constrTerm2 :: Parser Token ConstrTerm a
@@ -400,9 +399,10 @@ directory path to the module is ignored.
 > parenPattern = leftParen <-*> parenPattern
 >   where parenPattern = minus <**> minusPattern negNum
 >                    <|> fminus <**> minusPattern negFloat
->                    <|> flip ConstructorPattern [] <$> gconId <*-> rightParen
 >                    <|> funSym <\> minus <\> fminus <*-> rightParen
 >                                                    <**> optAsPattern
+>                    <|> flip ConstructorPattern [] <$> (gconSym <\> funSym)
+>                                                   <*-> rightParen
 >                    <|> parenTuplePattern <\> minus <\> fminus <*-> rightParen
 >         minusPattern p = rightParen <-*> optAsPattern
 >                      <|> parenMinusPattern p <*-> rightParen
@@ -418,8 +418,8 @@ Partial patterns used in the combinators above, but also for parsing
 the left-hand side of a declaration.
 \begin{verbatim}
 
-> gconId :: Parser Token QualIdent a
-> gconId = colon <|> tupleCommas
+> gconSym :: Parser Token QualIdent a
+> gconSym = gConSym <|> tupleCommas
 
 > negNum,negFloat :: Parser Token (Ident -> ConstrTerm) a
 > negNum = flip NegativePattern <$> (Int anonId <$> int <|> Float <$> float)
