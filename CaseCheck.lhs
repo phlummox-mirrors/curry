@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseCheck.lhs 1956 2006-07-23 09:02:23Z wlux $
+% $Id: CaseCheck.lhs 1992 2006-11-03 08:38:45Z wlux $
 %
 % Copyright (c) 2003-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -143,11 +143,15 @@ collect all defined identifiers.
 > constrNames p evs c =
 >   D p DataConstrId c : map (D p TypeVarId) (filter (not . isAnonId) evs)
 
+> instance SyntaxTree TypeExpr where
+>   names p ty xs =
+>     map (D p TypeVarId) (nub (filter (not . isAnonId) (fv ty))) ++ xs
+
 > instance SyntaxTree Decl where
 >   names _ (InfixDecl _ _ _ _) xs = xs
->   names _ (TypeSig _ _ _) xs = xs
+>   names _ (TypeSig p _ ty) xs = names p ty xs
 >   names _ (FunctionDecl p f eqs) xs = D p FunctionId f : names p eqs xs
->   names _ (ForeignDecl p _ _ f _) xs = D p FunctionId f : xs
+>   names _ (ForeignDecl p _ _ f ty) xs = D p FunctionId f : names p ty xs
 >   names _ (PatternDecl p t rhs) xs = names p t (names p rhs xs)
 >   names _ (FreeDecl p vs) xs = map (D p VariableId) vs ++ xs
 >   names _ (TrustAnnot _ _ _) xs = xs
@@ -186,7 +190,7 @@ collect all defined identifiers.
 >   names _ (Variable _) = id
 >   names _ (Constructor _) = id
 >   names p (Paren e) = names p e
->   names p (Typed e _) = names p e
+>   names p (Typed e ty) = names p e . names p ty
 >   names p (Tuple es) = names p es
 >   names p (List es) = names p es
 >   names p (ListCompr e sts) = names p sts . names p e
