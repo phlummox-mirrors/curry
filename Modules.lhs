@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 1963 2006-08-28 11:57:32Z wlux $
+% $Id: Modules.lhs 2050 2006-12-20 09:28:46Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -128,9 +128,9 @@ declaration to the module.
 >             -> Module -> (Either CFile [CFile],[(Dump,Doc)])
 > transModule split debug tr mEnv tcEnv tyEnv (Module m es is ds) =
 >   (ccode,dumps)
->   where trEnv = trustEnv tr ds
+>   where trEnv = if debug then trustEnv tr ds else emptyEnv
 >         (desugared,tyEnv') = desugar tcEnv tyEnv (Module m es is ds)
->         (simplified,tyEnv'') = simplify tyEnv' desugared
+>         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
 >         (lifted,tyEnv''',trEnv') = lift tyEnv'' trEnv simplified
 >         il = ilTrans tyEnv''' lifted
 >         ilDbg
@@ -283,9 +283,11 @@ module's interface.
 > transGoal debug tr mEnv tcEnv tyEnv m g = (mergeCFile ccode ccode',dumps)
 >   where goalId = mainId
 >         qGoalId = qualifyWith m goalId
->         trEnv = bindEnv goalId Suspect (trustEnvGoal tr g)
+>         trEnv
+>           | debug = bindEnv goalId Suspect (trustEnvGoal tr g)
+>           | otherwise = emptyEnv
 >         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
->         (simplified,tyEnv'') = simplify tyEnv' desugared
+>         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
 >         (lifted,tyEnv''',trEnv') = lift tyEnv'' trEnv simplified
 >         il = ilTrans tyEnv''' lifted
 >         ilDbg
