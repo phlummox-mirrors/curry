@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2057 2007-01-01 18:48:23Z wlux $
+% $Id: Modules.lhs 2058 2007-01-02 16:11:46Z wlux $
 %
 % Copyright (c) 1999-2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -126,10 +126,9 @@ declaration to the module.
 
 > transModule :: Bool -> Bool -> Trust -> ModuleEnv -> TCEnv -> ValueEnv
 >             -> Module -> (Either CFile [CFile],[(Dump,Doc)])
-> transModule split debug tr mEnv tcEnv tyEnv (Module m es is ds) =
->   (ccode,dumps)
->   where trEnv = if debug then trustEnv tr ds else emptyEnv
->         (desugared,tyEnv') = desugar tcEnv tyEnv (Module m es is ds)
+> transModule split debug tr mEnv tcEnv tyEnv m = (ccode,dumps)
+>   where trEnv = if debug then trustEnv tr m else emptyEnv
+>         (desugared,tyEnv') = desugar tcEnv tyEnv m
 >         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
 >         (lifted,tyEnv''',trEnv') = lift tyEnv'' trEnv simplified
 >         il = ilTrans tyEnv''' lifted
@@ -143,8 +142,8 @@ declaration to the module.
 >           | split = Right (genSplitModule imports cam)
 >           | otherwise = Left (genModule imports cam)
 >         dumps =
->           [(DumpRenamed,ppModule (Module m es is ds)),
->            (DumpTypes,ppTypes m (localBindings tyEnv)),
+>           [(DumpRenamed,ppModule m),
+>            (DumpTypes,ppTypes tcEnv (localBindings tyEnv)),
 >            (DumpDesugared,ppModule desugared),
 >            (DumpSimplified,ppModule simplified),
 >            (DumpLifted,ppModule lifted),
@@ -194,10 +193,12 @@ scope with their unqualified names. In addition, the entities exported
 from all loaded interfaces are in scope with their qualified names.
 \begin{verbatim}
 
+> data Task = Eval | Type
+
 > compileGoal :: Options -> Maybe String -> [FilePath] -> ErrorT IO ()
 > compileGoal opts g fns =
 >   do
->     (mEnv,tcEnv,tyEnv,_,g') <- loadGoal paths dbg cm ws m g fns
+>     (mEnv,tcEnv,tyEnv,g') <- loadGoal Eval paths dbg cm ws m g fns
 >     let (ccode,dumps) = transGoal dbg tr mEnv tcEnv tyEnv m g'
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeGoalCode (output opts) ccode
@@ -211,24 +212,24 @@ from all loaded interfaces are in scope with their qualified names.
 > typeGoal :: Options -> String -> [FilePath] -> ErrorT IO ()
 > typeGoal opts g fns =
 >   do
->     (_,_,tyEnv,m,Goal _ e _) <-
->       loadGoal paths False cm ws (mkMIdent []) (Just g) fns
->     liftErr $ print (ppType m (typeOf tyEnv e))
+>     (_,tcEnv,tyEnv,Goal _ e _) <-
+>       loadGoal Type paths False cm ws (mkMIdent []) (Just g) fns
+>     liftErr $ print (ppType tcEnv (typeOf tyEnv e))
 >   where paths = importPath opts
 >         cm = caseMode opts
 >         ws = warn opts
 
-> loadGoal :: [FilePath] -> Bool -> CaseMode -> [Warn]
+> loadGoal :: Task -> [FilePath] -> Bool -> CaseMode -> [Warn]
 >          -> ModuleIdent -> Maybe String -> [FilePath]
->          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,ModuleIdent,Goal)
-> loadGoal paths debug caseMode warn m g fns =
+>          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,Goal)
+> loadGoal task paths debug caseMode warn m g fns =
 >   do
 >     (mEnv,m') <- loadGoalModules paths debug fns
 >     (tcEnv,tyEnv,g') <-
 >       okM $ maybe (return (mainGoal m')) parseGoal g >>=
->             checkGoal mEnv m (nub [m',preludeMIdent])
+>             checkGoal task mEnv m (nub [m',preludeMIdent])
 >     liftErr $ mapM_ putErrLn $ warnGoal caseMode warn m g'
->     return (mEnv,tcEnv,tyEnv,m',g')
+>     return (mEnv,tcEnv,tyEnv,g')
 >   where mainGoal m = Goal (first "") (Variable (qualifyWith m mainId)) []
 
 > loadGoalModules :: [FilePath] -> Bool -> [FilePath]
@@ -256,9 +257,9 @@ from all loaded interfaces are in scope with their qualified names.
 >           case break ('.' ==) cs of
 >             (cs',cs'') -> cs' : components cs''
 
-> checkGoal :: ModuleEnv -> ModuleIdent -> [ModuleIdent] -> Goal
+> checkGoal :: Task -> ModuleEnv -> ModuleIdent -> [ModuleIdent] -> Goal
 >           -> Error (TCEnv,ValueEnv,Goal)
-> checkGoal mEnv m ms g =
+> checkGoal task mEnv m ms g =
 >   do
 >     let (pEnv,tcEnv,tyEnv) = importInterfaces mEnv ms
 >     g' <- typeSyntaxCheckGoal tcEnv g >>=
@@ -266,8 +267,13 @@ from all loaded interfaces are in scope with their qualified names.
 >           precCheckGoal m pEnv . renameGoal
 >     tyEnv' <- kindCheckGoal tcEnv g' >>
 >               typeCheckGoal m tcEnv tyEnv g'
->     let (_,tcEnv',tyEnv'') = qualifyEnv mEnv m pEnv tcEnv tyEnv'
->     return (tcEnv',tyEnv'',qualGoal tyEnv' g')
+>     return (qualifyGoal task mEnv m pEnv tcEnv tyEnv' g')
+
+> qualifyGoal :: Task -> ModuleEnv -> ModuleIdent -> PEnv -> TCEnv -> ValueEnv
+>             -> Goal -> (TCEnv,ValueEnv,Goal)
+> qualifyGoal Eval mEnv m pEnv tcEnv tyEnv g = (tcEnv',tyEnv',qualGoal tyEnv g)
+>   where (_,tcEnv',tyEnv') = qualifyEnv mEnv m pEnv tcEnv tyEnv
+> qualifyGoal Type _ _ _ tcEnv tyEnv g = (tcEnv,tyEnv,g)
 
 > warnGoal :: CaseMode -> [Warn] -> ModuleIdent -> Goal -> [String]
 > warnGoal caseMode warn m g =
@@ -296,7 +302,7 @@ from all loaded interfaces are in scope with their qualified names.
 >         ccode' = genMain (fun qGoalId) (fmap (map name) vs)
 >         dumps =
 >           [(DumpRenamed,ppGoal g),
->            (DumpTypes,ppTypes m (localBindings tyEnv)),
+>            (DumpTypes,ppTypes tcEnv (localBindings tyEnv)),
 >            (DumpDesugared,ppModule desugared),
 >            (DumpSimplified,ppModule simplified),
 >            (DumpLifted,ppModule lifted),
@@ -543,14 +549,14 @@ The function \texttt{ppTypes} is used for pretty-printing the types
 from the type environment.
 \begin{verbatim}
 
-> ppTypes :: ModuleIdent -> [(Ident,ValueInfo)] -> Doc
-> ppTypes m = vcat . map ppInfo
+> ppTypes :: TCEnv -> [(Ident,ValueInfo)] -> Doc
+> ppTypes tcEnv = vcat . map ppInfo
 >   where ppInfo (c,DataConstructor _ (ForAll _ ty)) =
 >           ppIDecl (mkDecl c ty) <+> text "-- data constructor"
 >         ppInfo (c,NewtypeConstructor _ (ForAll _ ty)) =
 >           ppIDecl (mkDecl c ty) <+> text "-- newtype constructor"
 >         ppInfo (x,Value _ (ForAll _ ty)) = ppIDecl (mkDecl x ty)
->         mkDecl f ty = IFunctionDecl undefined (qualify f) (fromType m ty)
+>         mkDecl f ty = IFunctionDecl undefined (qualify f) (fromType tcEnv ty)
 
 \end{verbatim}
 Various file name extensions.

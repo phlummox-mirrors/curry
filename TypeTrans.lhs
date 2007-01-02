@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 1791 2005-10-09 17:39:51Z wlux $
+% $Id: TypeTrans.lhs 2058 2007-01-02 16:11:46Z wlux $
 %
 % Copyright (c) 1999-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -72,19 +72,20 @@ indices independently for each type expression.
 
 \end{verbatim}
 The function \texttt{fromType} converts a type into a Curry type
-expression. During the conversion, the compiler removes the module
-qualifier from all type constructors defined in the current module.
+expression. During the conversion, the compiler removes unnecessary
+module qualifiers from type constructors that are in scope with
+unqualified names.
 \begin{verbatim}
 
-> fromType :: ModuleIdent -> Type -> TypeExpr
-> fromType m ty = fromType' (unqualifyType m ty)
+> fromType :: TCEnv -> Type -> TypeExpr
+> fromType tcEnv ty = fromType' (unqualifyType tcEnv ty)
 
 > fromType' :: Type -> TypeExpr
 > fromType' (TypeConstructor tc tys)
 >   | isQTupleId tc = TupleType tys'
 >   | tc == qListId && length tys == 1 = ListType (head tys')
 >   | otherwise = ConstructorType tc tys'
->   where tys' = map (fromType') tys
+>   where tys' = map fromType' tys
 > fromType' (TypeVariable tv) =
 >   VariableType (if tv >= 0 then nameSupply !! tv
 >                            else mkIdent ('_' : show (-tv)))
@@ -92,15 +93,22 @@ qualifier from all type constructors defined in the current module.
 > fromType' (TypeArrow ty1 ty2) = ArrowType (fromType' ty1) (fromType' ty2)
 > fromType' (TypeSkolem k) = VariableType (mkIdent ("_?" ++ show k))
 
-> unqualifyType :: ModuleIdent -> Type -> Type
-> unqualifyType m (TypeConstructor tc tys) =
->   TypeConstructor (qualUnqualify m tc) (map (unqualifyType m) tys)
+> unqualifyType :: TCEnv -> Type -> Type
+> unqualifyType tcEnv (TypeConstructor tc tys) =
+>   TypeConstructor (unqualifyTC tcEnv tc) (map (unqualifyType tcEnv) tys)
 > unqualifyType _ (TypeVariable tv) = TypeVariable tv
-> unqualifyType m (TypeConstrained tys tv) =
->   TypeConstrained (map (unqualifyType m) tys) tv
-> unqualifyType m (TypeArrow ty1 ty2) =
->   TypeArrow (unqualifyType m ty1) (unqualifyType m ty2)
-> unqualifyType m (TypeSkolem k) = TypeSkolem k
+> unqualifyType tcEnv (TypeConstrained tys tv) =
+>   TypeConstrained (map (unqualifyType tcEnv) tys) tv
+> unqualifyType tcEnv (TypeArrow ty1 ty2) =
+>   TypeArrow (unqualifyType tcEnv ty1) (unqualifyType tcEnv ty2)
+> unqualifyType _ (TypeSkolem k) = TypeSkolem k
+
+> unqualifyTC :: TCEnv -> QualIdent -> QualIdent
+> unqualifyTC tcEnv tc =
+>   case lookupTopEnv tc' tcEnv of
+>     [t] | origName t == tc -> qualify tc'
+>     _ -> tc
+>   where tc' = unqualify tc
 
 \end{verbatim}
 The functions \texttt{expandMonoType}, \texttt{expandMonoTypes}, and
@@ -142,10 +150,10 @@ The following functions implement pretty-printing for types by
 converting them into type expressions.
 \begin{verbatim}
 
-> ppType :: ModuleIdent -> Type -> Doc
-> ppType m = ppTypeExpr 0 . fromType m
+> ppType :: TCEnv -> Type -> Doc
+> ppType tcEnv = ppTypeExpr 0 . fromType tcEnv
 
-> ppTypeScheme :: ModuleIdent -> TypeScheme -> Doc
-> ppTypeScheme m (ForAll _ ty) = ppType m ty
+> ppTypeScheme :: TCEnv -> TypeScheme -> Doc
+> ppTypeScheme tcEnv (ForAll _ ty) = ppType tcEnv ty
 
 \end{verbatim}

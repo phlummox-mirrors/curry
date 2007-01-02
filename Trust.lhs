@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Trust.lhs 1849 2006-02-07 14:17:31Z wlux $
+% $Id: Trust.lhs 2058 2007-01-02 16:11:46Z wlux $
 %
 % Copyright (c) 2006, Wolfgang Lux
 % See LICENSE for the full license.
@@ -39,8 +39,8 @@ the local functions \texttt{h} and \texttt{i} are trusted, but
 \texttt{g} is not.
 \begin{verbatim}
 
-> trustEnv :: Trust -> [TopDecl] -> TrustEnv
-> trustEnv tr ds = trust tr [d | BlockDecl d <- ds] emptyEnv
+> trustEnv :: Trust -> Module -> TrustEnv
+> trustEnv tr (Module _ _ _ ds) = trust tr [d | BlockDecl d <- ds] emptyEnv
 
 > trustEnvGoal :: Trust -> Goal -> TrustEnv
 > trustEnvGoal tr (Goal _ e ds) = trust tr e (trust tr ds emptyEnv)

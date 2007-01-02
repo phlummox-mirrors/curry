@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 1867 2006-03-02 18:35:01Z wlux $
+% $Id: Exports.lhs 2058 2007-01-02 16:11:46Z wlux $
 %
 % Copyright (c) 2000-2005, Wolfgang Lux
 % See LICENSE for the full license.
@@ -27,7 +27,10 @@ types.
 >   where imports = map (IImportDecl noPos) (usedModules ds)
 >         precs = foldr (infixDecl m pEnv) [] es
 >         hidden = map (hiddenTypeDecl m tcEnv) (hiddenTypes ds)
->         ds = foldr (typeDecl m tcEnv tyEnv) (foldr (funDecl m tyEnv) [] es) es
+>         ds =
+>           foldr (typeDecl m tcEnv tyEnv)
+>                 (foldr (funDecl m tcEnv tyEnv) [] es)
+>                 es
 
 > infixDecl :: ModuleIdent -> PEnv -> Export -> [IDecl] -> [IDecl]
 > infixDecl m pEnv (Export f) ds = iInfixDecl m pEnv f ds
@@ -50,16 +53,17 @@ types.
 >       where constrs evs
 >               | null cs = []
 >               | otherwise =
->                   map (>>= fmap (constrDecl m tyEnv tc n evs) . hide cs) cs'
+>                   map (>>= fmap (constrDecl tcEnv tyEnv tc n evs) . hide cs)
+>                       cs'
 >             hide cs c
 >               | c `elem` cs = Just c
 >               | otherwise = Nothing
 >     [RenamingType _ n c]
 >       | null cs -> iTypeDecl IDataDecl m tc n (const []) : ds
 >       | otherwise -> iTypeDecl INewtypeDecl m tc n newConstr : ds
->       where newConstr _ = newConstrDecl m tyEnv tc c
+>       where newConstr _ = newConstrDecl tcEnv tyEnv tc c
 >     [AliasType _ n ty] ->
->       iTypeDecl ITypeDecl m tc n (const (fromType m ty)) : ds
+>       iTypeDecl ITypeDecl m tc n (const (fromType tcEnv ty)) : ds
 >     _ -> internalError "typeDecl"
 
 > iTypeDecl :: (Position -> QualIdent -> [Ident] -> a -> IDecl)
@@ -67,23 +71,22 @@ types.
 > iTypeDecl f m tc n g = f noPos (qualUnqualify m tc) tvs (g tvs')
 >   where (tvs,tvs') = splitAt n nameSupply
 
-> constrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> Int -> [Ident]
->            -> Ident -> ConstrDecl
-> constrDecl m tyEnv tc n evs c =
->   ConstrDecl noPos (take (n' - n) evs) c (map (fromType m) (arrowArgs ty))
+> constrDecl :: TCEnv -> ValueEnv -> QualIdent -> Int -> [Ident] -> Ident
+>            -> ConstrDecl
+> constrDecl tcEnv tyEnv tc n evs c =
+>   ConstrDecl noPos (take (n' - n) evs) c (map (fromType tcEnv) (arrowArgs ty))
 >   where ForAll n' ty = conType (qualifyLike tc c) tyEnv
 
-> newConstrDecl :: ModuleIdent -> ValueEnv -> QualIdent -> Ident
->               -> NewConstrDecl
-> newConstrDecl m tyEnv tc c =
->   NewConstrDecl noPos c (fromType m (head (arrowArgs ty)))
+> newConstrDecl :: TCEnv -> ValueEnv -> QualIdent -> Ident -> NewConstrDecl
+> newConstrDecl tcEnv tyEnv tc c =
+>   NewConstrDecl noPos c (fromType tcEnv (head (arrowArgs ty)))
 >   where ForAll _ ty = conType (qualifyLike tc c) tyEnv
 
-> funDecl :: ModuleIdent -> ValueEnv -> Export -> [IDecl] -> [IDecl]
-> funDecl m tyEnv (Export f) ds =
->   IFunctionDecl noPos (qualUnqualify m f) (fromType m ty) : ds
+> funDecl :: ModuleIdent -> TCEnv -> ValueEnv -> Export -> [IDecl] -> [IDecl]
+> funDecl m tcEnv tyEnv (Export f) ds =
+>   IFunctionDecl noPos (qualUnqualify m f) (fromType tcEnv ty) : ds
 >   where ty = rawType (funType f tyEnv)
-> funDecl _ _ (ExportTypeWith _ _) ds = ds
+> funDecl _ _ _ (ExportTypeWith _ _) ds = ds
 
 \end{verbatim}
 The compiler determines the list of imported modules from the set of
