@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 1985 2006-10-27 17:14:33Z wlux $
+% $Id: CurryParser.lhs 2098 2007-02-18 10:49:45Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryParser.lhs}
@@ -600,13 +600,11 @@ prefix of a let expression.
 > char :: Parser Token Char a
 > char = cval <$> token CharTok
 
-> int, checkInt :: Parser Token Int a
+> int :: Parser Token Int a
 > int = ival <$> token IntTok
-> checkInt = int <?> "integer number expected"
 
-> float, checkFloat :: Parser Token Double a
+> float :: Parser Token Double a
 > float = fval <$> token FloatTok
-> checkFloat = float <?> "floating point number expected"
 
 > string :: Parser Token String a
 > string = sval <$> token StringTok
@@ -695,7 +693,7 @@ prefix of a let expression.
 
 > layout :: Parser Token a b -> Parser Token a b
 > layout p = braces p
->        <|> layoutOn <-*> p <*-> layoutEnd
+>        <|> layoutOn <-*> (p <\> token VRightBrace) <*-> layoutEnd
 >                     <*-> (token VRightBrace `opt` NoAttributes)
 
 \end{verbatim}
