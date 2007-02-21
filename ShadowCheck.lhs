@@ -1,13 +1,15 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 1913 2006-05-07 13:44:36Z wlux $
+% $Id: ShadowCheck.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 2005-2006, Wolfgang Lux
+% Copyright (c) 2005-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ShadowCheck.lhs}
 \section{Checking for Shadowing Definitions}
 Besides unused variables, the compiler can also report local
 definitions which shadow a declaration from an outer scope.
+
+\ToDo{Take imported definitions into account.}
 \begin{verbatim}
 
 > module ShadowCheck(shadowCheck, shadowCheckGoal) where
@@ -141,7 +143,7 @@ declarations together with their positions.
 > vars :: Decl -> [P Ident]
 > vars (FunctionDecl p f _) = [P p f]
 > vars (PatternDecl p t _) = map (P p) (filter (not . isAnonId) (bv t))
-> vars (ForeignDecl p _ _ f _) = [P p f]
+> vars (ForeignDecl p _ _ _ f _) = [P p f]
 > vars (FreeDecl p vs) = map (P p) vs
 > vars _ = []
 

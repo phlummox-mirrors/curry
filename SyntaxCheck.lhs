@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: SyntaxCheck.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{SyntaxCheck.lhs}
@@ -144,10 +144,10 @@ top-level.
 >     checkVars "type signature" p env vs
 >     return (TypeSig p vs ty)
 > checkDeclLhs top env (FunctionDecl p _ eqs) = checkEquationLhs top env p eqs
-> checkDeclLhs _ env (ForeignDecl p cc ie f ty) =
+> checkDeclLhs _ env (ForeignDecl p cc s ie f ty) =
 >   do
 >     checkVars "foreign declaration" p env [f]
->     return (ForeignDecl p cc ie f ty)
+>     return (ForeignDecl p cc s ie f ty)
 > checkDeclLhs top env (PatternDecl p t rhs)
 >   | top = internalError "checkDeclLhs"
 >   | otherwise = liftE (flip (PatternDecl p) rhs) (checkConstrTerm p env t)
@@ -234,10 +234,10 @@ top-level.
 >   liftE (FunctionDecl p f) (mapE (checkEquation env) eqs)
 > checkDeclRhs env (PatternDecl p t rhs) =
 >   liftE (PatternDecl p t) (checkRhs env rhs)
-> checkDeclRhs _ (ForeignDecl p cc ie f ty) =
+> checkDeclRhs _ (ForeignDecl p cc s ie f ty) =
 >   do
 >     ie' <- checkForeign p f cc ie
->     return (ForeignDecl p cc ie' f ty)
+>     return (ForeignDecl p cc s ie' f ty)
 > checkDeclRhs _ d = return d
 
 > checkArity :: Position -> Ident -> [Equation] -> Error ()
@@ -508,7 +508,7 @@ Auxiliary definitions.
 > vars (InfixDecl p _ _ ops) = map (P p) ops
 > vars (TypeSig p fs _) = map (P p) fs
 > vars (FunctionDecl p f _) = [P p f]
-> vars (ForeignDecl p _ _ f _) = [P p f]
+> vars (ForeignDecl p _ _ _ f _) = [P p f]
 > vars (PatternDecl p t _) = map (P p) (bv t)
 > vars (FreeDecl p vs) = map (P p) vs
 > vars (TrustAnnot p _ fs) = maybe [] (map (P p)) fs

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 1947 2006-07-08 09:14:19Z wlux $
+% $Id: ILTrans.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILTrans.lhs}
@@ -51,7 +51,7 @@ synonyms in place of newtype declarations (see Sect.~\ref{sec:IL}).
 
 > translDecl :: ModuleIdent -> ValueEnv -> Decl -> [IL.Decl]
 > translDecl m tyEnv (FunctionDecl _ f eqs) = [translFunction m tyEnv f eqs]
-> translDecl m tyEnv (ForeignDecl _ cc ie f _) =
+> translDecl m tyEnv (ForeignDecl _ cc _ ie f _) =
 >   [translForeign m tyEnv f cc (fromJust ie)]
 > translDecl _ _ _ = []
 
@@ -362,8 +362,16 @@ further possibilities to apply this transformation.
 >   IL.Alt (pattern (translTerm v t))
 >          (translRhs tyEnv vs (bindRenameEnv v t env) rhs)
 
+> instance QuantExpr IL.ConstrTerm where
+>   bv (IL.LiteralPattern _) = []
+>   bv (IL.ConstructorPattern _ vs) = vs
+>   bv (IL.VariablePattern v) = [v]
+
 > instance Expr IL.Expression where
+>   fv (IL.Literal _) = []
 >   fv (IL.Variable v) = [v]
+>   fv (IL.Function _ _) = []
+>   fv (IL.Constructor _ _) = []
 >   fv (IL.Apply e1 e2) = fv e1 ++ fv e2
 >   fv (IL.Case _ e alts) = fv e ++ fv alts
 >   fv (IL.Or e1 e2) = fv e1 ++ fv e2
@@ -371,12 +379,9 @@ further possibilities to apply this transformation.
 >   fv (IL.Let (IL.Binding v e1) e2) = fv e1 ++ filter (/= v) (fv e2)
 >   fv (IL.Letrec bds e) = filter (`notElem` vs) (fv es ++ fv e)
 >     where (vs,es) = unzip [(v,e) | IL.Binding v e <- bds]
->   fv _ = []
 
 > instance Expr IL.Alt where
->   fv (IL.Alt (IL.ConstructorPattern _ vs) e) = filter (`notElem` vs) (fv e)
->   fv (IL.Alt (IL.VariablePattern v) e) = filter (v /=) (fv e)
->   fv (IL.Alt _ e) = fv e
+>   fv (IL.Alt t e) = filterBv t (fv e)
 
 \end{verbatim}
 \paragraph{Auxiliary Definitions}

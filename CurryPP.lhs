@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 1885 2006-04-05 21:23:18Z wlux $
+% $Id: CurryPP.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryPP.lhs}
@@ -96,11 +96,14 @@ Declarations
 > ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
 > ppDecl (TypeSig _ fs ty) = ppIdentList fs <+> text "::" <+> ppTypeExpr 0 ty
 > ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
-> ppDecl (ForeignDecl p cc ie f ty) =
->   sep [text "foreign import" <+> ppCallConv cc <+> maybePP (text . show) ie,
+> ppDecl (ForeignDecl p cc s ie f ty) =
+>   sep [hsep [text "foreign import",ppCallConv cc,maybePP ppSafety s,
+>              maybePP (text . show) ie],
 >        indent (ppDecl (TypeSig p [f] ty))]
 >   where ppCallConv CallConvPrimitive = text "primitive"
 >         ppCallConv CallConvCCall = text "ccall"
+>         ppSafety Unsafe = text "unsafe"
+>         ppSafety Safe = text "safe"
 > ppDecl (PatternDecl _ t rhs) = ppRule (ppConstrTerm 0 t) equals rhs
 > ppDecl (FreeDecl _ vs) = ppIdentList vs <+> text "free"
 > ppDecl (TrustAnnot _ t fs) =

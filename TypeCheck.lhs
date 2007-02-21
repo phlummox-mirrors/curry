@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2058 2007-01-02 16:11:46Z wlux $
+% $Id: TypeCheck.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeCheck.lhs}
@@ -190,7 +190,7 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >   where (vds,ods) = partition isValueDecl ds
 
 > tcDeclGroup :: ModuleIdent -> TCEnv -> SigEnv -> [Decl] -> TcState ()
-> tcDeclGroup m tcEnv _ [ForeignDecl p cc ie f ty] =
+> tcDeclGroup m tcEnv _ [ForeignDecl p cc _ ie f ty] =
 >   tcForeignFunct m tcEnv p cc ie f ty
 > tcDeclGroup m tcEnv sigs [FreeDecl p vs] =
 >   mapM_ (tcVariable m tcEnv sigs False p) vs
@@ -776,10 +776,10 @@ here because we know that they are closed.
 
 > fvEnv :: ValueEnv -> Set Int
 > fvEnv tyEnv =
->   fromListSet [tv | ty <- localTypes tyEnv, tv <- typeVars ty, tv < 0]
+>   fromListSet (filter (< 0) (concatMap typeVars (localTypes tyEnv)))
 
 > fsEnv :: ValueEnv -> Set Int
-> fsEnv tyEnv = unionSets (map (fromListSet . typeSkolems) (localTypes tyEnv))
+> fsEnv tyEnv = fromListSet (concatMap typeSkolems (localTypes tyEnv))
 
 > localTypes :: ValueEnv -> [Type]
 > localTypes tyEnv = [ty | (_,Value _ (ForAll _ ty)) <- localBindings tyEnv]

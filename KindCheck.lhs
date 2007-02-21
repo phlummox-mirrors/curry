@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: KindCheck.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{KindCheck.lhs}
@@ -66,9 +66,9 @@ function in any particular order.
 >   where tcEnv' = foldr (bindTC m tcEnv') tcEnv ds
 
 > bindTC :: ModuleIdent -> TCEnv -> TopDecl -> TCEnv -> TCEnv
-> bindTC m tcEnv (DataDecl _ tc tvs cs) =
+> bindTC m _ (DataDecl _ tc tvs cs) =
 >   globalBindTopEnv m tc (typeCon DataType m tc tvs (map (Just . constr) cs))
-> bindTC m tcEnv (NewtypeDecl _ tc tvs (NewConstrDecl _ c _)) =
+> bindTC m _ (NewtypeDecl _ tc tvs (NewConstrDecl _ c _)) =
 >   globalBindTopEnv m tc (typeCon RenamingType m tc tvs c)
 > bindTC m tcEnv (TypeDecl _ tc tvs ty) =
 >   globalBindTopEnv m tc
@@ -90,7 +90,7 @@ function in any particular order.
 > typeDecl _ [] = internalError "typeDecl"
 > typeDecl _ [DataDecl _ _ _ _] = return ()
 > typeDecl _ [NewtypeDecl _ _ _ _] = return ()
-> typeDecl m [d@(TypeDecl p tc _ ty)]
+> typeDecl m [TypeDecl p tc _ ty]
 >   | tc `elem` ft m ty [] = errorAt p (recursiveTypes [tc])
 >   | otherwise = return ()
 > typeDecl _ (TypeDecl p tc _ _ : ds) =
@@ -115,11 +115,13 @@ Kind checking is applied to all type expressions in the program.
 > checkTopDecl tcEnv (BlockDecl d) = checkDecl tcEnv d
 
 > checkDecl :: TCEnv -> Decl -> Error ()
+> checkDecl _ (InfixDecl _ _ _ _) = return ()
 > checkDecl tcEnv (TypeSig p _ ty) = checkType tcEnv p ty
 > checkDecl tcEnv (FunctionDecl _ _ eqs) = mapE_ (checkEquation tcEnv) eqs
+> checkDecl tcEnv (ForeignDecl p _ _ _ _ ty) = checkType tcEnv p ty
 > checkDecl tcEnv (PatternDecl _ _ rhs) = checkRhs tcEnv rhs
-> checkDecl tcEnv (ForeignDecl p _ _ _ ty) = checkType tcEnv p ty
-> checkDecl _ d = return ()
+> checkDecl _ (FreeDecl _ _) = return ()
+> checkDecl _ (TrustAnnot _ _ _) = return ()
 
 > checkConstrDecl :: TCEnv -> ConstrDecl -> Error ()
 > checkConstrDecl tcEnv (ConstrDecl p _ _ tys) = mapE_ (checkType tcEnv p) tys

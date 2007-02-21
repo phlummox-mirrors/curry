@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 1875 2006-03-18 18:43:27Z wlux $
+% $Id: Renaming.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Renaming.lhs}
@@ -167,8 +167,8 @@ syntax tree and renames all type and expression variables.
 >   do
 >     f' <- renameVar env f
 >     liftM (FunctionDecl p f') (mapM (renameEqn f' env) eqs)
-> renameDecl env (ForeignDecl p cc ie f ty) =
->   liftM2 (ForeignDecl p cc ie) (renameVar env f) (renameTypeSig ty)
+> renameDecl env (ForeignDecl p cc s ie f ty) =
+>   liftM2 (ForeignDecl p cc s ie) (renameVar env f) (renameTypeSig ty)
 > renameDecl env (PatternDecl p t rhs) =
 >   liftM2 (PatternDecl p) (renameConstrTerm env t) (renameRhs env rhs)
 > renameDecl env (FreeDecl p vs) =
@@ -227,8 +227,9 @@ not rename this identifier in the same environment as its arguments.
 > renameConstrTerm env (ConstructorPattern c ts) =
 >   liftM (ConstructorPattern c) (mapM (renameConstrTerm env) ts)
 > renameConstrTerm env (InfixPattern t1 op t2) =
->   liftM2 (flip InfixPattern op) (renameConstrTerm env t1)
->                                 (renameConstrTerm env t2)
+>   liftM2 (flip InfixPattern op)
+>          (renameConstrTerm env t1)
+>          (renameConstrTerm env t2)
 > renameConstrTerm env (ParenPattern t) =
 >   liftM ParenPattern (renameConstrTerm env t)
 > renameConstrTerm env (TuplePattern ts) =
@@ -264,9 +265,10 @@ not rename this identifier in the same environment as its arguments.
 > renameExpr env (EnumFromTo e1 e2) =
 >   liftM2 EnumFromTo (renameExpr env e1) (renameExpr env e2)
 > renameExpr env (EnumFromThenTo e1 e2 e3) =
->   liftM3 EnumFromThenTo (renameExpr env e1)
->                         (renameExpr env e2)
->                         (renameExpr env e3)
+>   liftM3 EnumFromThenTo
+>          (renameExpr env e1)
+>          (renameExpr env e2)
+>          (renameExpr env e3)
 > renameExpr env (UnaryMinus op e) = liftM (UnaryMinus op) (renameExpr env e)
 > renameExpr env (Apply e1 e2) =
 >   liftM2 Apply (renameExpr env e1) (renameExpr env e2)
@@ -290,9 +292,10 @@ not rename this identifier in the same environment as its arguments.
 >     e' <- renameExpr env' e
 >     return (Do sts' e')
 > renameExpr env (IfThenElse e1 e2 e3) =
->   liftM3 IfThenElse (renameExpr env e1)
->                     (renameExpr env e2)
->                     (renameExpr env e3)
+>   liftM3 IfThenElse
+>          (renameExpr env e1)
+>          (renameExpr env e2)
+>          (renameExpr env e3)
 > renameExpr env (Case e as) =
 >   liftM2 Case (renameExpr env e) (mapM (renameAlt env) as)
 

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 1875 2006-03-18 18:43:27Z wlux $
+% $Id: CurrySyntax.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurrySyntax.lhs}
@@ -67,7 +67,7 @@ parsed representation of a Curry program.
 >     InfixDecl Position Infix Int [Ident]
 >   | TypeSig Position [Ident] TypeExpr
 >   | FunctionDecl Position Ident [Equation]
->   | ForeignDecl Position CallConv (Maybe String) Ident TypeExpr
+>   | ForeignDecl Position CallConv (Maybe Safety) (Maybe String) Ident TypeExpr
 >   | PatternDecl Position ConstrTerm Rhs
 >   | FreeDecl Position [Ident]
 >   | TrustAnnot Position Trust (Maybe [Ident])
@@ -75,6 +75,7 @@ parsed representation of a Curry program.
 
 > data Infix = Infix | InfixL | InfixR deriving (Eq,Show)
 > data CallConv = CallConvPrimitive | CallConvCCall deriving (Eq,Show)
+> data Safety = Unsafe | Safe deriving (Eq,Show)
 > data Trust = Suspect | Trust deriving (Eq,Show)
 
 > constr :: ConstrDecl -> Ident

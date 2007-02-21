@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 1875 2006-03-18 18:43:27Z wlux $
+% $Id: Desugar.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 2001-2006, Wolfgang Lux
+% Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Desugar.lhs}
@@ -155,10 +155,11 @@ hack is no longer needed.}
 >             -> (Maybe [Ident],Module,ValueEnv)
 > desugarGoal debug tcEnv tyEnv m g (Goal p e ds)
 >   | debug || isIO ty =
->       desugarGoalIO tcEnv (bindSuccess tyEnv) p m g (Let ds e)
->         (if debug && arrowArity ty > 0 then typeVar 0 else ty)
->   | otherwise = desugarGoal' tcEnv (bindSuccess tyEnv) p m g vs e' ty
+>       desugarGoalIO tcEnv tyEnv' p m g (Let ds e) $
+>       if debug && arrowArity ty > 0 then typeVar 0 else ty
+>   | otherwise = desugarGoal' tcEnv tyEnv' p m g vs e' ty
 >   where ty = typeOf tyEnv e
+>         tyEnv' = bindSuccess tyEnv
 >         (vs,e') = liftGoalVars (if null ds then e else Let ds e)
 >         isIO (TypeConstructor tc [_]) = tc == qIOId
 >         isIO _ = False
@@ -236,8 +237,8 @@ imported function.
 >   do
 >     ty <- liftM (flip typeOf f) fetchSt
 >     liftM (FunctionDecl p f) (mapM (desugarEquation m (arrowArgs ty)) eqs)
-> desugarDeclRhs _ (ForeignDecl p cc ie f ty) =
->   return (ForeignDecl p cc (desugarImpEnt cc ie) f ty)
+> desugarDeclRhs _ (ForeignDecl p cc s ie f ty) =
+>   return (ForeignDecl p cc (s `mplus` Just Safe) (desugarImpEnt cc ie) f ty)
 >   where desugarImpEnt CallConvPrimitive ie = ie `mplus` Just (name f)
 >         desugarImpEnt CallConvCCall ie =
 >           Just (unwords (kind (maybe [] words ie)))

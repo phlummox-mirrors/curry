@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: TypeSyntaxCheck.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeSyntaxCheck.lhs}
@@ -83,8 +83,8 @@ signatures.
 >   liftE (FunctionDecl p f) (mapE (checkEquation env) eqs)
 > checkDecl env (PatternDecl p t rhs) =
 >   liftE (PatternDecl p t) (checkRhs env rhs)
-> checkDecl env (ForeignDecl p cc ie f ty) =
->   liftE (ForeignDecl p cc ie f) (checkType env p ty)
+> checkDecl env (ForeignDecl p cc s ie f ty) =
+>   liftE (ForeignDecl p cc s ie f) (checkType env p ty)
 > checkDecl _ d = return d
 
 > checkTypeLhs :: TypeEnv -> Position -> [Ident] -> Error ()

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 1948 2006-07-09 09:17:43Z wlux $
+% $Id: Base.lhs 2101 2007-02-21 16:25:07Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Base.lhs}
@@ -371,7 +371,7 @@ variable, but always refers to a global function from the prelude.
 
 > instance QuantExpr Decl where
 >   bv (FunctionDecl _ f _) = [f]
->   bv (ForeignDecl _ _ _ f _) = [f]
+>   bv (ForeignDecl _ _ _ _ f _) = [f]
 >   bv (PatternDecl _ t _) = bv t
 >   bv (FreeDecl _ vs) = vs
 >   bv _ = []
@@ -495,14 +495,14 @@ declarations.
 > isInfixDecl (InfixDecl _ _ _ _) = True
 > isInfixDecl _ = False
 > isTypeSig (TypeSig _ _ _) = True
-> isTypeSig (ForeignDecl _ _ _ _ _) = True
+> isTypeSig (ForeignDecl _ _ _ _ _ _) = True
 > isTypeSig _ = False
 > isFreeDecl (FreeDecl _ _) = True
 > isFreeDecl _ = False
 > isTrustAnnot (TrustAnnot _ _ _) = True
 > isTrustAnnot _ = False
 > isValueDecl (FunctionDecl _ _ _) = True
-> isValueDecl (ForeignDecl _ _ _ _ _) = True
+> isValueDecl (ForeignDecl _ _ _ _ _ _) = True
 > isValueDecl (PatternDecl _ _ _) = True
 > isValueDecl (FreeDecl _ _) = True
 > isValueDecl _ = False
