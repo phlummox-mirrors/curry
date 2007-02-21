@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2101 2007-02-21 16:25:07Z wlux $
+% $Id: TypeCheck.lhs 2102 2007-02-21 19:58:26Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -190,8 +190,8 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >   where (vds,ods) = partition isValueDecl ds
 
 > tcDeclGroup :: ModuleIdent -> TCEnv -> SigEnv -> [Decl] -> TcState ()
-> tcDeclGroup m tcEnv _ [ForeignDecl p cc _ ie f ty] =
->   tcForeignFunct m tcEnv p cc ie f ty
+> tcDeclGroup m tcEnv _ [ForeignDecl p cc s ie f ty] =
+>   tcForeignFunct m tcEnv p cc s ie f ty
 > tcDeclGroup m tcEnv sigs [FreeDecl p vs] =
 >   mapM_ (tcVariable m tcEnv sigs False p) vs
 > tcDeclGroup m tcEnv sigs ds =
@@ -259,43 +259,48 @@ in \texttt{tcVariable} below.
 > genDecl _ _ _ _ (PatternDecl _ _ _) = return ()
 
 \end{verbatim}
-Argument and result types of foreign functions using the
+Argument and result types of safe foreign functions using the
 \texttt{ccall} calling convention are restricted to the basic types
 \texttt{Bool}, \texttt{Char}, \texttt{Int}, \texttt{Float},
-\texttt{Ptr} and \texttt{FunPtr}. In addition, $\texttt{IO}\;t$ is a
-legitimate result type when $t$ is either one of the basic types or
-\texttt{()}. Furthermore, the type of a dynamic function wrapper must
-be of the form $(\texttt{FunPtr}\;t) \rightarrow t$, where $t$ is a
-valid foreign function type, and the type of a foreign address must be
-either $\texttt{Ptr}\;a$ or $\texttt{FunPtr}\;a$, where $a$ is an
-arbitrary type.
+\texttt{Ptr}, \texttt{FunPtr}, and \texttt{StablePtr}. In addition,
+$\texttt{IO}\;t$ is a legitimate result type when $t$ is either one of
+the basic types or \texttt{()}. As an extension to the Haskell foreign
+function interface specification~\cite{Chakravarty03:FFI}, arbitrary
+argument and result types are allowed for unsafe foreign functions
+using the \texttt{ccall} convention (cf.\ Sect.~\ref{sec:il-compile}
+about marshalling). Furthermore, the type of a dynamic function
+wrapper must be of the form $(\texttt{FunPtr}\;t) \rightarrow t$,
+where $t$ is a valid foreign function type, and the type of a foreign
+address must be either $\texttt{Ptr}\;a$ or $\texttt{FunPtr}\;a$,
+where $a$ is an arbitrary type.
 \begin{verbatim}
 
-> tcForeignFunct :: ModuleIdent -> TCEnv -> Position -> CallConv
+> tcForeignFunct :: ModuleIdent -> TCEnv -> Position -> CallConv -> Maybe Safety
 >                -> Maybe String -> Ident -> TypeExpr -> TcState ()
-> tcForeignFunct m tcEnv p cc ie f ty =
+> tcForeignFunct m tcEnv p cc s ie f ty =
 >   do
->     checkForeignType cc (rawType ty')
+>     checkForeignType cc (maybe Safe id s) (rawType ty')
 >     updateSt_ (bindFun m f ty')
 >   where ty' = expandPolyType tcEnv ty
->         checkForeignType CallConvPrimitive _ = return ()
->         checkForeignType CallConvCCall ty
->           | ie == Just "dynamic" = checkCDynCallType tcEnv p ty
+>         checkForeignType CallConvPrimitive _ _ = return ()
+>         checkForeignType CallConvCCall s ty
+>           | ie == Just "dynamic" = checkCDynCallType tcEnv p s ty
 >           | maybe False ('&' `elem`) ie = checkCAddrType tcEnv p ty
->           | otherwise = checkCCallType tcEnv p ty
+>           | otherwise = checkCCallType tcEnv p s ty
 
-> checkCCallType :: TCEnv -> Position -> Type -> TcState ()
-> checkCCallType tcEnv p (TypeArrow ty1 ty2)
->   | isCArgType ty1 = checkCCallType tcEnv p ty2
+> checkCCallType :: TCEnv -> Position -> Safety -> Type -> TcState ()
+> checkCCallType tcEnv p Safe (TypeArrow ty1 ty2)
+>   | isCArgType ty1 = checkCCallType tcEnv p Safe ty2
 >   | otherwise = errorAt p (invalidCType "argument" tcEnv ty1)
-> checkCCallType tcEnv p ty
+> checkCCallType tcEnv p Safe ty
 >   | isCRetType ty = return ()
 >   | otherwise = errorAt p (invalidCType "result" tcEnv ty)
+> checkCCallType _ _ Unsafe _ = return ()
 
-> checkCDynCallType :: TCEnv -> Position -> Type -> TcState ()
-> checkCDynCallType tcEnv p (TypeArrow (TypeConstructor tc [ty1]) ty2)
->   | tc == qFunPtrId && ty1 == ty2 = checkCCallType tcEnv p ty1
-> checkCDynCallType tcEnv p ty =
+> checkCDynCallType :: TCEnv -> Position -> Safety -> Type -> TcState ()
+> checkCDynCallType tcEnv p s (TypeArrow (TypeConstructor tc [ty1]) ty2)
+>   | tc == qFunPtrId && ty1 == ty2 = checkCCallType tcEnv p s ty1
+> checkCDynCallType tcEnv p _ ty =
 >   errorAt p (invalidCType "dynamic function" tcEnv ty)
 
 > checkCAddrType :: TCEnv -> Position -> Type -> TcState ()
