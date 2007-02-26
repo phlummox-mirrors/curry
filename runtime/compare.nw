@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 2112 2007-02-26 15:16:53Z wlux $
+% $Id: compare.nw 2113 2007-02-26 17:47:02Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -155,10 +155,10 @@ FUNCTION(__compare_2)
 		cmp = x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
 	    break;
 	case PAPP_KIND:
-	    fail_with("compare applied to partial application");
+	    FAIL("compare: partial application");
 	case SEARCH_CONT_KIND:
 	case ABSTRACT_KIND:
-	    fail_with("compare applied to abstract type");
+	    FAIL("compare: abstract type");
 	case CAPP_KIND:
 	    assert(is_capp_node(arg2));
 	    x = (long)node_tag(arg1);
@@ -166,7 +166,7 @@ FUNCTION(__compare_2)
 	    if ( x < 0 )
 	    {
 		assert(y < 0);
-		fail_with("compare applied to existentially quantified type");
+		FAIL("compare: existentially quantified type");
 	    }
 	    else if ( x == y )
 	    {
