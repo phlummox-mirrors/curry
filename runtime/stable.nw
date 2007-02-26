@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: stable.nw 2103 2007-02-23 17:14:02Z wlux $
+% $Id: stable.nw 2112 2007-02-26 15:16:53Z wlux $
 %
 % Copyright (c) 2005-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -51,7 +51,7 @@ static inline Node *
 primDeRefStablePtr(Node **stabPtr)
 {
     if ( *stabPtr == 0 )
-	fail_with("deRefStablePtr: value released by failed computation");
+	abort_with("deRefStablePtr: value released by failed computation");
     return *stabPtr;
 }
 

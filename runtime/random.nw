@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: random.nw 2107 2007-02-23 19:38:21Z wlux $
+% $Id: random.nw 2112 2007-02-26 15:16:53Z wlux $
 %
 % Copyright (c) 2004-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -187,9 +187,9 @@ extern Node *primGetStdGen(void);
 <<random.c>>=
 static Node *stdGen;
 
-#define DET_CHECK(what) do { \
-    if ( regs.bp ) fail_with("cannot duplicate " what); \
-} while ( 0 )
+#define DET_CHECK(what) do {					\
+	if ( regs.bp ) abort_with("cannot duplicate " what);	\
+    } while ( 0 )
 
 void
 primSetStdGen(Node *rng)

@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 1943 2006-06-26 16:19:36Z wlux $
+% $Id: compare.nw 2112 2007-02-26 15:16:53Z wlux $
 %
-% Copyright (c) 2001-2006, Wolfgang Lux
+% Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Polymorphic Comparisons}
@@ -24,10 +24,10 @@ arguments.
 #include "regs.h"
 #include "heap.h"
 #include "stack.h"
-#include "eval.h"
 #include "threads.h"
 #include "data.h"
-#include "cstring.h"
+#include "eval.h"
+#include "io_monad.h"
 #include "cam.h"
 #include "trace.h"
 
@@ -37,8 +37,6 @@ DECLARE_CONST(__Prelude__GT);
 
 #define pair_cons_node_size closure_node_size(3)
 static DEFINE_DATA(pair_cons, ",:", CONS_TAG, 3);
-
-DECLARE_LABEL(extern, __Prelude__error);
 
 DECLARE_LABEL(extern, __compare);
 DECLARE_LABEL(static, __compare_1);
@@ -157,12 +155,10 @@ FUNCTION(__compare_2)
 		cmp = x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
 	    break;
 	case PAPP_KIND:
-	    CALL_RET1(__Prelude__error, 1,
-		      from_string(0, "compare applied to partial application"));
+	    fail_with("compare applied to partial application");
 	case SEARCH_CONT_KIND:
 	case ABSTRACT_KIND:
-	    CALL_RET1(__Prelude__error, 1,
-		      from_string(0, "compare applied to abstract type"));
+	    fail_with("compare applied to abstract type");
 	case CAPP_KIND:
 	    assert(is_capp_node(arg2));
 	    x = (long)node_tag(arg1);
@@ -170,10 +166,7 @@ FUNCTION(__compare_2)
 	    if ( x < 0 )
 	    {
 		assert(y < 0);
-		CALL_RET1(__Prelude__error, 1,
-			  from_string(0,
-				      "compare applied to existentially "
-				      "quantified type"));
+		fail_with("compare applied to existentially quantified type");
 	    }
 	    else if ( x == y )
 	    {
