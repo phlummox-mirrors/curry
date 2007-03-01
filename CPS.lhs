@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CPS.lhs 1923 2006-05-21 10:42:36Z wlux $
+% $Id: CPS.lhs 2115 2007-03-01 20:25:37Z wlux $
 %
-% Copyright (c) 2003-2006, Wolfgang Lux
+% Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CPS.lhs}
@@ -194,12 +194,12 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 
 > cpsSwitch :: Name -> CPSCont -> Maybe CPSCont -> Int -> RF -> Name -> [Case]
 >           -> (Int,CPSStmt)
-> cpsSwitch f k0 k n rf v cases = (n',CPSSwitch ub v (vcase ++ cases'))
+> cpsSwitch f k0 k n rf v cases = (n',CPSSwitch tagged v (vcase ++ cases'))
 >   where vcase =
 >           map (CaseBlock CPSFreeCase . CPSWithCont k0) (cpsVarCase rf v ts)
 >         (n',cases') = mapAccumL (cpsCase f k) n cases
 >         ts = [t | Case t _ <- cases, t /= DefaultCase]
->         ub = unboxedSwitch ts
+>         tagged = taggedSwitch ts
 
 > cpsVarCase :: RF -> Name -> [Tag] -> [CPSStmt]
 > cpsVarCase Rigid v _ = [CPSDelay v]
@@ -217,12 +217,12 @@ when transforming a CPS graph into a linear sequence of CPS functions.
 >   foldr CPSSeq (CPSUnify v (Constr c vs)) (map freshVar vs)
 >   where freshVar v = Let [Bind v Free]
 
-> unboxedSwitch :: [Tag] -> Bool
-> unboxedSwitch [] = True
-> unboxedSwitch (LitCase (Int _) : _) = True
-> unboxedSwitch (LitCase _ : _) = False
-> unboxedSwitch (ConstrCase _ _ : _) = False
-> unboxedSwitch (DefaultCase : cases) = unboxedSwitch cases
+> taggedSwitch :: [Tag] -> Bool
+> taggedSwitch [] = True
+> taggedSwitch (LitCase (Int _) : _) = True
+> taggedSwitch (LitCase _ : _) = False
+> taggedSwitch (ConstrCase _ _ : _) = False
+> taggedSwitch (DefaultCase : cases) = taggedSwitch cases
 
 > contVars :: CPSCont -> [Name]
 > contVars (CPSCont k) = cpsEnv k

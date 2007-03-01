@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 2113 2007-02-26 17:47:02Z wlux $
+% $Id: io_monad.nw 2115 2007-03-01 20:25:37Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -437,7 +437,7 @@ FUNCTION(__unsafePerformIO_1)
     Node *x;
  ENTRY_LABEL(static, __unsafePerformIO_1)
     x = regs.r[0];
-    if ( is_boxed(x) )
+    if ( is_tagged_ptr(x) )
 	ENTER(x, 0);
     RETURN(x, 0);
 }
