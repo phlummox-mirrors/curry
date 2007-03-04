@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 2115 2007-03-01 20:25:37Z wlux $
+% $Id: compare.nw 2116 2007-03-04 15:44:06Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -10,8 +10,7 @@ It returns one of the values [[EQ]], [[LT]], and [[GT]] depending on
 the order of its arguments and evaluates both arguments only as far as
 necessary to determine the ordering. As we cannot define a (stable)
 order for partial applications and abstract types, respectively,
-[[compare]] raises a runtime error when it is applied to such
-arguments.
+[[compare]] fails when it is applied to such arguments.
 
 <<compare.c>>=
 #include "config.h"
@@ -79,7 +78,15 @@ FUNCTION(__compare_2)
     is_vect = false;
 
 #if !NO_POINTER_TAGS
-    if ( is_tagged_int(arg1) )
+    if ( is_tagged_char(arg1) )
+    {
+	assert(is_tagged_char(arg2));
+	x   = (long)arg1;
+	y   = (long)arg2;
+	cmp = x == y ? CONST(__Prelude__EQ)
+	    : x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
+    }
+    else if ( is_tagged_int(arg1) )
     {
 	if ( is_tagged_int(arg2) )
 	{
@@ -88,7 +95,7 @@ FUNCTION(__compare_2)
 	}
 	else
 	{
-	    assert(is_int_node(arg2));
+	    assert(is_tagged_ptr(arg2) && is_int_node(arg2));
 	    x = untag_int(arg1);
 	    y = arg2->i.i;
 	}
@@ -109,12 +116,16 @@ FUNCTION(__compare_2)
 	switch ( node_kind(arg1) )
 	{
 	case CHAR_KIND:
+#if NO_POINTER_TAGS
 	    assert(is_char_node(arg2));
 	    x = arg1->ch.ch;
 	    y = arg2->ch.ch;
 	    cmp = x == y ? CONST(__Prelude__EQ)
 		: x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
 	    break;
+#else
+	    curry_panic("impossible: compare: CHAR_KIND\n");
+#endif
         case INT_KIND:
 	    assert(is_int_node(arg2));
 	    x = arg1->i.i;
