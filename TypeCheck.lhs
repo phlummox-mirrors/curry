@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2102 2007-02-21 19:58:26Z wlux $
+% $Id: TypeCheck.lhs 2118 2007-03-15 08:49:21Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -267,12 +267,16 @@ $\texttt{IO}\;t$ is a legitimate result type when $t$ is either one of
 the basic types or \texttt{()}. As an extension to the Haskell foreign
 function interface specification~\cite{Chakravarty03:FFI}, arbitrary
 argument and result types are allowed for unsafe foreign functions
-using the \texttt{ccall} convention (cf.\ Sect.~\ref{sec:il-compile}
-about marshalling). Furthermore, the type of a dynamic function
-wrapper must be of the form $(\texttt{FunPtr}\;t) \rightarrow t$,
-where $t$ is a valid foreign function type, and the type of a foreign
-address must be either $\texttt{Ptr}\;a$ or $\texttt{FunPtr}\;a$,
-where $a$ is an arbitrary type.
+using the \texttt{ccall} convention. In addition, the compiler
+supports the non-standard \texttt{rawcall} calling convention, which
+also allows arbitrary argument and result types. However, in contrast
+to the unsafe \texttt{ccall} extension, no marshaling takes place at
+all even for the basic types (cf.\ Sect.~\ref{sec:il-compile} with
+regard to marshalling). The type of a dynamic function wrapper is
+further restricted to be of the form $\texttt{FunPtr}\;t \rightarrow
+t$, where $t$ is a valid foreign function type, and the type of a
+foreign address must be either $\texttt{Ptr}\;a$ or
+$\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 \begin{verbatim}
 
 > tcForeignFunct :: ModuleIdent -> TCEnv -> Position -> CallConv -> Maybe Safety
@@ -287,6 +291,10 @@ where $a$ is an arbitrary type.
 >           | ie == Just "dynamic" = checkCDynCallType tcEnv p s ty
 >           | maybe False ('&' `elem`) ie = checkCAddrType tcEnv p ty
 >           | otherwise = checkCCallType tcEnv p s ty
+>         checkForeignType CallConvRawCall _ ty
+>           | ie == Just "dynamic" = checkCDynCallType tcEnv p Unsafe ty
+>           | maybe False ('&' `elem`) ie = checkCAddrType tcEnv p ty
+>           | otherwise = checkCCallType tcEnv p Unsafe ty
 
 > checkCCallType :: TCEnv -> Position -> Safety -> Type -> TcState ()
 > checkCCallType tcEnv p Safe (TypeArrow ty1 ty2)

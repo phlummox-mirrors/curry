@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: IL.lhs 1922 2006-05-15 09:34:56Z wlux $
+% $Id: IL.lhs 2118 2007-03-15 08:49:21Z wlux $
 %
-% Copyright (c) 1999-2006 Wolfgang Lux
+% Copyright (c) 1999-2007 Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{IL.lhs}
@@ -52,7 +52,7 @@ distinguishes (local) variables and (global) functions in expressions.
 >   deriving (Eq,Show)
 
 > data ConstrDecl = ConstrDecl QualIdent [Type] deriving (Eq,Show)
-> data CallConv = Primitive | CCall deriving (Eq,Show)
+> data CallConv = Primitive | CCall | RawCall deriving (Eq,Show)
 
 > data Type =
 >     TypeConstructor QualIdent [Type]

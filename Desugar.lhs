@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2101 2007-02-21 16:25:07Z wlux $
+% $Id: Desugar.lhs 2118 2007-03-15 08:49:21Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -226,10 +226,10 @@ further declarations to the group that must be desugared as well.
 After desugaring its right hand side, each equation is $\eta$-expanded
 by adding as many variables as necessary to the argument list and
 applying the right hand side to those variables. The import entity
-specification of foreign functions using the \texttt{ccall} calling
-convention is expanded to always include the kind of the declaration
-(either \texttt{static} or \texttt{dynamic}) and the name of the
-imported function.
+specification of foreign functions using the \texttt{ccall} and
+\texttt{rawcall} calling conventions is expanded to always include the
+kind of the declaration (either \texttt{static} or \texttt{dynamic})
+and the name of the imported function.
 \begin{verbatim}
 
 > desugarDeclRhs :: ModuleIdent -> Decl -> DesugarState Decl
@@ -239,9 +239,9 @@ imported function.
 >     liftM (FunctionDecl p f) (mapM (desugarEquation m (arrowArgs ty)) eqs)
 > desugarDeclRhs _ (ForeignDecl p cc s ie f ty) =
 >   return (ForeignDecl p cc (s `mplus` Just Safe) (desugarImpEnt cc ie) f ty)
->   where desugarImpEnt CallConvPrimitive ie = ie `mplus` Just (name f)
->         desugarImpEnt CallConvCCall ie =
->           Just (unwords (kind (maybe [] words ie)))
+>   where desugarImpEnt cc ie
+>           | cc == CallConvPrimitive = ie `mplus` Just (name f)
+>           | otherwise = Just (unwords (kind (maybe [] words ie)))
 >         kind [] = "static" : ident []
 >         kind (x:xs)
 >           | x == "static" = x : ident xs
@@ -255,7 +255,7 @@ imported function.
 >           | x == "&" = [h,x,name f]
 >           | otherwise = [h,x]
 >         ident [h,amp,f] = [h,amp,f]
->         ident _ = internalError "desugarImpEnt CallConvCCall"
+>         ident _ = internalError "desugarImpEnt"
 > desugarDeclRhs m (PatternDecl p t rhs) =
 >   liftM (PatternDecl p t) (desugarRhs m p rhs)
 > desugarDeclRhs _ (FreeDecl p vs) = return (FreeDecl p vs)

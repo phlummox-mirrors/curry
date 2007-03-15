@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 2101 2007-02-21 16:25:07Z wlux $
+% $Id: ILTrans.lhs 2118 2007-03-15 08:49:21Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -83,6 +83,7 @@ synonyms in place of newtype declarations (see Sect.~\ref{sec:IL}).
 >                  (translType (rawType (varType f tyEnv)))
 >   where callConv CallConvPrimitive = IL.Primitive
 >         callConv CallConvCCall = IL.CCall
+>         callConv CallConvRawCall = IL.RawCall
 
 \end{verbatim}
 \paragraph{Interfaces}
