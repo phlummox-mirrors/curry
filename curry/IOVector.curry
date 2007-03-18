@@ -1,4 +1,4 @@
--- $Id: IOVector.curry 2106 2007-02-23 18:48:42Z wlux $
+-- $Id: IOVector.curry 2127 2007-03-18 21:43:50Z wlux $
 --
 -- Copyright (c) 2004-2007, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -13,21 +13,21 @@ data Wrap a = Wrap a
 
 data IOVector a
 
-newIOVector    :: Int -> a -> IO (IOVector a)
+newIOVector :: Int -> a -> IO (IOVector a)
 newIOVector n x = primNewIOVector n (Wrap x)
-  where foreign import ccall unsafe "vector.h"
+  where foreign import rawcall "vector.h"
   		       primNewIOVector :: Int -> Wrap a -> IO (IOVector a)
 
-foreign import ccall unsafe "vector.h primCopyIOVector"
+foreign import rawcall "vector.h primCopyIOVector"
 	       copyIOVector :: IOVector a -> IO (IOVector a)
 
-foreign import ccall unsafe "vector.h primReadIOVector"
+foreign import rawcall "vector.h primReadIOVector"
 	       readIOVector :: IOVector a -> Int -> IO a
 
-writeIOVector  :: IOVector a -> Int -> a -> IO ()
+writeIOVector :: IOVector a -> Int -> a -> IO ()
 writeIOVector v i x = primWriteIOVector v i (Wrap x)
-  where foreign import ccall unsafe "vector.h"
+  where foreign import rawcall "vector.h"
   		       primWriteIOVector :: IOVector a -> Int -> Wrap a -> IO ()
 
-foreign import ccall unsafe "vector.h primLengthIOVector"
+foreign import rawcall "vector.h primLengthIOVector"
 	       lengthIOVector :: IOVector a -> Int
