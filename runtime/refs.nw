@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: refs.nw 2119 2007-03-18 16:47:23Z wlux $
+% $Id: refs.nw 2121 2007-03-18 17:47:27Z wlux $
 %
 % Copyright (c) 2004-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -48,13 +48,13 @@ primNewIORef(Node *wrappedArg)
 {
     IORef *ref;
 
-    BEGIN_LOCAL_ROOTS1(wrappedArg);
-    CHECK_HEAP(1, ioref_node_size);
+    BEGIN_LOCAL_ROOTS1(wrappedArg)
+    CHECK_HEAP(0, ioref_node_size);
     ref	      = (IORef *)regs.hp;
     ref->info = &ioref_info;
     ref->ref  = wrappedArg->c.args[0];
     regs.hp  += ioref_node_size;
-    END_LOCAL_ROOTS;
+    END_LOCAL_ROOTS
 
     return (Node *)ref;
 }
@@ -79,7 +79,6 @@ primReadIORef(Node *refNode)
 }
 
 @ 
-
 The function [[primWriteIORef]] updates the value saved in a mutable
 reference. The assigned value is passed in the form \texttt{Wrap}~$e$
 in order to prevent evaluation of $e$ by the foreign function

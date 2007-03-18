@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 2116 2007-03-04 15:44:06Z wlux $
+% $Id: files.nw 2121 2007-03-18 17:47:27Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -709,12 +709,14 @@ primHGetContents(Node *hdl)
     file->flags = 0;
 
     /* construct the (lazy) input stream */
-    CHECK_HEAP(1, suspend_node_size(1));
+    BEGIN_LOCAL_ROOTS1(hdl)
+    CHECK_HEAP(0, suspend_node_size(1));
     susp	    = (Node *)regs.hp;
     susp->info	    = lazyRead_lazy_info_table;
     susp->s.spc	    = regs.ss;
     susp->s.args[0] = hdl;
     regs.hp	   += suspend_node_size(1);
+    END_LOCAL_ROOTS
 
     return susp;
 }

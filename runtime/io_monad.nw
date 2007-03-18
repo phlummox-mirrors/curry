@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 2115 2007-03-01 20:25:37Z wlux $
+% $Id: io_monad.nw 2121 2007-03-18 17:47:27Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -393,11 +393,11 @@ ioError(const char *loc, const char *reason)
     if ( reason && *reason )
     {
 	regs.r[0] = from_string(0, reason);
-	regs.r[0] = prefix_string(1, ": ", regs.r[0]);
+	regs.r[0] = prefix_string(0, ": ", regs.r[0]);
     }
     else
 	regs.r[0] = nil;
-    regs.r[0] = prefix_string(1, loc, regs.r[0]);
+    regs.r[0] = prefix_string(0, loc, regs.r[0]);
     regs.r[1] = unit; /* FIXME: have lost track of the IO monad's state here */
     jump(__ioError);
 }
