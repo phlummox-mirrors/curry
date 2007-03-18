@@ -1,4 +1,4 @@
--- $Id: ForeignPtr.curry 2104 2007-02-23 18:00:59Z wlux $
+-- $Id: ForeignPtr.curry 2125 2007-03-18 21:31:02Z wlux $
 --
 -- Copyright (c) 2005-2007, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -12,7 +12,7 @@ type FinalizerEnvPtr env a = FunPtr (Ptr env -> Ptr a -> IO ())
 
 data ForeignPtr a
 
-foreign import ccall unsafe "foreign.h primNewForeignPtr"
+foreign import rawcall "foreign.h primNewForeignPtr"
         newForeignPtr_ :: Ptr a -> IO (ForeignPtr a)
 
 newForeignPtr :: FinalizerPtr a -> Ptr a -> IO (ForeignPtr a)
@@ -30,9 +30,9 @@ newForeignPtrEnv finalizer env ptr =
     addForeignPtrFinalizerEnv finalizer env fp
     return fp
 
-foreign import ccall unsafe "foreign.h primAddForeignPtrFinalizer"
+foreign import rawcall "foreign.h primAddForeignPtrFinalizer"
         addForeignPtrFinalizer :: FinalizerPtr a -> ForeignPtr a -> IO ()
-foreign import ccall unsafe "foreign.h primAddForeignPtrFinalizerEnv"
+foreign import rawcall "foreign.h primAddForeignPtrFinalizerEnv"
         addForeignPtrFinalizerEnv :: FinalizerEnvPtr env a -> Ptr env
                                   -> ForeignPtr a -> IO ()
 
@@ -46,10 +46,9 @@ withForeignPtr fp f =
     touchForeignPtr fp
     return x
 
-foreign import ccall unsafe "foreign.h primUnsafeForeignPtrToPtr"
-	       unsafeForeignPtrToPtr :: ForeignPtr a -> Ptr a 
-foreign import ccall unsafe "foreign.h primTouchForeignPtr"
+foreign import rawcall "foreign.h primUnsafeForeignPtrToPtr"
+	       unsafeForeignPtrToPtr :: ForeignPtr a -> Ptr a
+foreign import rawcall "foreign.h primTouchForeignPtr"
 	       touchForeignPtr :: ForeignPtr a -> IO ()
-foreign import ccall unsafe "prims.h primCastPtr"
+foreign import rawcall "prims.h primCastPtr"
 	       castForeignPtr :: ForeignPtr a -> ForeignPtr b
-
