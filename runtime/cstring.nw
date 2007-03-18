@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: cstring.nw 2116 2007-03-04 15:44:06Z wlux $
+% $Id: cstring.nw 2123 2007-03-18 18:44:19Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -41,14 +41,8 @@ extern char *lit_double(char *buf, double d);
 #include "run.h"
 #include "regs.h"
 #include "heap.h"
-#include "stack.h"
-#include "threads.h"
-#include "eval.h"
 #include "data.h"
-#include "io_monad.h"
 #include "cstring.h"
-#include "cam.h"
-#include "trace.h"
 
 @
 The functions [[from_string]] and [[from_string_len]] translate a C
