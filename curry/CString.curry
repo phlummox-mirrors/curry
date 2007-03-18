@@ -1,4 +1,4 @@
--- $Id: CString.curry 2109 2007-02-24 18:44:30Z wlux $
+-- $Id: CString.curry 2129 2007-03-18 21:57:31Z wlux $
 --
 -- Copyright (c) 2005-2007, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -16,7 +16,7 @@ peekCString :: CString -> IO String
 peekCString p
   | p == nullPtr = ioError "peekCString: nullPtr"
   | otherwise = primPeekCString p
-  where foreign import ccall unsafe "cstring.h"
+  where foreign import rawcall "cstring.h"
   		       primPeekCString :: Ptr CChar -> IO String
 
 peekCStringLen :: CStringLen -> IO String
@@ -24,16 +24,16 @@ peekCStringLen (p,l)
   | l <= 0 = return ""
   | p == nullPtr = ioError "peekCStringLen: nullPtr"
   | otherwise = primPeekCStringLen p l
-  where foreign import ccall unsafe "cstring.h"
+  where foreign import rawcall "cstring.h"
   		       primPeekCStringLen :: Ptr CChar -> Int -> IO String
 
 newCString :: String -> IO CString
 newCString s = primNewCString $## s
-  where foreign import ccall unsafe "cstring.h"
+  where foreign import rawcall "cstring.h"
   		       primNewCString :: String -> IO CString
 
 newCStringLen :: String -> IO CStringLen
-newCStringLen s =  
+newCStringLen s =
   do
     p <- newCString s
     return (p,length s)
