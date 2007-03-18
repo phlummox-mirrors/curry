@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: random.nw 2112 2007-02-26 15:16:53Z wlux $
+% $Id: random.nw 2119 2007-03-18 16:47:23Z wlux $
 %
 % Copyright (c) 2004-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -20,6 +20,7 @@ The functions in this file implement the primitives for the
 #include "heap.h"
 #include "eval.h"
 #include "io_monad.h"
+#include "random.h"
 
 @
 We use state arrays with a size of 128 bytes. While larger state

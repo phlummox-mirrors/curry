@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: vector.nw 2115 2007-03-01 20:25:37Z wlux $
+% $Id: vector.nw 2119 2007-03-18 16:47:23Z wlux $
 %
 % Copyright (c) 2002-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -21,6 +21,7 @@ vectors because this will make the printing code treat vectors as tuples.
 #include "eval.h"
 #include "trail.h"
 #include "io_monad.h"
+#include "vector.h"
 
 static NodeInfo vector_info = {
     VECTOR_KIND, 0, 0, 0, "(,)", eval_whnf, 0, 0, 0
