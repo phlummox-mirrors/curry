@@ -1,4 +1,4 @@
--- $Id: IOExts.curry 2111 2007-02-26 12:59:56Z wlux $
+-- $Id: IOExts.curry 2126 2007-03-18 21:36:17Z wlux $
 --
 -- Copyright (c) 2004-2007, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -27,15 +27,13 @@ data IORef a
 
 newIORef :: a -> IO (IORef a)
 newIORef x = primNewIORef (Wrap x)
-  where foreign import ccall unsafe "refs.h"
-  		       primNewIORef :: Wrap a -> IO (IORef a)
+  where foreign import rawcall "refs.h" primNewIORef :: Wrap a -> IO (IORef a)
 
-foreign import ccall unsafe "refs.h primReadIORef"
-	       readIORef :: IORef a -> IO a
+foreign import rawcall "refs.h primReadIORef" readIORef :: IORef a -> IO a
 
 writeIORef :: IORef a -> a -> IO ()
 writeIORef r x = primWriteIORef r (Wrap x)
-  where foreign import ccall unsafe "refs.h"
+  where foreign import rawcall "refs.h"
   		       primWriteIORef :: IORef a -> Wrap a -> IO ()
 
 modifyIORef :: IORef a -> (a -> a) -> IO ()
