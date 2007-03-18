@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 2121 2007-03-18 17:47:27Z wlux $
+% $Id: files.nw 2122 2007-03-18 18:22:28Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -235,7 +235,7 @@ decodeIOMode(Node *ioMode, short *p_flags)
 	*p_flags = mask(readable) | mask(writable);
 	return "r+";
     default:
-	unexpected_tag("decodeIOMode (mode)", node_tag(ioMode));
+	unexpected_tag("decodeIOMode", node_tag(ioMode));
     }
 }
 
@@ -897,6 +897,7 @@ of a file handle.
 <<files.h>>=
 extern void primHSetBuffering(Node *, Node *);
 
+@ 
 <<files.c>>=
 void
 primHSetBuffering(Node *hdl, Node *bufferMode)
@@ -912,10 +913,10 @@ primHSetBuffering(Node *hdl, Node *bufferMode)
     switch ( node_tag(bufferMode) )
     {
     case NoBuffering_tag:
-	bmode  = _IONBF;
+	bmode = _IONBF;
 	break;
     case LineBuffering_tag:
-	bmode  = _IOLBF;
+	bmode = _IOLBF;
 	break;
     case BlockBuffering_tag:
 	bmode	   = _IOFBF;
@@ -937,14 +938,11 @@ primHSetBuffering(Node *hdl, Node *bufferMode)
 		if ( buffer == NULL )
 		    sys_error("hSetBuffering");
 	    }
-	    else
-		buffer = NULL;
 	    break;
 	default:
 	    unexpected_tag("hSetBuffering (mode)", node_tag(bufferMode));
 	}
 	break;
-
     default:
 	unexpected_tag("hSetBuffering", node_tag(bufferMode));
     }
@@ -1224,7 +1222,7 @@ extern Node *primConnectTcpSocket(Node *, long, Node *);
 Node *
 primConnectTcpSocket(Node *hostString, long port, Node *ioMode)
 {
-    int		       e, fd;
+    int		       fd;
     short	       flags;
     const char	       *host, *mode;
     FILE	       *fp;
@@ -1257,8 +1255,9 @@ primConnectTcpSocket(Node *hostString, long port, Node *ioMode)
     /* connect the socket to the specified port */
     if ( connect(fd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0 )
     {
-	e = errno;
+	int e = errno;
 	close(fd);
+	errno = e;
 	ioError_withErrno("connectTcpSocket");
     }
 
@@ -1266,8 +1265,9 @@ primConnectTcpSocket(Node *hostString, long port, Node *ioMode)
     fp = fdopen(fd, mode);
     if ( fp == NULL )
     {
-	e = errno;
+	int e = errno;
 	close(fd);
+	errno = e;
 	ioError_withErrno("connectTcpSocket");
     }
 
