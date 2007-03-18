@@ -1,4 +1,4 @@
--- $Id: StablePtr.curry 2103 2007-02-23 17:14:02Z wlux $
+-- $Id: StablePtr.curry 2124 2007-03-18 21:21:28Z wlux $
 --
 -- Copyright (c) 2005-2007, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -15,11 +15,11 @@ data Wrap a = Wrap a
 
 newStablePtr :: a -> IO (StablePtr a)
 newStablePtr x = primNewStablePtr (Wrap x)
-  where foreign import ccall unsafe "stable.h"
+  where foreign import rawcall "stable.h"
   		       primNewStablePtr :: Wrap a -> IO (StablePtr a)
-foreign import ccall unsafe "stable.h primDeRefStablePtr"
+foreign import rawcall "stable.h primDeRefStablePtr"
 	       deRefStablePtr :: StablePtr a -> IO a
-foreign import ccall "stable.h primFreeStablePtr"
+foreign import rawcall "stable.h primFreeStablePtr"
 	       freeStablePtr :: StablePtr a -> IO ()
 
 foreign import ccall "prims.h primCastPtr"
