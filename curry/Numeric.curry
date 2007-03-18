@@ -1,4 +1,4 @@
--- $Id: Numeric.curry 2110 2007-02-24 21:52:17Z wlux $
+-- $Id: Numeric.curry 2130 2007-03-18 22:01:16Z wlux $
 --
 -- Copyright (c) 2003-2007, Wolfgang Lux
 -- See ../LICENSE for the full license.
@@ -71,13 +71,11 @@ readHex = readInt 16 isHexDigit digitToInt
 
 showEFloat :: Maybe Int -> Float -> ShowS
 showEFloat d f = showString (primShowEFloat (maybe (-1) (max 0) d) f)
-  where foreign import ccall unsafe "show.h"
-  		       primShowEFloat :: Int -> Float -> String
+  where foreign import rawcall "show.h" primShowEFloat :: Int -> Float -> String
 
 showFFloat :: Maybe Int -> Float -> ShowS
 showFFloat d f = showString (primShowFFloat (maybe (-1) (max 0) d) f)
-  where foreign import ccall unsafe "show.h"
-  		       primShowFFloat :: Int -> Float -> String
+  where foreign import rawcall "show.h" primShowFFloat :: Int -> Float -> String
 
 showGFloat :: Maybe Int -> Float -> ShowS
 showGFloat d f
@@ -119,8 +117,7 @@ readFloat r = [(convert ds (k - d),t) | (ds,d,s) <- lexFix r,
             (cs,cs') ->
               [cs' | cs == prefix && (null cs' || not (isAlphaNum (head cs')))]
 	convert ds e = primConvertToFloat $## (ds ++ 'e' : show e)
-	foreign import ccall unsafe "show.h"
-		       primConvertToFloat :: String -> Float
+	foreign import rawcall "show.h" primConvertToFloat :: String -> Float
 
 lexDigits :: ReadS String
 lexDigits cs =
