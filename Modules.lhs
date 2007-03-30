@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2058 2007-01-02 16:11:46Z wlux $
+% $Id: Modules.lhs 2141 2007-03-30 09:43:22Z wlux $
 %
-% Copyright (c) 1999-2006, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Modules.lhs}
@@ -285,9 +285,7 @@ from all loaded interfaces are in scope with their qualified names.
 > transGoal debug tr mEnv tcEnv tyEnv m g = (mergeCFile ccode ccode',dumps)
 >   where goalId = mainId
 >         qGoalId = qualifyWith m goalId
->         trEnv
->           | debug = bindEnv goalId Suspect (trustEnvGoal tr g)
->           | otherwise = emptyEnv
+>         trEnv = if debug then trustEnvGoal tr g else emptyEnv
 >         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
 >         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
 >         (lifted,tyEnv''',trEnv') = lift tyEnv'' trEnv simplified
