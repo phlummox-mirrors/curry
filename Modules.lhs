@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2141 2007-03-30 09:43:22Z wlux $
+% $Id: Modules.lhs 2142 2007-03-30 09:48:47Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -383,11 +383,11 @@ intermediate language.
 >   imp True preludeMIdent True ++ imp debug debugPreludeMIdent False ++ is
 >   where p = first fn
 >         ms = m : [m | ImportDecl _ m _ _ _ <- is]
->         imp cond m all = [importDecl p m False all | cond && m `notElem` ms]
+>         imp cond m all = [importDecl p m all | cond && m `notElem` ms]
 
-> importDecl :: Position -> ModuleIdent -> Qualified -> Bool -> ImportDecl
-> importDecl p m q all =
->   ImportDecl p m q Nothing
+> importDecl :: Position -> ModuleIdent -> Bool -> ImportDecl
+> importDecl p m all =
+>   ImportDecl p m False Nothing
 >              (if all then Nothing else Just (Importing p []))
 
 \end{verbatim}
