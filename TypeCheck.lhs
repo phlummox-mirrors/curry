@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2144 2007-04-01 13:26:29Z wlux $
+% $Id: TypeCheck.lhs 2145 2007-04-01 20:37:24Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -44,7 +44,7 @@ type annotation is present.
 \end{verbatim}
 Before checking the function declarations of a module, the compiler
 adds the types of all data and newtype constructors defined in the
-current module into the type environment.
+current module to the type environment.
 \begin{verbatim}
 
 > typeCheck :: ModuleIdent -> TCEnv -> ValueEnv -> [TopDecl] -> Error ValueEnv
@@ -67,9 +67,9 @@ declarations.
 >       tyEnv
 
 \end{verbatim}
-The type checker makes use of nested state monads in order to
-maintain the type environment, the current substitution, and a counter
-which is used for generating fresh type variables.
+The type checker makes use of nested state monads in order to maintain
+the type environment, the current substitution, and a counter, which
+is used for generating fresh type variables.
 \begin{verbatim}
 
 > type TcState a = StateT ValueEnv (StateT TypeSubst (StateT Int Error)) a
@@ -117,7 +117,7 @@ types and also because the name of the type could be ambiguous.
 \paragraph{Type Signatures}
 The type checker collects type signatures in a flat environment. The
 types are not expanded so that the signatures can be used in the error
-messages, which are printed when an inferred type is less general than
+messages which are printed when an inferred type is less general than
 the signature.
 \begin{verbatim}
 
@@ -135,13 +135,12 @@ the signature.
 Before type checking a group of declarations, a dependency analysis is
 performed and the declaration group is split into minimal, nested
 binding groups which are checked separately. Within each binding
-group, first the left hand sides of all declarations are typed
-introducing new bindings for their bound variables. Next, the right
-hand sides of the declarations are typed in the extended type
-environment and the inferred types are unified with the left hand side
-types. Finally, the types of all defined functions are generalized.
-The generalization step will also check that the type signatures given
-by the user match the inferred types.
+group, first the type environment is extended with new bindings for
+all variables and functions defined in the group. Next, each
+declaration is checked in the extended type environment. Finally, the
+types of all defined functions are generalized. The generalization
+step will also check that the type signatures given by the user match
+the inferred types.
 
 Since expressions can contain shared logical variables, one has to be
 careful when generalizing the types of local variables. For instance,
@@ -192,13 +191,12 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 > tcDeclGroup :: ModuleIdent -> TCEnv -> SigEnv -> [Decl] -> TcState ()
 > tcDeclGroup m tcEnv _ [ForeignDecl p cc _ ie f ty] =
 >   tcForeignFunct m tcEnv p cc ie f ty
-> tcDeclGroup m tcEnv sigs [FreeDecl p vs] =
->   mapM_ (tcVariable m tcEnv sigs False p) vs
+> tcDeclGroup m tcEnv sigs [FreeDecl p vs] = bindDeclVars m tcEnv sigs p vs
 > tcDeclGroup m tcEnv sigs ds =
 >   do
 >     tyEnv0 <- fetchSt
->     tys <- mapM (tcDeclLhs m tcEnv sigs) ds
->     zipWithM_ (tcDeclRhs m tcEnv) tys ds
+>     mapM_ (bindDecl m tcEnv sigs) ds
+>     tys <- mapM (tcDecl m tcEnv) ds
 >     tyEnv <- fetchSt
 >     theta <- liftSt fetchSt
 >     let tvss = map (typeVars . subst theta . rawType . flip varType tyEnv) vs
@@ -206,18 +204,40 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >     zipWithM_ (genDecl m tcEnv sigs . gen fvs . subst theta) tys ds
 >   where vs = [v | PatternDecl _ t _ <- ds, v <- bv t]
 
-> tcDeclLhs :: ModuleIdent -> TCEnv -> SigEnv -> Decl -> TcState Type
-> tcDeclLhs m tcEnv sigs (FunctionDecl p f _) = tcVariable m tcEnv sigs True p f
-> tcDeclLhs m tcEnv sigs (PatternDecl p t _) = tcConstrTerm m tcEnv sigs p t
+> bindDecl :: ModuleIdent -> TCEnv -> SigEnv -> Decl -> TcState ()
+> bindDecl m tcEnv sigs (FunctionDecl p f _) =
+>   case lookupEnv f sigs of
+>     Just ty -> updateSt_ (bindFun m f (expandPolyType tcEnv ty))
+>     Nothing -> bindLambdaVar m f
+> bindDecl m tcEnv sigs (PatternDecl p t _) = bindDeclVars m tcEnv sigs p (bv t)
 
-> tcDeclRhs :: ModuleIdent -> TCEnv -> Type -> Decl -> TcState ()
-> tcDeclRhs m tcEnv ty (FunctionDecl _ f eqs) =
+> bindDeclVars :: ModuleIdent -> TCEnv -> SigEnv -> Position -> [Ident]
+>              -> TcState ()
+> bindDeclVars m tcEnv sigs p = mapM_ (bindDeclVar m tcEnv sigs p)
+
+> bindDeclVar :: ModuleIdent -> TCEnv -> SigEnv -> Position -> Ident
+>             -> TcState ()
+> bindDeclVar m tcEnv sigs p v =
+>   case lookupEnv v sigs of
+>     Just ty
+>       | null (fv ty) -> updateSt_ (bindFun m v (expandPolyType tcEnv ty))
+>       | otherwise -> errorAt p (polymorphicVar v)
+>     Nothing -> bindLambdaVar m v
+
+> tcDecl :: ModuleIdent -> TCEnv -> Decl -> TcState Type
+> tcDecl m tcEnv (FunctionDecl _ f eqs) =
 >   do
 >     tyEnv0 <- fetchSt
 >     theta <- liftSt fetchSt
+>     ty <- inst (varType f tyEnv0)
 >     mapM_ (tcEquation m tcEnv (fsEnv (subst theta tyEnv0)) ty) eqs
-> tcDeclRhs m tcEnv ty (PatternDecl p t rhs) =
->   tcRhs m tcEnv rhs >>= unify p "pattern binding" (ppConstrTerm 0 t) tcEnv ty
+>     return ty
+> tcDecl m tcEnv (PatternDecl p t rhs) =
+>   do
+>     ty <- tcConstrTerm m tcEnv p t
+>     tcRhs m tcEnv rhs >>=
+>       unify p "pattern binding" (ppConstrTerm 0 t) tcEnv ty
+>     return ty
 
 > tcEquation :: ModuleIdent -> TCEnv -> Set Int -> Type -> Equation
 >            -> TcState ()
@@ -232,20 +252,27 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >       -> TcState Type
 > tcEqn m tcEnv p ts rhs =
 >   do
->     tys <- mapM (tcConstrTerm m tcEnv noSigs p) ts
+>     bindLambdaVars m ts
+>     tys <- mapM (tcConstrTerm m tcEnv p) ts
 >     ty <- tcRhs m tcEnv rhs
 >     return (foldr TypeArrow ty tys)
 
+> bindLambdaVars :: QuantExpr t => ModuleIdent -> t -> TcState ()
+> bindLambdaVars m t = mapM_ (bindLambdaVar m) (bv t)
+
+> bindLambdaVar :: ModuleIdent -> Ident -> TcState ()
+> bindLambdaVar m v = freshTypeVar >>= updateSt_ . bindFun m v . monoType
+
 \end{verbatim}
-The code in \texttt{genDecl} below verifies that the inferred type for
+The code in \texttt{genDecl} below verifies that the inferred type of
 a function matches its declared type. Since the type inferred for the
 left hand side of a function or variable declaration is an instance of
 its declared type -- provided a type signature is given -- it can only
 be more specific. Therefore, if the inferred type does not match the
-type signature the declared type must be too general. No check is
+type signature, the declared type must be too general. No check is
 necessary for the variables in variable and other pattern declarations
 because the types of variables must be monomorphic, which is checked
-in \texttt{tcVariable} below.
+in \texttt{bindDeclVar} above.
 \begin{verbatim}
 
 > genDecl :: ModuleIdent -> TCEnv -> SigEnv -> TypeScheme -> Decl -> TcState ()
@@ -328,6 +355,10 @@ $\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 > cBasicTypeId = [qBoolId,qCharId,qIntId,qFloatId]
 > cPointerTypeId = [qPtrId,qFunPtrId]
 
+\end{verbatim}
+\paragraph{Patterns and Expressions}
+\begin{verbatim}
+
 > tcLiteral :: ModuleIdent -> Literal -> TcState Type
 > tcLiteral _ (Char _) = return charType
 > tcLiteral m (Int v _) =
@@ -338,67 +369,49 @@ $\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 > tcLiteral _ (Float _) = return floatType
 > tcLiteral _ (String _) = return stringType
 
-> tcVariable :: ModuleIdent -> TCEnv -> SigEnv -> Bool -> Position -> Ident
->            -> TcState Type
-> tcVariable m tcEnv sigs poly p v =
->   case lookupEnv v sigs of
->     Just ty -> sigType m poly p v (expandPolyType tcEnv ty)
->     Nothing -> freshType m v
->   where sigType m poly p v ty
->           | poly || isMonoType ty = updateSt_ (bindFun m v ty) >> inst ty
->           | otherwise = errorAt p (polymorphicVar v)
->         freshType m v =
->           do
->             ty <- freshTypeVar
->             updateSt_ (bindFun m v (monoType ty))
->             return ty
->         isMonoType (ForAll n _) = n == 0
-
-> tcConstrTerm :: ModuleIdent -> TCEnv -> SigEnv -> Position -> ConstrTerm
->              -> TcState Type
-> tcConstrTerm m tcEnv sigs p (LiteralPattern l) = tcLiteral m l
-> tcConstrTerm m tcEnv sigs p (NegativePattern _ l) = tcLiteral m l
-> tcConstrTerm m tcEnv sigs p (VariablePattern v) =
->   tcVariable m tcEnv sigs False p v
-> tcConstrTerm m tcEnv sigs p t@(ConstructorPattern c ts) =
->   tcConstrApp m tcEnv sigs p (ppConstrTerm 0 t) c ts
-> tcConstrTerm m tcEnv sigs p t@(InfixPattern t1 op t2) =
->   tcConstrApp m tcEnv sigs p (ppConstrTerm 0 t) op [t1,t2]
-> tcConstrTerm m tcEnv sigs p (ParenPattern t) = tcConstrTerm m tcEnv sigs p t
-> tcConstrTerm m tcEnv sigs p (TuplePattern ts) =
->   liftM tupleType (mapM (tcConstrTerm m tcEnv sigs p) ts)
-> tcConstrTerm m tcEnv sigs p t@(ListPattern ts) =
+> tcConstrTerm :: ModuleIdent -> TCEnv -> Position -> ConstrTerm -> TcState Type
+> tcConstrTerm m _ _ (LiteralPattern l) = tcLiteral m l
+> tcConstrTerm m _ _ (NegativePattern _ l) = tcLiteral m l
+> tcConstrTerm _ _ _ (VariablePattern v) = fetchSt >>= inst . varType v
+> tcConstrTerm m tcEnv p t@(ConstructorPattern c ts) =
+>   tcConstrApp m tcEnv p (ppConstrTerm 0 t) c ts
+> tcConstrTerm m tcEnv p t@(InfixPattern t1 op t2) =
+>   tcConstrApp m tcEnv p (ppConstrTerm 0 t) op [t1,t2]
+> tcConstrTerm m tcEnv p (ParenPattern t) = tcConstrTerm m tcEnv p t
+> tcConstrTerm m tcEnv p (TuplePattern ts) =
+>   liftM tupleType (mapM (tcConstrTerm m tcEnv p) ts)
+> tcConstrTerm m tcEnv p t@(ListPattern ts) =
 >   do
 >     ty <- freshTypeVar
 >     mapM_ (tcElem (ppConstrTerm 0 t) ty) ts
 >     return (listType ty)
 >   where tcElem doc ty t =
->           tcConstrTerm m tcEnv sigs p t >>=
+>           tcConstrTerm m tcEnv p t >>=
 >           unify p "pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t)
 >                 tcEnv ty
-> tcConstrTerm m tcEnv sigs p t@(AsPattern v t') =
+> tcConstrTerm m tcEnv p t@(AsPattern v t') =
 >   do
->     ty <- tcConstrTerm m tcEnv sigs p (VariablePattern v)
->     tcConstrTerm m tcEnv sigs p t' >>=
+>     ty <- tcConstrTerm m tcEnv p (VariablePattern v)
+>     tcConstrTerm m tcEnv p t' >>=
 >       unify p "pattern" (ppConstrTerm 0 t) tcEnv ty
 >     return ty
-> tcConstrTerm m tcEnv sigs p (LazyPattern t) = tcConstrTerm m tcEnv sigs p t
+> tcConstrTerm m tcEnv p (LazyPattern t) = tcConstrTerm m tcEnv p t
 
-> tcConstrApp :: ModuleIdent -> TCEnv -> SigEnv -> Position -> Doc
->             -> QualIdent -> [ConstrTerm] -> TcState Type
-> tcConstrApp m tcEnv sigs p doc c ts =
+> tcConstrApp :: ModuleIdent -> TCEnv -> Position -> Doc -> QualIdent
+>             -> [ConstrTerm] -> TcState Type
+> tcConstrApp m tcEnv p doc c ts =
 >   do
 >     tyEnv <- fetchSt
 >     (tys,ty) <- liftM arrowUnapply (skol (conType c tyEnv))
 >     unless (length tys == n) (errorAt p (wrongArity c (length tys) n))
->     zipWithM_ (tcConstrArg m tcEnv sigs p doc) ts tys
+>     zipWithM_ (tcConstrArg m tcEnv p doc) ts tys
 >     return ty
 >   where n = length ts
 
-> tcConstrArg :: ModuleIdent -> TCEnv -> SigEnv -> Position -> Doc
->             -> ConstrTerm -> Type -> TcState ()
-> tcConstrArg m tcEnv sigs p doc t ty =
->   tcConstrTerm m tcEnv sigs p t >>=
+> tcConstrArg :: ModuleIdent -> TCEnv -> Position -> Doc -> ConstrTerm -> Type
+>             -> TcState ()
+> tcConstrArg m tcEnv p doc t ty =
+>   tcConstrTerm m tcEnv p t >>=
 >   unify p "pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t) tcEnv ty
 
 > tcRhs :: ModuleIdent -> TCEnv -> Rhs -> TcState Type
@@ -546,7 +559,8 @@ $\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 >     return (TypeArrow alpha gamma)
 > tcExpr m tcEnv p (Lambda ts e) =
 >   do
->     tys <- mapM (tcConstrTerm m tcEnv noSigs p) ts
+>     bindLambdaVars m ts
+>     tys <- mapM (tcConstrTerm m tcEnv p) ts
 >     ty <- tcExpr m tcEnv p e
 >     return (foldr TypeArrow ty tys)
 > tcExpr m tcEnv p (Let ds e) =
@@ -579,7 +593,8 @@ $\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 > tcAlt :: ModuleIdent -> TCEnv -> Type -> Type -> Alt -> TcState ()
 > tcAlt m tcEnv tyLhs tyRhs a@(Alt p t rhs) =
 >   do
->     tcConstrTerm m tcEnv noSigs p t >>=
+>     bindLambdaVars m t
+>     tcConstrTerm m tcEnv p t >>=
 >       unify p "case pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t)
 >             tcEnv tyLhs
 >     tcRhs m tcEnv rhs >>= unify p "case branch" doc tcEnv tyRhs
@@ -590,7 +605,8 @@ $\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 >   tcExpr m tcEnv p e >>= unify p "guard" (ppExpr 0 e) tcEnv boolType
 > tcQual m tcEnv p q@(StmtBind t e) =
 >   do
->     ty <- tcConstrTerm m tcEnv noSigs p t
+>     bindLambdaVars m t
+>     ty <- tcConstrTerm m tcEnv p t
 >     tcExpr m tcEnv p e >>=
 >       unify p "generator" (ppStmt q $-$ text "Term:" <+> ppExpr 0 e)
 >             tcEnv (listType ty)
@@ -604,7 +620,8 @@ $\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 >       unify p "statement" (ppExpr 0 e) tcEnv (ioType alpha)
 > tcStmt m tcEnv p st@(StmtBind t e) =
 >   do
->     ty <- tcConstrTerm m tcEnv noSigs p t
+>     bindLambdaVars m t
+>     ty <- tcConstrTerm m tcEnv p t
 >     tcExpr m tcEnv p e >>=
 >       unify p "statement" (ppStmt st $-$ text "Term:" <+> ppExpr 0 e)
 >             tcEnv (ioType ty)
