@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2132 2007-03-18 23:42:06Z wlux $
+% $Id: TypeCheck.lhs 2144 2007-04-01 13:26:29Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -782,14 +782,13 @@ here because we know that they are closed.
 \begin{verbatim}
 
 > fvEnv :: ValueEnv -> Set Int
-> fvEnv tyEnv =
->   fromListSet (filter (< 0) (concatMap typeVars (localTypes tyEnv)))
+> fvEnv tyEnv = fromListSet (concatMap typeVars (localTypes tyEnv))
 
 > fsEnv :: ValueEnv -> Set Int
 > fsEnv tyEnv = fromListSet (concatMap typeSkolems (localTypes tyEnv))
 
-> localTypes :: ValueEnv -> [Type]
-> localTypes tyEnv = [ty | (_,Value _ (ForAll _ ty)) <- localBindings tyEnv]
+> localTypes :: ValueEnv -> [TypeScheme]
+> localTypes tyEnv = [ty | (_,Value _ ty) <- localBindings tyEnv]
 
 \end{verbatim}
 Error functions.
