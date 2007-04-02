@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2148 2007-04-02 13:56:20Z wlux $
 %
-% Copyright (c) 2000-2006, Wolfgang Lux
+% Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{IntfSyntaxCheck.lhs}
@@ -42,7 +42,7 @@ The latter must not occur in type expressions in interfaces.
 >   qualBindTopEnv tc (Data tc (map constr (catMaybes cs)))
 > bindType (INewtypeDecl _ tc _ nc) = qualBindTopEnv tc (Data tc [nconstr nc])
 > bindType (ITypeDecl _ tc _ _) = qualBindTopEnv tc (Alias tc)
-> bindType (IFunctionDecl _ _ _) = id
+> bindType (IFunctionDecl _ _ _ _) = id
 
 \end{verbatim}
 The checks applied to the interface are similar to those performed
@@ -63,8 +63,8 @@ during syntax checking of type expressions.
 > checkIDecl env (ITypeDecl p tc tvs ty) =
 >   checkTypeLhs env p tvs &&>
 >   liftE (ITypeDecl p tc tvs) (checkClosedType env p tvs ty)
-> checkIDecl env (IFunctionDecl p f ty) =
->   liftE (IFunctionDecl p f) (checkType env p ty)
+> checkIDecl env (IFunctionDecl p f n ty) =
+>   liftE (IFunctionDecl p f n) (checkType env p ty)
 
 > checkTypeLhs :: TypeEnv -> Position -> [Ident] -> Error ()
 > checkTypeLhs env p tvs =

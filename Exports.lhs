@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2147 2007-04-02 12:36:30Z wlux $
+% $Id: Exports.lhs 2148 2007-04-02 13:56:20Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -83,8 +83,10 @@ types.
 
 > funDecl :: ModuleIdent -> TCEnv -> ValueEnv -> Export -> [IDecl] -> [IDecl]
 > funDecl m tcEnv tyEnv (Export f) ds =
->   IFunctionDecl noPos (qualUnqualify m f) (fromType tcEnv ty) : ds
->   where ty = rawType (funType f tyEnv)
+>   IFunctionDecl noPos (qualUnqualify m f) n' (fromType tcEnv ty) : ds
+>   where n = arity f tyEnv
+>         n' = if arrowArity ty == n then Nothing else Just n
+>         ty = rawType (funType f tyEnv)
 > funDecl _ _ _ (ExportTypeWith _ _) ds = ds
 
 \end{verbatim}
@@ -123,7 +125,7 @@ not module \texttt{B}.
 >   modules (IDataDecl _ tc _ cs) = modules tc . modules cs
 >   modules (INewtypeDecl _ tc _ nc) = modules tc . modules nc
 >   modules (ITypeDecl _ tc _ ty) = modules tc . modules ty
->   modules (IFunctionDecl _ f ty) = modules f . modules ty
+>   modules (IFunctionDecl _ f _ ty) = modules f . modules ty
 
 > instance HasModule ConstrDecl where
 >   modules (ConstrDecl _ _ _ tys) = modules tys
@@ -165,7 +167,7 @@ compiler can check them without loading the imported modules.
 > definedType (IDataDecl _ tc _ _) tcs = tc : tcs
 > definedType (INewtypeDecl _ tc _ _) tcs = tc : tcs
 > definedType (ITypeDecl _ tc _ _) tcs = tc : tcs
-> definedType (IFunctionDecl _ _ _)  tcs = tcs
+> definedType (IFunctionDecl _ _ _ _)  tcs = tcs
 
 > class HasType a where
 >   usedTypes :: a -> [QualIdent] -> [QualIdent]
@@ -180,7 +182,7 @@ compiler can check them without loading the imported modules.
 >   usedTypes (IDataDecl _ _ _ cs) = usedTypes cs
 >   usedTypes (INewtypeDecl _ _ _ nc) = usedTypes nc
 >   usedTypes (ITypeDecl _ _ _ ty) = usedTypes ty
->   usedTypes (IFunctionDecl _ _ ty) = usedTypes ty
+>   usedTypes (IFunctionDecl _ _ _ ty) = usedTypes ty
 
 > instance HasType ConstrDecl where
 >   usedTypes (ConstrDecl _ _ _ tys) = usedTypes tys

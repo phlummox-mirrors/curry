@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2147 2007-04-02 12:36:30Z wlux $
+% $Id: Modules.lhs 2148 2007-04-02 13:56:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -376,7 +376,7 @@ with the actual definitions in the current module.
 >         entity (IDataDecl _ tc _ _) = tc
 >         entity (INewtypeDecl _ tc _ _) = tc
 >         entity (ITypeDecl _ tc _ _) = tc
->         entity (IFunctionDecl _ f _) = f
+>         entity (IFunctionDecl _ f _ _) = f
 
 \end{verbatim}
 The prelude is imported implicitly into every module that does not
@@ -565,7 +565,8 @@ from the type environment.
 >         ppInfo (c,NewtypeConstructor _ (ForAll _ ty)) =
 >           ppIDecl (mkDecl c ty) <+> text "-- newtype constructor"
 >         ppInfo (x,Value _ _ (ForAll _ ty)) = ppIDecl (mkDecl x ty)
->         mkDecl f ty = IFunctionDecl undefined (qualify f) (fromType tcEnv ty)
+>         mkDecl f ty =
+>           IFunctionDecl undefined (qualify f) Nothing (fromType tcEnv ty)
 
 \end{verbatim}
 Various file name extensions.

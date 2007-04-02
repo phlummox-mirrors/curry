@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 2146 2007-04-02 08:01:20Z wlux $
+% $Id: CurrySyntax.lhs 2148 2007-04-02 13:56:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -104,7 +104,7 @@ Interface declarations are restricted to type declarations and signatures.
 >   | IDataDecl Position QualIdent [Ident] [Maybe ConstrDecl]
 >   | INewtypeDecl Position QualIdent [Ident] NewConstrDecl
 >   | ITypeDecl Position QualIdent [Ident] TypeExpr
->   | IFunctionDecl Position QualIdent TypeExpr
+>   | IFunctionDecl Position QualIdent (Maybe Int) TypeExpr
 >   deriving (Eq,Show)
 
 \end{verbatim}

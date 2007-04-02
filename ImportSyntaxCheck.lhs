@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ImportSyntaxCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: ImportSyntaxCheck.lhs 2148 2007-04-02 13:56:20Z wlux $
 %
-% Copyright (c) 2000-2006, Wolfgang Lux
+% Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ImportSyntaxCheck.lhs}
@@ -46,7 +46,7 @@ declarations.
 > bindValue m (IDataDecl _ tc _ cs) =
 >   flip (foldr (bindConstr (qualQualify m tc))) (catMaybes cs)
 > bindValue m (INewtypeDecl _ tc _ nc) = bindNewConstr (qualQualify m tc) nc
-> bindValue m (IFunctionDecl _ f _) = bindUnqual f (Var (qualQualify m f))
+> bindValue m (IFunctionDecl _ f _ _) = bindUnqual f (Var (qualQualify m f))
 > bindValue _ _ = id
 
 > bindConstr :: QualIdent -> ConstrDecl -> ExpFunEnv -> ExpFunEnv

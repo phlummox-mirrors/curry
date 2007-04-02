@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 2146 2007-04-02 08:01:20Z wlux $
+% $Id: Imports.lhs 2148 2007-04-02 13:56:20Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -47,7 +47,7 @@ unqualified import are performed.
 > isHiddenData (IDataDecl _ _ _ _) = False
 > isHiddenData (INewtypeDecl _ _ _ _) = False
 > isHiddenData (ITypeDecl _ _ _ _) = False
-> isHiddenData (IFunctionDecl _ _ _) = False
+> isHiddenData (IFunctionDecl _ _ _ _) = False
 
 > isVisible :: (Import -> Set Ident -> Set Ident) -> Maybe ImportSpec
 >           -> Ident -> Bool
@@ -111,7 +111,7 @@ the unqualified type identifier \verb|T| would be ambiguous if
 > entity (IDataDecl _ tc _ _) = tc
 > entity (INewtypeDecl _ tc _ _) = tc
 > entity (ITypeDecl _ tc _ _) = tc
-> entity (IFunctionDecl _ f _) = f
+> entity (IFunctionDecl _ f _ _) = f
 
 > importEntitiesIntf :: Entity a
 >                    => (ModuleIdent -> IDecl -> [I a] -> [I a])
@@ -146,9 +146,10 @@ following functions.
 > values m (INewtypeDecl _ tc tvs nc) =
 >   (newConstr m tc' tvs (constrType tc' tvs) nc :)
 >   where tc' = qualQualify m tc
-> values m (IFunctionDecl _ f ty) =
->   qual f (Value (qualQualify m f) (arrowArity ty') (polyType ty'))
->   where ty' = toType m [] ty
+> values m (IFunctionDecl _ f n ty) =
+>   qual f (Value (qualQualify m f) n' (polyType ty'))
+>   where n' = fromMaybe (arrowArity ty') n
+>         ty' = toType m [] ty
 > values _ _ = id
 
 > dataConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> ConstrDecl
