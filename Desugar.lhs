@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2146 2007-04-02 08:01:20Z wlux $
+% $Id: Desugar.lhs 2149 2007-04-02 16:51:24Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,7 +10,6 @@ The desugaring pass removes all syntactic sugar from the module. In
 particular, the output of the desugarer will have the following
 properties.
 \begin{itemize}
-\item All function definitions are $\eta$-expanded.
 \item No guarded right hand sides occur in equations, pattern
   declarations, and case alternatives. In addition, the declaration
   lists of the right hand sides are empty; local declarations are
@@ -216,21 +215,15 @@ further declarations to the group that must be desugared as well.
 > desugarDeclLhs _ d = return [d]
 
 \end{verbatim}
-After desugaring its right hand side, each equation is $\eta$-expanded
-by adding as many variables as necessary to the argument list and
-applying the right hand side to those variables. The import entity
-specification of foreign functions using the \texttt{ccall} and
-\texttt{rawcall} calling conventions is expanded to always include the
-kind of the declaration (either \texttt{static} or \texttt{dynamic})
-and the name of the imported function.
+The import entity specification of foreign functions using the
+\texttt{ccall} and \texttt{rawcall} calling conventions is expanded to
+always include the kind of the declaration (either \texttt{static} or
+\texttt{dynamic}) and the name of the imported function.
 \begin{verbatim}
 
 > desugarDeclRhs :: ModuleIdent -> Decl -> DesugarState Decl
 > desugarDeclRhs m (FunctionDecl p f eqs) =
->   do
->     tys <- liftM (arrowArgs . flip typeOf f) fetchSt
->     updateSt_ (changeArity m f (length tys))
->     liftM (FunctionDecl p f) (mapM (desugarEquation m tys) eqs)
+>   liftM (FunctionDecl p f) (mapM (desugarEquation m) eqs)
 > desugarDeclRhs _ (ForeignDecl p cc s ie f ty) =
 >   return (ForeignDecl p cc (s `mplus` Just Safe) (desugarImpEnt cc ie) f ty)
 >   where desugarImpEnt cc ie
@@ -254,16 +247,13 @@ and the name of the imported function.
 >   liftM (PatternDecl p t) (desugarRhs m p rhs)
 > desugarDeclRhs _ (FreeDecl p vs) = return (FreeDecl p vs)
 
-> desugarEquation :: ModuleIdent -> [Type] -> Equation -> DesugarState Equation
-> desugarEquation m tys (Equation p lhs rhs) =
+> desugarEquation :: ModuleIdent -> Equation -> DesugarState Equation
+> desugarEquation m (Equation p lhs rhs) =
 >   do
->     vs <- mapM (freshIdent m "_#eta" 0 . monoType) (drop (length ts) tys)
 >     (ds',ts') <- mapAccumM (desugarTerm m p) [] ts
 >     rhs' <- desugarRhs m p (addDecls ds' rhs)
->     return (Equation p (FunLhs f (ts' ++ map VariablePattern vs))
->                      (applyRhs rhs' (map mkVar vs)))
+>     return (Equation p (FunLhs f ts') rhs')
 >   where (f,ts) = flatLhs lhs
->         applyRhs (SimpleRhs p e _) vs = SimpleRhs p (apply e vs) []
 
 \end{verbatim}
 The transformation of patterns is straight forward except for lazy
