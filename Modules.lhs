@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2142 2007-03-30 09:48:47Z wlux $
+% $Id: Modules.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -549,11 +549,11 @@ from the type environment.
 
 > ppTypes :: TCEnv -> [(Ident,ValueInfo)] -> Doc
 > ppTypes tcEnv = vcat . map ppInfo
->   where ppInfo (c,DataConstructor _ (ForAll _ ty)) =
+>   where ppInfo (c,DataConstructor _ _ (ForAll _ ty)) =
 >           ppIDecl (mkDecl c ty) <+> text "-- data constructor"
 >         ppInfo (c,NewtypeConstructor _ (ForAll _ ty)) =
 >           ppIDecl (mkDecl c ty) <+> text "-- newtype constructor"
->         ppInfo (x,Value _ (ForAll _ ty)) = ppIDecl (mkDecl x ty)
+>         ppInfo (x,Value _ _ (ForAll _ ty)) = ppIDecl (mkDecl x ty)
 >         mkDecl f ty = IFunctionDecl undefined (qualify f) (fromType tcEnv ty)
 
 \end{verbatim}

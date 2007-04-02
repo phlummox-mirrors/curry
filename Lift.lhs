@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 2101 2007-02-21 16:25:07Z wlux $
+% $Id: Lift.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -229,8 +229,9 @@ variables in order to avoid an inadvertent name capturing.
 > abstractFunTypes m pre fvs fs tyEnv = foldr abstractFunType tyEnv fs
 >   where tys = map (rawType . flip varType tyEnv) fvs
 >         abstractFunType f tyEnv =
->           globalBindFun m (liftIdent pre f) (genType ty) (unbindFun f tyEnv)
->           where ty = foldr TypeArrow (rawType (varType f tyEnv)) tys
+>           globalBindFun m (liftIdent pre f) n (genType ty) (unbindFun f tyEnv)
+>           where n = length tys + arity (qualify f) tyEnv
+>                 ty = foldr TypeArrow (rawType (varType f tyEnv)) tys
 >         genType ty =
 >           ForAll (length tvs) (subst (foldr2 bindSubst idSubst tvs tvs') ty)
 >           where tvs = nub (typeVars ty)
@@ -378,8 +379,9 @@ to the top-level.
 > unapply (Let ds e) es = (Let ds e,es)
 > unapply (Case e alts) es = (Case e alts,es)
 
-> globalBindFun :: ModuleIdent -> Ident -> TypeScheme -> ValueEnv -> ValueEnv
-> globalBindFun m f ty = globalBindTopEnv m f (Value (qualifyWith m f) ty)
+> globalBindFun :: ModuleIdent -> Ident -> Int -> TypeScheme
+>               -> ValueEnv -> ValueEnv
+> globalBindFun m f n ty = globalBindTopEnv m f (Value (qualifyWith m f) n ty)
 
 > unbindFun :: Ident -> ValueEnv -> ValueEnv
 > unbindFun = localUnbindTopEnv

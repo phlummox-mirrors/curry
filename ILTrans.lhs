@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 2133 2007-03-19 22:34:02Z wlux $
+% $Id: ILTrans.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -327,13 +327,13 @@ further possibilities to apply this transformation.
 > translExpr tyEnv _ env (Variable v) =
 >   case lookupVar v env of
 >     Just v' -> IL.Variable v'
->     Nothing -> IL.Function v (arrowArity (rawType (funType v tyEnv)))
+>     Nothing -> IL.Function v (arity v tyEnv)
 >   where lookupVar v env
 >           | isQualified v = Nothing
 >           | otherwise = lookupEnv (unqualify v) env
 > translExpr tyEnv _ _ (Constructor c)
 >   | isNewtypeConstr tyEnv c = IL.Function c 1
->   | otherwise = IL.Constructor c (arrowArity (rawType (conType c tyEnv)))
+>   | otherwise = IL.Constructor c (arity c tyEnv)
 > translExpr tyEnv vs env (Apply e1 e2) =
 >   case e1 of
 >     Constructor c | isNewtypeConstr tyEnv c -> translExpr tyEnv vs env e2

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: IntfCheck.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
-% Copyright (c) 2000-2005, Wolfgang Lux
+% Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{IntfCheck.lhs}
@@ -95,7 +95,8 @@ interface module only. However, this has not been implemented yet.
 >         checkType _ = Nothing
 > checkImport m _ _ tyEnv (IFunctionDecl p f ty) =
 >   checkValueInfo "function" checkFun tyEnv p f
->   where checkFun (Value f' (ForAll _ ty')) = f == f' && toType m [] ty == ty'
+>   where checkFun (Value f' _ (ForAll _ ty')) =
+>           f == f' && toType m [] ty == ty'
 >         checkFun _ = False
 
 > checkConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
@@ -103,14 +104,14 @@ interface module only. However, this has not been implemented yet.
 > checkConstrImport m tyEnv tc tvs (ConstrDecl p evs c tys) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc c
->         checkConstr (DataConstructor c' (ForAll n' ty')) =
+>         checkConstr (DataConstructor c' _ (ForAll n' ty')) =
 >           qc == c' && length (tvs ++ evs) == n' &&
 >           toTypes m tvs tys == arrowArgs ty'
 >         checkConstr _ = False
 > checkConstrImport m tyEnv tc tvs (ConOpDecl p evs ty1 op ty2) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc op
->         checkConstr (DataConstructor c' (ForAll n' ty')) =
+>         checkConstr (DataConstructor c' _ (ForAll n' ty')) =
 >           qc == c' && length (tvs ++ evs) == n' &&
 >           toTypes m tvs [ty1,ty2] == arrowArgs ty'
 >         checkConstr _ = False

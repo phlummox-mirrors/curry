@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2145 2007-04-01 20:37:24Z wlux $
+% $Id: TypeCheck.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -97,15 +97,15 @@ types and also because the name of the type could be ambiguous.
 > bindConstrs m tcEnv (NewtypeDecl _ tc tvs nc) tyEnv = bind nc tyEnv
 >   where ty0 = constrType m tc tvs
 >         bind (NewConstrDecl _ c ty) =
->           bindConstr NewtypeConstructor m tcEnv tvs c [ty] ty0
+>           bindConstr (const . NewtypeConstructor) m tcEnv tvs c [ty] ty0
 > bindConstrs _ _ (TypeDecl _ _ _ _) tyEnv = tyEnv
 > bindConstrs _ _ (BlockDecl _) tyEnv = tyEnv
 
-> bindConstr :: (QualIdent -> TypeScheme -> ValueInfo) -> ModuleIdent
+> bindConstr :: (QualIdent -> Int -> TypeScheme -> ValueInfo) -> ModuleIdent
 >            -> TCEnv -> [Ident] -> Ident -> [TypeExpr] -> Type
 >            -> ValueEnv -> ValueEnv
 > bindConstr f m tcEnv tvs c tys ty0 =
->   globalBindTopEnv m c (f (qualifyWith m c) ty')
+>   globalBindTopEnv m c (f (qualifyWith m c) (length tys) ty')
 >   where ty' = polyType (normalize (length tvs) (foldr TypeArrow ty0 tys'))
 >         tys' = expandMonoTypes tcEnv tvs tys
 
@@ -205,10 +205,13 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >   where vs = [v | PatternDecl _ t _ <- ds, v <- bv t]
 
 > bindDecl :: ModuleIdent -> TCEnv -> SigEnv -> Decl -> TcState ()
-> bindDecl m tcEnv sigs (FunctionDecl p f _) =
+> bindDecl m tcEnv sigs (FunctionDecl p f eqs) =
 >   case lookupEnv f sigs of
->     Just ty -> updateSt_ (bindFun m f (expandPolyType tcEnv ty))
->     Nothing -> bindLambdaVar m f
+>     Just ty -> updateSt_ (bindFun m f n (expandPolyType tcEnv ty))
+>     Nothing ->
+>       replicateM (n + 1) freshTypeVar >>=
+>       updateSt_ . bindFun m f n . monoType . foldr1 TypeArrow
+>   where n = eqnArity (head eqs)
 > bindDecl m tcEnv sigs (PatternDecl p t _) = bindDeclVars m tcEnv sigs p (bv t)
 
 > bindDeclVars :: ModuleIdent -> TCEnv -> SigEnv -> Position -> [Ident]
@@ -220,7 +223,7 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 > bindDeclVar m tcEnv sigs p v =
 >   case lookupEnv v sigs of
 >     Just ty
->       | null (fv ty) -> updateSt_ (bindFun m v (expandPolyType tcEnv ty))
+>       | null (fv ty) -> updateSt_ (bindFun m v 0 (expandPolyType tcEnv ty))
 >       | otherwise -> errorAt p (polymorphicVar v)
 >     Nothing -> bindLambdaVar m v
 
@@ -261,7 +264,7 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 > bindLambdaVars m t = mapM_ (bindLambdaVar m) (bv t)
 
 > bindLambdaVar :: ModuleIdent -> Ident -> TcState ()
-> bindLambdaVar m v = freshTypeVar >>= updateSt_ . bindFun m v . monoType
+> bindLambdaVar m v = freshTypeVar >>= updateSt_ . bindFun m v 0 . monoType
 
 \end{verbatim}
 The code in \texttt{genDecl} below verifies that the inferred type of
@@ -276,12 +279,12 @@ in \texttt{bindDeclVar} above.
 \begin{verbatim}
 
 > genDecl :: ModuleIdent -> TCEnv -> SigEnv -> TypeScheme -> Decl -> TcState ()
-> genDecl m tcEnv sigs sigma (FunctionDecl p f _) =
+> genDecl m tcEnv sigs sigma (FunctionDecl p f eqs) =
 >   case lookupEnv f sigs of
 >     Just sigTy
 >       | sigma == expandPolyType tcEnv sigTy -> return ()
 >       | otherwise -> errorAt p (typeSigTooGeneral tcEnv what sigTy sigma)
->     Nothing -> updateSt_ (rebindFun m f sigma)
+>     Nothing -> updateSt_ (rebindFun m f (eqnArity (head eqs)) sigma)
 >   where what = text "Function:" <+> ppIdent f
 > genDecl _ _ _ _ (PatternDecl _ _ _) = return ()
 
@@ -308,9 +311,9 @@ $\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 >                -> Maybe String -> Ident -> TypeExpr -> TcState ()
 > tcForeignFunct m tcEnv p cc ie f ty =
 >   do
->     checkForeignType cc (rawType ty')
->     updateSt_ (bindFun m f ty')
->   where ty' = expandPolyType tcEnv ty
+>     checkForeignType cc ty'
+>     updateSt_ (bindFun m f (arrowArity ty') (ForAll n ty'))
+>   where ForAll n ty' = expandPolyType tcEnv ty
 >         checkForeignType cc ty
 >           | cc == CallConvPrimitive = return ()
 >           | ie == Just "dynamic" = checkCDynCallType tcEnv p cc ty
@@ -364,7 +367,7 @@ $\texttt{FunPtr}\;a$, where $a$ is an arbitrary type.
 > tcLiteral m (Int v _) =
 >   do
 >     ty <- freshConstrained [intType,floatType]
->     updateSt_ (bindFun m v (monoType ty))
+>     updateSt_ (bindFun m v 0 (monoType ty))
 >     return ty
 > tcLiteral _ (Float _) = return floatType
 > tcLiteral _ (String _) = return stringType
@@ -805,7 +808,7 @@ here because we know that they are closed.
 > fsEnv tyEnv = fromListSet (concatMap typeSkolems (localTypes tyEnv))
 
 > localTypes :: ValueEnv -> [TypeScheme]
-> localTypes tyEnv = [ty | (_,Value _ ty) <- localBindings tyEnv]
+> localTypes tyEnv = [ty | (_,Value _ _ ty) <- localBindings tyEnv]
 
 \end{verbatim}
 Error functions.

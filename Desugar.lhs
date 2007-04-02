@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2133 2007-03-19 22:34:02Z wlux $
+% $Id: Desugar.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -94,7 +94,7 @@ incompatible with the Curry report, which deliberately defines
 > bindSuccess :: ValueEnv -> ValueEnv
 > bindSuccess = localBindTopEnv successId successCon
 >   where successCon =
->           DataConstructor (qualify successId) (polyType successType)
+>           DataConstructor (qualify successId) 0 (polyType successType)
 
 \end{verbatim}
 The desugaring phase keeps only the type, function, and value
@@ -162,7 +162,7 @@ Sect.~\ref{sec:dtrans}).
 > desugarGoalIO tcEnv tyEnv p m g e ty =
 >   (Nothing,
 >    Module m Nothing [] [goalDecl p g [] e'],
->    bindFun m g (polyType ty) tyEnv')
+>    bindFun m g 0 (polyType ty) tyEnv')
 >   where (e',tyEnv') = run (desugarGoalExpr m e) tcEnv tyEnv
 
 > desugarGoal' :: TCEnv -> ValueEnv -> Position -> ModuleIdent
@@ -171,11 +171,12 @@ Sect.~\ref{sec:dtrans}).
 > desugarGoal' tcEnv tyEnv p m g vs e ty =
 >   (Just vs',
 >    Module m Nothing [] [goalDecl p g (v0:vs') (apply prelUnif [mkVar v0,e'])],
->    bindFun m v0 (monoType ty) (bindFun m g (polyType ty') tyEnv'))
+>    bindFun m v0 0 (monoType ty) (bindFun m g n (polyType ty') tyEnv'))
 >   where (e',tyEnv') = run (desugarGoalExpr m e) tcEnv tyEnv
 >         v0 = anonId
 >         vs' = filter (`elem` qfv m e') vs
 >         ty' = TypeArrow ty (foldr (TypeArrow . typeOf tyEnv) successType vs')
+>         n = 1 + length vs'
 
 > goalDecl :: Position -> Ident -> [Ident] -> Expression -> TopDecl
 > goalDecl p g vs e = BlockDecl (funDecl p g (map VariablePattern vs) e)
@@ -227,8 +228,9 @@ and the name of the imported function.
 > desugarDeclRhs :: ModuleIdent -> Decl -> DesugarState Decl
 > desugarDeclRhs m (FunctionDecl p f eqs) =
 >   do
->     ty <- liftM (flip typeOf f) fetchSt
->     liftM (FunctionDecl p f) (mapM (desugarEquation m (arrowArgs ty)) eqs)
+>     tys <- liftM (arrowArgs . flip typeOf f) fetchSt
+>     updateSt_ (changeArity m f (length tys))
+>     liftM (FunctionDecl p f) (mapM (desugarEquation m tys) eqs)
 > desugarDeclRhs _ (ForeignDecl p cc s ie f ty) =
 >   return (ForeignDecl p cc (s `mplus` Just Safe) (desugarImpEnt cc ie) f ty)
 >   where desugarImpEnt cc ie
@@ -255,7 +257,7 @@ and the name of the imported function.
 > desugarEquation :: ModuleIdent -> [Type] -> Equation -> DesugarState Equation
 > desugarEquation m tys (Equation p lhs rhs) =
 >   do
->     vs <- mapM (freshIdent m "_#eta" . monoType) (drop (length ts) tys)
+>     vs <- mapM (freshIdent m "_#eta" 0 . monoType) (drop (length ts) tys)
 >     (ds',ts') <- mapAccumM (desugarTerm m p) [] ts
 >     rhs' <- desugarRhs m p (addDecls ds' rhs)
 >     return (Equation p (FunLhs f (ts' ++ map VariablePattern vs))
@@ -428,7 +430,7 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     return (Apply (Apply prelFlip op') e')
 > desugarExpr m p (Lambda ts e) =
 >   do
->     f <- freshFun m "_#lambda" (Lambda ts e)
+>     f <- freshFun m "_#lambda" (length ts) (Lambda ts e)
 >     desugarExpr m p (Let [funDecl p f ts e] (mkVar f))
 > desugarExpr m p (Let ds e) =
 >   do
@@ -713,11 +715,11 @@ instead of \texttt{(++)} and \texttt{map} in place of
 Generation of fresh names
 \begin{verbatim}
 
-> freshIdent :: ModuleIdent -> String -> TypeScheme -> DesugarState Ident
-> freshIdent m prefix ty =
+> freshIdent :: ModuleIdent -> String -> Int -> TypeScheme -> DesugarState Ident
+> freshIdent m prefix n ty =
 >   do
 >     x <- liftM (mkName prefix) (liftSt (liftRt (updateSt (1 +))))
->     updateSt_ (bindFun m x ty)
+>     updateSt_ (bindFun m x n ty)
 >     return x
 >   where mkName pre n = mkIdent (pre ++ show n)
 
@@ -725,13 +727,14 @@ Generation of fresh names
 > freshVar m prefix x =
 >   do
 >     tyEnv <- fetchSt
->     freshIdent m prefix (monoType (typeOf tyEnv x))
+>     freshIdent m prefix 0 (monoType (typeOf tyEnv x))
 
-> freshFun :: Typeable a => ModuleIdent -> String -> a -> DesugarState Ident
-> freshFun m prefix x =
+> freshFun :: Typeable a => ModuleIdent -> String -> Int -> a
+>          -> DesugarState Ident
+> freshFun m prefix n x =
 >   do
 >     tyEnv <- fetchSt
->     freshIdent m prefix (polyType (typeOf tyEnv x))
+>     freshIdent m prefix n (polyType (typeOf tyEnv x))
 
 \end{verbatim}
 Prelude entities

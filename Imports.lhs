@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 1952 2006-07-19 09:04:49Z wlux $
+% $Id: Imports.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
-% Copyright (c) 2000-2006, Wolfgang Lux
+% Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Imports.lhs}
@@ -147,20 +147,21 @@ following functions.
 >   (newConstr m tc' tvs (constrType tc' tvs) nc :)
 >   where tc' = qualQualify m tc
 > values m (IFunctionDecl _ f ty) =
->   qual f (Value (qualQualify m f) (polyType (toType m [] ty)))
+>   qual f (Value (qualQualify m f) (arrowArity ty') (polyType ty'))
+>   where ty' = toType m [] ty
 > values _ _ = id
 
 > dataConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> ConstrDecl
 >            -> I ValueInfo
 > dataConstr m tc tvs ty0 (ConstrDecl _ _ c tys) =
->   (c,con DataConstructor m tc tvs c (foldr ArrowType ty0 tys))
+>   (c,con DataConstructor m tc tvs c (length tys) (foldr ArrowType ty0 tys))
 > dataConstr m tc tvs ty0 (ConOpDecl _ _ ty1 op ty2) =
->   (op,con DataConstructor m tc tvs op (ArrowType ty1 (ArrowType ty2 ty0)))
+>   (op,con DataConstructor m tc tvs op 2 (ArrowType ty1 (ArrowType ty2 ty0)))
 
 > newConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> NewConstrDecl
 >           -> I ValueInfo
 > newConstr m tc tvs ty0 (NewConstrDecl _ c ty1) =
->   (c,con NewtypeConstructor m tc tvs c (ArrowType ty1 ty0))
+>   (c,con (const . NewtypeConstructor) m tc tvs c 1 (ArrowType ty1 ty0))
 
 > qual :: QualIdent -> a -> [I a] -> [I a]
 > qual x y = ((unqualify x,y) :)
@@ -195,9 +196,9 @@ Auxiliary functions:
 > typeCon :: (QualIdent -> Int -> a) -> ModuleIdent -> QualIdent -> [Ident] -> a
 > typeCon f m tc tvs = f (qualQualify m tc) (length tvs)
 
-> con :: (QualIdent -> TypeScheme -> a) -> ModuleIdent -> QualIdent -> [Ident]
->     -> Ident -> TypeExpr -> a
-> con f m tc tvs c ty = f (qualifyLike tc c) (polyType (toType m tvs ty))
+> con :: (QualIdent -> Int -> TypeScheme -> a) -> ModuleIdent -> QualIdent
+>     -> [Ident] -> Ident -> Int -> TypeExpr -> a
+> con f m tc tvs c n ty = f (qualifyLike tc c) n (polyType (toType m tvs ty))
 
 > constrType :: QualIdent -> [Ident] -> TypeExpr
 > constrType tc tvs = ConstructorType tc (map VariableType tvs)

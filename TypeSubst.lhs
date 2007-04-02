@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeSubst.lhs 1791 2005-10-09 17:39:51Z wlux $
+% $Id: TypeSubst.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
-% Copyright (c) 2003-2005, Wolfgang Lux
+% Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeSubst.lhs}
@@ -44,9 +44,9 @@ This module implements substitutions on types.
 >     ForAll n (subst (foldr unbindSubst sigma [0..n-1]) ty)
 
 > instance SubstType ValueInfo where
->   subst theta (DataConstructor c ty) = DataConstructor c ty
+>   subst theta (DataConstructor c n ty) = DataConstructor c n ty
 >   subst theta (NewtypeConstructor c ty) = NewtypeConstructor c ty
->   subst theta (Value v ty) = Value v (subst theta ty)
+>   subst theta (Value v n ty) = Value v n (subst theta ty)
 
 > instance SubstType a => SubstType (TopEnv a) where
 >   subst = fmap . subst

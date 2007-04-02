@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 1840 2006-01-19 19:31:41Z wlux $
+% $Id: Typing.lhs 2146 2007-04-02 08:01:20Z wlux $
 %
-% Copyright (c) 2003-2006, Wolfgang Lux
+% Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Typing.lhs}
@@ -113,7 +113,7 @@ environment.}
 >   where tvs = filter (>= 0) (typeVars ty)
 >         tvs' = map TypeVariable [n - 1,n - 2 ..]
 >         n = minimum (0 : concatMap typeVars tys)
->         tys = [ty | (_,Value _ (ForAll _ ty)) <- localBindings tyEnv]
+>         tys = [ty | (_,Value _ _ (ForAll _ ty)) <- localBindings tyEnv]
 
 > identType :: ValueEnv -> Ident -> TyState Type
 > identType tyEnv x = instUniv (varType x tyEnv)
