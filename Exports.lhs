@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2058 2007-01-02 16:11:46Z wlux $
+% $Id: Exports.lhs 2147 2007-04-02 12:36:30Z wlux $
 %
-% Copyright (c) 2000-2005, Wolfgang Lux
+% Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Exports.lhs}
@@ -20,9 +20,8 @@ types.
 > import TopEnv
 > import TypeTrans
 
-> exportInterface :: ModuleIdent -> ExportSpec -> PEnv -> TCEnv -> ValueEnv
->                 -> Interface
-> exportInterface m (Exporting _ es) pEnv tcEnv tyEnv =
+> exportInterface :: Module -> PEnv -> TCEnv -> ValueEnv -> Interface
+> exportInterface (Module m (Just (Exporting _ es)) _ _) pEnv tcEnv tyEnv =
 >   Interface m imports (precs ++ hidden ++ ds)
 >   where imports = map (IImportDecl noPos) (usedModules ds)
 >         precs = foldr (infixDecl m pEnv) [] es
