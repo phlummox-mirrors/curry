@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 2143 2007-03-30 10:13:33Z wlux $
+% $Id: DTransform.lhs 2152 2007-04-11 14:22:54Z wlux $
 %
 % Copyright (c) 2001-2002, Rafael Caballero
 % Copyright (c) 2003-2007, Wolfgang Lux
@@ -457,23 +457,32 @@ Next function  gets the current module identifier,
 >       FunctionDecl qId' varsId fType' body
 >       where
 >       qId'             = changeFunctionqId qId
+>       isIO             = isIOType (resultType fType)
 >       varsId           = map (mkIdent.("_"++).show) [0..n-1]
 >       vars             = map Variable varsId
+>       vars'            = init vars
 >       fType'           = transformType n  fType
 >       bind             = qualifyWith preludeMIdent (mkIdent ">>=")
->       finalApp         = createApply (Function qId n) vars
->       finalAppIO       = createApply (Function bind 2)
->                                      [finalApp, Function debugReturn 1]
->       finalApp'        = case foreignWrapper cc s of
+>       finalApp         = case foreignWrapper cc s of
 >                            Just qId'' -> createApply (Function qId'' n) vars
 >                            Nothing
 >                              | any isFunctType (argumentTypes fType) ->
 >                                  error ("generateForeign: unsupported higher order primitive " ++ s)
->                              | isIOType (resultType fType) -> finalAppIO
->                              | otherwise                   -> finalApp
+>                              | otherwise -> createApply (Function qId n) vars
+>       finalAppIO       = case foreignWrapper cc s of
+>                            Just qId'' -> createApply (Function qId'' (n - 1)) vars'
+>                            Nothing
+>                              | any isFunctType (argumentTypes fType) ->
+>                                  error ("generateForeign: unsupported higher order primitive " ++ s)
+>                              | otherwise ->
+>                                  createApply (Function bind 3)
+>                                              [createApply (Function qId n) vars',
+>                                               Function debugReturn 1]
 >       body             = if cc==Primitive && s=="unsafePerformIO"
->                          then finalApp
->                          else debugBuildPairExp finalApp' void
+>                          then createApply (Function qId n) vars
+>                          else if isIO
+>                               then Apply finalAppIO (last vars)
+>                               else debugBuildPairExp finalApp void
 >       isFunctType ty   = isArrowType ty || isIOType ty
 
 > foreignWrapper :: CallConv -> String -> Maybe QualIdent
@@ -639,7 +648,9 @@ is a module function.
 > typesDatum (TypeDecl _ _ _) env = env
 >
 > typesForeign (ForeignDecl qId cc s ftype) env  = 
->       (qId,(IsForeign cc s, typeArity ftype,ftype)):env
+>       (qId,(IsForeign cc s,m,ftype)):env
+>       where m = if isIOType (resultType ftype) then n + 1 else n
+>             n = typeArity ftype
 
 > typesConst:: QualIdent -> Int -> ConstrDecl -> DebugTypeList -> DebugTypeList
 > typesConst dataId n (ConstrDecl qId lTypes) env  = 
