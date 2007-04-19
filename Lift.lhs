@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 2146 2007-04-02 08:01:20Z wlux $
+% $Id: Lift.lhs 2157 2007-04-19 10:13:16Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -169,23 +169,25 @@ is no need for reordering.
 > abstractDeclGroup :: ModuleIdent -> String -> [Ident] -> AbstractEnv
 >                   -> [Decl] -> Expression -> AbstractState Expression
 > abstractDeclGroup m pre lvs env ds e =
->   abstractFunDecls m pre (lvs ++ bv vds) env (scc bv (qfv m) fds) vds e
+>   liftSt fetchSt >>= \trEnv ->
+>   abstractFunDecls m pre (lvs ++ bv vds) trEnv env (scc bv (qfv m) fds) vds e
 >   where (fds,vds) = partition isFunDecl ds
 
-> abstractFunDecls :: ModuleIdent -> String -> [Ident] -> AbstractEnv
->                  -> [[Decl]] -> [Decl] -> Expression
+> abstractFunDecls :: ModuleIdent -> String -> [Ident] -> TrustEnv
+>                  -> AbstractEnv -> [[Decl]] -> [Decl] -> Expression
 >                  -> AbstractState Expression
-> abstractFunDecls m pre lvs env [] vds e =
+> abstractFunDecls m pre lvs _ env [] vds e =
 >   do
 >     vds' <- mapM (abstractDecl m pre lvs env) vds
 >     e' <- abstractExpr m pre lvs env e
 >     return (Let vds' e')
-> abstractFunDecls m pre lvs env (fds:fdss) vds e =
+> abstractFunDecls m pre lvs trEnv env (fds:fdss) vds e =
 >   case fds of
 >     [FunctionDecl _ f [Equation _ (FunLhs _ ts) (SimpleRhs _ e' _)]]
->       | all isVarPattern ts && isFunction e'' &&
+>       | maybe True (Trust==) (lookupEnv f trEnv) &&
+>         all isVarPattern ts && isFunction e'' &&
 >         fvs' ++ [mkVar v | VariablePattern v <- ts] == es ->
->           abstractFunDecls m pre lvs env' fdss vds e
+>           abstractFunDecls m pre lvs trEnv env' fdss vds e
 >       where (e'',es) = unapply e' []
 >             fvs' = map mkVar fvs
 >             env' = bindEnv f (apply e'' fvs') env
@@ -198,7 +200,7 @@ is no need for reordering.
 >         liftSt (updateSt_ (abstractFunAnnots m pre fs'))
 >         fds' <- mapM (abstractFunDecl m pre fvs lvs env')
 >                      [d | d <- fds, any (`elem` fs') (bv d)]
->         e' <- abstractFunDecls m pre lvs env' fdss vds e
+>         e' <- abstractFunDecls m pre lvs trEnv env' fdss vds e
 >         return (Let fds' e')
 >   where fs = bv fds
 >         fvs = filter (`elem` lvs) (toListSet fvsRhs)
