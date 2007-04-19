@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 2153 2007-04-12 09:14:47Z wlux $
+% $Id: DTransform.lhs 2155 2007-04-19 09:38:44Z wlux $
 %
 % Copyright (c) 2001-2002, Rafael Caballero
 % Copyright (c) 2003-2007, Wolfgang Lux
@@ -305,18 +305,23 @@ We have to introduce an auxiliary function for the lambda in the intermediate co
 
 > dAddMain :: Ident -> Module -> Module
 > dAddMain goalId (Module m is ds) = Module m is (fMain ++ ds)
->   where ty = head [debugResultType ty | FunctionDecl f _ ty _ <- ds, f == debugOldMainId]
->         fMain = if isIOType ty then newMainIO m goalId else newMain m goalId
+>   where (arity,ty) = head [(length lVars,ty) | FunctionDecl f lVars ty _ <- ds, f == debugOldMainId]
+>         fMain = if isIOType ty || isIOType (debugResultType ty)
+>                 then newMainIO m goalId arity
+>                 else newMain m goalId
 >         debugOldMainId = qualifyWith m (debugRenameId "" goalId)
 >         debugResultType (TypeConstructor debugIdentPair [ty,_]) = ty
 
-> newMainIO :: ModuleIdent -> Ident -> [Decl]
-> newMainIO m f = [fMain]
+> newMainIO :: ModuleIdent -> Ident -> Int -> [Decl]
+> newMainIO m f n = [fMain]
 >       where 
 >       fMain = FunctionDecl fId [] fType fBody
 >       fId   = qualifyWith m f
 >       fType = TypeConstructor qIOId [TypeConstructor qUnitId []]
->       fBody = Apply (Function debugIOFunctionqId 1) (Function debugOldMainId 0)
+>       fApp  = if n==0
+>               then Function debugOldMainId n
+>               else debugBuildPairExp (Function debugOldMainId n) void
+>       fBody = Apply (Function debugIOFunctionqId 1) fApp
 >       debugOldMainId = qualifyWith m (debugRenameId "" f)
 
 > newMain :: ModuleIdent -> Ident -> [Decl]
@@ -470,14 +475,14 @@ Next function  gets the current module identifier,
 >                                  error ("generateForeign: unsupported higher order primitive " ++ s)
 >                              | otherwise -> createApply (Function qId n) vars
 >       finalAppIO       = case foreignWrapper cc s of
->                            Just qId'' -> createApply (Function qId'' (n - 1)) vars'
+>                            Just qId'' -> createApply (Function qId'' n) vars'
 >                            Nothing
 >                              | any isFunctType (argumentTypes fType) ->
 >                                  error ("generateForeign: unsupported higher order primitive " ++ s)
 >                              | otherwise ->
 >                                  createApply (Function bind 3)
 >                                              [createApply (Function qId n) vars',
->                                               Function debugReturn 1]
+>                                               Function debugReturn 2]
 >       body             = if cc==Primitive && s=="unsafePerformIO"
 >                          then createApply (Function qId n) vars
 >                          else if isIO
