@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2156 2007-04-19 09:52:23Z wlux $
+% $Id: Simplify.lhs 2158 2007-04-20 07:59:38Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -196,7 +196,7 @@ newtype as well.
 > isNonExpansive :: ValueEnv -> Int -> Expression -> Bool
 > isNonExpansive _ _ (Literal _) = True
 > isNonExpansive tyEnv n (Variable x)
->   | n == 0 = not (isQualified x)
+>   | not (isQualified x) = n == 0 || n < arity x tyEnv
 >   | otherwise = n < arity x tyEnv
 > isNonExpansive _ _ (Constructor _) = True
 > isNonExpansive tyEnv n (Apply e1 e2) =
