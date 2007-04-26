@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2154 2007-04-17 15:30:43Z wlux $
+% $Id: TypeCheck.lhs 2176 2007-04-26 20:35:57Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -233,7 +233,7 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >     tyEnv <- fetchSt
 >     theta <- liftSt fetchSt
 >     let vs = [v | PatternDecl _ t rhs <- ds,
->                   not (isVariablePattern t || isNonExpansive tcEnv tyEnv rhs),
+>                   not (isVariablePattern t && isNonExpansive tcEnv tyEnv rhs),
 >                   v <- bv t]
 >         tvss = map (typeVars . subst theta . flip varType tyEnv) vs
 >         fvs = foldr addToSet (fvEnv (subst theta tyEnv0)) (concat tvss)
