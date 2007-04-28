@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2179 2007-04-28 14:06:25Z wlux $
+% $Id: Modules.lhs 2181 2007-04-28 18:03:28Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -190,7 +190,7 @@ declaration to the module.
 
 > splitModule :: Module -> [Module]
 > splitModule (Module m es is ds) = [Module m es is [d] | d <- ds, isCodeDecl d]
->   where isCodeDecl (DataDecl _ _ _ _) = True
+>   where isCodeDecl (DataDecl _ _ _ cs) = not (null cs)
 >         isCodeDecl (NewtypeDecl _ _ _ _) = True
 >         isCodeDecl (TypeDecl _ _ _ _) = False
 >         isCodeDecl (BlockDecl d) = isValueDecl d
