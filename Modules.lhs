@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: Modules.lhs 2179 2007-04-28 14:06:25Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -41,7 +41,7 @@ This module controls the compilation of modules.
 > import DTransform(dTransform,dAddMain)
 > import ILCompile(camCompile,camCompileData,fun)
 > import qualified CamPP(ppModule)
-> import CGen(genMain,genModule,genSplitModule)
+> import CGen(genMain,genModule)
 > import CCode(CFile,mergeCFile)
 > import CPretty(ppCFile)
 > import CurryPP(ppModule,ppInterface,ppIDecl,ppGoal)
@@ -76,11 +76,13 @@ declaration to the module.
 > compileModule opts fn =
 >   do
 >     (mEnv,pEnv,tcEnv,tyEnv,m) <- loadModule paths dbg cm ws fn
->     let (tyEnv',il,dumps) = transModule dbg tr tcEnv tyEnv m
+>     let (tyEnv',trEnv,m',dumps) = transModule dbg tr tcEnv tyEnv m
 >     liftErr $ mapM_ (doDump opts) dumps
 >     let intf = exportInterface m pEnv tcEnv tyEnv'
 >     liftErr $ unless (noInterface opts) (updateInterface fn intf)
->     let (ccode,dumps) = genCodeModule split (bindModule intf mEnv) il
+>     let (il,dumps) = ilTransModule split dbg tyEnv' trEnv m'
+>     liftErr $ mapM_ (doDump opts) dumps
+>     let (ccode,dumps) = genCodeModule (bindModule intf mEnv) il
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeCode (output opts) fn ccode
 >   where paths = importPath opts
@@ -126,34 +128,53 @@ declaration to the module.
 >   shadowCheck warn m ++ overlapCheck warn m
 
 > transModule :: Bool -> Trust -> TCEnv -> ValueEnv -> Module
->             -> (ValueEnv,IL.Module,[(Dump,Doc)])
-> transModule debug tr tcEnv tyEnv m = (tyEnv''',ilDbg,dumps)
+>             -> (ValueEnv,TrustEnv,Module,[(Dump,Doc)])
+> transModule debug tr tcEnv tyEnv m = (tyEnv'',trEnv,simplified,dumps)
 >   where trEnv = if debug then trustEnv tr m else emptyEnv
 >         (desugared,tyEnv') = desugar tcEnv tyEnv m
 >         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
->         (lifted,tyEnv''',trEnv') = lift tyEnv'' trEnv simplified
->         il = ilTrans tyEnv''' lifted
->         ilDbg
->           | debug = dTransform (trustedFun trEnv') il
->           | otherwise = il
 >         dumps =
 >           [(DumpRenamed,ppModule m),
 >            (DumpTypes,ppTypes tcEnv (localBindings tyEnv)),
 >            (DumpDesugared,ppModule desugared),
->            (DumpSimplified,ppModule simplified),
->            (DumpLifted,ppModule lifted),
+>            (DumpSimplified,ppModule simplified)]
+
+> ilTransModule :: Bool -> Bool -> ValueEnv -> TrustEnv -> Module
+>               -> (Either IL.Module [IL.Module],[(Dump,Doc)])
+> ilTransModule False debug tyEnv trEnv m = (Left il,dumps)
+>   where (il,dumps) = ilTransModule1 id debug tyEnv trEnv m
+> ilTransModule True debug tyEnv trEnv m = (Right il,concat (transpose dumps))
+>   where (il,dumps) =
+>           unzip $ map (ilTransModule1 id debug tyEnv trEnv) (splitModule m)
+
+> ilTransModule1 :: (IL.Module -> IL.Module) -> Bool -> ValueEnv -> TrustEnv
+>                -> Module -> (IL.Module,[(Dump,Doc)])
+> ilTransModule1 debugAddMain debug tyEnv trEnv m = (ilDbg,dumps)
+>   where (lifted,tyEnv',trEnv') = lift tyEnv trEnv m
+>         il = ilTrans tyEnv' lifted
+>         ilDbg
+>           | debug = debugAddMain (dTransform (trustedFun trEnv') il)
+>           | otherwise = il
+>         dumps =
+>           [(DumpLifted,ppModule lifted),
 >            (DumpIL,ILPP.ppModule il)] ++
 >           [(DumpTransformed,ILPP.ppModule ilDbg) | debug]
 
-> genCodeModule :: Bool -> ModuleEnv -> IL.Module
+> genCodeModule :: ModuleEnv -> Either IL.Module [IL.Module]
 >               -> (Either CFile [CFile],[(Dump,Doc)])
-> genCodeModule split mEnv il = (ccode,dumps)
+> genCodeModule mEnv (Left il) = (Left ccode,dumps)
+>   where (ccode,dumps) = genCode (ilImports mEnv il) il
+> genCodeModule mEnv (Right il) = (Right ccode,concat (transpose dumps))
+>   where IL.Module m is ds = mergeILModules il
+>         (ccode,dumps) =
+>           unzip $ map (genCode (ilImports mEnv (IL.Module m is ds) ++ ds)) il
+
+> genCode :: [IL.Decl] -> IL.Module -> (CFile,[(Dump,Doc)])
+> genCode ds il = (ccode,dumps)
 >   where ilNormal = liftProg il
 >         cam = camCompile ilNormal
->         imports = camCompileData (ilImports mEnv ilNormal)
->         ccode
->           | split = Right (genSplitModule imports cam)
->           | otherwise = Left (genModule imports cam)
+>         imports = camCompileData ds
+>         ccode = genModule imports cam
 >         dumps =
 >           [(DumpNormalized,ILPP.ppModule ilNormal),
 >            (DumpCam,CamPP.ppModule cam)]
@@ -166,6 +187,18 @@ declaration to the module.
 >    foldr (uncurry (bindTopEnv m)) tyEnv' (localBindings tyEnv))
 >   where (pEnv',tcEnv',tyEnv') =
 >           foldl importInterfaceIntf initEnvs (map snd (envToList mEnv))
+
+> splitModule :: Module -> [Module]
+> splitModule (Module m es is ds) = [Module m es is [d] | d <- ds, isCodeDecl d]
+>   where isCodeDecl (DataDecl _ _ _ _) = True
+>         isCodeDecl (NewtypeDecl _ _ _ _) = True
+>         isCodeDecl (TypeDecl _ _ _ _) = False
+>         isCodeDecl (BlockDecl d) = isValueDecl d
+
+> mergeILModules :: [IL.Module] -> IL.Module
+> mergeILModules ms = IL.Module m (concat iss) (concat dss)
+>   where IL.Module m _ _ : _ = ms
+>         (iss,dss) = unzip [(is,ds) | IL.Module _ is ds <- ms]
 
 > ilImports :: ModuleEnv -> IL.Module -> [IL.Decl]
 > ilImports mEnv (IL.Module _ is _) =
@@ -205,7 +238,9 @@ from all loaded interfaces are in scope with their qualified names.
 > compileGoal opts g fns =
 >   do
 >     (mEnv,tcEnv,tyEnv,g') <- loadGoal Eval paths dbg cm ws m g fns
->     let (vs,il,dumps) = transGoal dbg tr tcEnv tyEnv m mainId g'
+>     let (vs,tyEnv',trEnv,m',dumps) = transGoal dbg tr tcEnv tyEnv m mainId g'
+>     liftErr $ mapM_ (doDump opts) dumps
+>     let (il,dumps) = ilTransModule1 (dAddMain mainId) dbg tyEnv' trEnv m'
 >     liftErr $ mapM_ (doDump opts) dumps
 >     let (ccode,dumps) = genCodeGoal mEnv (qualifyWith m mainId) vs il
 >     liftErr $ mapM_ (doDump opts) dumps >>
@@ -289,36 +324,23 @@ from all loaded interfaces are in scope with their qualified names.
 >   shadowCheckGoal warn g ++ overlapCheckGoal warn g
 
 > transGoal :: Bool -> Trust -> TCEnv -> ValueEnv -> ModuleIdent -> Ident
->           -> Goal -> (Maybe [Ident],IL.Module,[(Dump,Doc)])
-> transGoal debug tr tcEnv tyEnv m goalId g = (vs,ilDbg,dumps)
+>           -> Goal -> (Maybe [Ident],ValueEnv,TrustEnv,Module,[(Dump,Doc)])
+> transGoal debug tr tcEnv tyEnv m goalId g =
+>   (vs,tyEnv'',trEnv,simplified,dumps)
 >   where trEnv = if debug then trustEnvGoal tr g else emptyEnv
 >         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
 >         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
->         (lifted,tyEnv''',trEnv') = lift tyEnv'' trEnv simplified
->         il = ilTrans tyEnv''' lifted
->         ilDbg
->           | debug = dAddMain goalId (dTransform (trustedFun trEnv') il)
->           | otherwise = il
 >         dumps =
 >           [(DumpRenamed,ppGoal g),
 >            (DumpTypes,ppTypes tcEnv (localBindings tyEnv)),
 >            (DumpDesugared,ppModule desugared),
->            (DumpSimplified,ppModule simplified),
->            (DumpLifted,ppModule lifted),
->            (DumpIL,ILPP.ppModule il)] ++
->           [(DumpTransformed,ILPP.ppModule ilDbg) | debug]
+>            (DumpSimplified,ppModule simplified)]
 
 > genCodeGoal :: ModuleEnv -> QualIdent -> Maybe [Ident] -> IL.Module
 >             -> (CFile,[(Dump,Doc)])
 > genCodeGoal mEnv qGoalId vs il = (mergeCFile ccode ccode',dumps)
->   where ilNormal = liftProg il
->         cam = camCompile ilNormal
->         imports = camCompileData (ilImports mEnv ilNormal)
->         ccode = genModule imports cam
+>   where (ccode,dumps) = genCode (ilImports mEnv il) il
 >         ccode' = genMain (fun qGoalId) (fmap (map name) vs)
->         dumps =
->           [(DumpNormalized,ILPP.ppModule ilNormal),
->            (DumpCam,CamPP.ppModule cam)]
 
 \end{verbatim}
 The function \texttt{importModules} brings the declarations of all
