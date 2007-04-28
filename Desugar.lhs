@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2149 2007-04-02 16:51:24Z wlux $
+% $Id: Desugar.lhs 2182 2007-04-28 20:46:11Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -48,7 +48,7 @@ of using the syntax tree from \texttt{CurrySyntax}.}
 all names must be properly qualified before calling this module.}
 \begin{verbatim}
 
-> module Desugar(desugar,desugarGoal) where
+> module Desugar(desugar,goalModule) where
 > import Base
 > import Combined
 > import List
@@ -119,6 +119,8 @@ of a module.
 >   where (tds,vds) = partition isTypeDecl ds
 
 \end{verbatim}
+Goals are desugared by converting them into a module containing just a
+single function declaration and desugaring the resulting module.
 Goals with type \texttt{IO \_} are executed directly by the runtime
 system. All other goals are evaluated under control of an interactive
 top-level, which displays the solutions of the goal and in particular
@@ -144,49 +146,29 @@ transformation will supply its own main function (see
 Sect.~\ref{sec:dtrans}).
 \begin{verbatim}
 
-> desugarGoal :: Bool -> TCEnv -> ValueEnv -> ModuleIdent -> Ident -> Goal
->             -> (Maybe [Ident],Module,ValueEnv)
-> desugarGoal debug tcEnv tyEnv m g (Goal p e ds)
->   | debug || isIO ty = desugarGoalIO tcEnv tyEnv' p m g (Let ds e) ty
->   | otherwise = desugarGoal' tcEnv tyEnv' p m g vs e' ty
+> goalModule :: Bool -> ValueEnv -> ModuleIdent -> Ident -> Goal
+>            -> (Maybe [Ident],Module,ValueEnv)
+> goalModule debug tyEnv m g (Goal p e ds)
+>   | debug || isIO ty =
+>       (Nothing,
+>        mkModule m p g [] (Let ds e),
+>        bindFun m g 0 (polyType ty) tyEnv)
+>   | otherwise =
+>       (Just vs,
+>        mkModule m p g (v0:vs) (apply prelUnif [mkVar v0,e']),
+>        bindFun m v0 0 (monoType ty) (bindFun m g n (polyType ty') tyEnv))
 >   where ty = typeOf tyEnv e
->         tyEnv' = bindSuccess tyEnv
+>         v0 = anonId
 >         (vs,e') = liftGoalVars (if null ds then e else Let ds e)
+>         ty' = TypeArrow ty (foldr (TypeArrow . typeOf tyEnv) successType vs)
+>         n = 1 + length vs
 >         isIO (TypeConstructor tc [_]) = tc == qIOId
 >         isIO _ = False
 
-> desugarGoalIO :: TCEnv -> ValueEnv -> Position -> ModuleIdent
->               -> Ident -> Expression -> Type
->               -> (Maybe [Ident],Module,ValueEnv)
-> desugarGoalIO tcEnv tyEnv p m g e ty =
->   (Nothing,
->    Module m Nothing [] [goalDecl p g [] e'],
->    bindFun m g 0 (polyType ty) tyEnv')
->   where (e',tyEnv') = run (desugarGoalExpr m e) tcEnv tyEnv
-
-> desugarGoal' :: TCEnv -> ValueEnv -> Position -> ModuleIdent
->              -> Ident -> [Ident] -> Expression -> Type
->              -> (Maybe [Ident],Module,ValueEnv)
-> desugarGoal' tcEnv tyEnv p m g vs e ty =
->   (Just vs',
->    Module m Nothing [] [goalDecl p g (v0:vs') (apply prelUnif [mkVar v0,e'])],
->    bindFun m v0 0 (monoType ty) (bindFun m g n (polyType ty') tyEnv'))
->   where (e',tyEnv') = run (desugarGoalExpr m e) tcEnv tyEnv
->         v0 = anonId
->         vs' = filter (`elem` qfv m e') vs
->         ty' = TypeArrow ty (foldr (TypeArrow . typeOf tyEnv) successType vs')
->         n = 1 + length vs'
-
-> goalDecl :: Position -> Ident -> [Ident] -> Expression -> TopDecl
-> goalDecl p g vs e = BlockDecl (funDecl p g (map VariablePattern vs) e)
-
-> desugarGoalExpr :: ModuleIdent -> Expression
->                 -> DesugarState (Expression,ValueEnv)
-> desugarGoalExpr m e =
->   do
->     e' <- desugarExpr m (first "") e
->     tyEnv' <- fetchSt
->     return (e',tyEnv')
+> mkModule :: ModuleIdent -> Position -> Ident -> [Ident] -> Expression
+>          -> Module
+> mkModule m p g vs e =
+>    Module m Nothing [] [BlockDecl (funDecl p g (map VariablePattern vs) e)]
 
 > liftGoalVars :: Expression -> ([Ident],Expression)
 > liftGoalVars (Let ds e) = (concat [vs | FreeDecl _ vs <- vds],Let ds' e)

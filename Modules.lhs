@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2181 2007-04-28 18:03:28Z wlux $
+% $Id: Modules.lhs 2182 2007-04-28 20:46:11Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -32,7 +32,7 @@ This module controls the compilation of modules.
 > import Exports(exportInterface)
 > import Trust(trustEnv,trustEnvGoal)
 > import Qual(qual,qualGoal)
-> import Desugar(desugar,desugarGoal)
+> import Desugar(desugar,goalModule)
 > import Simplify(simplify)
 > import Lift(lift)
 > import qualified IL
@@ -238,9 +238,10 @@ from all loaded interfaces are in scope with their qualified names.
 > compileGoal opts g fns =
 >   do
 >     (mEnv,tcEnv,tyEnv,g') <- loadGoal Eval paths dbg cm ws m g fns
->     let (vs,tyEnv',trEnv,m',dumps) = transGoal dbg tr tcEnv tyEnv m mainId g'
+>     let (vs,m',tyEnv') = goalModule dbg tyEnv m mainId g'
+>     let (tyEnv'',trEnv,m'',dumps) = transModule dbg tr tcEnv tyEnv' m'
 >     liftErr $ mapM_ (doDump opts) dumps
->     let (il,dumps) = ilTransModule1 (dAddMain mainId) dbg tyEnv' trEnv m'
+>     let (il,dumps) = ilTransModule1 (dAddMain mainId) dbg tyEnv'' trEnv m''
 >     liftErr $ mapM_ (doDump opts) dumps
 >     let (ccode,dumps) = genCodeGoal mEnv (qualifyWith m mainId) vs il
 >     liftErr $ mapM_ (doDump opts) dumps >>
@@ -322,19 +323,6 @@ from all loaded interfaces are in scope with their qualified names.
 > warnGoal caseMode warn m g =
 >   caseCheckGoal caseMode g ++ unusedCheckGoal warn m g ++
 >   shadowCheckGoal warn g ++ overlapCheckGoal warn g
-
-> transGoal :: Bool -> Trust -> TCEnv -> ValueEnv -> ModuleIdent -> Ident
->           -> Goal -> (Maybe [Ident],ValueEnv,TrustEnv,Module,[(Dump,Doc)])
-> transGoal debug tr tcEnv tyEnv m goalId g =
->   (vs,tyEnv'',trEnv,simplified,dumps)
->   where trEnv = if debug then trustEnvGoal tr g else emptyEnv
->         (vs,desugared,tyEnv') = desugarGoal debug tcEnv tyEnv m goalId g
->         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
->         dumps =
->           [(DumpRenamed,ppGoal g),
->            (DumpTypes,ppTypes tcEnv (localBindings tyEnv)),
->            (DumpDesugared,ppModule desugared),
->            (DumpSimplified,ppModule simplified)]
 
 > genCodeGoal :: ModuleEnv -> QualIdent -> Maybe [Ident] -> IL.Module
 >             -> (CFile,[(Dump,Doc)])
