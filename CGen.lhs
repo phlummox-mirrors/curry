@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2191 2007-05-06 15:48:53Z wlux $
+% $Id: CGen.lhs 2192 2007-05-07 07:59:30Z wlux $
 %
 % Copyright (c) 1998-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1351,22 +1351,24 @@ uses the following heuristics. All entities whose (demangled) name
 ends with a suffix \texttt{.}$n$, where $n$ is a non-empty sequence of
 decimal digits are considered private, since that suffix can occur
 only for renamed identifiers, and all entities whose (demangled) name
-contains one of the substrings \verb"_#lambda" an \verb"_#app" are
-considered private, too. These names are used by the compiler for
-naming lambda abstractions and the implicit functions introduced for
-lifted argument expressions.
+contains one of the substrings \verb"_#lambda", \verb"_#sel", and
+\verb"_#app" are considered private, too. These names are used by the
+compiler for naming lambda abstractions, lazy pattern selection
+functions, and the implicit functions introduced for lifted argument
+expressions.
 \begin{verbatim}
 
 > isPublic, isPrivate :: Name -> Bool
 > isPublic x = not (isPrivate x)
 > isPrivate (Name x) =
->   any (\cs -> any (`isPrefixOf` cs) [app,lambda]) (tails x) ||
+>   any (\cs -> any (`isPrefixOf` cs) [app,lambda,sel]) (tails x) ||
 >   case span isDigit (reverse x) of
 >     ([],_) -> False
 >     (_:_,cs) -> reverse dot `isPrefixOf` cs
 >   where Name dot = mangle "."
 >         Name app = mangle "_#app"
 >         Name lambda = mangle "_#lambda"
+>         Name sel = mangle "_#sel"
 
 \end{verbatim}
 In order to avoid some trivial name conflicts with the standard C
