@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2192 2007-05-07 07:59:30Z wlux $
+% $Id: CGen.lhs 2193 2007-05-10 06:58:18Z wlux $
 %
 % Copyright (c) 1998-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1349,19 +1349,23 @@ private and exported functions without an explicit export list, which
 is not yet part of the abstract machine code syntax. This function
 uses the following heuristics. All entities whose (demangled) name
 ends with a suffix \texttt{.}$n$, where $n$ is a non-empty sequence of
-decimal digits are considered private, since that suffix can occur
-only for renamed identifiers, and all entities whose (demangled) name
+decimal digits, are considered private, since that suffix can occur
+only in renamed identifiers, and all entities whose (demangled) name
 contains one of the substrings \verb"_#lambda", \verb"_#sel", and
 \verb"_#app" are considered private, too. These names are used by the
 compiler for naming lambda abstractions, lazy pattern selection
 functions, and the implicit functions introduced for lifted argument
-expressions.
+expressions. Furthermore, the auxiliary functions introduced by the
+debugging transformation for partial applications of the (non-empty)
+list constructor and the tuple constructors, respectively, are
+considered private as well.
 \begin{verbatim}
 
 > isPublic, isPrivate :: Name -> Bool
 > isPublic x = not (isPrivate x)
 > isPrivate (Name x) =
->   any (\cs -> any (`isPrefixOf` cs) [app,lambda,sel]) (tails x) ||
+>   any (\cs -> any (`isPrefixOf` cs) [app,lambda,sel,debugCons,debugTuple])
+>       (tails x) ||
 >   case span isDigit (reverse x) of
 >     ([],_) -> False
 >     (_:_,cs) -> reverse dot `isPrefixOf` cs
@@ -1369,6 +1373,8 @@ expressions.
 >         Name app = mangle "_#app"
 >         Name lambda = mangle "_#lambda"
 >         Name sel = mangle "_#sel"
+>         Name debugCons = mangle "_debug#:"
+>         Name debugTuple = mangle "_debug#(,"
 
 \end{verbatim}
 In order to avoid some trivial name conflicts with the standard C
