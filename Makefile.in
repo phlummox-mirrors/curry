@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 2200 2007-05-11 14:40:25Z wlux $
+# $Id: Makefile.in 2201 2007-05-11 14:47:37Z wlux $
 #
 # Copyright (c) 2000-2007 Wolfgang Lux
 # See LICENSE for the full license.
@@ -224,9 +224,11 @@ runtime: FORCE
 	cd runtime && $(MAKE) $(MFLAGS)
 
 # Curry library
-.PHONY: curry
+.PHONY: curry icurry
 curry: cycc runtime
 	cd curry && $(MAKE) $(MFLAGS)
+icurry: cycc
+	cd curry && $(MAKE) $(MFLAGS) icurry
 
 # manual pages
 mans: $(man_MANS)
