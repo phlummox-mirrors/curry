@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: curry.nw 2115 2007-03-01 20:25:37Z wlux $
+% $Id: curry.nw 2202 2007-05-11 15:15:03Z wlux $
 %
 % Copyright (c) 2002-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -45,7 +45,9 @@ header files from the standard C library.
 #include "trace.h"
 
 /* abstract machine instructions */
-#include "cam.h"
+#ifdef CURRY_RTS
+# include "cam.h"
+#endif
 
 #endif /* _CURRY_H */
 

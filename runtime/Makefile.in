@@ -1,6 +1,6 @@
 # Makefile for the Curry runtime system
 #
-# $Id: Makefile.in 2196 2007-05-11 12:37:36Z wlux $
+# $Id: Makefile.in 2202 2007-05-11 15:15:03Z wlux $
 #
 # Copyright (c) 2001-2007, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -21,7 +21,7 @@ libdir = @libdir@
 
 # compiler definitions
 CC = @CC@
-CPPFLAGS = -I. -I$(srcdir) @CPPFLAGS@
+CPPFLAGS = -I. -I$(srcdir) -DCURRY_RTS @CPPFLAGS@
 CFLAGS = @CFLAGS@
 LDFLAGS = @LDFLAGS@
 LDLIBS = @LIBS@
