@@ -1,6 +1,6 @@
 # Makefile for the Curry runtime system
 #
-# $Id: Makefile.in 2124 2007-03-18 21:21:28Z wlux $
+# $Id: Makefile.in 2196 2007-05-11 12:37:36Z wlux $
 #
 # Copyright (c) 2001-2007, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -147,7 +147,6 @@ rts: config.h $(rts_H_PATH) $(rts_LIBS)
 libcurry.a: $(rts_O)
 	rm -f $@
 	$(AR) cru $@ $(rts_O)
-	$(RANLIB) $@
 
 # build source files from noweb-docu (all other files by standard rules)
 $(srcdir)/config.h.in: $(srcdir)/curry.nw
