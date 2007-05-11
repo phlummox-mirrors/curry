@@ -1,8 +1,8 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 2078 2007-01-21 18:03:03Z wlux $
+# $Id: Makefile.in 2200 2007-05-11 14:40:25Z wlux $
 #
-# Copyright (c) 2000-2006 Wolfgang Lux
+# Copyright (c) 2000-2007 Wolfgang Lux
 # See LICENSE for the full license.
 #
 
@@ -257,6 +257,15 @@ tex: FORCE
 
 makedoc: Makefile $(srcdir)/makedoc.in
 	./config.status $@
+
+# Use TeXShop.app for typesetting the documentation. This may be convenient
+# for Mac OS X users.
+.PHONY: TeXShop
+TeXShop: tex
+	osascript -e 'tell application "TeXShop"' \
+		  -e '  open POSIX file "'"`pwd`/$(srcdir)/curry.tex"'" as alias' \
+		  -e '  latexinteractive front document' \
+		  -e 'end tell'
 
 # link all source files into the current directory
 # NB if $(srcdir) is a relative path we have to modify the paths for target
