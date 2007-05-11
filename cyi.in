@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 1964 2006-08-28 13:42:57Z wlux $
+# $Id: cyi.in 2199 2007-05-11 13:45:43Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -247,11 +247,11 @@ debug ( ) {
   if test -n "$source"; then
     echo "Preparing $source for debugging; this may take some time..."
     if test -z "$dobjects"; then
-      compile_source -g || return
+      compile_source --debug || return
       dobjects=`compile_source -M | sed 's/\.o:.*$/.d.o/'`
     fi
   fi
-  set_goal "$1" && run_goal -g $dobjects
+  set_goal "$1" && run_goal --debug $dobjects
 }
 
 type_goal ( ) {
