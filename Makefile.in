@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 2201 2007-05-11 14:47:37Z wlux $
+# $Id: Makefile.in 2203 2007-05-17 16:05:19Z wlux $
 #
 # Copyright (c) 2000-2007 Wolfgang Lux
 # See LICENSE for the full license.
@@ -264,9 +264,10 @@ makedoc: Makefile $(srcdir)/makedoc.in
 # for Mac OS X users.
 .PHONY: TeXShop
 TeXShop: tex
-	osascript -e 'tell application "TeXShop"' \
-		  -e '  open POSIX file "'"`pwd`/$(srcdir)/curry.tex"'" as alias' \
-		  -e '  latexinteractive front document' \
+	osascript -e 'set p to (POSIX file "'"`pwd`/$(srcdir)/curry.tex"'" as alias)' \
+		  -e 'tell application "TeXShop"' \
+		  -e '  open p' \
+		  -e '  latexinteractive (every document whose path is p)' \
 		  -e 'end tell'
 
 # link all source files into the current directory
