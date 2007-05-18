@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: equal.nw 2204 2007-05-17 16:29:53Z wlux $
+% $Id: equal.nw 2205 2007-05-18 21:55:13Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -62,7 +62,7 @@ FUNCTION(___61__61__1)
 static
 FUNCTION(___61__61__2)
 {
-    boolean	 is_vect;
+    bool	 is_vect;
     unsigned int i, n;
     Node	 *arg1, *arg2;
     Node	 *next, *arglist;

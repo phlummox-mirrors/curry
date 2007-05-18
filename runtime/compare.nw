@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 2204 2007-05-17 16:29:53Z wlux $
+% $Id: compare.nw 2205 2007-05-18 21:55:13Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -62,7 +62,7 @@ FUNCTION(__compare_1)
 static
 FUNCTION(__compare_2)
 {
-    boolean	 is_vect;
+    bool	 is_vect;
     long         x, y;
     unsigned int i, n;
     double	 d, e;
