@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: main.nw 2205 2007-05-18 21:55:13Z wlux $
+% $Id: main.nw 2209 2007-05-24 08:01:01Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -205,12 +205,12 @@ curry_init(int *p_argc, char *argv[])
 			    break;
 			case 'k':
 			    stacksize = (unsigned int)
-				parse_size(UINT_MAX, "stack size", arg);
+				parse_size(INT_MAX, "stack size", arg);
 			    break;
 #if !COPY_SEARCH_SPACE
 			case 't':
 			    trailsize = (unsigned int)
-				parse_size(UINT_MAX, "trail size", arg);
+				parse_size(INT_MAX, "trail size", arg);
 			    break;
 #endif
 			}
