@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: curry.nw 2205 2007-05-18 21:55:13Z wlux $
+% $Id: curry.nw 2210 2007-05-25 10:27:57Z wlux $
 %
 % Copyright (c) 2002-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -215,6 +215,17 @@ the heap.
 <<Portability definitions>>=
 /* Define to empty if the system not have mprotect */
 #undef HAVE_MPROTECT
+
+@ 
+When collecting runtime statistics, we use [[getrusage]] in order to
+determine execution times on systems which support it. Otherwise,
+execution times are measured with the ANSI C function [[clock]]. We
+assume that [[getrusage]] is available on all systems on which
+[[sys/resource.h]] exists.
+
+<<Portability definitions>>=
+/* Define to empty if the system does not have sys/resource.h */
+#undef HAVE_SYS_RESOURCE_H
 
 @ 
 In order to identify floating-point numbers which represent an
