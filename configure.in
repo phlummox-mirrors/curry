@@ -1,4 +1,4 @@
-dnl $Id: configure.in 2211 2007-05-25 16:30:03Z wlux $
+dnl $Id: configure.in 2212 2007-05-28 18:29:46Z wlux $
 dnl
 dnl Copyright (c) 2002-2007, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -236,6 +236,7 @@ AC_CHECK_TYPES([socklen_t],,,[AC_INCLUDES_DEFAULT
 
 dnl Checks for library functions.
 AC_FUNC_FORK
+AC_CHECK_FUNCS([popen])
 AC_CHECK_FUNCS([random])
 AC_ARG_ENABLE(mprotect,
  [  --disable-mprotect      do not mprotect the inactive semi-space of the heap])
