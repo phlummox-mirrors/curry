@@ -1,4 +1,4 @@
-dnl $Id: configure.in 2212 2007-05-28 18:29:46Z wlux $
+dnl $Id: configure.in 2213 2007-05-29 17:05:14Z wlux $
 dnl
 dnl Copyright (c) 2002-2007, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -217,6 +217,7 @@ AC_CHECK_HEADERS([stdbool.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([sys/resource.h])
 AC_CHECK_HEADERS([ieeefp.h])
+AC_HEADER_SYS_WAIT
 
 
 dnl Checks for compiler characteristics.
