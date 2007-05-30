@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 2214 2007-05-30 06:58:27Z wlux $
+% $Id: files.nw 2218 2007-05-30 21:35:54Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -1422,7 +1422,13 @@ optionally changes the buffer mode for standard input and output.
 void
 init_files(int bmode, long bsize)
 {
-    char *buffer;
+    char    *buffer;
+#if HAVE_WINSOCK_H
+    WSADATA wsaData;
+
+    if ( WSAStartup(MAKEWORD(2, 0), &wsaData) )
+	curry_panic("could not initialize Windows sockets\n");
+#endif
 
     /* set up the standard file pointers */
     stdin_node.fp = stdin;
