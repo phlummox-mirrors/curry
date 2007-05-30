@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 2199 2007-05-11 13:45:43Z wlux $
+# $Id: cyi.in 2217 2007-05-30 17:13:58Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -268,7 +268,7 @@ set_options ( ) {
     show_options
   else
     cyopts="$cyopts $*"
-    if tty -s; then show_options; fi
+    if test -t 0; then show_options; fi
   fi
 }
 
@@ -282,7 +282,7 @@ unset_options ( ) {
       shift
     done
   done
-  if tty -s; then show_options; fi
+  if test -t 0; then show_options; fi
 }
 
 chdir ( ) {
@@ -311,7 +311,7 @@ while test $# -gt 0; do
   shift
 done
 
-if tty -s; then
+if test -t 0; then
   if test -n "${BASH_VERSION+set}"; then
     do_read ( ) {
       history -n ~/.cyi_history
