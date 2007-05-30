@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 2213 2007-05-29 17:05:14Z wlux $
+% $Id: files.nw 2214 2007-05-30 06:58:27Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -27,13 +27,18 @@ extern void init_files(int, long);
 #if HAVE_VFORK_H
 # include <vfork.h>
 #endif
-#include <netdb.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #if HAVE_SYS_WAIT_H
+# include <sys/types.h>
 # include <sys/wait.h>
+#endif
+#if HAVE_SYS_SOCKET_H
+# include <netdb.h>
+# include <sys/types.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
+# include <arpa/inet.h>
+#elif HAVE_WINSOCK_H
+# include <winsock.h>
 #endif
 #include "debug.h"
 #include "run.h"
@@ -1362,7 +1367,7 @@ primConnectTcpSocket(Node *hostString, Node *port, Node *ioMode)
     addr.sin_port   = htons(long_val(port));
     if ( hostent )
 	addr.sin_addr.s_addr = *(unsigned long *)hostent->h_addr_list[0];
-    else if ( (addr.sin_addr.s_addr = inet_addr(host)) == (in_addr_t)~0 )
+    else if ( (addr.sin_addr.s_addr = inet_addr(host)) == INADDR_NONE )
     {
 	free((char *)host);
 	ioError("connectTcpSocket", "Unknown host");
