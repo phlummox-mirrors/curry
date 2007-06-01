@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 2223 2007-06-01 07:00:08Z wlux $
+# $Id: cyi.in 2224 2007-06-01 07:20:04Z wlux $
 #
 # Copyright (c) 2002-2006, Wolfgang Lux
 # See LICENSE for the full license.
@@ -125,7 +125,7 @@ compile_target ( ) {
 }
 
 set_goal ( ) {
-  set -- "$1" $1
+  set dummy "$1" $1; shift
   case $# in
     1 )
       if test -z "$goal"; then
@@ -146,12 +146,12 @@ run_goal ( ) {
 
 set_prompt ( ) {
     read line < $1.icurry
-    set -- $line
+    set $line
     prompt="$2> "
 }
 
 load ( ) {
-  eval set -- $1
+  eval set dummy $1; shift
   case $# in
     0 )
       srcdir=.
@@ -205,7 +205,8 @@ load ( ) {
 reload ( ) {
   if test -n "$source"; then
     compile_source || return
-    set -- `compile_source -M | sed 's/.*\.curry / /;s/.*\.lcurry / /'`
+    set dummy `compile_source -M | sed 's/.*\.curry / /;s/.*\.lcurry / /'`
+    shift
     interfaces=
     for m in $*; do
       case "$interfaces " in
@@ -229,7 +230,7 @@ clean ( ) {
 }
 
 edit ( ) {
-  eval set -- $1
+  eval set dummy $1; shift
   case $# in
     0 ) test -n "$source" || { echo "no source file"; return; }
 	(cd "$srcdir" && $editor "$source");;
@@ -273,7 +274,7 @@ set_options ( ) {
 
 unset_options ( ) {
   for opt in $*; do
-    set -- $cyopts
+    set dummy $cyopts; shift
     cyopts=
     while test $# -gt 0; do
       if test "X$1" = "X$opt"; then shift; cyopts="$cyopts $*"; break; fi
@@ -285,7 +286,7 @@ unset_options ( ) {
 }
 
 chdir ( ) {
-  set -- $line
+  set dummy $line; shift
   case $# in
     0 ) pwd;;
     * )
@@ -297,7 +298,7 @@ chdir ( ) {
 }
 
 system ( ) {
-  set -- $line
+  set dummy $line; shift
   case $# in
     0 ) ${SHELL-/bin/sh};;
     * ) /bin/sh -c "$line";;
@@ -353,7 +354,7 @@ quit ( ) {
 
 interpret ( ) {
   line=$1
-  set -- $line
+  set dummy $line; shift
   case $1 in
     "" ) ;;
     :h | :help ) help;;
