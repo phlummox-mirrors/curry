@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 2101 2007-02-21 16:25:07Z wlux $
+% $Id: UnusedCheck.lhs 2219 2007-06-01 06:24:12Z wlux $
 %
 % Copyright (c) 2005-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -103,7 +103,10 @@ implemented by a traversal of the syntax tree.
 >   unused used _ (NewConstrDecl p c _) = unusedVars Data used p [c]
 
 > instance SyntaxTree Decl where
->   used m (FunctionDecl _ _ eqs) = used m eqs
+>   used m (FunctionDecl _ f eqs) =
+>     unionSet (deleteFromSet f (used m eqs zeroSet))
+>   used m (PatternDecl _ (VariablePattern v) rhs) =
+>     unionSet (deleteFromSet v (used m rhs zeroSet))
 >   used m (PatternDecl _ t rhs) = used m t . used m rhs
 >   used _ _ = id
 >
