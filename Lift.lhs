@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 2157 2007-04-19 10:13:16Z wlux $
+% $Id: Lift.lhs 2220 2007-06-01 06:28:33Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -184,7 +184,7 @@ is no need for reordering.
 > abstractFunDecls m pre lvs trEnv env (fds:fdss) vds e =
 >   case fds of
 >     [FunctionDecl _ f [Equation _ (FunLhs _ ts) (SimpleRhs _ e' _)]]
->       | maybe True (Trust==) (lookupEnv f trEnv) &&
+>       | f `notElem` qfv m e' && maybe True (Trust==) (lookupEnv f trEnv) &&
 >         all isVarPattern ts && isFunction e'' &&
 >         fvs' ++ [mkVar v | VariablePattern v <- ts] == es ->
 >           abstractFunDecls m pre lvs trEnv env' fdss vds e
