@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2184 2007-04-30 10:25:49Z wlux $
+% $Id: Modules.lhs 2228 2007-06-02 10:21:59Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -31,7 +31,7 @@ This module controls the compilation of modules.
 > import Imports(importInterface,importInterfaceIntf,importUnifyData)
 > import Exports(exportInterface)
 > import Trust(trustEnv)
-> import Qual(qual,qualGoal)
+> import Qual(Qual(..))
 > import Desugar(desugar,goalModule)
 > import Simplify(simplify)
 > import Lift(lift)
@@ -315,7 +315,7 @@ from all loaded interfaces are in scope with their qualified names.
 
 > qualifyGoal :: Task -> ModuleEnv -> ModuleIdent -> PEnv -> TCEnv -> ValueEnv
 >             -> Goal -> (TCEnv,ValueEnv,Goal)
-> qualifyGoal Eval mEnv m pEnv tcEnv tyEnv g = (tcEnv',tyEnv',qualGoal tyEnv g)
+> qualifyGoal Eval mEnv m pEnv tcEnv tyEnv g = (tcEnv',tyEnv',qual tyEnv g)
 >   where (_,tcEnv',tyEnv') = qualifyEnv mEnv m pEnv tcEnv tyEnv
 > qualifyGoal Type _ _ _ tcEnv tyEnv g = (tcEnv,tyEnv,g)
 
