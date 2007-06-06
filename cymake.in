@@ -3,7 +3,7 @@
 #
 # Shell script for building Curry programs
 #
-# $Id: cymake.in 2226 2007-06-01 15:58:58Z wlux $
+# $Id: cymake.in 2230 2007-06-06 12:35:43Z wlux $
 #
 # Copyright (c) 2002-2007, Wolfgang Lux
 # See LICENSE for the full license.
@@ -22,8 +22,8 @@ libdir=@libdir@
 srcdir="@srcdir@"
 @in_place_config@
 # DO NOT DELETE: End of in-place configuration
-: ${CYC=$bindir/cyc}
-: ${CURRY_PATH=$libdir/curry}
+: ${CYC=$bindir/cyc-$version}
+: ${CURRY_PATH=$libdir/curry-$version}
 : ${CURRY_IMPORT_PATH=$CURRY_PATH}
 export CYC CURRY_PATH CURRY_IMPORT_PATH
 

@@ -1,6 +1,6 @@
-dnl $Id: configure-bin.in 2078 2007-01-21 18:03:03Z wlux $
+dnl $Id: configure-bin.in 2230 2007-06-06 12:35:43Z wlux $
 dnl
-dnl Copyright (c) 2002-2006, Wolfgang Lux
+dnl Copyright (c) 2002-2007, Wolfgang Lux
 dnl
 
 AC_INIT([%PACKAGE_NAME% for %TARGET%],[%VERSION%],[wlux@uni-muenster.de])
@@ -10,6 +10,7 @@ AC_CONFIG_SRCDIR(lib/curry.h)
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_RANLIB
+AC_PROG_LN_S
 AC_PROG_INSTALL
 INSTALL_DIR='${INSTALL: -c=} -d -m 755'
 

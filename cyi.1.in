@@ -4,7 +4,7 @@
 .\"man mdoc for the short list of editing options
 .\"/usr/share/misc/mdoc.template
 .\"
-.\" $Id: cyi.1.in 2227 2007-06-01 18:09:02Z wlux $
+.\" $Id: cyi.1.in 2230 2007-06-06 12:35:43Z wlux $
 .\"
 .\" Copyright (c) 2004-2007, Wolfgang Lux
 .\" See LICENSE for the full license.
@@ -13,7 +13,7 @@
 .Dt cyi 1
 .Os
 .Sh NAME                 \" Section Header - required - don't modify 
-.Nm cyi
+.Nm cyi , cyi-@version@
 .Nd An interactive interpreter for Curry.
 .Sh SYNOPSIS             \" Section Header - required - don't modify
 .Nm
@@ -185,7 +185,7 @@ contains a colon-separated list of directories that are searched for
 library modules, which can be loaded with the
 .Ic :load
 command. The default value is
-.Pa @libdir@/curry .
+.Pa @libdir@/curry-@version@ .
 .El
 .Sh FILES
 .Bl -tag -width -indent -compact

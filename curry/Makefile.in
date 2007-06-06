@@ -1,12 +1,16 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 2201 2007-05-11 14:47:37Z wlux $
+# $Id: Makefile.in 2230 2007-06-06 12:35:43Z wlux $
 #
 # Copyright (c) 2004-2007, Wolfgang Lux
 # See ../LICENSE for the full license.
 #
 
 @SET_MAKE@
+
+# package information
+PACKAGE = @PACKAGE_TARNAME@
+VERSION = @PACKAGE_VERSION@
 
 # source directory
 top_srcdir = @top_srcdir@
@@ -223,11 +227,13 @@ IO.o: Prelude.icurry
 # install the binaries
 install: $(curry_LIBS) $($(debug)_LIBS)
 	$(INSTALL_DIR) $(DESTDIR)$(libdir)
-	$(INSTALL_DIR) $(DESTDIR)$(libdir)/curry
+	$(INSTALL_DIR) $(DESTDIR)$(libdir)/curry-$(VERSION)
 	for f in $(curry_SRCS) $($(debug)_SRCS) $(curry_INTF) $($(debug)_INTF) $(curry_LIBS) $($(debug)_LIBS); do \
-		$(INSTALL_DATA) $$f $(DESTDIR)$(libdir)/curry; \
+		$(INSTALL_DATA) $$f $(DESTDIR)$(libdir)/curry-$(VERSION); \
 	done
-	for a in $(DESTDIR)$(libdir)/curry/*.a; do $(RANLIB) $$a; done
+	for a in $(DESTDIR)$(libdir)/curry-$(VERSION)/*.a; do \
+		$(RANLIB) $$a; \
+	done
 
 # build the distributions
 # NB distdir must be set by the caller

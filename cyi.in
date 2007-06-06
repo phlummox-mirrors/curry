@@ -3,7 +3,7 @@
 #
 # A poor (wo)man's interactive top-level for Curry
 #
-# $Id: cyi.in 2229 2007-06-05 20:24:39Z wlux $
+# $Id: cyi.in 2230 2007-06-06 12:35:43Z wlux $
 #
 # Copyright (c) 2002-2007, Wolfgang Lux
 # See LICENSE for the full license.
@@ -24,7 +24,9 @@ libdir=@libdir@
 srcdir="@srcdir@"
 @in_place_config@
 # DO NOT DELETE: End of in-place configuration
-: ${CURRY_PATH=$libdir/curry}
+: ${CYC=$bindir/cyc-$version}
+: ${CYMAKE=$bindir/cymake-$version}
+: ${CURRY_PATH=$libdir/curry-$version}
 : ${CURRY_IMPORT_PATH=$CURRY_PATH}
 export CURRY_PATH CURRY_IMPORT_PATH
 
@@ -35,8 +37,8 @@ echo " / /___  / /  | |"
 echo " \____/ /_/   |_|              Type :h for help"
 echo 
 
-cyc=${CYC-$bindir/cyc}
-cymake=$bindir/cymake
+cyc=$CYC
+cymake=$CYMAKE
 pager=${PAGER-/bin/cat}
 editor=${VISUAL-${EDITOR-/usr/bin/vi}}
 srcdir=

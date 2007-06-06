@@ -1,12 +1,16 @@
 # Makefile for the Curry runtime system
 #
-# $Id: Makefile.in 2202 2007-05-11 15:15:03Z wlux $
+# $Id: Makefile.in 2230 2007-06-06 12:35:43Z wlux $
 #
 # Copyright (c) 2001-2007, Wolfgang Lux
 # See ../LICENSE for the full license.
 #
 
 @SET_MAKE@
+
+# package information
+PACKAGE = @PACKAGE_TARNAME@
+VERSION = @PACKAGE_VERSION@
 
 # source directory
 top_srcdir = @top_srcdir@
@@ -168,9 +172,9 @@ bindistdir: $(BINDISTFILES)
 # install the binaries
 install: config.h $(rts_H_PATH)
 	$(INSTALL_DIR) $(DESTDIR)$(libdir)
-	$(INSTALL_DIR) $(DESTDIR)$(libdir)/curry
+	$(INSTALL_DIR) $(DESTDIR)$(libdir)/curry-$(VERSION)
 	for f in config.h $(rts_H_PATH); do \
-		$(INSTALL_DATA) $$f $(DESTDIR)$(libdir)/curry; \
+		$(INSTALL_DATA) $$f $(DESTDIR)$(libdir)/curry-$(VERSION); \
 	done
 
 # automatic reconfiguration
