@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: CurryParser.lhs 2235 2007-06-08 10:12:15Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -179,10 +179,10 @@ directory path to the module is ignored.
 > newConstrDecl = NewConstrDecl <$> position <*> con <*> type2
 
 > infixDecl :: Parser Token Decl a
-> infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
+> infixDecl = infixDeclLhs InfixDecl <*> option int <*> funop `sepBy1` comma
 
-> infixDeclLhs :: (Position -> Infix -> Int -> a) -> Parser Token a b
-> infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> int
+> infixDeclLhs :: (Position -> Infix -> a) -> Parser Token a b
+> infixDeclLhs f = f <$> position <*> tokenOps infixKW
 >   where infixKW = [(KW_infix,Infix),(KW_infixl,InfixL),(KW_infixr,InfixR)]
 
 > functionDecl :: Parser Token Decl a
@@ -284,7 +284,7 @@ directory path to the module is ignored.
 >        <|> iFunctionDecl <\> token Id_hiding
 
 > iInfixDecl :: Parser Token IDecl a
-> iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
+> iInfixDecl = infixDeclLhs IInfixDecl <*> int <*> qfunop
 
 > iHidingDecl :: Parser Token IDecl a
 > iHidingDecl = position <*-> token Id_hiding <**> (dataDecl <|> funcDecl)

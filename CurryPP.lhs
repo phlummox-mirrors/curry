@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: CurryPP.lhs 2235 2007-06-08 10:12:15Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -115,12 +115,11 @@ Declarations
 > ppPragma :: Doc -> Doc
 > ppPragma p = text "{-#" <+> p <+> text "#-}"
 
-> ppPrec :: Infix -> Int -> Doc
-> ppPrec fix p = ppAssoc fix <+> ppPrio p
+> ppPrec :: Infix -> Maybe Int -> Doc
+> ppPrec fix p = ppAssoc fix <+> maybe empty int p
 >   where ppAssoc InfixL = text "infixl"
 >         ppAssoc InfixR = text "infixr"
 >         ppAssoc Infix = text "infix"
->         ppPrio p = if p < 0 then empty else int p
 
 > ppEquation :: Equation -> Doc
 > ppEquation (Equation _ lhs rhs) = ppRule (ppLhs lhs) equals rhs
@@ -164,7 +163,7 @@ Interfaces
 > ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
 > ppIDecl :: IDecl -> Doc
-> ppIDecl (IInfixDecl _ fix p op) = ppPrec fix p <+> ppQInfixOp op
+> ppIDecl (IInfixDecl _ fix p op) = ppPrec fix (Just p) <+> ppQInfixOp op
 > ppIDecl (HidingDataDecl _ tc tvs) =
 >   text "hiding" <+> ppITypeDeclLhs "data" tc tvs
 > ppIDecl (IDataDecl _ tc tvs cs) =

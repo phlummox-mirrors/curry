@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: CurrySyntax.lhs 2235 2007-06-08 10:12:15Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -64,7 +64,7 @@ parsed representation of a Curry program.
 > data NewConstrDecl = NewConstrDecl Position Ident TypeExpr deriving (Eq,Show)
 
 > data Decl =
->     InfixDecl Position Infix Int [Ident]
+>     InfixDecl Position Infix (Maybe Int) [Ident]
 >   | TypeSig Position [Ident] TypeExpr
 >   | FunctionDecl Position Ident [Equation]
 >   | ForeignDecl Position CallConv (Maybe Safety) (Maybe String) Ident TypeExpr
