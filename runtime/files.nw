@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 2218 2007-05-30 21:35:54Z wlux $
+% $Id: files.nw 2248 2007-06-14 17:42:27Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -59,6 +59,10 @@ extern void init_files(int, long);
 
 #if !HAVE_WORKING_VFORK
 # define vfork fork
+#endif
+
+#ifndef INADDR_NONE
+# define INADDR_NONE (in_addr_t)(-1)
 #endif
 
 @ 
