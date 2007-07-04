@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2382 2007-07-04 14:37:05Z wlux $
+% $Id: SyntaxCheck.lhs 2384 2007-07-04 15:18:47Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -140,10 +140,7 @@ top-level.
 
 > checkDeclLhs :: Bool -> VarEnv -> Decl -> Error Decl
 > checkDeclLhs _ _ (InfixDecl p fix pr ops) = return (InfixDecl p fix pr ops)
-> checkDeclLhs _ env (TypeSig p vs ty) =
->   do
->     checkVars "type signature" p env vs
->     return (TypeSig p vs ty)
+> checkDeclLhs _ env (TypeSig p vs ty) = return (TypeSig p vs ty)
 > checkDeclLhs top env (FunctionDecl p _ eqs) = checkEquationLhs top env p eqs
 > checkDeclLhs _ env (ForeignDecl p cc s ie f ty) =
 >   do
@@ -158,10 +155,7 @@ top-level.
 >       do
 >         checkVars "free variables declaration" p env vs
 >         return (FreeDecl p vs)
-> checkDeclLhs top env (TrustAnnot p t fs) =
->   do
->     checkVars "trust annotation" p env fs
->     return (TrustAnnot p t fs)
+> checkDeclLhs top env (TrustAnnot p t fs) = return (TrustAnnot p t fs)
 
 > checkEquationLhs :: Bool -> VarEnv -> Position -> [Equation] -> Error Decl
 > checkEquationLhs top env p [Equation p' lhs rhs] =
@@ -615,7 +609,7 @@ Error messages.
 >   "Data constructor " ++ name c ++ " used in left hand side of " ++ what
 
 > noBody :: Ident -> String
-> noBody v = name v ++ " is undefined in this scope"
+> noBody v = name v ++ " is not defined in this scope"
 
 > noToplevelPattern :: String
 > noToplevelPattern = "Pattern declaration not allowed at top-level"
