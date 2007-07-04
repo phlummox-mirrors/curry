@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2146 2007-04-02 08:01:20Z wlux $
+% $Id: SyntaxCheck.lhs 2382 2007-07-04 14:37:05Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -160,7 +160,7 @@ top-level.
 >         return (FreeDecl p vs)
 > checkDeclLhs top env (TrustAnnot p t fs) =
 >   do
->     maybe (return ()) (checkVars "trust annotation" p env) fs
+>     checkVars "trust annotation" p env fs
 >     return (TrustAnnot p t fs)
 
 > checkEquationLhs :: Bool -> VarEnv -> Position -> [Equation] -> Error Decl
@@ -212,7 +212,7 @@ top-level.
 >   reportDuplicates duplicateTypeSig repeatedTypeSig tys &&>
 >   reportDuplicates (const duplicateDefaultTrustAnnot)
 >                    (const repeatedDefaultTrustAnnot)
->                    [P p () | TrustAnnot p _ Nothing <- ds] &&>
+>                    [P p () | TrustAnnot p _ [] <- ds] &&>
 >   reportDuplicates duplicateTrustAnnot repeatedTrustAnnot trs &&>
 >   mapE_ (\(P p v) -> errorAt p (noBody v))
 >         (filter (`notElem` cs ++ bvs) ops ++
@@ -509,7 +509,7 @@ Auxiliary definitions.
 > vars (ForeignDecl p _ _ _ f _) = [P p f]
 > vars (PatternDecl p t _) = map (P p) (bv t)
 > vars (FreeDecl p vs) = map (P p) vs
-> vars (TrustAnnot p _ fs) = maybe [] (map (P p)) fs
+> vars (TrustAnnot p _ fs) = map (P p) fs
 
 \end{verbatim}
 Due to the lack of a capitalization convention in Curry, it is

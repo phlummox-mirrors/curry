@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 2101 2007-02-21 16:25:07Z wlux $
+% $Id: Renaming.lhs 2382 2007-07-04 14:37:05Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -174,8 +174,7 @@ syntax tree and renames all type and expression variables.
 > renameDecl env (FreeDecl p vs) =
 >   liftM (FreeDecl p) (mapM (renameVar env) vs)
 > renameDecl env (TrustAnnot p t fs) =
->   liftM (TrustAnnot p t)
->         (maybe (return Nothing) (liftM Just . mapM (renameVar env)) fs)
+>   liftM (TrustAnnot p t) (mapM (renameVar env) fs)
 
 \end{verbatim}
 Note that the root of the left hand side term of an equation must be

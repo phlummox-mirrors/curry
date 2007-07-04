@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2235 2007-06-08 10:12:15Z wlux $
+% $Id: CurryParser.lhs 2382 2007-07-04 14:37:05Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -271,8 +271,8 @@ directory path to the module is ignored.
 >              <*-> token PragmaEnd
 >   where pragmaKW = [(PragmaBegin SuspectPragma,Suspect),
 >                     (PragmaBegin TrustPragma,Trust)]
->         funList = Nothing <$-> token Underscore
->               <|> Just <$> fun `sepBy1` comma
+>         funList = fun `sepBy1` comma
+>               <|> [] <$-> token Underscore
 
 \end{verbatim}
 \paragraph{Interface declarations}

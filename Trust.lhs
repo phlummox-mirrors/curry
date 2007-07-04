@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Trust.lhs 2184 2007-04-30 10:25:49Z wlux $
+% $Id: Trust.lhs 2382 2007-07-04 14:37:05Z wlux $
 %
 % Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -64,10 +64,9 @@ the local functions \texttt{h} and \texttt{i} are trusted, but
 >   trust _ _ env = env
 
 >   trustList tr ds env = foldr (trust tr') env' ds
->     where tr' = head $ [tr | TrustAnnot _ tr Nothing <- ds] ++ [tr]
+>     where tr' = head $ [tr | TrustAnnot _ tr [] <- ds] ++ [tr]
 >           env' =
->             foldr ($) env
->                   [bindEnv f tr | TrustAnnot _ tr (Just fs) <- ds, f <- fs]
+>             foldr ($) env [bindEnv f tr | TrustAnnot _ tr fs <- ds, f <- fs]
 
 > instance SyntaxTree Equation where
 >   trust tr (Equation _ _ rhs) = trust tr rhs
