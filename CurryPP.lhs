@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2382 2007-07-04 14:37:05Z wlux $
+% $Id: CurryPP.lhs 2383 2007-07-04 15:09:36Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -107,8 +107,7 @@ Declarations
 >         ppSafety Safe = text "safe"
 > ppDecl (PatternDecl _ t rhs) = ppRule (ppConstrTerm 0 t) equals rhs
 > ppDecl (FreeDecl _ vs) = ppIdentList vs <+> text "free"
-> ppDecl (TrustAnnot _ t fs) =
->   ppPragma (ppTrust t <+> if null fs then char '_' else ppIdentList fs)
+> ppDecl (TrustAnnot _ t fs) = ppPragma (ppTrust t <+> ppIdentList fs)
 >   where ppTrust Suspect = text "SUSPECT"
 >         ppTrust Trust = text "TRUST"
 
