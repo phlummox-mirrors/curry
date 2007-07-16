@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 2146 2007-04-02 08:01:20Z wlux $
+% $Id: Typing.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -187,7 +187,7 @@ environment.}
 >     (ty1,ty2,ty3) <- exprType tyEnv (infixOp op) >>= unifyArrow2
 >     exprType tyEnv e >>= unify ty2
 >     return (TypeArrow ty1 ty3)
-> exprType tyEnv (Lambda args e) =
+> exprType tyEnv (Lambda _ args e) =
 >   do
 >     tys <- mapM (argType tyEnv) args
 >     ty <- exprType tyEnv e

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2176 2007-04-26 20:35:57Z wlux $
+% $Id: TypeCheck.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -311,10 +311,7 @@ a function matches its declared type. Since the type inferred for the
 left hand side of a function or variable declaration is an instance of
 its declared type -- provided a type signature is given -- it can only
 be more specific. Therefore, if the inferred type does not match the
-type signature, the declared type must be too general. No check is
-necessary for the variables in variable and other pattern declarations
-because the types of variables must be monomorphic, which is checked
-in \texttt{bindDeclVar} above.
+type signature, the declared type must be too general.
 \begin{verbatim}
 
 > genDecl :: ModuleIdent -> TCEnv -> ValueEnv -> SigEnv -> Set Int -> Type
@@ -389,7 +386,7 @@ in \texttt{bindDeclVar} above.
 > isNonExpansiveApp tcEnv tyEnv n (LeftSection e op) =
 >   isNonExpansiveApp tcEnv tyEnv (n + 1) (infixOp op) &&
 >   isNonExpansive tcEnv tyEnv e
-> isNonExpansiveApp _ _ n (Lambda ts _) = n < length ts
+> isNonExpansiveApp _ _ n (Lambda _ ts _) = n < length ts
 > isNonExpansiveApp tcEnv tyEnv n (Let ds e) =
 >   isNonExpansive tcEnv tyEnv ds && isNonExpansiveApp tcEnv tyEnv n e
 > isNonExpansiveApp _ _ _ _ = False
@@ -434,7 +431,7 @@ equivalent to $\emph{World}\rightarrow(t,\emph{World})$.
 
 > foreignArity :: TypeScheme -> Int
 > foreignArity (ForAll _ ty)
->   | isIO (arrowBase ty') = length tys + 1
+>   | isIO ty' = length tys + 1
 >   | otherwise = length tys
 >   where (tys,ty') = arrowUnapply ty
 >         isIO (TypeConstructor tc [_]) = tc == qIOId
@@ -680,7 +677,7 @@ equivalent to $\emph{World}\rightarrow(t,\emph{World})$.
 >       unify p "right section" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1)
 >             tcEnv beta
 >     return (TypeArrow alpha gamma)
-> tcExpr m tcEnv p (Lambda ts e) =
+> tcExpr m tcEnv _ (Lambda p ts e) =
 >   do
 >     bindLambdaVars m ts
 >     tys <- mapM (tcConstrTerm m tcEnv p) ts
@@ -726,14 +723,14 @@ equivalent to $\emph{World}\rightarrow(t,\emph{World})$.
 > tcQual :: ModuleIdent -> TCEnv -> Position -> Statement -> TcState ()
 > tcQual m tcEnv p (StmtExpr e) =
 >   tcExpr m tcEnv p e >>= unify p "guard" (ppExpr 0 e) tcEnv boolType
-> tcQual m tcEnv p q@(StmtBind t e) =
+> tcQual m tcEnv _ q@(StmtBind p t e) =
 >   do
 >     bindLambdaVars m t
 >     ty <- tcConstrTerm m tcEnv p t
 >     tcExpr m tcEnv p e >>=
 >       unify p "generator" (ppStmt q $-$ text "Term:" <+> ppExpr 0 e)
 >             tcEnv (listType ty)
-> tcQual m tcEnv p (StmtDecl ds) = tcDecls m tcEnv ds
+> tcQual m tcEnv _ (StmtDecl ds) = tcDecls m tcEnv ds
 
 > tcStmt :: ModuleIdent -> TCEnv -> Position -> Statement -> TcState ()
 > tcStmt m tcEnv p (StmtExpr e) =
@@ -741,14 +738,14 @@ equivalent to $\emph{World}\rightarrow(t,\emph{World})$.
 >     alpha <- freshTypeVar
 >     tcExpr m tcEnv p e >>=
 >       unify p "statement" (ppExpr 0 e) tcEnv (ioType alpha)
-> tcStmt m tcEnv p st@(StmtBind t e) =
+> tcStmt m tcEnv _ st@(StmtBind p t e) =
 >   do
 >     bindLambdaVars m t
 >     ty <- tcConstrTerm m tcEnv p t
 >     tcExpr m tcEnv p e >>=
 >       unify p "statement" (ppStmt st $-$ text "Term:" <+> ppExpr 0 e)
 >             tcEnv (ioType ty)
-> tcStmt m tcEnv p (StmtDecl ds) = tcDecls m tcEnv ds
+> tcStmt m tcEnv _ (StmtDecl ds) = tcDecls m tcEnv ds
 
 \end{verbatim}
 The function \texttt{tcArrow} checks that its argument can be used as

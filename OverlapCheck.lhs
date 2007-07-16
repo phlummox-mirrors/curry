@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 1913 2006-05-07 13:44:36Z wlux $
+% $Id: OverlapCheck.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
-% Copyright (c) 2006, Wolfgang Lux
+% Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{OverlapCheck.lhs}
@@ -79,7 +79,7 @@ are collected with a simple traversal of the syntax tree.
 >   overlap p (InfixApply e1 _ e2) = overlap p e1 . overlap p e2
 >   overlap p (LeftSection e _) = overlap p e
 >   overlap p (RightSection _ e) = overlap p e
->   overlap p (Lambda _ e) = overlap p e
+>   overlap _ (Lambda p _ e) = overlap p e
 >   overlap p (Let ds e) = overlap p ds . overlap p e
 >   overlap p (Do sts e) = overlap p sts . overlap p e
 >   overlap p (IfThenElse e1 e2 e3) =
@@ -88,7 +88,7 @@ are collected with a simple traversal of the syntax tree.
 
 > instance Syntax Statement where
 >   overlap p (StmtExpr e) = overlap p e
->   overlap p (StmtBind _ e) = overlap p e
+>   overlap _ (StmtBind p _ e) = overlap p e
 >   overlap p (StmtDecl ds) = overlap p ds
 
 > instance Syntax Alt where

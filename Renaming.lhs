@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 2382 2007-07-04 14:37:05Z wlux $
+% $Id: Renaming.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -277,10 +277,10 @@ not rename this identifier in the same environment as its arguments.
 >   liftM2 LeftSection (renameExpr env e) (renameOp env op)
 > renameExpr env (RightSection op e) =
 >   liftM2 RightSection (renameOp env op) (renameExpr env e)
-> renameExpr env (Lambda ts e) =
+> renameExpr env (Lambda p ts e) =
 >   do
 >     env' <- bindVars env (bv ts)
->     liftM2 Lambda (mapM (renameConstrTerm env') ts) (renameExpr env' e)
+>     liftM2 (Lambda p) (mapM (renameConstrTerm env') ts) (renameExpr env' e)
 > renameExpr env (Let ds e) =
 >   do
 >     env' <- bindVars env (bv ds)
@@ -307,17 +307,17 @@ not rename this identifier in the same environment as its arguments.
 >   do
 >     e' <- renameExpr env e
 >     return (env,StmtExpr e')
+> renameStmt env (StmtBind p t e) =
+>   do
+>     e' <- renameExpr env e
+>     env' <- bindVars env (bv t)
+>     t' <- renameConstrTerm env' t
+>     return (env',StmtBind p t' e')
 > renameStmt env (StmtDecl ds) =
 >   do
 >     env' <- bindVars env (bv ds)
 >     ds' <- mapM (renameDecl env') ds
 >     return (env',StmtDecl ds')
-> renameStmt env (StmtBind t e) =
->   do
->     e' <- renameExpr env e
->     env' <- bindVars env (bv t)
->     t' <- renameConstrTerm env' t
->     return (env',StmtBind t' e')
 
 > renameAlt :: RenameEnv -> Alt -> RenameState Alt
 > renameAlt env (Alt p t rhs) =

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PrecCheck.lhs 2385 2007-07-04 16:22:48Z wlux $
+% $Id: PrecCheck.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -191,8 +191,8 @@ because it is used for constructing the module's interface.
 >     e' <- checkExpr m p pEnv e
 >     checkRSection p pEnv op e'
 >     return (RightSection op e')
-> checkExpr m p pEnv (Lambda ts e) =
->   liftE2 Lambda (mapE (checkConstrTerm p pEnv) ts) (checkExpr m p pEnv e)
+> checkExpr m _ pEnv (Lambda p ts e) =
+>   liftE2 (Lambda p) (mapE (checkConstrTerm p pEnv) ts) (checkExpr m p pEnv e)
 > checkExpr m p pEnv (Let ds e) =
 >   liftE2 Let (mapE (checkDecl m pEnv') ds) (checkExpr m p pEnv' e)
 >   where pEnv' = bindPrecs m ds pEnv
@@ -209,9 +209,9 @@ because it is used for constructing the module's interface.
 
 > checkStmt :: ModuleIdent -> Position -> PEnv -> Statement -> Error Statement
 > checkStmt m p pEnv (StmtExpr e) = liftE StmtExpr (checkExpr m p pEnv e)
+> checkStmt m _ pEnv (StmtBind p t e) =
+>   liftE2 (StmtBind p) (checkConstrTerm p pEnv t) (checkExpr m p pEnv e)
 > checkStmt m _ pEnv (StmtDecl ds) = liftE StmtDecl (mapE (checkDecl m pEnv) ds)
-> checkStmt m p pEnv (StmtBind t e) =
->   liftE2 StmtBind (checkConstrTerm p pEnv t) (checkExpr m p pEnv e)
 
 > checkAlt :: ModuleIdent -> PEnv -> Alt -> Error Alt
 > checkAlt m pEnv (Alt p t rhs) =

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Qual.lhs 2228 2007-06-02 10:21:59Z wlux $
+% $Id: Qual.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -89,7 +89,7 @@ declarations groups as well as function arguments remain unchanged.
 >     InfixApply (qual tyEnv e1) (qual tyEnv op) (qual tyEnv e2)
 >   qual tyEnv (LeftSection e op) = LeftSection (qual tyEnv e) (qual tyEnv op)
 >   qual tyEnv (RightSection op e) = RightSection (qual tyEnv op) (qual tyEnv e)
->   qual tyEnv (Lambda ts e) = Lambda (qual tyEnv ts) (qual tyEnv e)
+>   qual tyEnv (Lambda p ts e) = Lambda p (qual tyEnv ts) (qual tyEnv e)
 >   qual tyEnv (Let ds e) = Let (qual tyEnv ds) (qual tyEnv e)
 >   qual tyEnv (Do sts e) = Do (qual tyEnv sts) (qual tyEnv e)
 >   qual tyEnv (IfThenElse e1 e2 e3) =
@@ -98,7 +98,7 @@ declarations groups as well as function arguments remain unchanged.
 
 > instance Qual Statement where
 >   qual tyEnv (StmtExpr e) = StmtExpr (qual tyEnv e)
->   qual tyEnv (StmtBind t e) = StmtBind (qual tyEnv t) (qual tyEnv e)
+>   qual tyEnv (StmtBind p t e) = StmtBind p (qual tyEnv t) (qual tyEnv e)
 >   qual tyEnv (StmtDecl ds) = StmtDecl (qual tyEnv ds)
 
 > instance Qual Alt where

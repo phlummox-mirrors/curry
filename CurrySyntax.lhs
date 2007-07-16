@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 2382 2007-07-04 14:37:05Z wlux $
+% $Id: CurrySyntax.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -198,7 +198,7 @@ the identifier of the \texttt{Int} literal for maintaining its type.
 >   | InfixApply Expression InfixOp Expression
 >   | LeftSection Expression InfixOp
 >   | RightSection InfixOp Expression
->   | Lambda [ConstrTerm] Expression
+>   | Lambda Position [ConstrTerm] Expression
 >   | Let [Decl] Expression
 >   | Do [Statement] Expression
 >   | IfThenElse Expression Expression Expression
@@ -209,8 +209,8 @@ the identifier of the \texttt{Int} literal for maintaining its type.
 
 > data Statement =
 >     StmtExpr Expression
+>   | StmtBind Position ConstrTerm Expression
 >   | StmtDecl [Decl]
->   | StmtBind ConstrTerm Expression
 >   deriving (Eq,Show)
 
 > data Alt = Alt Position ConstrTerm Rhs deriving (Eq,Show)

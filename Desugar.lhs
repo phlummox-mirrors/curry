@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2182 2007-04-28 20:46:11Z wlux $
+% $Id: Desugar.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -400,9 +400,9 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     op' <- desugarExpr m p (infixOp op)
 >     e' <- desugarExpr m p e
 >     return (Apply (Apply prelFlip op') e')
-> desugarExpr m p (Lambda ts e) =
+> desugarExpr m _ (Lambda p ts e) =
 >   do
->     f <- freshFun m "_#lambda" (length ts) (Lambda ts e)
+>     f <- freshFun m "_#lambda" (length ts) (Lambda p ts e)
 >     desugarExpr m p (Let [funDecl p f ts e] (mkVar f))
 > desugarExpr m p (Let ds e) =
 >   do
@@ -411,7 +411,7 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     return (if null ds' then e' else Let ds' e')
 > desugarExpr m p (Do sts e) = desugarExpr m p (foldr desugarStmt e sts)
 >   where desugarStmt (StmtExpr e) e' = apply prelBind_ [e,e']
->         desugarStmt (StmtBind t e) e' = apply prelBind [e,Lambda [t] e']
+>         desugarStmt (StmtBind p t e) e' = apply prelBind [e,Lambda p [t] e']
 >         desugarStmt (StmtDecl ds) e' = Let ds e'
 > desugarExpr m p (IfThenElse e1 e2 e3) =
 >   do
@@ -664,7 +664,7 @@ instead of \texttt{(++)} and \texttt{map} in place of
 > desugarQual :: ModuleIdent -> Position -> Statement -> Expression
 >             -> DesugarState Expression
 > desugarQual m p (StmtExpr b) e = desugarExpr m p (IfThenElse b e (List []))
-> desugarQual m p (StmtBind t l) e
+> desugarQual m _ (StmtBind p t l) e
 >   | isVarPattern t = desugarExpr m p (qualExpr t e l)
 >   | otherwise =
 >       do
@@ -672,10 +672,10 @@ instead of \texttt{(++)} and \texttt{map} in place of
 >         v <- freshVar m "_#var" t
 >         l' <- freshVar m "_#var" e
 >         desugarExpr m p (apply prelFoldr [foldFunct v l' e,List [],l])
->   where qualExpr v (ListCompr e []) l = apply prelMap [Lambda [v] e,l]
->         qualExpr v e l = apply prelConcatMap [Lambda [v] e,l]
+>   where qualExpr v (ListCompr e []) l = apply prelMap [Lambda p [v] e,l]
+>         qualExpr v e l = apply prelConcatMap [Lambda p [v] e,l]
 >         foldFunct v l e =
->           Lambda (map VariablePattern [v,l])
+>           Lambda p (map VariablePattern [v,l])
 >             (Case (mkVar v)
 >                   [caseAlt p t (append e (mkVar l)),
 >                    caseAlt p (VariablePattern v) (mkVar l)])

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2235 2007-06-08 10:12:15Z wlux $
+% $Id: Base.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -434,7 +434,7 @@ variable, but always refers to a global function from the prelude.
 >   qfv m (InfixApply e1 op e2) = qfv m op ++ qfv m e1 ++ qfv m e2
 >   qfv m (LeftSection e op) = qfv m op ++ qfv m e
 >   qfv m (RightSection op e) = qfv m op ++ qfv m e
->   qfv m (Lambda ts e) = filterBv ts (qfv m e)
+>   qfv m (Lambda _ ts e) = filterBv ts (qfv m e)
 >   qfv m (Let ds e) = filterBv ds (qfv m ds ++ qfv m e)
 >   qfv m (Do sts e) = foldr (qfvStmt m) (qfv m e) sts
 >   qfv m (IfThenElse e1 e2 e3) = qfv m e1 ++ qfv m e2 ++ qfv m e3
@@ -445,15 +445,15 @@ variable, but always refers to a global function from the prelude.
 
 > instance QualExpr Statement where
 >   qfv m (StmtExpr e) = qfv m e
+>   qfv m (StmtBind _ t e) = qfv m e
 >   qfv m (StmtDecl ds) = filterBv ds (qfv m ds)
->   qfv m (StmtBind t e) = qfv m e
 
 > instance QualExpr Alt where
 >   qfv m (Alt _ t rhs) = filterBv t (qfv m rhs)
 
 > instance QuantExpr Statement where
 >   bv (StmtExpr e) = []
->   bv (StmtBind t e) = bv t
+>   bv (StmtBind _ t e) = bv t
 >   bv (StmtDecl ds) = bv ds
 
 > instance QualExpr InfixOp where

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2384 2007-07-04 15:18:47Z wlux $
+% $Id: SyntaxCheck.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -140,7 +140,7 @@ top-level.
 
 > checkDeclLhs :: Bool -> VarEnv -> Decl -> Error Decl
 > checkDeclLhs _ _ (InfixDecl p fix pr ops) = return (InfixDecl p fix pr ops)
-> checkDeclLhs _ env (TypeSig p vs ty) = return (TypeSig p vs ty)
+> checkDeclLhs _ _ (TypeSig p vs ty) = return (TypeSig p vs ty)
 > checkDeclLhs top env (FunctionDecl p _ eqs) = checkEquationLhs top env p eqs
 > checkDeclLhs _ env (ForeignDecl p cc s ie f ty) =
 >   do
@@ -155,7 +155,7 @@ top-level.
 >       do
 >         checkVars "free variables declaration" p env vs
 >         return (FreeDecl p vs)
-> checkDeclLhs top env (TrustAnnot p t fs) = return (TrustAnnot p t fs)
+> checkDeclLhs _ _ (TrustAnnot p t fs) = return (TrustAnnot p t fs)
 
 > checkEquationLhs :: Bool -> VarEnv -> Position -> [Equation] -> Error Decl
 > checkEquationLhs top env p [Equation p' lhs rhs] =
@@ -405,7 +405,7 @@ runtime system.
 > checkExpr p env (List es) = liftE List (mapE (checkExpr p env) es)
 > checkExpr p env (ListCompr e qs) =
 >   do
->     (env',qs') <- mapAccumM (checkStatement p) env qs
+>     (env',qs') <- mapAccumM (checkStmt p) env qs
 >     e' <- checkExpr p env' e
 >     return (ListCompr e' qs')
 > checkExpr p env (EnumFrom e) = liftE EnumFrom (checkExpr p env e)
@@ -430,11 +430,11 @@ runtime system.
 >   liftE2 LeftSection (checkExpr p env e) (checkOp p env op)
 > checkExpr p env (RightSection op e) =
 >   liftE2 RightSection (checkOp p env op) (checkExpr p env e)
-> checkExpr p env (Lambda ts e) =
+> checkExpr _ env (Lambda p ts e) =
 >   do
 >     (env',ts') <- checkArgs p env ts
 >     e' <- checkExpr p env' e
->     return (Lambda ts' e')
+>     return (Lambda p ts' e')
 > checkExpr p env (Let ds e) =
 >   do
 >     (env',ds') <- checkLocalDecls env ds
@@ -442,7 +442,7 @@ runtime system.
 >     return (Let ds' e')
 > checkExpr p env (Do sts e) =
 >   do
->     (env',sts') <- mapAccumM (checkStatement p) env sts
+>     (env',sts') <- mapAccumM (checkStmt p) env sts
 >     e' <- checkExpr p env' e
 >     return (Do sts' e')
 > checkExpr p env (IfThenElse e1 e2 e3) =
@@ -453,17 +453,17 @@ runtime system.
 > checkExpr p env (Case e alts) =
 >   liftE2 Case (checkExpr p env e) (mapE (checkAlt env) alts)
 
-> checkStatement :: Position -> VarEnv -> Statement -> Error (VarEnv,Statement)
-> checkStatement p env (StmtExpr e) =
+> checkStmt :: Position -> VarEnv -> Statement -> Error (VarEnv,Statement)
+> checkStmt p env (StmtExpr e) =
 >   do
 >     e' <- checkExpr p env e
 >     return (env,StmtExpr e')
-> checkStatement p env (StmtBind t e) =
+> checkStmt _ env (StmtBind p t e) =
 >   do
 >     e' <- checkExpr p env e
 >     (env',t') <- checkArg p env t
->     return (env',StmtBind t' e')
-> checkStatement p env (StmtDecl ds) =
+>     return (env',StmtBind p t' e')
+> checkStmt _ env (StmtDecl ds) =
 >   do
 >     (env',ds') <- checkLocalDecls env ds
 >     return (env',StmtDecl ds')

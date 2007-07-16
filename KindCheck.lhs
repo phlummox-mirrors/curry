@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 2101 2007-02-21 16:25:07Z wlux $
+% $Id: KindCheck.lhs 2396 2007-07-16 06:55:33Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -168,7 +168,7 @@ Kind checking is applied to all type expressions in the program.
 >   checkExpr tcEnv p e1 &&> checkExpr tcEnv p e2
 > checkExpr tcEnv p (LeftSection e _) = checkExpr tcEnv p e
 > checkExpr tcEnv p (RightSection _ e) = checkExpr tcEnv p e
-> checkExpr tcEnv p (Lambda _ e) = checkExpr tcEnv p e
+> checkExpr tcEnv _ (Lambda p _ e) = checkExpr tcEnv p e
 > checkExpr tcEnv p (Let ds e) =
 >   mapE_ (checkDecl tcEnv) ds &&> checkExpr tcEnv p e
 > checkExpr tcEnv p (Do sts e) =
@@ -180,7 +180,7 @@ Kind checking is applied to all type expressions in the program.
 
 > checkStmt :: TCEnv -> Position -> Statement -> Error ()
 > checkStmt tcEnv p (StmtExpr e) = checkExpr tcEnv p e
-> checkStmt tcEnv p (StmtBind _ e) = checkExpr tcEnv p e
+> checkStmt tcEnv _ (StmtBind p _ e) = checkExpr tcEnv p e
 > checkStmt tcEnv _ (StmtDecl ds) = mapE_ (checkDecl tcEnv) ds
 
 > checkAlt :: TCEnv -> Alt -> Error ()
