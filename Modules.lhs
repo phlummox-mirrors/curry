@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2228 2007-06-02 10:21:59Z wlux $
+% $Id: Modules.lhs 2395 2007-07-16 06:21:32Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -130,8 +130,8 @@ declaration to the module.
 > transModule :: Bool -> Trust -> TCEnv -> ValueEnv -> Module
 >             -> (ValueEnv,TrustEnv,Module,[(Dump,Doc)])
 > transModule debug tr tcEnv tyEnv m = (tyEnv'',trEnv,simplified,dumps)
->   where (desugared,tyEnv') = desugar tcEnv tyEnv m
->         trEnv = if debug then trustEnv tr desugared else emptyEnv
+>   where trEnv = if debug then trustEnv tr m else emptyEnv
+>         (desugared,tyEnv') = desugar tcEnv tyEnv m
 >         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
 >         dumps =
 >           [(DumpRenamed,ppModule m),
