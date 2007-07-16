@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Ident.lhs 1947 2006-07-08 09:14:19Z wlux $
+% $Id: Ident.lhs 2397 2007-07-16 07:55:49Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Ident.lhs}
@@ -32,7 +32,7 @@ unqualified identifier.}
 >              qualify,qualifyWith,qualifyLike,qualQualify,isQualified,
 >              unqualify,qualUnqualify,localIdent,splitQualIdent,
 >              preludeMIdent,debugPreludeMIdent,ptrMIdent,stablePtrMIdent,
->              anonId,unitId,boolId,charId,intId,floatId,listId,ioId,
+>              anonId,lambdaId,unitId,boolId,charId,intId,floatId,listId,ioId,
 >              ptrId,funPtrId,stablePtrId,
 >              successId,trueId,falseId,nilId,consId,mainId,
 >              tupleId,isTupleId,tupleArity,selectorId,isSelectorId,
@@ -43,6 +43,7 @@ unqualified identifier.}
 >              qTupleId,isQTupleId,qTupleArity,isQSelectorId) where
 > import Char
 > import List
+> import Position
 
 > data Ident = Ident String Int deriving (Eq,Ord)
 > data QualIdent = UnqualIdent Ident | QualIdent ModuleIdent Ident
@@ -156,6 +157,10 @@ A few identifiers a predefined here.
 
 > anonId :: Ident
 > anonId = Ident "_" 0
+
+> lambdaId :: Position -> Ident
+> lambdaId (Position _ l c) =
+>   Ident ("_#lambda_line_" ++ show l ++ '.' : show c) 0
 
 > unitId, boolId, charId, intId, floatId, listId, ioId, successId :: Ident
 > unitId    = Ident "()" 0

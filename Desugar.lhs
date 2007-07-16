@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2396 2007-07-16 06:55:33Z wlux $
+% $Id: Desugar.lhs 2397 2007-07-16 07:55:49Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -402,8 +402,13 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     return (Apply (Apply prelFlip op') e')
 > desugarExpr m _ (Lambda p ts e) =
 >   do
->     f <- freshFun m "_#lambda" (length ts) (Lambda p ts e)
+>     updateSt_ (bindLambda m f (length ts) (Lambda p ts e))
 >     desugarExpr m p (Let [funDecl p f ts e] (mkVar f))
+>   where f = lambdaId p
+>         bindLambda m f n e tyEnv
+>           | null (lookupTopEnv f tyEnv) = bindFun m f n (polyType ty) tyEnv
+>           | otherwise = tyEnv
+>           where ty = typeOf tyEnv e
 > desugarExpr m p (Let ds e) =
 >   do
 >     ds' <- desugarDeclGroup m ds
@@ -700,13 +705,6 @@ Generation of fresh names
 >   do
 >     tyEnv <- fetchSt
 >     freshIdent m prefix 0 (monoType (typeOf tyEnv x))
-
-> freshFun :: Typeable a => ModuleIdent -> String -> Int -> a
->          -> DesugarState Ident
-> freshFun m prefix n x =
->   do
->     tyEnv <- fetchSt
->     freshIdent m prefix n (polyType (typeOf tyEnv x))
 
 \end{verbatim}
 Prelude entities

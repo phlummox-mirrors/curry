@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Trust.lhs 2396 2007-07-16 06:55:33Z wlux $
+% $Id: Trust.lhs 2397 2007-07-16 07:55:49Z wlux $
 %
 % Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -92,7 +92,7 @@ the local functions \texttt{h} and \texttt{i} are trusted, but
 >   trust tr (InfixApply e1 _ e2) = trust tr e1 . trust tr e2
 >   trust tr (LeftSection e _) = trust tr e
 >   trust tr (RightSection _ e) = trust tr e
->   trust tr (Lambda _ _ e) = trust tr e
+>   trust tr (Lambda p _ e) = bindEnv (lambdaId p) tr . trust tr e
 >   trust tr (Let ds e) = trust tr ds . trust tr e
 >   trust tr (Do sts e) = trust tr sts . trust tr e
 >   trust tr (IfThenElse e1 e2 e3) = trust tr e1 . trust tr e2 . trust tr e3
