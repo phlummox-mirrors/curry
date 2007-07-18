@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2158 2007-04-20 07:59:38Z wlux $
+% $Id: Simplify.lhs 2402 2007-07-18 20:08:00Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -128,10 +128,7 @@ either
   non-expansive expression.
 \end{itemize}
 A function definition then can be $\eta$-expanded safely if it has
-only a single equation whose body is a non-expansive expression and
-whose arguments are all plain variables. The latter restriction is
-necessary in order to ensure that no arguments need to be evaluated in
-order to compute the equation's body.
+only a single equation whose body is a non-expansive expression.
 
 We perform $\eta$-expansion even across newtypes, so that, for
 instance, \texttt{doneST} and \texttt{returnST} in the program
@@ -179,7 +176,7 @@ newtype as well.
 > etaEquation :: ModuleIdent -> ValueEnv -> NewtypeEnv -> Equation
 >             -> SimplifyState [Equation]
 > etaEquation m tyEnv nEnv (Equation p1 (FunLhs f ts) (SimpleRhs p2 e _))
->   | all isVariablePattern ts && isNonExpansive tyEnv 0 e && not (null tys) =
+>   | isNonExpansive tyEnv 0 e && not (null tys) =
 >       do
 >         vs <- mapM (freshIdent m etaId 0 . monoType) tys
 >         updateSt_ (changeArity m f (n + length tys))
@@ -665,9 +662,5 @@ Auxiliary functions
 > funDecl :: Position -> Ident -> [ConstrTerm] -> Expression -> Decl
 > funDecl p f ts e =
 >   FunctionDecl p f [Equation p (FunLhs f ts) (SimpleRhs p e [])]
-
-> isVariablePattern :: ConstrTerm -> Bool
-> isVariablePattern (VariablePattern _) = True
-> isVariablePattern _ = False
 
 \end{verbatim}
