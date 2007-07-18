@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2396 2007-07-16 06:55:33Z wlux $
+% $Id: TypeCheck.lhs 2401 2007-07-18 19:59:30Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -348,9 +348,8 @@ type signature, the declared type must be too general.
 > instance Binding Decl where
 >   isNonExpansive _ _ (InfixDecl _ _ _ _) = True
 >   isNonExpansive _ _ (TypeSig _ _ _) = True
->   isNonExpansive _ _ (FunctionDecl _ _ (eq:eqs)) = eqnArity eq > 0
->   isNonExpansive tcEnv _ (ForeignDecl _ _ _ _ _ ty) =
->     foreignArity (expandPolyType tcEnv ty) > 0
+>   isNonExpansive _ _ (FunctionDecl _ _ _) = True
+>   isNonExpansive _ _ (ForeignDecl _ _ _ _ _ _) = True
 >   isNonExpansive tcEnv tyEnv (PatternDecl _ t rhs) =
 >     isVariablePattern t && isNonExpansive tcEnv tyEnv rhs
 >   isNonExpansive _ _ (FreeDecl _ _) = False
@@ -428,12 +427,10 @@ equivalent to $\emph{World}\rightarrow(t,\emph{World})$.
 >           | ie == Just "dynamic" = checkCDynCallType tcEnv p cc ty
 >           | maybe False ('&' `elem`) ie = checkCAddrType tcEnv p ty
 >           | otherwise = checkCCallType tcEnv p cc ty
-
-> foreignArity :: TypeScheme -> Int
-> foreignArity (ForAll _ ty)
->   | isIO ty' = length tys + 1
->   | otherwise = length tys
->   where (tys,ty') = arrowUnapply ty
+>         foreignArity (ForAll _ ty)
+>           | isIO ty' = length tys + 1
+>           | otherwise = length tys
+>           where (tys,ty') = arrowUnapply ty
 >         isIO (TypeConstructor tc [_]) = tc == qIOId
 >         isIO _ = False
 
