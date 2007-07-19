@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 2220 2007-06-01 06:28:33Z wlux $
+% $Id: Lift.lhs 2403 2007-07-19 21:38:23Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -34,8 +34,7 @@ lifted to the top-level.
 > lift :: ValueEnv -> TrustEnv -> Module -> (Module,ValueEnv,TrustEnv)
 > lift tyEnv trEnv (Module m es is ds) =
 >   (Module m es is (concatMap liftTopDecl ds'),tyEnv',trEnv')
->   where (ds',tyEnv',trEnv') =
->           runSt (callSt (abstractModule m ds) tyEnv) trEnv
+>   where (ds',tyEnv',trEnv') = runSt (callSt (abstractModule m ds) tyEnv) trEnv
 
 \end{verbatim}
 \paragraph{Abstraction}
@@ -140,78 +139,40 @@ that have not been lifted and discards all other declarations. Note
 that it is easy to check whether a function has been lifted by
 checking whether an entry for its untransformed name is still present
 in the type environment.
-
-In some cases, abstraction can turn a function into an alias for another
-function. For instance, consider the definition
-\begin{verbatim}
-  f z xs = map g xs where g x = z + x
-\end{verbatim}
-When the free variable \texttt{z} is abstracted in the local
-function \texttt{g}, the definition of \texttt{f} becomes
-\begin{verbatim}
-  f z xs = map (g z) xs where g z x = z + x
-\end{verbatim}
-where \texttt{g} is now an alias for \texttt{(+)}. We detect such
-alias definitions and resolve them on the fly and thus transform
-\texttt{f} into the more efficient form
-\begin{verbatim}
-  f z xs = map ((+) z) xs
-\end{verbatim}
-Note that we do not attempt to reorder free variables in order to make
-aliasing possible when there is more than one free variable. At
-present, the compiler recognizes alias definitions only in
-non-recursive binding groups. Since such binding groups always
-consist of only a single definition and the free variables are
-returned in the order of their occurrence in the function body, there
-is no need for reordering.
 \begin{verbatim}
 
 > abstractDeclGroup :: ModuleIdent -> String -> [Ident] -> AbstractEnv
 >                   -> [Decl] -> Expression -> AbstractState Expression
 > abstractDeclGroup m pre lvs env ds e =
->   liftSt fetchSt >>= \trEnv ->
->   abstractFunDecls m pre (lvs ++ bv vds) trEnv env (scc bv (qfv m) fds) vds e
+>   abstractFunDecls m pre (lvs ++ bv vds) env (scc bv (qfv m) fds) vds e
 >   where (fds,vds) = partition isFunDecl ds
 
-> abstractFunDecls :: ModuleIdent -> String -> [Ident] -> TrustEnv
->                  -> AbstractEnv -> [[Decl]] -> [Decl] -> Expression
+> abstractFunDecls :: ModuleIdent -> String -> [Ident] -> AbstractEnv
+>                  -> [[Decl]] -> [Decl] -> Expression
 >                  -> AbstractState Expression
-> abstractFunDecls m pre lvs _ env [] vds e =
+> abstractFunDecls m pre lvs env [] vds e =
 >   do
 >     vds' <- mapM (abstractDecl m pre lvs env) vds
 >     e' <- abstractExpr m pre lvs env e
 >     return (Let vds' e')
-> abstractFunDecls m pre lvs trEnv env (fds:fdss) vds e =
->   case fds of
->     [FunctionDecl _ f [Equation _ (FunLhs _ ts) (SimpleRhs _ e' _)]]
->       | f `notElem` qfv m e' && maybe True (Trust==) (lookupEnv f trEnv) &&
->         all isVarPattern ts && isFunction e'' &&
->         fvs' ++ [mkVar v | VariablePattern v <- ts] == es ->
->           abstractFunDecls m pre lvs trEnv env' fdss vds e
->       where (e'',es) = unapply e' []
->             fvs' = map mkVar fvs
->             env' = bindEnv f (apply e'' fvs') env
->     _ ->
->       do
->         fs' <- liftM (\tyEnv -> filter (not . isLifted tyEnv) fs) fetchSt
->         -- update type environment
->         updateSt_ (abstractFunTypes m pre fvs fs')
->         -- update trust annotation environment
->         liftSt (updateSt_ (abstractFunAnnots m pre fs'))
->         fds' <- mapM (abstractFunDecl m pre fvs lvs env')
->                      [d | d <- fds, any (`elem` fs') (bv d)]
->         e' <- abstractFunDecls m pre lvs trEnv env' fdss vds e
->         return (Let fds' e')
+> abstractFunDecls m pre lvs env (fds:fdss) vds e =
+>   do
+>     fs' <- liftM (\tyEnv -> filter (not . isLifted tyEnv) fs) fetchSt
+>     -- update type environment
+>     updateSt_ (abstractFunTypes m pre fvs fs')
+>     -- update trust annotation environment
+>     liftSt (updateSt_ (abstractFunAnnots m pre fs'))
+>     fds' <- mapM (abstractFunDecl m pre fvs lvs env')
+>                  [d | d <- fds, any (`elem` fs') (bv d)]
+>     e' <- abstractFunDecls m pre lvs env' fdss vds e
+>     return (Let fds' e')
 >   where fs = bv fds
 >         fvs = filter (`elem` lvs) (toListSet fvsRhs)
 >         env' = foldr (bindF (map mkVar fvs)) env fs
->         fvsRhs = unionSets
->           [fromListSet (maybe [v] (qfv m) (lookupEnv v env)) | v <- qfv m fds]
+>         fvsRhs = fromListSet $
+>           concat [maybe [v] (qfv m) (lookupEnv v env) | v <- qfv m fds]
 >         bindF fvs f = bindEnv f (apply (mkFun m pre f) fvs)
 >         isLifted tyEnv f = null (lookupTopEnv f tyEnv)
->         isFunction (Variable v) = v `notElem` map qualify lvs
->         isFunction (Constructor c) = True
->         isFunction _ = False
 
 \end{verbatim}
 When the free variables of a function are abstracted, the type of the
@@ -358,12 +319,6 @@ to the top-level.
 > isFunDecl (ForeignDecl _ _ _ _ _ _) = True
 > isFunDecl _ = False
 
-> isVarPattern :: ConstrTerm -> Bool
-> isVarPattern (LiteralPattern _) = False
-> isVarPattern (VariablePattern _) = True
-> isVarPattern (ConstructorPattern _ _) = False
-> isVarPattern (AsPattern _ t) = isVarPattern t
-
 > mkFun :: ModuleIdent -> String -> Ident -> Expression
 > mkFun m pre f = Variable (qualifyWith m (liftIdent pre f))
 
@@ -372,14 +327,6 @@ to the top-level.
 
 > apply :: Expression -> [Expression] -> Expression
 > apply = foldl Apply
-
-> unapply :: Expression -> [Expression] -> (Expression,[Expression])
-> unapply (Literal l) es = (Literal l,es)
-> unapply (Variable v) es = (Variable v,es)
-> unapply (Constructor c) es = (Constructor c,es)
-> unapply (Apply e1 e2) es = unapply e1 (e2:es)
-> unapply (Let ds e) es = (Let ds e,es)
-> unapply (Case e alts) es = (Case e alts,es)
 
 > globalBindFun :: ModuleIdent -> Ident -> Int -> TypeScheme
 >               -> ValueEnv -> ValueEnv
