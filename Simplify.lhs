@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2403 2007-07-19 21:38:23Z wlux $
+% $Id: Simplify.lhs 2404 2007-07-20 14:39:32Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -28,7 +28,6 @@ Currently, the following optimizations are implemented:
 > import Env
 > import Monad
 > import SCC
-> import TopEnv
 > import TypeSubst
 > import Typing
 > import Utils
@@ -55,10 +54,17 @@ Currently, the following optimizations are implemented:
 
 > simplifyDecl :: ModuleIdent -> InlineEnv -> Decl -> SimplifyState Decl
 > simplifyDecl m env (FunctionDecl p f eqs) =
->   liftM (FunctionDecl p f)
->         (mapM (simplifyEquation m env) eqs >>= etaExpand m >>= inlineBodies m)
+>   liftM (FunctionDecl p f) (mapM (simplifyEquation m env) eqs >>= etaExpand m)
 > simplifyDecl m env (PatternDecl p t rhs) =
->   liftM (PatternDecl p t) (simplifyRhs m env rhs)
+>   do
+>     rhs' <- simplifyRhs m env rhs
+>     case rhs' of
+>       SimpleRhs _ (Lambda _ ts e) _ ->
+>         do
+>           updateSt_ (changeArity m f (length ts))
+>           return (funDecl p f ts e)
+>         where VariablePattern f = t
+>       _ -> return (PatternDecl p t rhs')
 > simplifyDecl _ _ d = return d
 
 > simplifyEquation :: ModuleIdent -> InlineEnv -> Equation
@@ -120,8 +126,12 @@ either
 \item a variable,
 \item an application of a constructor with arity $n$ to at most $n$
   non-expansive expressions,
-\item an application of a function with arity $n$ to at most $n-1$
-  non-expansive expressions, or
+\item an application of a function or $\lambda$-abstraction with arity
+  $n$ to at most $n-1$ non-expansive expressions,
+\item an application of a $\lambda$-abstraction with arity $n$ to $n$
+  or more non-expansive expressions and the application of the
+  $\lambda$-abstraction's body to the excess arguments is
+  non-expansive, or
 \item a let expression whose body is a non-expansive expression and
   whose local declarations are either function declarations or
   variable declarations of the form \texttt{$x$=$e$} where $e$ is a
@@ -141,29 +151,10 @@ fragment
 are expanded into functions with arity one and two, respectively. In
 order to determine the types of the variables added by
 $\eta$-expansion in such cases, the compiler must expand the types as
-well. To this end, the compiler uses a simple environment that maps
-newtype identifiers onto the argument type of their newtype
-constructor. This environment is derived from the value type
-environment in function \texttt{newtypeEnv} below. The compiler does
-not expand functions across newtypes that cannot be expanded
-themselves, which happens for newtypes that are exported abstractly.
-In order to support $\eta$-expansion of functions with type
-\texttt{IO}, we consider the type \texttt{IO} to be defined as a
-newtype as well.
+well. The compiler does not expand functions across newtypes that
+cannot be expanded themselves, which happens for newtypes that are
+exported abstractly.
 \begin{verbatim}
-
-> type NewtypeEnv = Env QualIdent Type
-
-> newtypeEnv :: ValueEnv -> NewtypeEnv
-> newtypeEnv tyEnv = foldr bindNewtype initNewtypeEnv (allEntities tyEnv)
->   where initNewtypeEnv = bindEnv qIOId ioType' emptyEnv
->         ioType' = TypeArrow worldType (tupleType [TypeVariable 0,worldType])
->         qWorldId = qualify (mkIdent "World")
->         worldType = TypeConstructor qWorldId []
->         bindNewtype (DataConstructor _ _ _) = id
->         bindNewtype (NewtypeConstructor _ (ForAll _ ty)) = bindEnv tc ty1
->           where TypeArrow ty1 (TypeConstructor tc _) = ty
->         bindNewtype (Value _ _ _) = id
 
 > etaExpand :: ModuleIdent -> [Equation] -> SimplifyState [Equation]
 > etaExpand m [eq] =
@@ -175,17 +166,23 @@ newtype as well.
 
 > etaEquation :: ModuleIdent -> ValueEnv -> NewtypeEnv -> Equation
 >             -> SimplifyState [Equation]
-> etaEquation m tyEnv nEnv (Equation p1 (FunLhs f ts) (SimpleRhs p2 e _))
+> etaEquation m tyEnv nEnv (Equation p1 (FunLhs f ts) (SimpleRhs p2 e _)) =
+>   do
+>     (ts',e') <- etaExpr m tyEnv nEnv e
+>     unless (null ts') (updateSt_ (changeArity m f (length ts + length ts')))
+>     return [Equation p1 (FunLhs f (ts ++ ts')) (SimpleRhs p2 e' [])]
+
+> etaExpr :: ModuleIdent -> ValueEnv -> NewtypeEnv -> Expression
+>         -> SimplifyState ([ConstrTerm],Expression)
+> etaExpr _ _ _ (Lambda _ ts e) = return (ts,e)
+> etaExpr m tyEnv nEnv e
 >   | isNonExpansive tyEnv 0 e && not (null tys) =
 >       do
 >         vs <- mapM (freshIdent m etaId 0 . monoType) tys
->         updateSt_ (changeArity m f (n + length tys))
->         return [Equation p1 (FunLhs f (ts ++ map VariablePattern vs))
->                          (SimpleRhs p2 (etaApply e (map mkVar vs)) [])]
->   | otherwise = return [Equation p1 (FunLhs f ts) (SimpleRhs p2 e [])]
->   where n = length ts
->         ty = etaType nEnv (rawType (varType f tyEnv))
->         tys = take (exprArity tyEnv e) (drop n (arrowArgs ty))
+>         return (map VariablePattern vs,etaApply e (map mkVar vs))
+>   | otherwise = return ([],e)
+>   where ty = etaType nEnv (typeOf' nEnv tyEnv e)
+>         tys = take (exprArity tyEnv e) (arrowArgs ty)
 >         etaId n = mkIdent ("_#eta" ++ show n)
 >         etaApply (Let ds e) es = Let ds (etaApply e es)
 >         etaApply e es = apply e es
@@ -198,6 +195,8 @@ newtype as well.
 > isNonExpansive _ _ (Constructor _) = True
 > isNonExpansive tyEnv n (Apply e1 e2) =
 >   isNonExpansive tyEnv (n + 1) e1 && isNonExpansive tyEnv 0 e2
+> isNonExpansive tyEnv n (Lambda _ ts e) = n' < 0 || isNonExpansive tyEnv n' e
+>   where n' = n - length ts
 > isNonExpansive tyEnv n (Let ds e) =
 >   all (isNonExpansiveDecl tyEnv) ds && isNonExpansive tyEnv n e
 > isNonExpansive tyEnv n (Case _ _) = False
@@ -214,6 +213,7 @@ newtype as well.
 > exprArity tyEnv (Variable x) = arity x tyEnv
 > exprArity tyEnv (Constructor c) = arity c tyEnv
 > exprArity tyEnv (Apply e _) = exprArity tyEnv e - 1
+> exprArity tyEnv (Lambda _ ts _) = length ts
 > exprArity tyEnv (Let _ e) = exprArity tyEnv e
 > exprArity _ (Case _ _) = 0
 
@@ -226,95 +226,6 @@ newtype as well.
 > etaType _ ty = ty
 
 \end{verbatim}
-After simplifying the right hand sides of all equations of a function
-and $\eta$-expanding the definition if possible, the compiler finally
-transforms declarations of the form
-\begin{quote}\tt
-  $f\;t_1\dots t_{k}\;x_{k+1}\dots x_{n}$ =
-    let $g\;t_{k+1}\dots t_{n}$ = $e$ in
-    $g\;x_{k+1}\dots x_{n}$
-\end{quote}
-into the equivalent definition
-\begin{quote}\tt
-  $f\;t_1\dots t_{k}\;(x_{k+1}$@$t_{k+1})\dots(x_n$@$t_{n})$ = $e$
-\end{quote}
-where the arities of $f$ and $g$ are $n$ and $n-k$, respectively,
-and $x_{k+1},\dots,x_{n}$ are variables. This optimization was
-introduced in order to avoid an auxiliary function being generated for
-definitions whose right-hand side is a $\lambda$-expression, e.g.,
-\verb|f . g = \x -> f (g x)|. This declaration is transformed into
-\verb|(.) f g x = let lambda x = f (g x) in lambda x| by desugaring
-and in turn is optimized into \verb|(.) f g x = f (g x)|, here. The
-transformation can obviously be generalized to the case where $g$ is
-defined by more than one equation.
-
-We have to be careful with this optimization in conjunction with
-newtype constructors. It is possible that the local function is
-applied only partially, e.g., for
-\begin{verbatim}
-  newtype ST s a = ST (s -> (a,s))
-  returnST x = ST (\s -> (x,s))
-\end{verbatim}
-the desugared code is equivalent to
-\begin{verbatim}
-  returnST x = let lambda1 s = (x,s) in lambda1
-\end{verbatim}
-We must not ``optimize'' this into \texttt{returnST x s = (x,s)}
-because the compiler assumes that \texttt{returnST} is a unary
-function.
-
-Note that this transformation is not strictly semantic preserving as
-the evaluation order of arguments can be changed. This happens if $f$
-is defined by more than one rule with overlapping patterns and the
-local functions of each rule have disjoint patterns. As an example,
-consider the function
-\begin{verbatim}
-  f (Just x) _ = let g (Left z)  = x + z in g
-  f _ (Just y) = let h (Right z) = y + z in h
-\end{verbatim}
-The definition of \texttt{f} is non-deterministic because of the
-overlapping patterns in the first and second argument. However, the
-optimized definition
-\begin{verbatim}
-  f (Just x) _ (Left z)  = x + z
-  f _ (Just y) (Right z) = y + z
-\end{verbatim}
-is deterministic. It will evaluate and match the third argument first,
-whereas the original definition is going to evaluate the first or the
-second argument first, depending on the non-deterministic branch
-chosen. As such definitions are presumably rare, and the optimization
-avoids a non-deterministic split of the computation, we put up with
-the change of evaluation order.
-
-This transformation is actually just a special case of inlining a
-(local) function definition. We are unable to handle the general case
-because it would require representing pattern matching code explicitly
-in Curry expressions.
-\begin{verbatim}
-
-> inlineBodies :: ModuleIdent -> [Equation] -> SimplifyState [Equation]
-> inlineBodies m eqs =
->   do
->     tyEnv <- fetchSt
->     trEnv <- liftSt (liftRt envRt)
->     return (concatMap (inlineBody m tyEnv trEnv) eqs)
-
-> inlineBody :: ModuleIdent -> ValueEnv -> TrustEnv -> Equation -> [Equation]
-> inlineBody m tyEnv trEnv
->     (Equation p (FunLhs f ts) (SimpleRhs _ (Let [FunctionDecl _ g eqs'] e) _))
->   | g `notElem` qfv m eqs' && e' == Variable (qualify g) &&
->     n == arity (qualify g) tyEnv && trustedFun trEnv g =
->     map (merge p f ts' vs') eqs'
->   where n :: Int                      -- type signature necessary for nhc
->         (n,vs',ts',e') = etaReduce 0 [] (reverse ts) e
->         merge p f ts vs (Equation _ (FunLhs _ ts') rhs) =
->           Equation p (FunLhs f (ts ++ zipWith AsPattern vs ts')) rhs
->         etaReduce n vs (VariablePattern v : ts) (Apply e (Variable v'))
->           | qualify v == v' = etaReduce (n+1) (v:vs) ts e
->         etaReduce n vs ts e = (n,vs,reverse ts,e)
-> inlineBody _ _ _ eq = [eq]
-
-\end{verbatim}
 Before other optimizations are applied to expressions, the simplifier
 first transforms applications of let and case expressions by pushing
 the application down into the body of let expressions and into the
@@ -325,6 +236,9 @@ there is only one alternative). If these arguments are just simple
 variables or constant literals, the optimizations performed in
 \texttt{simplifyExpr} below will substitute these values and the let
 declarations will be removed.
+
+\ToDo{Optimize (saturated) applications of $\lambda$-abstractions by
+  performing a compile time $\beta$-reduction.}
 \begin{verbatim}
 
 > simplifyApp :: ModuleIdent -> Position -> Expression -> [Expression]
@@ -336,6 +250,7 @@ declarations will be removed.
 >   do
 >     e2' <- simplifyApp m p e2 []
 >     simplifyApp m p e1 (e2':es)
+> simplifyApp _ _ (Lambda p ts e) es = return (apply (Lambda p ts e) es)
 > simplifyApp m p (Let ds e) es = liftM (Let ds) (simplifyApp m p e es)
 > simplifyApp m p (Case e as) es =
 >   do
@@ -386,6 +301,13 @@ functions in later phases of the compiler.
 >     e1' <- simplifyExpr m env e1
 >     e2' <- simplifyExpr m env e2
 >     return (Apply e1' e2')
+> simplifyExpr m env (Lambda p ts e) =
+>   do
+>     e' <- simplifyApp m p e [] >>= simplifyExpr m env
+>     tyEnv <- fetchSt
+>     nEnv <- liftSt envRt
+>     (ts',e'') <- etaExpr m tyEnv nEnv e'
+>     return (etaReduce m tyEnv p (ts ++ ts') e'')
 > simplifyExpr m env (Let ds e) =
 >   do
 >     dss' <- mapM (sharePatternRhs m) ds
@@ -449,12 +371,23 @@ functions to access the pattern variables.
 > inlineVars :: ModuleIdent -> ValueEnv -> TrustEnv -> [Decl] -> InlineEnv
 >            -> InlineEnv
 > inlineVars m tyEnv trEnv
->            [FunctionDecl _ f [Equation _ (FunLhs _ ts) (SimpleRhs _ e _)]]
+>            [FunctionDecl _ f [Equation p (FunLhs _ ts) (SimpleRhs _ e _)]]
 >            env
+>   | f `notElem` qfv m e && maybe True (Trust==) (lookupEnv f trEnv) =
+>       case etaReduce m tyEnv p ts e of
+>         Lambda _ _ _ -> env
+>         e' -> bindEnv f e' env
+> inlineVars m tyEnv _ [PatternDecl _ (VariablePattern v) (SimpleRhs _ e _)] env
+>   | canInline tyEnv e && v `notElem` qfv m e = bindEnv v e env
+> inlineVars _ _ _ _ env = env
+
+> etaReduce :: ModuleIdent -> ValueEnv -> Position -> [ConstrTerm] -> Expression
+>           -> Expression
+> etaReduce m tyEnv p ts e
 >   | all isVarPattern ts && funArity e' >= n && length ts <= n &&
 >     all (canInline tyEnv) es' && map mkVar vs == es'' &&
->     all (`notElem` qfv m e'') (f:vs) &&
->     maybe True (Trust==) (lookupEnv f trEnv) = bindEnv f e'' env
+>     all (`notElem` qfv m e'') vs = e''
+>   | otherwise = Lambda p ts e
 >   where n = length es
 >         vs = [v | VariablePattern v <- ts]
 >         (e',es) = unapply e []
@@ -463,9 +396,6 @@ functions to access the pattern variables.
 >         funArity (Variable v) = arity v tyEnv
 >         funArity (Constructor c) = arity c tyEnv
 >         funArity _ = -1
-> inlineVars m tyEnv _ [PatternDecl _ (VariablePattern v) (SimpleRhs _ e _)] env
->   | canInline tyEnv e && v `notElem` qfv m e = bindEnv v e env
-> inlineVars _ _ _ _ env = env
 
 > canInline :: ValueEnv -> Expression -> Bool
 > canInline _ (Literal _) = True
@@ -666,7 +596,8 @@ Auxiliary functions
 > freshVar m f x =
 >   do
 >     tyEnv <- fetchSt
->     freshIdent m f 0 (monoType (typeOf tyEnv x))
+>     nEnv <- liftSt envRt
+>     freshIdent m f 0 (monoType (typeOf' nEnv tyEnv x))
 
 > shuffle :: [a] -> [[a]]
 > shuffle xs = shuffle id xs

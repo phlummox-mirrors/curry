@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2397 2007-07-16 07:55:49Z wlux $
+% $Id: Desugar.lhs 2404 2007-07-20 14:39:32Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -27,6 +27,7 @@ properties.
   \item variables,
   \item constructors,
   \item (binary) applications,
+  \item lambda abstractions,
   \item let expressions, and
   \item case expressions.
   \end{itemize}
@@ -59,10 +60,10 @@ all names must be properly qualified before calling this module.}
 
 \end{verbatim}
 New identifiers may be introduced while desugaring pattern
-declarations, case and $\lambda$-expressions, and list comprehensions.
-As usual, we use a state monad transformer for generating unique
-names. In addition, the state is also used for passing through the
-type environment, which must be augmented with the types of these new
+declarations, case expressions, and list comprehensions. As usual, we
+use a state monad transformer for generating unique names. In
+addition, the state is also used for passing through the type
+environment, which must be augmented with the types of these new
 variables.
 \begin{verbatim}
 
@@ -402,13 +403,9 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     return (Apply (Apply prelFlip op') e')
 > desugarExpr m _ (Lambda p ts e) =
 >   do
->     updateSt_ (bindLambda m f (length ts) (Lambda p ts e))
->     desugarExpr m p (Let [funDecl p f ts e] (mkVar f))
->   where f = lambdaId p
->         bindLambda m f n e tyEnv
->           | null (lookupTopEnv f tyEnv) = bindFun m f n (polyType ty) tyEnv
->           | otherwise = tyEnv
->           where ty = typeOf tyEnv e
+>     (ds',ts') <- mapAccumM (desugarTerm m p) [] ts
+>     e' <- desugarExpr m p (Let ds' e)
+>     return (Lambda p ts' e')
 > desugarExpr m p (Let ds e) =
 >   do
 >     ds' <- desugarDeclGroup m ds

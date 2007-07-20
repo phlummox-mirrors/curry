@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Options.lhs 1913 2006-05-07 13:44:36Z wlux $
+% $Id: Options.lhs 2404 2007-07-20 14:39:32Z wlux $
 %
-% Copyright (c) 2001-2003, Wolfgang Lux
+% Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Options.lhs}
@@ -68,6 +68,7 @@ all compiler options.
 >   | DumpTypes                         -- dump types after typechecking
 >   | DumpDesugared                     -- dump source after desugaring
 >   | DumpSimplified                    -- dump source after simplification
+>   | DumpUnlambda                      -- dump source after naming lambdas
 >   | DumpLifted                        -- dump source after lambda-lifting
 >   | DumpIL                            -- dump IL code after translation
 >   | DumpTransformed                   -- dump transformed code
@@ -141,6 +142,8 @@ recognized by the compiler.
 >            "dump source code after desugaring",
 >     Option "" ["dump-simplified"] (NoArg (Dump [DumpSimplified]))
 >            "dump source code after simplification",
+>     Option "" ["dump-unlambda"] (NoArg (Dump [DumpUnlambda]))
+>            "dump source code after naming lambdas",
 >     Option "" ["dump-lifted"] (NoArg (Dump [DumpLifted]))
 >            "dump source code after lambda-lifting",
 >     Option "" ["dump-il"] (NoArg (Dump [DumpIL]))

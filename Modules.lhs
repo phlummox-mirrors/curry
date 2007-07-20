@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2395 2007-07-16 06:21:32Z wlux $
+% $Id: Modules.lhs 2404 2007-07-20 14:39:32Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -34,6 +34,7 @@ This module controls the compilation of modules.
 > import Qual(Qual(..))
 > import Desugar(desugar,goalModule)
 > import Simplify(simplify)
+> import Unlambda(unlambda)
 > import Lift(lift)
 > import qualified IL
 > import ILTrans(ilTrans,ilTransIntf)
@@ -129,15 +130,17 @@ declaration to the module.
 
 > transModule :: Bool -> Trust -> TCEnv -> ValueEnv -> Module
 >             -> (ValueEnv,TrustEnv,Module,[(Dump,Doc)])
-> transModule debug tr tcEnv tyEnv m = (tyEnv'',trEnv,simplified,dumps)
+> transModule debug tr tcEnv tyEnv m = (tyEnv''',trEnv,nolambda,dumps)
 >   where trEnv = if debug then trustEnv tr m else emptyEnv
 >         (desugared,tyEnv') = desugar tcEnv tyEnv m
 >         (simplified,tyEnv'') = simplify tyEnv' trEnv desugared
+>         (nolambda,tyEnv''') = unlambda tyEnv'' simplified
 >         dumps =
 >           [(DumpRenamed,ppModule m),
 >            (DumpTypes,ppTypes tcEnv (localBindings tyEnv)),
 >            (DumpDesugared,ppModule desugared),
->            (DumpSimplified,ppModule simplified)]
+>            (DumpSimplified,ppModule simplified),
+>            (DumpUnlambda,ppModule nolambda)]
 
 > ilTransModule :: Bool -> Bool -> ValueEnv -> TrustEnv -> Module
 >               -> (Either IL.Module [IL.Module],[(Dump,Doc)])
@@ -557,6 +560,7 @@ standard output.
 > dumpHeader DumpTypes = "Types"
 > dumpHeader DumpDesugared = "Source code after desugaring"
 > dumpHeader DumpSimplified = "Source code after simplification"
+> dumpHeader DumpUnlambda = "Source code after naming lambdas"
 > dumpHeader DumpLifted = "Source code after lifting"
 > dumpHeader DumpIL = "Intermediate code"
 > dumpHeader DumpTransformed = "Transformed code" 
