@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2404 2007-07-20 14:39:32Z wlux $
+% $Id: Simplify.lhs 2409 2007-07-24 07:12:34Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -456,6 +456,7 @@ form where all arguments of applications are variables.
 > unapply (Variable v) es = (Variable v,es)
 > unapply (Constructor c) es = (Constructor c,es)
 > unapply (Apply e1 e2) es = unapply e1 (e2:es)
+> unapply (Lambda p ts e) es = (Lambda p ts e,es)
 > unapply (Let ds e) es = (Let ds e,es)
 > unapply (Case e alts) es = (Case e alts,es)
 
