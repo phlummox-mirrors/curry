@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Unlambda.lhs 2404 2007-07-20 14:39:32Z wlux $
+% $Id: Unlambda.lhs 2411 2007-07-25 15:14:51Z wlux $
 %
 % Copyright (c) 2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -24,72 +24,68 @@ lambda abstraction is recorded in the type environment.
 
 > type UnlambdaState a = StateT ValueEnv Id a
 
-> unlambda :: ValueEnv -> Module -> (Module,ValueEnv)
+> unlambda :: ValueEnv -> Module Type -> (Module Type,ValueEnv)
 > unlambda tyEnv (Module m es is ds) = runSt doUnlambda tyEnv
->   where nEnv = newtypeEnv tyEnv
->         doUnlambda =
+>   where doUnlambda =
 >           do
->             ds' <- nameLambdas m nEnv ds
+>             ds' <- mapM (nameLambdas m) ds
 >             tyEnv' <- fetchSt
 >             return (Module m es is ds',tyEnv')
 
 > class SyntaxTree a where
->   nameLambdas :: ModuleIdent -> NewtypeEnv -> a -> UnlambdaState a
-
-> instance SyntaxTree a => SyntaxTree [a] where
->   nameLambdas m nEnv = mapM (nameLambdas m nEnv)
+>   nameLambdas :: ModuleIdent -> a Type -> UnlambdaState (a Type)
 
 > instance SyntaxTree TopDecl where
->   nameLambdas m nEnv (BlockDecl d) = liftM BlockDecl (nameLambdas m nEnv d)
->   nameLambdas _ _ d = return d
+>   nameLambdas m (BlockDecl d) = liftM BlockDecl (nameLambdas m d)
+>   nameLambdas _ d = return d
 
 > instance SyntaxTree Decl where
->   nameLambdas m nEnv (FunctionDecl p f eqs) =
->     liftM (FunctionDecl p f) (nameLambdas m nEnv eqs)
->   nameLambdas m nEnv (PatternDecl p t rhs) =
->     liftM (PatternDecl p t) (nameLambdas m nEnv rhs)
->   nameLambdas _ _ d = return d
+>   nameLambdas m (FunctionDecl p f eqs) =
+>     liftM (FunctionDecl p f) (mapM (nameLambdas m) eqs)
+>   nameLambdas m (PatternDecl p t rhs) =
+>     liftM (PatternDecl p t) (nameLambdas m rhs)
+>   nameLambdas _ d = return d
 
 > instance SyntaxTree Equation where
->   nameLambdas m nEnv (Equation p lhs rhs) =
->     liftM (Equation p lhs) (nameLambdas m nEnv rhs)
+>   nameLambdas m (Equation p lhs rhs) =
+>     liftM (Equation p lhs) (nameLambdas m rhs)
 
 > instance SyntaxTree Rhs where
->   nameLambdas m nEnv (SimpleRhs p e _) =
->     liftM (flip (SimpleRhs p) []) (nameLambdas m nEnv e)
+>   nameLambdas m (SimpleRhs p e _) =
+>     liftM (flip (SimpleRhs p) []) (nameLambdas m e)
 
 > instance SyntaxTree Expression where
->   nameLambdas _ _ (Literal l) = return (Literal l)
->   nameLambdas _ _ (Variable v) = return (Variable v)
->   nameLambdas _ _ (Constructor c) = return (Constructor c)
->   nameLambdas m nEnv (Apply e1 e2) =
->     liftM2 Apply (nameLambdas m nEnv e1) (nameLambdas m nEnv e2)
->   nameLambdas m nEnv (Lambda p ts e) =
+>   nameLambdas _ (Literal ty l) = return (Literal ty l)
+>   nameLambdas _ (Variable ty v) = return (Variable ty v)
+>   nameLambdas _ (Constructor ty c) = return (Constructor ty c)
+>   nameLambdas m (Apply e1 e2) =
+>     liftM2 Apply (nameLambdas m e1) (nameLambdas m e2)
+>   nameLambdas m (Lambda p ts e) =
 >     do
->       updateSt_ (bindLambda m f (length ts) (Lambda p ts e))
->       nameLambdas m nEnv (Let [funDecl p f ts e] (mkVar f))
+>       updateSt_ (bindLambda m f (length ts) ty)
+>       nameLambdas m (Let [funDecl p f ts e] (mkVar ty f))
 >     where f = lambdaId p
->           bindLambda m f n e tyEnv
+>           ty = typeOf (Lambda p ts e)
+>           bindLambda m f n ty tyEnv
 >             | null (lookupTopEnv f tyEnv) = bindFun m f n (polyType ty) tyEnv
 >             | otherwise = tyEnv
->             where ty = typeOf' nEnv tyEnv e
->   nameLambdas m nEnv (Let ds e) =
->     liftM2 Let (nameLambdas m nEnv ds) (nameLambdas m nEnv e)
->   nameLambdas m nEnv (Case e as) =
->     liftM2 Case (nameLambdas m nEnv e) (nameLambdas m nEnv as)
+>   nameLambdas m (Let ds e) =
+>     liftM2 Let (mapM (nameLambdas m) ds) (nameLambdas m e)
+>   nameLambdas m (Case e as) =
+>     liftM2 Case (nameLambdas m e) (mapM (nameLambdas m) as)
 
 > instance SyntaxTree Alt where
->   nameLambdas m nEnv (Alt p t rhs) = liftM (Alt p t) (nameLambdas m nEnv rhs)
+>   nameLambdas m (Alt p t rhs) = liftM (Alt p t) (nameLambdas m rhs)
 
 \end{verbatim}
 Auxiliary functions.
 \begin{verbatim}
 
-> funDecl :: Position -> Ident -> [ConstrTerm] -> Expression -> Decl
+> funDecl :: Position -> Ident -> [ConstrTerm a] -> Expression a -> Decl a
 > funDecl p f ts e =
 >   FunctionDecl p f [Equation p (FunLhs f ts) (SimpleRhs p e [])]
 
-> mkVar :: Ident -> Expression
-> mkVar = Variable . qualify
+> mkVar :: a -> Ident -> Expression a
+> mkVar ty = Variable ty . qualify
 
 \end{verbatim}

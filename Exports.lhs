@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: Exports.lhs 2411 2007-07-25 15:14:51Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -20,7 +20,7 @@ types.
 > import TopEnv
 > import TypeTrans
 
-> exportInterface :: Module -> PEnv -> TCEnv -> ValueEnv -> Interface
+> exportInterface :: Module a -> PEnv -> TCEnv -> ValueEnv -> Interface
 > exportInterface (Module m (Just (Exporting _ es)) _ _) pEnv tcEnv tyEnv =
 >   Interface m imports (precs ++ hidden ++ ds)
 >   where imports = map (IImportDecl noPos) (usedModules ds)
@@ -167,7 +167,7 @@ compiler can check them without loading the imported modules.
 > definedType (IDataDecl _ tc _ _) tcs = tc : tcs
 > definedType (INewtypeDecl _ tc _ _) tcs = tc : tcs
 > definedType (ITypeDecl _ tc _ _) tcs = tc : tcs
-> definedType (IFunctionDecl _ _ _ _)  tcs = tcs
+> definedType (IFunctionDecl _ _ _ _) tcs = tcs
 
 > class HasType a where
 >   usedTypes :: a -> [QualIdent] -> [QualIdent]

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2396 2007-07-16 06:55:33Z wlux $
+% $Id: CurryPP.lhs 2411 2007-07-25 15:14:51Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -21,7 +21,7 @@ Haskell parser.
 Pretty print a module
 \begin{verbatim}
 
-> ppModule :: Module -> Doc
+> ppModule :: Module a -> Doc
 > ppModule (Module m es is ds) =
 >   vcat (ppModuleHeader m es : map ppImportDecl is ++ map ppTopDecl ds)
 
@@ -62,7 +62,7 @@ Module header
 Declarations
 \begin{verbatim}
 
-> ppTopDecl :: TopDecl -> Doc
+> ppTopDecl :: TopDecl a -> Doc
 > ppTopDecl (DataDecl _ tc tvs cs) =
 >   sep (ppTypeDeclLhs "data" tc tvs :
 >        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)))
@@ -89,10 +89,10 @@ Declarations
 > ppNewConstr :: NewConstrDecl -> Doc
 > ppNewConstr (NewConstrDecl _ c ty) = ppIdent c <+> ppTypeExpr 2 ty
 
-> ppBlock :: [Decl] -> Doc
+> ppBlock :: [Decl a] -> Doc
 > ppBlock = vcat . map ppDecl
 
-> ppDecl :: Decl -> Doc
+> ppDecl :: Decl a -> Doc
 > ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
 > ppDecl (TypeSig _ fs ty) = ppIdentList fs <+> text "::" <+> ppTypeExpr 0 ty
 > ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
@@ -120,22 +120,22 @@ Declarations
 >         ppAssoc InfixR = text "infixr"
 >         ppAssoc Infix = text "infix"
 
-> ppEquation :: Equation -> Doc
+> ppEquation :: Equation a -> Doc
 > ppEquation (Equation _ lhs rhs) = ppRule (ppLhs lhs) equals rhs
 
-> ppLhs :: Lhs -> Doc
+> ppLhs :: Lhs a -> Doc
 > ppLhs (FunLhs f ts) = ppIdent f <+> fsep (map (ppConstrTerm 2) ts)
 > ppLhs (OpLhs t1 f t2) =
 >   ppConstrTerm 1 t1 <+> ppInfixOp f <+> ppConstrTerm 1 t2
 > ppLhs (ApLhs lhs ts) = parens (ppLhs lhs) <+> fsep (map (ppConstrTerm 2) ts)
 
-> ppRule :: Doc -> Doc -> Rhs -> Doc
+> ppRule :: Doc -> Doc -> Rhs a -> Doc
 > ppRule lhs eq (SimpleRhs _ e ds) =
 >   sep [lhs <+> eq,indent (ppExpr 0 e)] $$ ppLocalDefs ds
 > ppRule lhs eq (GuardedRhs es ds) =
 >   sep [lhs,indent (vcat (map (ppCondExpr eq) es))] $$ ppLocalDefs ds
 
-> ppLocalDefs :: [Decl] -> Doc
+> ppLocalDefs :: [Decl a] -> Doc
 > ppLocalDefs ds
 >   | null ds = empty
 >   | otherwise = indent (text "where" <+> ppBlock ds)
@@ -203,7 +203,7 @@ Literals
 
 > ppLiteral :: Literal -> Doc
 > ppLiteral (Char c) = text (show c)
-> ppLiteral (Int _ i) = int i
+> ppLiteral (Int i) = int i
 > ppLiteral (Float f) = double f
 > ppLiteral (String s) = text (show s)
 
@@ -211,26 +211,26 @@ Literals
 Patterns
 \begin{verbatim}
 
-> ppConstrTerm :: Int -> ConstrTerm -> Doc
-> ppConstrTerm p (LiteralPattern l) =
+> ppConstrTerm :: Int -> ConstrTerm a -> Doc
+> ppConstrTerm p (LiteralPattern _ l) =
 >   parenExp (p > 1 && isNegative l) (ppLiteral l)
 >   where isNegative (Char _) = False
->         isNegative (Int _ i) = i < 0
+>         isNegative (Int i) = i < 0
 >         isNegative (Float f) = f < 0.0
 >         isNegative (String _ ) = False
-> ppConstrTerm p (NegativePattern op l) =
+> ppConstrTerm p (NegativePattern _ op l) =
 >   parenExp (p > 1) (ppInfixOp op <> ppLiteral l)
-> ppConstrTerm _ (VariablePattern v) = ppIdent v
-> ppConstrTerm p (ConstructorPattern c ts) =
+> ppConstrTerm _ (VariablePattern _ v) = ppIdent v
+> ppConstrTerm p (ConstructorPattern _ c ts) =
 >   parenExp (p > 1 && not (null ts))
 >            (ppQIdent c <+> fsep (map (ppConstrTerm 2) ts))
-> ppConstrTerm p (InfixPattern t1 c t2) =
+> ppConstrTerm p (InfixPattern _ t1 c t2) =
 >   parenExp (p > 0)
 >            (sep [ppConstrTerm 1 t1 <+> ppQInfixOp c,
 >                  indent (ppConstrTerm 0 t2)])
 > ppConstrTerm _ (ParenPattern t) = parens (ppConstrTerm 0 t)
 > ppConstrTerm _ (TuplePattern ts) = parenList (map (ppConstrTerm 0) ts)
-> ppConstrTerm _ (ListPattern ts) = bracketList (map (ppConstrTerm 0) ts)
+> ppConstrTerm _ (ListPattern _ ts) = bracketList (map (ppConstrTerm 0) ts)
 > ppConstrTerm _ (AsPattern v t) = ppIdent v <> char '@' <> ppConstrTerm 2 t
 > ppConstrTerm _ (LazyPattern t) = char '~' <> ppConstrTerm 2 t
 
@@ -238,19 +238,19 @@ Patterns
 Expressions
 \begin{verbatim}
 
-> ppCondExpr :: Doc -> CondExpr -> Doc
+> ppCondExpr :: Doc -> CondExpr a -> Doc
 > ppCondExpr eq (CondExpr _ g e) =
 >   vbar <+> sep [ppExpr 0 g <+> eq,indent (ppExpr 0 e)]
 
-> ppExpr :: Int -> Expression -> Doc
-> ppExpr _ (Literal l) = ppLiteral l
-> ppExpr _ (Variable v) = ppQIdent v
-> ppExpr _ (Constructor c) = ppQIdent c
+> ppExpr :: Int -> Expression a -> Doc
+> ppExpr _ (Literal _ l) = ppLiteral l
+> ppExpr _ (Variable _ v) = ppQIdent v
+> ppExpr _ (Constructor _ c) = ppQIdent c
 > ppExpr _ (Paren e) = parens (ppExpr 0 e)
 > ppExpr p (Typed e ty) =
 >   parenExp (p > 0) (ppExpr 0 e <+> text "::" <+> ppTypeExpr 0 ty)
 > ppExpr _ (Tuple es) = parenList (map (ppExpr 0) es)
-> ppExpr _ (List es) = bracketList (map (ppExpr 0) es)
+> ppExpr _ (List _ es) = bracketList (map (ppExpr 0) es)
 > ppExpr _ (ListCompr e qs) =
 >   brackets (ppExpr 0 e <+> vbar <+> list (map ppStmt qs))
 > ppExpr _ (EnumFrom e) = brackets (ppExpr 0 e <+> text "..")
@@ -289,24 +289,24 @@ Expressions
 >            (text "case" <+> ppExpr 0 e <+> text "of" $$
 >             indent (vcat (map ppAlt alts)))
 
-> ppStmt :: Statement -> Doc
+> ppStmt :: Statement a -> Doc
 > ppStmt (StmtExpr e) = ppExpr 0 e
 > ppStmt (StmtBind _ t e) =
 >   sep [ppConstrTerm 0 t <+> larrow,indent (ppExpr 0 e)]
 > ppStmt (StmtDecl ds) = text "let" <+> ppBlock ds
 
-> ppAlt :: Alt -> Doc
+> ppAlt :: Alt a -> Doc
 > ppAlt (Alt _ t rhs) = ppRule (ppConstrTerm 0 t) rarrow rhs
 
-> ppOp :: InfixOp -> Doc
-> ppOp (InfixOp op) = ppQInfixOp op
-> ppOp (InfixConstr op) = ppQInfixOp op
+> ppOp :: InfixOp a -> Doc
+> ppOp (InfixOp _ op) = ppQInfixOp op
+> ppOp (InfixConstr _ op) = ppQInfixOp op
 
 \end{verbatim}
 Goals
 \begin{verbatim}
 
-> ppGoal :: Goal -> Doc
+> ppGoal :: Goal a -> Doc
 > ppGoal (Goal _ e ds) = sep [ppExpr 0 e,indent (ppLocalDefs ds)]
 
 \end{verbatim}

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2396 2007-07-16 06:55:33Z wlux $
+% $Id: Base.lhs 2411 2007-07-25 15:14:51Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -301,7 +301,7 @@ The compiler collects trust annotations from the source code in an
 environment. A simple environment mapping unqualified names onto
 annotations is sufficient because trust annotations control how
 function declarations are transformed when generating code for the
-declarative debugger (cf.  Sect.~\ref{sec:dtrans}).
+declarative debugger (cf.\ Sect.~\ref{sec:dtrans}).
 \begin{verbatim}
 
 > type TrustEnv = Env Ident Trust
@@ -391,39 +391,39 @@ variable, but always refers to a global function from the prelude.
 > instance QuantExpr e => QuantExpr [e] where
 >   bv = concat . map bv
 
-> instance QualExpr Decl where
+> instance QualExpr (Decl a) where
 >   qfv m (FunctionDecl _ _ eqs) = qfv m eqs
 >   qfv m (PatternDecl _ _ rhs) = qfv m rhs
 >   qfv _ _ = []
 
-> instance QuantExpr Decl where
+> instance QuantExpr (Decl a) where
 >   bv (FunctionDecl _ f _) = [f]
 >   bv (ForeignDecl _ _ _ _ f _) = [f]
 >   bv (PatternDecl _ t _) = bv t
 >   bv (FreeDecl _ vs) = vs
 >   bv _ = []
 
-> instance QualExpr Equation where
+> instance QualExpr (Equation a) where
 >   qfv m (Equation _ lhs rhs) = filterBv lhs (qfv m rhs)
 
-> instance QuantExpr Lhs where
+> instance QuantExpr (Lhs a) where
 >   bv = bv . snd . flatLhs
 
-> instance QualExpr Rhs where
+> instance QualExpr (Rhs a) where
 >   qfv m (SimpleRhs _ e ds) = filterBv ds (qfv m e ++ qfv m ds)
 >   qfv m (GuardedRhs es ds) = filterBv ds (qfv m es ++ qfv m ds)
 
-> instance QualExpr CondExpr where
+> instance QualExpr (CondExpr a) where
 >   qfv m (CondExpr _ g e) = qfv m g ++ qfv m e
 
-> instance QualExpr Expression where
->   qfv _ (Literal _) = []
->   qfv m (Variable v) = maybe [] return (localIdent m v)
->   qfv _ (Constructor _) = []
+> instance QualExpr (Expression a) where
+>   qfv _ (Literal _ _) = []
+>   qfv m (Variable _ v) = maybe [] return (localIdent m v)
+>   qfv _ (Constructor _ _) = []
 >   qfv m (Paren e) = qfv m e
 >   qfv m (Typed e _) = qfv m e
 >   qfv m (Tuple es) = qfv m es
->   qfv m (List es) = qfv m es
+>   qfv m (List _ es) = qfv m es
 >   qfv m (ListCompr e qs) = foldr (qfvStmt m) (qfv m e) qs
 >   qfv m (EnumFrom e) = qfv m e
 >   qfv m (EnumFromThen e1 e2) = qfv m e1 ++ qfv m e2
@@ -440,35 +440,34 @@ variable, but always refers to a global function from the prelude.
 >   qfv m (IfThenElse e1 e2 e3) = qfv m e1 ++ qfv m e2 ++ qfv m e3
 >   qfv m (Case e alts) = qfv m e ++ qfv m alts
 
-> qfvStmt :: ModuleIdent -> Statement -> [Ident] -> [Ident]
+> qfvStmt :: ModuleIdent -> Statement a -> [Ident] -> [Ident]
 > qfvStmt m st fvs = qfv m st ++ filterBv st fvs
 
-> instance QualExpr Statement where
+> instance QualExpr (Statement a) where
 >   qfv m (StmtExpr e) = qfv m e
 >   qfv m (StmtBind _ t e) = qfv m e
 >   qfv m (StmtDecl ds) = filterBv ds (qfv m ds)
 
-> instance QualExpr Alt where
+> instance QualExpr (Alt a) where
 >   qfv m (Alt _ t rhs) = filterBv t (qfv m rhs)
 
-> instance QuantExpr Statement where
+> instance QuantExpr (Statement a) where
 >   bv (StmtExpr e) = []
 >   bv (StmtBind _ t e) = bv t
 >   bv (StmtDecl ds) = bv ds
 
-> instance QualExpr InfixOp where
->   qfv m (InfixOp op) = qfv m (Variable op)
->   qfv _ (InfixConstr _) = []
+> instance QualExpr (InfixOp a) where
+>   qfv m op = qfv m (infixOp op)
 
-> instance QuantExpr ConstrTerm where
->   bv (LiteralPattern _) = []
->   bv (NegativePattern _ _) = []
->   bv (VariablePattern v) = [v | v /= anonId]
->   bv (ConstructorPattern c ts) = bv ts
->   bv (InfixPattern t1 op t2) = bv t1 ++ bv t2
+> instance QuantExpr (ConstrTerm a) where
+>   bv (LiteralPattern _ _) = []
+>   bv (NegativePattern _ _ _) = []
+>   bv (VariablePattern _ v) = [v | v /= anonId]
+>   bv (ConstructorPattern _ c ts) = bv ts
+>   bv (InfixPattern _ t1 op t2) = bv t1 ++ bv t2
 >   bv (ParenPattern t) = bv t
 >   bv (TuplePattern ts) = bv ts
->   bv (ListPattern ts) = bv ts
+>   bv (ListPattern _ ts) = bv ts
 >   bv (AsPattern v t) = v : bv t
 >   bv (LazyPattern t) = bv t
 
@@ -510,7 +509,7 @@ Here is a list of predicates identifying various kinds of
 declarations.
 \begin{verbatim}
 
-> isTypeDecl, isBlockDecl :: TopDecl -> Bool
+> isTypeDecl, isBlockDecl :: TopDecl a -> Bool
 > isTypeDecl (DataDecl _ _ _ _) = True
 > isTypeDecl (NewtypeDecl _ _ _ _) = True
 > isTypeDecl (TypeDecl _ _ _ _) = True
@@ -518,7 +517,8 @@ declarations.
 > isBlockDecl (BlockDecl _) = True
 > isBlockDecl _ = False
 
-> isInfixDecl, isTypeSig, isFreeDecl, isTrustAnnot, isValueDecl :: Decl -> Bool
+> isInfixDecl, isTypeSig, isFreeDecl :: Decl a -> Bool
+> isTrustAnnot, isValueDecl :: Decl a -> Bool
 > isInfixDecl (InfixDecl _ _ _ _) = True
 > isInfixDecl _ = False
 > isTypeSig (TypeSig _ _ _) = True
@@ -539,9 +539,9 @@ The function \texttt{infixOp} converts an infix operator into an
 expression.
 \begin{verbatim}
 
-> infixOp :: InfixOp -> Expression
-> infixOp (InfixOp op) = Variable op
-> infixOp (InfixConstr op) = Constructor op
+> infixOp :: InfixOp a -> Expression a
+> infixOp (InfixOp a op) = Variable a op
+> infixOp (InfixConstr a op) = Constructor a op
 
 \end{verbatim}
 The function \texttt{duplicates} returns a list containing all

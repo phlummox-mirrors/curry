@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 2396 2007-07-16 06:55:33Z wlux $
+% $Id: TypeSyntaxCheck.lhs 2411 2007-07-25 15:14:51Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -33,8 +33,8 @@ environment. The final environment is returned in order to be used
 later for checking the optional export list of the current module.
 \begin{verbatim}
 
-> typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl]
->                 -> Error (TypeEnv,[TopDecl])
+> typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl a]
+>                 -> Error (TypeEnv,[TopDecl a])
 > typeSyntaxCheck m tcEnv ds =
 >   do
 >     reportDuplicates duplicateType repeatedType (map tconstr tds)
@@ -43,12 +43,12 @@ later for checking the optional export list of the current module.
 >   where tds = filter isTypeDecl ds
 >         env = foldr (bindType m) (fmap typeKind tcEnv) tds
 
-> typeSyntaxCheckGoal :: TCEnv -> Goal -> Error Goal
+> typeSyntaxCheckGoal :: TCEnv -> Goal a -> Error (Goal a)
 > typeSyntaxCheckGoal tcEnv (Goal p e ds) =
 >   liftE2 (Goal p) (checkExpr env p e) (mapE (checkDecl env) ds)
 >   where env = fmap typeKind tcEnv
 
-> bindType :: ModuleIdent -> TopDecl -> TypeEnv -> TypeEnv
+> bindType :: ModuleIdent -> TopDecl a -> TypeEnv -> TypeEnv
 > bindType m (DataDecl _ tc _ cs) =
 >   globalBindTopEnv m tc (Data (qualifyWith m tc) (map constr cs))
 > bindType m (NewtypeDecl _ tc _ nc) =
@@ -64,7 +64,7 @@ pattern declarations are traversed in order to check local type
 signatures.
 \begin{verbatim}
 
-> checkTopDecl :: TypeEnv -> TopDecl -> Error TopDecl
+> checkTopDecl :: TypeEnv -> TopDecl a -> Error (TopDecl a)
 > checkTopDecl env (DataDecl p tc tvs cs) =
 >   checkTypeLhs env p tvs &&>
 >   liftE (DataDecl p tc tvs) (mapE (checkConstrDecl env tvs) cs)
@@ -76,7 +76,8 @@ signatures.
 >   liftE (TypeDecl p tc tvs) (checkClosedType env p tvs ty)
 > checkTopDecl env (BlockDecl d) = liftE BlockDecl (checkDecl env d)
 
-> checkDecl :: TypeEnv -> Decl -> Error Decl
+> checkDecl :: TypeEnv -> Decl a -> Error (Decl a)
+> checkDecl _ (InfixDecl p fix pr ops) = return (InfixDecl p fix pr ops)
 > checkDecl env (TypeSig p vs ty) =
 >   liftE (TypeSig p vs) (checkType env p ty)
 > checkDecl env (FunctionDecl p f eqs) =
@@ -85,7 +86,8 @@ signatures.
 >   liftE (PatternDecl p t) (checkRhs env rhs)
 > checkDecl env (ForeignDecl p cc s ie f ty) =
 >   liftE (ForeignDecl p cc s ie f) (checkType env p ty)
-> checkDecl _ d = return d
+> checkDecl _ (FreeDecl p vs) = return (FreeDecl p vs)
+> checkDecl _ (TrustAnnot p tr fs) = return (TrustAnnot p tr fs)
 
 > checkTypeLhs :: TypeEnv -> Position -> [Ident] -> Error ()
 > checkTypeLhs env p tvs =
@@ -117,29 +119,29 @@ only traverse the structure of expressions in order to find local
 declaration groups.
 \begin{verbatim}
 
-> checkEquation :: TypeEnv -> Equation -> Error Equation
+> checkEquation :: TypeEnv -> Equation a -> Error (Equation a)
 > checkEquation env (Equation p lhs rhs) =
 >   liftE (Equation p lhs) (checkRhs env rhs)
 
-> checkRhs :: TypeEnv -> Rhs -> Error Rhs
+> checkRhs :: TypeEnv -> Rhs a -> Error (Rhs a)
 > checkRhs env (SimpleRhs p e ds) =
 >   liftE2 (SimpleRhs p) (checkExpr env p e) (mapE (checkDecl env) ds)
 > checkRhs env (GuardedRhs es ds) =
 >   liftE2 GuardedRhs (mapE (checkCondExpr env) es) (mapE (checkDecl env) ds)
 
-> checkCondExpr :: TypeEnv -> CondExpr -> Error CondExpr
+> checkCondExpr :: TypeEnv -> CondExpr a -> Error (CondExpr a)
 > checkCondExpr env (CondExpr p g e) =
 >   liftE2 (CondExpr p) (checkExpr env p g) (checkExpr env p e)
 
-> checkExpr :: TypeEnv -> Position -> Expression -> Error Expression
-> checkExpr _ _ (Literal l) = return (Literal l)
-> checkExpr _ _ (Variable v) = return (Variable v)
-> checkExpr _ _ (Constructor c) = return (Constructor c)
+> checkExpr :: TypeEnv -> Position -> Expression a -> Error (Expression a)
+> checkExpr _ _ (Literal a l) = return (Literal a l)
+> checkExpr _ _ (Variable a v) = return (Variable a v)
+> checkExpr _ _ (Constructor a c) = return (Constructor a c)
 > checkExpr env p (Paren e) = liftE Paren (checkExpr env p e)
 > checkExpr env p (Typed e ty) =
 >   liftE2 Typed (checkExpr env p e) (checkType env p ty)
 > checkExpr env p (Tuple es) = liftE Tuple (mapE (checkExpr env p) es)
-> checkExpr env p (List es) = liftE List (mapE (checkExpr env p) es)
+> checkExpr env p (List a es) = liftE (List a) (mapE (checkExpr env p) es)
 > checkExpr env p (ListCompr e qs) =
 >   liftE2 ListCompr (checkExpr env p e) (mapE (checkStmt env p) qs)
 > checkExpr env p (EnumFrom e) = liftE EnumFrom (checkExpr env p e)
@@ -174,12 +176,12 @@ declaration groups.
 > checkExpr env p (Case e alts) =
 >   liftE2 Case (checkExpr env p e) (mapE (checkAlt env) alts)
 
-> checkStmt :: TypeEnv -> Position -> Statement -> Error Statement
+> checkStmt :: TypeEnv -> Position -> Statement a -> Error (Statement a)
 > checkStmt env p (StmtExpr e) = liftE StmtExpr (checkExpr env p e)
 > checkStmt env _ (StmtBind p t e) = liftE (StmtBind p t) (checkExpr env p e)
 > checkStmt env _ (StmtDecl ds) = liftE StmtDecl (mapE (checkDecl env) ds)
 
-> checkAlt :: TypeEnv -> Alt -> Error Alt
+> checkAlt :: TypeEnv -> Alt a -> Error (Alt a)
 > checkAlt env (Alt p t rhs) = liftE (Alt p t) (checkRhs env rhs)
 
 \end{verbatim}
@@ -223,7 +225,7 @@ interpret the identifier as such.
 Auxiliary definitions.
 \begin{verbatim}
 
-> tconstr :: TopDecl -> P Ident
+> tconstr :: TopDecl a -> P Ident
 > tconstr (DataDecl p tc _ _) = P p tc
 > tconstr (NewtypeDecl p tc _ _) = P p tc
 > tconstr (TypeDecl p tc _ _) = P p tc
