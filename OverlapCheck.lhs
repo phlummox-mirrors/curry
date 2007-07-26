@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: OverlapCheck.lhs 2412 2007-07-26 09:19:24Z wlux $
 %
 % Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -15,6 +15,7 @@ corresponding functions.
 > import Base
 > import List
 > import Options
+> import Utils
 
 > overlapCheck :: [Warn] -> Module a -> [String]
 > overlapCheck v (Module m _ _ ds) =
@@ -98,7 +99,9 @@ are collected with a simple traversal of the syntax tree.
 The code checking whether a function has rules with overlapping
 patterns is essentially a simplified version of the pattern matching
 algorithm implemented in module \texttt{ILTrans} (see
-Sect.~\ref{sec:il-trans}).
+Sect.~\ref{sec:il-trans}). The code assumes that the program is type
+correct and accordingly promotes integer constants to floating-point
+when necessary.
 \begin{verbatim}
 
 > isNonDet :: [Equation a] -> Bool
@@ -114,13 +117,25 @@ Sect.~\ref{sec:il-trans}).
 
 > matchInductive :: [[ConstrTerm ()]] -> [[[[ConstrTerm ()]]]]
 > matchInductive =
->   map groupRules . filter isInductive . transpose . map (matches id)
+>   map (groupRules . promote) . filter isInductive . transpose .
+>     map (matches id)
 >   where isInductive = all (not . isVariablePattern . fst)
 
-> groupRules :: [(ConstrTerm (),[ConstrTerm ()])] -> [[[ConstrTerm ()]]]
+> groupRules :: [(ConstrTerm (),a)] -> [[a]]
 > groupRules [] = []
 > groupRules ((t,ts):tss) = (ts:map snd same) : groupRules tss
 >   where (same,other) = partition ((t ==) . fst) tss
+
+> promote :: [(ConstrTerm (),a)] -> [(ConstrTerm (),a)]
+> promote tss = if any (isFloat . fst) tss then map (apFst toFloat) tss else tss
+>   where isFloat (LiteralPattern _ l) =
+>           case l of
+>             Float _ -> True
+>             _       -> False
+>         isFloat (ConstructorPattern _ _ _) = False
+>         toFloat (LiteralPattern a (Int i)) =
+>           LiteralPattern a (Float (fromIntegral i))
+>         toFloat (LiteralPattern a (Float f)) = LiteralPattern a (Float f)
 
 > matches :: ([ConstrTerm a] -> [ConstrTerm a]) -> [ConstrTerm a]
 >         -> [(ConstrTerm a,[ConstrTerm a])]
