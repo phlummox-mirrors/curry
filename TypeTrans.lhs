@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 2058 2007-01-02 16:11:46Z wlux $
+% $Id: TypeTrans.lhs 2426 2007-07-30 15:37:36Z wlux $
 %
-% Copyright (c) 1999-2005, Wolfgang Lux
+% Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeTrans.lhs}
@@ -77,21 +77,21 @@ module qualifiers from type constructors that are in scope with
 unqualified names.
 \begin{verbatim}
 
-> fromType :: TCEnv -> Type -> TypeExpr
-> fromType tcEnv ty = fromType' (unqualifyType tcEnv ty)
+> fromType :: TCEnv -> [Ident] -> Type -> TypeExpr
+> fromType tcEnv tvs ty = fromType' tvs (unqualifyType tcEnv ty)
 
-> fromType' :: Type -> TypeExpr
-> fromType' (TypeConstructor tc tys)
+> fromType' :: [Ident] -> Type -> TypeExpr
+> fromType' tvs (TypeConstructor tc tys)
 >   | isQTupleId tc = TupleType tys'
 >   | tc == qListId && length tys == 1 = ListType (head tys')
 >   | otherwise = ConstructorType tc tys'
->   where tys' = map fromType' tys
-> fromType' (TypeVariable tv) =
->   VariableType (if tv >= 0 then nameSupply !! tv
->                            else mkIdent ('_' : show (-tv)))
-> fromType' (TypeConstrained tys _) = fromType' (head tys)
-> fromType' (TypeArrow ty1 ty2) = ArrowType (fromType' ty1) (fromType' ty2)
-> fromType' (TypeSkolem k) = VariableType (mkIdent ("_?" ++ show k))
+>   where tys' = map (fromType' tvs) tys
+> fromType' tvs (TypeVariable tv) =
+>   VariableType (if tv >= 0 then tvs !! tv else mkIdent ('_' : show (-tv)))
+> fromType' tvs (TypeConstrained tys _) = fromType' tvs (head tys)
+> fromType' tvs (TypeArrow ty1 ty2) =
+>   ArrowType (fromType' tvs ty1) (fromType' tvs ty2)
+> fromType' _ (TypeSkolem k) = VariableType (mkIdent ("_?" ++ show k))
 
 > unqualifyType :: TCEnv -> Type -> Type
 > unqualifyType tcEnv (TypeConstructor tc tys) =
@@ -151,7 +151,7 @@ converting them into type expressions.
 \begin{verbatim}
 
 > ppType :: TCEnv -> Type -> Doc
-> ppType tcEnv = ppTypeExpr 0 . fromType tcEnv
+> ppType tcEnv = ppTypeExpr 0 . fromType tcEnv nameSupply
 
 > ppTypeScheme :: TCEnv -> TypeScheme -> Doc
 > ppTypeScheme tcEnv (ForAll _ ty) = ppType tcEnv ty

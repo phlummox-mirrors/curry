@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: Exports.lhs 2426 2007-07-30 15:37:36Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -23,12 +23,13 @@ types.
 > exportInterface :: Module a -> PEnv -> TCEnv -> ValueEnv -> Interface
 > exportInterface (Module m (Just (Exporting _ es)) _ _) pEnv tcEnv tyEnv =
 >   Interface m imports (precs ++ hidden ++ ds)
->   where imports = map (IImportDecl noPos) (usedModules ds)
+>   where tvs = nameSupply
+>         imports = map (IImportDecl noPos) (usedModules ds)
 >         precs = foldr (infixDecl m pEnv) [] es
->         hidden = map (hiddenTypeDecl m tcEnv) (hiddenTypes ds)
+>         hidden = map (hiddenTypeDecl m tcEnv tvs) (hiddenTypes ds)
 >         ds =
->           foldr (typeDecl m tcEnv tyEnv)
->                 (foldr (funDecl m tcEnv tyEnv) [] es)
+>           foldr (typeDecl m tcEnv tyEnv tvs)
+>                 (foldr (funDecl m tcEnv tyEnv tvs) [] es)
 >                 es
 
 > infixDecl :: ModuleIdent -> PEnv -> Export -> [IDecl] -> [IDecl]
@@ -44,50 +45,53 @@ types.
 >       IInfixDecl noPos fix pr (qualUnqualify m op) : ds
 >     _ -> internalError "infixDecl"
 
-> typeDecl :: ModuleIdent -> TCEnv -> ValueEnv -> Export -> [IDecl] -> [IDecl]
-> typeDecl _ _ _ (Export _) ds = ds
-> typeDecl m tcEnv tyEnv (ExportTypeWith tc cs) ds =
+> typeDecl :: ModuleIdent -> TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl]
+>          -> [IDecl]
+> typeDecl _ _ _ _ (Export _) ds = ds
+> typeDecl m tcEnv tyEnv tvs (ExportTypeWith tc cs) ds =
 >   case qualLookupTopEnv tc tcEnv of
->     [DataType _ n cs'] -> iTypeDecl IDataDecl m tc n constrs : ds
->       where constrs evs
+>     [DataType _ n cs'] -> iTypeDecl IDataDecl m tc tvs n constrs : ds
+>       where constrs
 >               | null cs = []
 >               | otherwise =
->                   map (>>= fmap (constrDecl tcEnv tyEnv tc n evs) . hide cs)
+>                   map (>>= fmap (constrDecl tcEnv tyEnv tc tvs n) . hide cs)
 >                       cs'
 >             hide cs c
 >               | c `elem` cs = Just c
 >               | otherwise = Nothing
 >     [RenamingType _ n c]
->       | null cs -> iTypeDecl IDataDecl m tc n (const []) : ds
->       | otherwise -> iTypeDecl INewtypeDecl m tc n newConstr : ds
->       where newConstr _ = newConstrDecl tcEnv tyEnv tc c
+>       | null cs -> iTypeDecl IDataDecl m tc tvs n [] : ds
+>       | otherwise -> iTypeDecl INewtypeDecl m tc tvs n nc : ds
+>       where nc = newConstrDecl tcEnv tyEnv tc tvs c
 >     [AliasType _ n ty] ->
->       iTypeDecl ITypeDecl m tc n (const (fromType tcEnv ty)) : ds
+>       iTypeDecl ITypeDecl m tc tvs n (fromType tcEnv tvs ty) : ds
 >     _ -> internalError "typeDecl"
 
-> iTypeDecl :: (Position -> QualIdent -> [Ident] -> a -> IDecl)
->           -> ModuleIdent -> QualIdent -> Int -> ([Ident] -> a) -> IDecl
-> iTypeDecl f m tc n g = f noPos (qualUnqualify m tc) tvs (g tvs')
->   where (tvs,tvs') = splitAt n nameSupply
+> iTypeDecl :: (Position -> QualIdent -> [Ident] -> a) -> ModuleIdent
+>           -> QualIdent -> [Ident] -> Int -> a
+> iTypeDecl f m tc tvs n = f noPos (qualUnqualify m tc) (take n tvs)
 
-> constrDecl :: TCEnv -> ValueEnv -> QualIdent -> Int -> [Ident] -> Ident
+> constrDecl :: TCEnv -> ValueEnv -> QualIdent -> [Ident] -> Int -> Ident
 >            -> ConstrDecl
-> constrDecl tcEnv tyEnv tc n evs c =
->   ConstrDecl noPos (take (n' - n) evs) c (map (fromType tcEnv) (arrowArgs ty))
+> constrDecl tcEnv tyEnv tc tvs n c =
+>   ConstrDecl noPos (drop n (take n' tvs)) c
+>              (map (fromType tcEnv tvs) (arrowArgs ty))
 >   where ForAll n' ty = conType (qualifyLike tc c) tyEnv
 
-> newConstrDecl :: TCEnv -> ValueEnv -> QualIdent -> Ident -> NewConstrDecl
-> newConstrDecl tcEnv tyEnv tc c =
->   NewConstrDecl noPos c (fromType tcEnv (head (arrowArgs ty)))
+> newConstrDecl :: TCEnv -> ValueEnv -> QualIdent -> [Ident] -> Ident
+>               -> NewConstrDecl
+> newConstrDecl tcEnv tyEnv tc tvs c =
+>   NewConstrDecl noPos c (fromType tcEnv tvs (head (arrowArgs ty)))
 >   where ForAll _ ty = conType (qualifyLike tc c) tyEnv
 
-> funDecl :: ModuleIdent -> TCEnv -> ValueEnv -> Export -> [IDecl] -> [IDecl]
-> funDecl m tcEnv tyEnv (Export f) ds =
->   IFunctionDecl noPos (qualUnqualify m f) n' (fromType tcEnv ty) : ds
+> funDecl :: ModuleIdent -> TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl]
+>         -> [IDecl]
+> funDecl m tcEnv tyEnv tvs (Export f) ds =
+>   IFunctionDecl noPos (qualUnqualify m f) n' (fromType tcEnv tvs ty) : ds
 >   where n = arity f tyEnv
 >         n' = if arrowArity ty == n then Nothing else Just n
->         ty = rawType (funType f tyEnv)
-> funDecl _ _ _ (ExportTypeWith _ _) ds = ds
+>         ForAll _ ty = funType f tyEnv
+> funDecl _ _ _ _ (ExportTypeWith _ _) ds = ds
 
 \end{verbatim}
 The compiler determines the list of imported modules from the set of
@@ -153,8 +157,8 @@ variables. Furthermore, by including hidden types in interfaces the
 compiler can check them without loading the imported modules.
 \begin{verbatim}
 
-> hiddenTypeDecl :: ModuleIdent -> TCEnv -> QualIdent -> IDecl
-> hiddenTypeDecl m tcEnv tc = HidingDataDecl noPos tc (take n nameSupply)
+> hiddenTypeDecl :: ModuleIdent -> TCEnv -> [Ident] -> QualIdent -> IDecl
+> hiddenTypeDecl m tcEnv tvs tc = HidingDataDecl noPos tc (take n tvs)
 >   where n = constrKind (qualQualify m tc) tcEnv
 
 > hiddenTypes :: [IDecl] -> [QualIdent]
