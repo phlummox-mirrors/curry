@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2438 2007-08-12 15:46:05Z wlux $
+% $Id: TypeCheck.lhs 2439 2007-08-12 22:16:58Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -162,14 +162,26 @@ the signature.
 \end{verbatim}
 \paragraph{Declaration Groups}
 Before type checking a group of declarations, a dependency analysis is
-performed and the declaration group is split into minimal, nested
+performed and the declaration group is split into minimal nested
 binding groups which are checked separately. Within each binding
 group, first the type environment is extended with new bindings for
-all variables and functions defined in the group. Next, each
-declaration is checked in the extended type environment. Finally, the
-types of all defined functions are generalized. The generalization
-step will also check that the type signatures given by the user match
-the inferred types.
+all variables and functions defined in the group. Next, types are
+inferred for all declarations without an explicit type signature and
+the inferred types are then generalized. Finally, the types of all
+explicitly typed declarations are checked.
+
+The idea of checking the explicitly typed declarations after the
+implicitly typed declarations is due to Mark P.\ Jones' ``Typing
+Haskell in Haskell'' paper~\cite{Jones99:THiH}. It has the advantage
+of inferring more general types. For instance, given the declarations
+\begin{verbatim}
+  f :: a -> Bool
+  f x = (x==x) || g True
+  g y = (y<=y) || f True
+\end{verbatim}
+the compiler will infer type \texttt{a -> Bool} for \texttt{g} if
+\texttt{f} is checked after inferring a type for \texttt{g}, but only
+type \texttt{Bool -> Bool} if both declarations are checked together.
 
 The presence of unbound logical variables necessitates a monomorphism
 restriction that prohibits unsound functions like
@@ -267,15 +279,30 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >   do
 >     tyEnv0 <- fetchSt
 >     mapM_ (bindDecl m tcEnv sigs) ds
->     ds' <- mapM (tcDecl m tcEnv) ds
+>     impDs' <- mapM (tcDecl m tcEnv) impDs
 >     tyEnv <- fetchSt
 >     theta <- liftSt fetchSt
->     let tvs = [tv | (ty,PatternDecl _ t rhs) <- ds',
+>     let tvs = [tv | (ty,PatternDecl _ t rhs) <- impDs',
 >                     not (isVariablePattern t && isNonExpansive tyEnv rhs),
 >                     tv <- typeVars (subst theta ty)]
 >         fvs = foldr addToSet (fvEnv (subst theta tyEnv0)) tvs
->     mapM_ (uncurry (genDecl m tcEnv sigs . gen fvs . subst theta)) ds'
->     return (map snd ds')
+>     mapM_ (uncurry (genDecl m . gen fvs . subst theta)) impDs'
+>     expDs' <- mapM (uncurry (tcCheckDecl m tcEnv tyEnv)) expDs
+>     return (map snd impDs' ++ expDs')
+>   where (impDs,expDs) = partDecls sigs ds
+
+> partDecls :: SigEnv -> [Decl a] -> ([Decl a],[(TypeExpr,Decl a)])
+> partDecls sigs =
+>   foldr (\d -> maybe (implicit d) (explicit d) (declTypeSig sigs d)) ([],[])
+>   where implicit d ~(impDs,expDs) = (d:impDs,expDs)
+>         explicit d ty ~(impDs,expDs) = (impDs,(ty,d):expDs)
+
+> declTypeSig :: SigEnv -> Decl a -> Maybe TypeExpr
+> declTypeSig sigs (FunctionDecl _ f _) = lookupEnv f sigs
+> declTypeSig sigs (PatternDecl _ t _) =
+>   case t of
+>     VariablePattern _ v -> lookupEnv v sigs
+>     _ -> Nothing
 
 > bindDecl :: ModuleIdent -> TCEnv -> SigEnv -> Decl a -> TcState ()
 > bindDecl m tcEnv sigs (FunctionDecl p f eqs) =
@@ -354,33 +381,50 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >     return (Goal p e' ds')
 
 \end{verbatim}
-The code in \texttt{genDecl} below verifies that the inferred type of
-a function matches its declared type. Since the type inferred for the
-left hand side of a function or variable declaration is an instance of
-its declared type -- provided a type signature is given -- it can only
-be more specific. Therefore, if the inferred type does not match the
-type signature, the declared type must be too general.
+The function \texttt{genDecl} saves the generalized type of a function
+or variable declaration without a type signature in the type
+environment. The type has been generalized already by
+\texttt{tcDeclGroup}.
 \begin{verbatim}
 
-> genDecl :: ModuleIdent -> TCEnv -> SigEnv -> TypeScheme -> Decl a
->         -> TcState ()
-> genDecl m tcEnv sigs sigma (FunctionDecl p f eqs) =
->   case lookupEnv f sigs of
->     Just sigTy
->       | sigma == expandPolyType tcEnv sigTy -> return ()
->       | otherwise -> errorAt p (typeSigTooGeneral tcEnv what sigTy sigma)
->     Nothing -> updateSt_ (rebindFun m f (eqnArity (head eqs)) sigma)
->   where what = text "Function:" <+> ppIdent f
-> genDecl m tcEnv sigs sigma (PatternDecl p t _) =
+> genDecl :: ModuleIdent -> TypeScheme -> Decl a -> TcState ()
+> genDecl m ty (FunctionDecl _ f eqs) =
+>   updateSt_ (rebindFun m f (eqnArity (head eqs)) ty)
+> genDecl m ty (PatternDecl _ t _) =
 >   case t of
->     VariablePattern _ v ->
->       case lookupEnv v sigs of
->         Just sigTy
->           | sigma == expandPolyType tcEnv sigTy -> return ()
->           | otherwise -> errorAt p (typeSigTooGeneral tcEnv what sigTy sigma)
->         Nothing -> updateSt_ (rebindFun m v 0 sigma)
->       where what = text "Variable: " <+> ppIdent v
+>     VariablePattern _ v -> updateSt_ (rebindFun m v 0 ty)
 >     _ -> return ()
+
+\end{verbatim}
+The function \texttt{tcCheckDecl} checks the type of an explicitly
+typed function or variable declaration. After inferring a type for the
+declaration, the inferred type is compared with the type signature.
+Since the inferred type of an explicitly typed function or variable
+declaration is automatically an instance of its type signature (cf.\ 
+\texttt{tcDecl} above), the type signature is correct only if the
+inferred type matches the type signature exactly.
+\begin{verbatim}
+
+> tcCheckDecl :: ModuleIdent -> TCEnv -> ValueEnv -> TypeExpr -> Decl a
+>             -> TcState (Decl Type)
+> tcCheckDecl m tcEnv tyEnv sigTy d =
+>   do
+>     (ty,d') <- tcDecl m tcEnv d
+>     theta <- liftSt fetchSt
+>     let fvs = fvEnv (subst theta tyEnv)
+>         ty' = subst theta ty
+>     checkDeclSig tcEnv sigTy (if poly then gen fvs ty' else monoType ty') d'
+>   where poly = isNonExpansive tyEnv d
+
+> checkDeclSig :: TCEnv -> TypeExpr -> TypeScheme -> Decl a -> TcState (Decl a)
+> checkDeclSig tcEnv sigTy sigma (FunctionDecl p f eqs)
+>   | sigma == expandPolyType tcEnv sigTy = return (FunctionDecl p f eqs)
+>   | otherwise = errorAt p (typeSigTooGeneral tcEnv what sigTy sigma)
+>   where what = text "Function:" <+> ppIdent f
+> checkDeclSig tcEnv sigTy sigma (PatternDecl p t rhs)
+>   | sigma == expandPolyType tcEnv sigTy = return (PatternDecl p t rhs)
+>   | otherwise = errorAt p (typeSigTooGeneral tcEnv what sigTy sigma)
+>   where what = text "Variable:" <+> ppConstrTerm 0 t
 
 > class Binding a where
 >   isNonExpansive :: ValueEnv -> a -> Bool
