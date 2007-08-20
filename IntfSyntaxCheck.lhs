@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -64,7 +64,10 @@ during syntax checking of type expressions.
 >   checkTypeLhs env p tvs &&>
 >   liftE (ITypeDecl p tc tvs) (checkClosedType env p tvs ty)
 > checkIDecl env (IFunctionDecl p f n ty) =
+>   maybe (return ()) (checkArity p) n &&>
 >   liftE (IFunctionDecl p f n) (checkType env p ty)
+>   where checkArity p n =
+>           unless (n < toInteger (maxBound::Int)) (errorAt p (arityTooBig n))
 
 > checkTypeLhs :: TypeEnv -> Position -> [Ident] -> Error ()
 > checkTypeLhs env p tvs =
@@ -151,5 +154,8 @@ Error messages.
 
 > badTypeSynonym :: QualIdent -> String
 > badTypeSynonym tc = "Synonym type " ++ qualName tc ++ " in interface"
+
+> arityTooBig :: Integer -> String
+> arityTooBig n = "Function arity out of range: " ++ show n
 
 \end{verbatim}

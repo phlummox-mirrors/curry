@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: CurryPP.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -114,8 +114,8 @@ Declarations
 > ppPragma :: Doc -> Doc
 > ppPragma p = text "{-#" <+> p <+> text "#-}"
 
-> ppPrec :: Infix -> Maybe Int -> Doc
-> ppPrec fix p = ppAssoc fix <+> maybe empty int p
+> ppPrec :: Infix -> Maybe Integer -> Doc
+> ppPrec fix p = ppAssoc fix <+> maybe empty integer p
 >   where ppAssoc InfixL = text "infixl"
 >         ppAssoc InfixR = text "infixr"
 >         ppAssoc Infix = text "infix"
@@ -175,7 +175,7 @@ Interfaces
 >   sep [ppITypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 > ppIDecl (IFunctionDecl _ f n ty) =
 >   ppQIdent f <+> text "::" <+> maybePP ppArity n <+> ppTypeExpr 0 ty
->   where ppArity n = ppPragma (text "ARITY" <+> int n)
+>   where ppArity n = ppPragma (text "ARITY" <+> integer n)
 
 > ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 > ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
@@ -203,7 +203,7 @@ Literals
 
 > ppLiteral :: Literal -> Doc
 > ppLiteral (Char c) = text (show c)
-> ppLiteral (Int i) = int i
+> ppLiteral (Int i) = integer i
 > ppLiteral (Float f) = double f
 > ppLiteral (String s) = text (show s)
 

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: IntfCheck.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -96,7 +96,7 @@ interface module only. However, this has not been implemented yet.
 > checkImport m _ _ tyEnv (IFunctionDecl p f n ty) =
 >   checkValueInfo "function" checkFun tyEnv p f
 >   where checkFun (Value f' n' (ForAll _ ty')) =
->           f == f' && maybe True (n' ==) n && toType m [] ty == ty'
+>           f == f' && maybe True (toInteger n' ==) n && toType m [] ty == ty'
 >         checkFun _ = False
 
 > checkConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryLexer.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: CurryLexer.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -71,7 +71,7 @@ attribute values we make use of records.
 > data Attributes =
 >     NoAttributes
 >   | CharAttributes{ cval :: Char }
->   | IntAttributes{ ival :: Int }
+>   | IntAttributes{ ival :: Integer }
 >   | FloatAttributes{ fval :: Double }
 >   | StringAttributes{ sval :: String }
 >   | IdentAttributes{ modul :: [String], sval :: String }
@@ -99,7 +99,7 @@ specific attributes.
 > charTok :: Char -> Token
 > charTok c = Token CharTok CharAttributes{ cval = c }
 
-> intTok :: Int -> String -> Token
+> intTok :: Integer -> String -> Token
 > intTok base digits =
 >   Token IntTok IntAttributes{ ival = convertIntegral base digits }
 
@@ -436,7 +436,7 @@ backs up to the beginning of the pragma in that case so that
 >         int _ _ = cont (intTok 10 digits) p' rest
 >         float frac exp = cont (floatTok digits frac exp)
 
-> lexNonDecimal :: Int -> (Char -> Bool) -> (Token -> L a) -> L a -> L a
+> lexNonDecimal :: Integer -> (Char -> Bool) -> (Token -> L a) -> L a -> L a
 > lexNonDecimal base isDigit cont nullCont p cs
 >   | null digits = nullCont p cs
 >   | otherwise = cont (intTok base digits) (incr p (length digits)) rest

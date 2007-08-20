@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CamPP.lhs 2102 2007-02-21 19:58:26Z wlux $
+% $Id: CamPP.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 2002-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -72,7 +72,7 @@
 
 > ppLiteral :: Literal -> Doc
 > ppLiteral (Char c) = ppKW "char" <+> int (ord c)
-> ppLiteral (Int i) = ppKW "int" <+> int i
+> ppLiteral (Int i) = ppKW "int" <+> integer i
 > ppLiteral (Float f) = ppKW "float" <+> double f
 
 > ppExpr :: Expr -> Doc

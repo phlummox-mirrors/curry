@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: Base.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -268,7 +268,7 @@ If no fixity is assigned to an operator, it will be given the default
 precedence 9 and assumed to be a left-associative operator.
 \begin{verbatim}
 
-> data OpPrec = OpPrec Infix Int deriving Eq
+> data OpPrec = OpPrec Infix Integer deriving Eq
 
 > instance Show OpPrec where
 >   showsPrec _ (OpPrec fix p) = showString (assoc fix) . shows p
@@ -279,7 +279,7 @@ precedence 9 and assumed to be a left-associative operator.
 > defaultPrec :: OpPrec
 > defaultPrec = OpPrec InfixL defaultP
 
-> defaultP :: Int
+> defaultP :: Integer
 > defaultP = 9
 
 \end{verbatim}

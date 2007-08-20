@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: Imports.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -148,7 +148,7 @@ following functions.
 >   where tc' = qualQualify m tc
 > values m (IFunctionDecl _ f n ty) =
 >   qual f (Value (qualQualify m f) n' (polyType ty'))
->   where n' = fromMaybe (arrowArity ty') n
+>   where n' = maybe (arrowArity ty') fromInteger n
 >         ty' = toType m [] ty
 > values _ _ = id
 

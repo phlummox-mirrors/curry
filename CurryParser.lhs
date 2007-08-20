@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: CurryParser.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -317,7 +317,7 @@ directory path to the module is ignored.
 > iFunctionDecl = IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
 >                               <*> option iFunctionArity <*> type0
 
-> iFunctionArity :: Parser Token Int a
+> iFunctionArity :: Parser Token Integer a
 > iFunctionArity = token (PragmaBegin ArityPragma) <-*> int <*-> token PragmaEnd
 
 \end{verbatim}
@@ -615,7 +615,7 @@ prefix of a let expression.
 > char :: Parser Token Char a
 > char = cval <$> token CharTok
 
-> int :: Parser Token Int a
+> int :: Parser Token Integer a
 > int = ival <$> token IntTok
 
 > float :: Parser Token Double a

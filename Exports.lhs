@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2426 2007-07-30 15:37:36Z wlux $
+% $Id: Exports.lhs 2448 2007-08-20 08:55:54Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -89,7 +89,7 @@ types.
 > funDecl m tcEnv tyEnv tvs (Export f) ds =
 >   IFunctionDecl noPos (qualUnqualify m f) n' (fromType tcEnv tvs ty) : ds
 >   where n = arity f tyEnv
->         n' = if arrowArity ty == n then Nothing else Just n
+>         n' = if arrowArity ty == n then Nothing else Just (toInteger n)
 >         ForAll _ ty = funType f tyEnv
 > funDecl _ _ _ _ (ExportTypeWith _ _) ds = ds
 
