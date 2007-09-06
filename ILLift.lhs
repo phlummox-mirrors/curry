@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILLift.lhs 2179 2007-04-28 14:06:25Z wlux $
+% $Id: ILLift.lhs 2460 2007-09-06 21:35:20Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,9 +12,8 @@ positions are lifted into global functions.
 \begin{verbatim}
 
 > module ILLift(liftProg) where
-> import IL
-> import Ident
 > import Combined
+> import IL
 > import List
 > import Monad
 > import Utils

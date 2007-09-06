@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IL.lhs 2448 2007-08-20 08:55:54Z wlux $
+% $Id: IL.lhs 2460 2007-09-06 21:35:20Z wlux $
 %
 % Copyright (c) 1999-2007 Wolfgang Lux
 % See LICENSE for the full license.
@@ -39,7 +39,7 @@ initializer expressions. The intermediate language explicitly
 distinguishes (local) variables and (global) functions in expressions.
 \begin{verbatim}
 
-> module IL where
+> module IL(module IL,module Ident) where
 > import Ident
 
 > data Module = Module ModuleIdent [ModuleIdent] [Decl] deriving (Eq,Show)

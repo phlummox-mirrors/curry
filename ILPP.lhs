@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILPP.lhs 2448 2007-08-20 08:55:54Z wlux $
+% $Id: ILPP.lhs 2460 2007-09-06 21:35:20Z wlux $
 %
 % Copyright (c) 1999-2007 Wolfgang Lux
 % See LICENSE for the full license.
@@ -13,7 +13,6 @@ Marlow's pretty printer for Haskell.
 \begin{verbatim}
 
 > module ILPP(module ILPP, Doc) where
-> import Ident
 > import IL
 > import Pretty
 

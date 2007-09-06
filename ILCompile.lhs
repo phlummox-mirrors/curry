@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 2450 2007-08-20 15:31:03Z wlux $
+% $Id: ILCompile.lhs 2460 2007-09-06 21:35:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -11,16 +11,15 @@ language into abstract machine code.
 \begin{verbatim}
 
 > module ILCompile(camCompile, camCompileData, var, fun, apFun, con) where
-> import Ident
-> import IL
 > import qualified Cam
+> import Combined
 > import Env
+> import IL
 > import List
 > import Map
 > import Maybe
 > import Monad
 > import SCC
-> import Combined
 > import Utils
 
 > type CompState a = StateT [Cam.Name] Id a
