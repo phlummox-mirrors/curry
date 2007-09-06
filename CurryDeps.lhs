@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryDeps.lhs 2450 2007-08-20 15:31:03Z wlux $
+% $Id: CurryDeps.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 2002-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,7 +12,6 @@ dependencies and to update programs composed of multiple modules.
 \begin{verbatim}
 
 > module CurryDeps(buildScript, makeDepend, findModules) where
-> import Ident
 > import Unlit
 > import CurrySyntax hiding(Interface(..))
 > import CurryParser(parseHeader)

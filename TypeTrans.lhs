@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 2458 2007-09-06 20:30:52Z wlux $
+% $Id: TypeTrans.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -15,6 +15,7 @@ external type representations.
 >                  ppType, ppTypeScheme) where
 > import Base
 > import CurryPP
+> import CurrySyntax
 > import List
 > import Map
 > import Pretty

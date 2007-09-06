@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: TypeSyntaxCheck.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,20 +17,22 @@ of a capitalization convention.
 > module TypeSyntaxCheck(typeSyntaxCheck,typeSyntaxCheckGoal) where
 > import Base
 > import CurryPP
+> import CurrySyntax
 > import Error
 > import List
+> import Position
 > import Pretty
 > import TopEnv
 
 \end{verbatim}
 In order to check type constructor applications, the compiler
-maintains an environment, which records all known type constructors.
+maintains an environment which records all known type constructors.
 The function \texttt{typeSyntaxCheck} first initializes this
-environment from the imported type constructor environment. Next, the
-all locally defined type constructors are inserted into the
-environment, and, finally, the declarations are checked within this
-environment. The final environment is returned in order to be used
-later for checking the optional export list of the current module.
+environment from the imported type constructor environment. Next, all
+locally defined type constructors are inserted into the environment,
+and, finally, the declarations are checked within this environment.
+The final environment is returned in order to be used later for
+checking the optional export list of the current module.
 \begin{verbatim}
 
 > typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl a]

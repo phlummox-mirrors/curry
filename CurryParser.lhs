@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2450 2007-08-20 15:31:03Z wlux $
+% $Id: CurryParser.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -11,8 +11,6 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 \begin{verbatim}
 
 > module CurryParser(parseSource, parseHeader, parseInterface, parseGoal) where
-> import Ident
-> import Position
 > import Error
 > import LexComb
 > import LLParseComb

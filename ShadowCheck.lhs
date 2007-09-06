@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: ShadowCheck.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 2005-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -14,7 +14,9 @@ definitions which shadow a declaration from an outer scope.
 
 > module ShadowCheck(shadowCheck, shadowCheckGoal) where
 > import Base
+> import CurrySyntax
 > import Options
+> import Position
 > import Set
 
 > infixl 1 &&&, >>>

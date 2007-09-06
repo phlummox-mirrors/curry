@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfEquiv.lhs 2458 2007-09-06 20:30:52Z wlux $
+% $Id: IntfEquiv.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -21,6 +21,7 @@ inadvertently mix up these cases.
 
 > module IntfEquiv(fixInterface, intfEquiv) where
 > import Base
+> import CurrySyntax
 > import List
 > import Set
 > import Types

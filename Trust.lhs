@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Trust.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: Trust.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -13,6 +13,7 @@ while checking the definitions of the module.
 
 > module Trust(trustEnv) where
 > import Base
+> import CurrySyntax
 > import Env
 
 \end{verbatim}

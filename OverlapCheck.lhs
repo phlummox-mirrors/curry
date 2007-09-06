@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 2412 2007-07-26 09:19:24Z wlux $
+% $Id: OverlapCheck.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -13,8 +13,10 @@ corresponding functions.
 
 > module OverlapCheck(overlapCheck, overlapCheckGoal) where
 > import Base
+> import CurrySyntax
 > import List
 > import Options
+> import Position
 > import Utils
 
 > overlapCheck :: [Warn] -> Module a -> [String]

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 2458 2007-09-06 20:30:52Z wlux $
+% $Id: Lift.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,8 +19,9 @@ lifted to the top-level.
 
 > module Lift(lift) where
 > import Base
-> import Env
 > import Combined
+> import CurrySyntax
+> import Env
 > import List
 > import Monad
 > import SCC

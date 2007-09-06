@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2448 2007-08-20 08:55:54Z wlux $
+% $Id: CurryPP.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,7 +12,6 @@ Haskell parser.
 \begin{verbatim}
 
 > module CurryPP(module CurryPP, Doc) where
-> import Ident
 > import CurrySyntax
 > import Char
 > import Pretty

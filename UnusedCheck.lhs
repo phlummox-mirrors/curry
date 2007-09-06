@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: UnusedCheck.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 2005-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -14,8 +14,10 @@ variables at present.
 
 > module UnusedCheck(unusedCheck,unusedCheckGoal) where
 > import Base hiding(TypeKind(..), ValueKind(..))
-> import Set
+> import CurrySyntax
 > import Options
+> import Position
+> import Set
 
 \end{verbatim}
 In order to report unused variables in a module, we first compute the

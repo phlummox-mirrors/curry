@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: SyntaxCheck.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -20,11 +20,13 @@ single definition.
 > import Base
 > import Char
 > import CurryPP
+> import CurrySyntax
 > import Error
 > import List
 > import Maybe
 > import Monad
 > import NestEnv
+> import Position
 > import Pretty
 > import Utils
 

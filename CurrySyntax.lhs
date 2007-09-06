@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurrySyntax.lhs 2448 2007-08-20 08:55:54Z wlux $
+% $Id: CurrySyntax.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -13,7 +13,7 @@ patterns and expressions. At present, these attributes are used for
 associating types with patterns and expressions after type inference.
 \begin{verbatim}
 
-> module CurrySyntax where
+> module CurrySyntax(module CurrySyntax, module Ident, Position) where
 > import Ident
 > import Position
 

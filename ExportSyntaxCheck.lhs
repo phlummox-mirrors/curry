@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ExportSyntaxCheck.lhs 1912 2006-05-03 14:53:33Z wlux $
+% $Id: ExportSyntaxCheck.lhs 2459 2007-09-06 21:26:30Z wlux $
 %
-% Copyright (c) 2000-2006, Wolfgang Lux
+% Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ExportSyntaxCheck.lhs}
@@ -15,6 +15,7 @@ entities.
 
 > module ExportSyntaxCheck(checkExports) where
 > import Base
+> import CurrySyntax
 > import Error
 > import List
 > import Map
