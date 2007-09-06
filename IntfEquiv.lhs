@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfEquiv.lhs 2148 2007-04-02 13:56:20Z wlux $
+% $Id: IntfEquiv.lhs 2458 2007-09-06 20:30:52Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -23,6 +23,7 @@ inadvertently mix up these cases.
 > import Base
 > import List
 > import Set
+> import Types
 
 > infix 4 =~=, `eqvList`, `eqvSet`
 
@@ -97,11 +98,12 @@ by function \texttt{fixInterface} and the associated type class
 >   fix tcs = map (fix tcs)
 
 > instance FixInterface IDecl where
+>   fix _ (IInfixDecl p fix pr op) = IInfixDecl p fix pr op
+>   fix _ (HidingDataDecl p tc tvs) = HidingDataDecl p tc tvs
 >   fix tcs (IDataDecl p tc tvs cs) = IDataDecl p tc tvs (fix tcs cs)
 >   fix tcs (INewtypeDecl p tc tvs nc) = INewtypeDecl p tc tvs (fix tcs nc)
 >   fix tcs (ITypeDecl p tc tvs ty) = ITypeDecl p tc tvs (fix tcs ty)
 >   fix tcs (IFunctionDecl p f n ty) = IFunctionDecl p f n (fix tcs ty)
->   fix _ d = d
 
 > instance FixInterface ConstrDecl where
 >   fix tcs (ConstrDecl p evs c tys) = ConstrDecl p evs c (fix tcs tys)

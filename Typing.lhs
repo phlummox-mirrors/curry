@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 2447 2007-08-20 07:39:08Z wlux $
+% $Id: Typing.lhs 2458 2007-09-06 20:30:52Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -13,6 +13,7 @@
 > import Env
 > import Maybe
 > import TopEnv
+> import Types
 > import TypeSubst
 
 \end{verbatim}

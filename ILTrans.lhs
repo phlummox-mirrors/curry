@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: ILTrans.lhs 2458 2007-09-06 20:30:52Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -24,6 +24,7 @@ module.
 > import Maybe
 > import List
 > import Set
+> import Types
 > import TypeTrans
 > import Utils
 

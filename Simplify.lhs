@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: Simplify.lhs 2458 2007-09-06 20:30:52Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -28,6 +28,7 @@ Currently, the following optimizations are implemented:
 > import Env
 > import Monad
 > import SCC
+> import Types
 > import Typing
 > import Utils
 

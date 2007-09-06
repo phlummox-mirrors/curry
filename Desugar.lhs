@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2411 2007-07-25 15:14:51Z wlux $
+% $Id: Desugar.lhs 2458 2007-09-06 20:30:52Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -55,6 +55,7 @@ all names must be properly qualified before calling this module.}
 > import List
 > import Monad
 > import TopEnv
+> import Types
 > import Typing
 > import Utils
 
@@ -371,8 +372,7 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 > desugarExpr m p (ListCompr e []) =
 >   desugarExpr m p (List (listType (typeOf e)) [e])
 > desugarExpr m p (ListCompr e (q:qs)) = desugarQual m p q (ListCompr e qs)
-> desugarExpr m p (EnumFrom e) =
->   liftM (Apply prelEnumFrom) (desugarExpr m p e)
+> desugarExpr m p (EnumFrom e) = liftM (Apply prelEnumFrom) (desugarExpr m p e)
 > desugarExpr m p (EnumFromThen e1 e2) =
 >   liftM (apply prelEnumFromThen) (mapM (desugarExpr m p) [e1,e2])
 > desugarExpr m p (EnumFromTo e1 e2) =
@@ -725,10 +725,8 @@ Prelude entities
 > prelBind a b = preludeFun [ioType a,a `TypeArrow` ioType b] (ioType b) ">>="
 > prelBind_ a b = preludeFun [ioType a,ioType b] (ioType b) ">>"
 > prelFlip a b c = preludeFun [a `TypeArrow` (b `TypeArrow` c),b,a] c "flip"
-> prelEnumFrom =
->   preludeFun [intType] (listType intType) "enumFrom"
-> prelEnumFromTo =
->   preludeFun [intType,intType] (listType intType) "enumFromTo"
+> prelEnumFrom = preludeFun [intType] (listType intType) "enumFrom"
+> prelEnumFromTo = preludeFun [intType,intType] (listType intType) "enumFromTo"
 > prelEnumFromThen =
 >   preludeFun [intType,intType] (listType intType) "enumFromThen"
 > prelEnumFromThenTo =

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 2426 2007-07-30 15:37:36Z wlux $
+% $Id: TypeTrans.lhs 2458 2007-09-06 20:30:52Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,6 +19,7 @@ external type representations.
 > import Map
 > import Pretty
 > import TopEnv
+> import Types
 > import TypeSubst
 
 \end{verbatim}
