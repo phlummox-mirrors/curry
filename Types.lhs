@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Types.lhs 2144 2007-04-01 13:26:29Z wlux $
+% $Id: Types.lhs 2461 2007-09-07 08:55:15Z wlux $
 %
 % Copyright (c) 2002-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,6 +12,7 @@ of types in the compiler.
 
 > module Types where
 > import Ident
+> import PredefIdent
 > import List
 
 \end{verbatim}
@@ -163,9 +164,6 @@ There are a few predefined types. Note that the identifiers of the
 primitive types \texttt{()}, \texttt{[a]}, and the tuple types must
 never be qualified with a module prefix.
 \begin{verbatim}
-
-> isPrimTypeId :: QualIdent -> Bool
-> isPrimTypeId tc = tc `elem` [qUnitId,qListId] || isQTupleId tc
 
 > unitType,boolType,charType,intType,floatType,stringType,successType :: Type
 > unitType = TypeConstructor qUnitId []

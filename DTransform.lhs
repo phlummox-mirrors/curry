@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 2460 2007-09-06 21:35:20Z wlux $
+% $Id: DTransform.lhs 2461 2007-09-07 08:55:15Z wlux $
 %
 % Copyright (c) 2001-2002, Rafael Caballero
 % Copyright (c) 2003-2007, Wolfgang Lux
@@ -20,9 +20,10 @@ the computation.
 \begin{verbatim}
 
 > module DTransform(dTransform, dAddMain) where
-> import Maybe
-> import List
 > import IL
+> import List
+> import Maybe
+> import PredefIdent
 
 \end{verbatim}
 

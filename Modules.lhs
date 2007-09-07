@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2459 2007-09-06 21:26:30Z wlux $
+% $Id: Modules.lhs 2461 2007-09-07 08:55:15Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -59,6 +59,7 @@ This module controls the compilation of modules.
 > import Monad
 > import PathUtils
 > import Position
+> import PredefIdent
 > import Pretty
 > import Types
 > import TypeTrans

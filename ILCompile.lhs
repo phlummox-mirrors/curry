@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 2460 2007-09-06 21:35:20Z wlux $
+% $Id: ILCompile.lhs 2461 2007-09-07 08:55:15Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,6 +19,7 @@ language into abstract machine code.
 > import Map
 > import Maybe
 > import Monad
+> import PredefIdent
 > import SCC
 > import Utils
 

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Ident.lhs 2397 2007-07-16 07:55:49Z wlux $
+% $Id: Ident.lhs 2461 2007-09-07 08:55:15Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -31,19 +31,11 @@ unqualified identifier.}
 >              mkMIdent,moduleName,moduleQualifiers,isInfixOp,isQInfixOp,
 >              qualify,qualifyWith,qualifyLike,qualQualify,isQualified,
 >              unqualify,qualUnqualify,localIdent,splitQualIdent,
->              preludeMIdent,debugPreludeMIdent,ptrMIdent,stablePtrMIdent,
->              anonId,lambdaId,unitId,boolId,charId,intId,floatId,listId,ioId,
->              ptrId,funPtrId,stablePtrId,
->              successId,trueId,falseId,nilId,consId,mainId,
->              tupleId,isTupleId,tupleArity,selectorId,isSelectorId,
->              minusId,fminusId,
->              qUnitId,qBoolId,qCharId,qIntId,qFloatId,qListId,qIOId,
->              qSuccessId,qPtrId,qFunPtrId,qStablePtrId,
->              qTrueId,qFalseId,qNilId,qConsId,
->              qTupleId,isQTupleId,qTupleArity,isQSelectorId) where
+>              anonId,unitId,nilId,consId,listId,tupleId,isTupleId,tupleArity,
+>              qUnitId,qNilId,qConsId,qListId,qTupleId,isQTupleId,qTupleArity,
+>              isPrimTypeId) where
 > import Char
 > import List
-> import Position
 
 > data Ident = Ident String Int deriving (Eq,Ord)
 > data QualIdent = UnqualIdent Ident | QualIdent ModuleIdent Ident
@@ -92,7 +84,7 @@ unqualified identifier.}
 > moduleQualifiers (ModuleIdent xs) = xs
 
 > isInfixOp :: Ident -> Bool
-> isInfixOp (Ident ('<':c:cs) _)=
+> isInfixOp (Ident ('<':c:cs) _) =
 >   last (c:cs) /= '>' || not (isAlphaNum c) && c `notElem` "_(["
 > isInfixOp (Ident (c:_) _) = not (isAlphaNum c) && c `notElem` "_(["
 > isInfixOp (Ident _ _) = False -- error "Zero-length identifier"
@@ -146,42 +138,20 @@ given module prefix, respectively).
 > splitQualIdent (QualIdent m x) = (Just m,x)
 
 \end{verbatim}
-A few identifiers a predefined here.
+The anonymous identifier and identifiers for the ubiquitous unit,
+list, and tuple (type) constructors are defined here, too. These
+identifiers must never be qualified with a module name. The function
+\texttt{isPrimTypeId} can be used to check for them.
 \begin{verbatim}
-
-> preludeMIdent, debugPreludeMIdent, ptrMIdent, stablePtrMIdent :: ModuleIdent
-> preludeMIdent      = ModuleIdent ["Prelude"]
-> debugPreludeMIdent = ModuleIdent ["DebugPrelude"]
-> ptrMIdent          = ModuleIdent ["Ptr"]
-> stablePtrMIdent    = ModuleIdent ["StablePtr"]
 
 > anonId :: Ident
 > anonId = Ident "_" 0
 
-> lambdaId :: Position -> Ident
-> lambdaId (Position _ l c) =
->   Ident ("_#lambda_line_" ++ show l ++ '.' : show c) 0
-
-> unitId, boolId, charId, intId, floatId, listId, ioId, successId :: Ident
-> unitId    = Ident "()" 0
-> boolId    = Ident "Bool" 0
-> charId    = Ident "Char" 0
-> intId     = Ident "Int" 0
-> floatId   = Ident "Float" 0
-> listId    = Ident "[]" 0
-> ioId      = Ident "IO" 0
-> successId = Ident "Success" 0
-
-> ptrId, funPtrId, stablePtrId :: Ident
-> ptrId       = Ident "Ptr" 0
-> funPtrId    = Ident "FunPtr" 0
-> stablePtrId = Ident "StablePtr" 0
-
-> trueId, falseId, nilId, consId :: Ident
-> trueId  = Ident "True" 0
-> falseId = Ident "False" 0
-> nilId   = Ident "[]" 0
-> consId  = Ident ":" 0
+> unitId, nilId, consId, listId :: Ident
+> unitId = Ident "()" 0
+> nilId  = Ident "[]" 0
+> consId = Ident ":" 0
+> listId = Ident "[]" 0
 
 > tupleId :: Int -> Ident
 > tupleId n
@@ -198,39 +168,11 @@ A few identifiers a predefined here.
 >   | otherwise = error "internal error: tupleArity"
 >   where n = length (name x) - 1
 
-> selectorId :: Int -> Ident
-> selectorId n = Ident ("_#sel" ++ show n) 0
-
-> isSelectorId :: Ident -> Bool
-> isSelectorId x = any ("_#sel" `isPrefixOf`) (tails (name x))
-
-> mainId, minusId, fminusId :: Ident
-> mainId = Ident "main" 0
-> minusId = Ident "-" 0
-> fminusId = Ident "-." 0
-
 > qUnitId, qNilId, qConsId, qListId :: QualIdent
 > qUnitId = UnqualIdent unitId
-> qListId = UnqualIdent listId
 > qNilId  = UnqualIdent nilId
 > qConsId = UnqualIdent consId
-
-> qBoolId, qCharId, qIntId, qFloatId, qSuccessId, qIOId :: QualIdent
-> qBoolId = QualIdent preludeMIdent boolId
-> qCharId = QualIdent preludeMIdent charId
-> qIntId = QualIdent preludeMIdent intId
-> qFloatId = QualIdent preludeMIdent floatId
-> qSuccessId = QualIdent preludeMIdent successId
-> qIOId = QualIdent preludeMIdent ioId
-
-> qPtrId, qFunPtrId, qStablePtrId :: QualIdent
-> qPtrId = QualIdent ptrMIdent ptrId
-> qFunPtrId = QualIdent ptrMIdent funPtrId
-> qStablePtrId = QualIdent stablePtrMIdent stablePtrId
-
-> qTrueId, qFalseId :: QualIdent
-> qTrueId = QualIdent preludeMIdent trueId
-> qFalseId = QualIdent preludeMIdent falseId
+> qListId = UnqualIdent listId
 
 > qTupleId :: Int -> QualIdent
 > qTupleId = UnqualIdent . tupleId
@@ -241,7 +183,7 @@ A few identifiers a predefined here.
 > qTupleArity :: QualIdent -> Int
 > qTupleArity = tupleArity . unqualify
 
-> isQSelectorId :: QualIdent -> Bool
-> isQSelectorId = isSelectorId . unqualify
+> isPrimTypeId :: QualIdent -> Bool
+> isPrimTypeId tc = tc `elem` [qUnitId,qListId] || isQTupleId tc
 
 \end{verbatim}

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2459 2007-09-06 21:26:30Z wlux $
+% $Id: Desugar.lhs 2461 2007-09-07 08:55:15Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -55,6 +55,7 @@ all names must be properly qualified before calling this module.}
 > import CurrySyntax
 > import List
 > import Monad
+> import PredefIdent
 > import TopEnv
 > import Types
 > import Typing

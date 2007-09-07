@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2459 2007-09-06 21:26:30Z wlux $
+% $Id: CurryParser.lhs 2461 2007-09-07 08:55:15Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,6 +17,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 > import CurrySyntax
 > import CurryLexer
 > import PathUtils
+> import PredefIdent
 
 > instance Symbol Token where
 >   isEOF (Token c _) = c == EOF
