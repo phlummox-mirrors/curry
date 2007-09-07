@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Types.lhs 2461 2007-09-07 08:55:15Z wlux $
+% $Id: Types.lhs 2462 2007-09-07 09:38:13Z wlux $
 %
 % Copyright (c) 2002-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,8 +12,6 @@ of types in the compiler.
 
 > module Types where
 > import Ident
-> import PredefIdent
-> import List
 
 \end{verbatim}
 A type is either a type variable, an application of a type constructor
@@ -158,30 +156,5 @@ scheme.
 
 > rawType :: TypeScheme -> Type
 > rawType (ForAll _ ty) = ty
-
-\end{verbatim}
-There are a few predefined types. Note that the identifiers of the
-primitive types \texttt{()}, \texttt{[a]}, and the tuple types must
-never be qualified with a module prefix.
-\begin{verbatim}
-
-> unitType,boolType,charType,intType,floatType,stringType,successType :: Type
-> unitType = TypeConstructor qUnitId []
-> boolType = TypeConstructor qBoolId []
-> charType = TypeConstructor qCharId []
-> intType = TypeConstructor qIntId []
-> floatType = TypeConstructor qFloatId []
-> stringType = listType charType
-> successType = TypeConstructor qSuccessId []
-
-> listType,ioType :: Type -> Type
-> listType ty = TypeConstructor qListId [ty]
-> ioType ty = TypeConstructor qIOId [ty]
-
-> tupleType :: [Type] -> Type
-> tupleType tys = TypeConstructor (qTupleId (length tys)) tys
-
-> typeVar :: Int -> Type
-> typeVar = TypeVariable
 
 \end{verbatim}

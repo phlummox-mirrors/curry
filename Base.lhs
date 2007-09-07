@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2459 2007-09-06 21:26:30Z wlux $
+% $Id: Base.lhs 2462 2007-09-07 09:38:13Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -18,6 +18,7 @@ in various phases of the compiler.
 > import Monad
 > import NestEnv
 > import Position
+> import PredefTypes
 > import Set
 > import TopEnv
 > import Types
@@ -338,7 +339,7 @@ the environment \texttt{initPEnv}.
 
 > predefTypes :: [(Type,[(Ident,Type)])]
 > predefTypes =
->   let a = typeVar 0 in [
+>   let a = TypeVariable 0 in [
 >     (unitType,   [(unitId,unitType)]),
 >     (listType a, [(nilId,nilType a), (consId,consType a)])
 >   ]
@@ -347,7 +348,7 @@ the environment \texttt{initPEnv}.
 
 > tuples :: [(TypeInfo,ValueInfo)]
 > tuples = map tupleInfo [2..]
->   where tvs = map typeVar [0..]
+>   where tvs = map TypeVariable [0..]
 >         tupleInfo n =
 >           (DataType c n [Just (unqualify c)],
 >            DataConstructor c n (ForAll n (tupleConstrType (take n tvs))))

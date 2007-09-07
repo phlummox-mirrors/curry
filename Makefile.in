@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 2461 2007-09-07 08:55:15Z wlux $
+# $Id: Makefile.in 2462 2007-09-07 09:38:13Z wlux $
 #
 # Copyright (c) 2000-2007 Wolfgang Lux
 # See LICENSE for the full license.
@@ -47,6 +47,7 @@ cycc_SRCS = \
 	Ident.lhs \
 	PredefIdent.lhs \
 	Types.lhs \
+	PredefTypes.lhs \
 	CurrySyntax.lhs \
 	CurryPP.lhs \
 	CurryLexer.lhs \
