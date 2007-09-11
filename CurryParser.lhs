@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2461 2007-09-07 08:55:15Z wlux $
+% $Id: CurryParser.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -14,7 +14,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 > import Error
 > import LexComb
 > import LLParseComb
-> import CurrySyntax
+> import Curry
 > import CurryLexer
 > import PathUtils
 > import PredefIdent

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2459 2007-09-06 21:26:30Z wlux $
+% $Id: SyntaxCheck.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,8 +19,8 @@ single definition.
 > module SyntaxCheck(syntaxCheck,syntaxCheckGoal) where
 > import Base
 > import Char
+> import Curry
 > import CurryPP
-> import CurrySyntax
 > import Error
 > import List
 > import Maybe

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2461 2007-09-07 08:55:15Z wlux $
+% $Id: Modules.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -48,7 +48,7 @@ This module controls the compilation of modules.
 > import CurryPP(ppModule,ppInterface,ppIDecl,ppGoal)
 > import qualified ILPP(ppModule)
 > import Options(Options(..),CaseMode(..),Warn(..),Dump(..))
-> import CurrySyntax
+> import Curry
 > import Env
 > import TopEnv
 > import Combined

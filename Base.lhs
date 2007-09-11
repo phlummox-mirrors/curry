@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2462 2007-09-07 09:38:13Z wlux $
+% $Id: Base.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -11,7 +11,7 @@ in various phases of the compiler.
 \begin{verbatim}
 
 > module Base where
-> import CurrySyntax
+> import Curry
 > import Env
 > import List
 > import Maybe

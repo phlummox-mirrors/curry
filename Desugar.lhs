@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2462 2007-09-07 09:38:13Z wlux $
+% $Id: Desugar.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -43,7 +43,7 @@ properties.
 \end{itemize}
 
 \ToDo{Use a different representation for the restricted code instead
-of using the syntax tree from \texttt{CurrySyntax}.}
+of using the syntax tree from \texttt{Curry}.}
 
 \textbf{As we are going to insert references to real prelude entities,
 all names must be properly qualified before calling this module.}
@@ -52,7 +52,7 @@ all names must be properly qualified before calling this module.}
 > module Desugar(desugar,goalModule) where
 > import Base
 > import Combined
-> import CurrySyntax
+> import Curry
 > import List
 > import Monad
 > import PredefIdent

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 2461 2007-09-07 08:55:15Z wlux $
+% $Id: ILTrans.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,7 +19,7 @@ module.
 
 > module ILTrans(ilTrans,ilTransIntf) where
 > import Base
-> import CurrySyntax
+> import Curry
 > import Env
 > import qualified IL
 > import List

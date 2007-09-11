@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 2459 2007-09-06 21:26:30Z wlux $
+% $Id: Lift.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -20,7 +20,7 @@ lifted to the top-level.
 > module Lift(lift) where
 > import Base
 > import Combined
-> import CurrySyntax
+> import Curry
 > import Env
 > import List
 > import Monad

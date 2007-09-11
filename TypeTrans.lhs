@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 2462 2007-09-07 09:38:13Z wlux $
+% $Id: TypeTrans.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -14,8 +14,8 @@ external type representations.
 >                  expandMonoType, expandMonoTypes, expandPolyType,
 >                  ppType, ppTypeScheme) where
 > import Base
+> import Curry
 > import CurryPP
-> import CurrySyntax
 > import List
 > import Map
 > import PredefTypes

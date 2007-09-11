@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2459 2007-09-06 21:26:30Z wlux $
+% $Id: Exports.lhs 2463 2007-09-11 22:11:43Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -16,7 +16,7 @@ types.
 
 > module Exports(exportInterface) where
 > import Base
-> import CurrySyntax
+> import Curry
 > import Set
 > import TopEnv
 > import Types
