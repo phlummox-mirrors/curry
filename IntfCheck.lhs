@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: IntfCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -48,6 +48,7 @@ interface module only. However, this has not been implemented yet.
 > module IntfCheck(intfCheck) where
 > import Base
 > import Curry
+> import CurryUtils
 > import Error
 > import Maybe
 > import Monad

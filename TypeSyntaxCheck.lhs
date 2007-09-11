@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: TypeSyntaxCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -18,6 +18,7 @@ of a capitalization convention.
 > import Base
 > import Curry
 > import CurryPP
+> import CurryUtils
 > import Error
 > import List
 > import Position

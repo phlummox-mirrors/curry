@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: OverlapCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
 %
 % Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -14,6 +14,7 @@ corresponding functions.
 > module OverlapCheck(overlapCheck, overlapCheckGoal) where
 > import Base
 > import Curry
+> import CurryUtils
 > import List
 > import Options
 > import Position
@@ -121,7 +122,7 @@ when necessary.
 > matchInductive =
 >   map (groupRules . promote) . filter isInductive . transpose .
 >     map (matches id)
->   where isInductive = all (not . isVariablePattern . fst)
+>   where isInductive = all (not . isVarPattern . fst)
 
 > groupRules :: [(ConstrTerm (),a)] -> [[a]]
 > groupRules [] = []
@@ -147,11 +148,6 @@ when necessary.
 >         match (ConstructorPattern a c ts) = (ConstructorPattern a c [],ts)
 >         match (LiteralPattern a l) = (LiteralPattern a l,[])
 >         match (VariablePattern a v) = (VariablePattern a v,[])
-
-> isVariablePattern :: ConstrTerm a -> Bool
-> isVariablePattern (LiteralPattern _ _) = False
-> isVariablePattern (ConstructorPattern _ _ _) = False
-> isVariablePattern (VariablePattern _ _) = True
 
 \end{verbatim}
 Unfortunately, the code has not been desugared yet.

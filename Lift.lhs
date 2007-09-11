@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: Lift.lhs 2464 2007-09-11 23:13:05Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -21,6 +21,7 @@ lifted to the top-level.
 > import Base
 > import Combined
 > import Curry
+> import CurryUtils
 > import Env
 > import List
 > import Monad
@@ -311,19 +312,8 @@ to the top-level.
 \paragraph{Auxiliary definitions}
 \begin{verbatim}
 
-> isFunDecl :: Decl a -> Bool
-> isFunDecl (FunctionDecl _ _ _) = True
-> isFunDecl (ForeignDecl _ _ _ _ _ _) = True
-> isFunDecl _ = False
-
 > mkFun :: ModuleIdent -> String -> a -> Ident -> Expression a
 > mkFun m pre ty f = Variable ty (qualifyWith m (liftIdent pre f))
-
-> mkVar :: a -> Ident -> Expression a
-> mkVar ty v = Variable ty (qualify v)
-
-> apply :: Expression a -> [Expression a] -> Expression a
-> apply = foldl Apply
 
 > globalBindFun :: ModuleIdent -> Ident -> Int -> TypeScheme
 >               -> ValueEnv -> ValueEnv

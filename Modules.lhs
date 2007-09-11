@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: Modules.lhs 2464 2007-09-11 23:13:05Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -49,6 +49,7 @@ This module controls the compilation of modules.
 > import qualified ILPP(ppModule)
 > import Options(Options(..),CaseMode(..),Warn(..),Dump(..))
 > import Curry
+> import CurryUtils
 > import Env
 > import TopEnv
 > import Combined
