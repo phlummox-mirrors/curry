@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: Base.lhs 2465 2007-09-13 19:13:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -125,11 +125,6 @@ renaming types on one side and synonym types on the other side.
 >   | Alias QualIdent
 >   deriving (Eq,Show)
 
-> typeKind :: TypeInfo -> TypeKind
-> typeKind (DataType tc _ cs) = Data tc (catMaybes cs)
-> typeKind (RenamingType tc _ c) = Data tc [c]
-> typeKind (AliasType tc _ _) = Alias tc
-
 > instance Entity TypeKind where
 >   origName (Data tc _) = tc
 >   origName (Alias tc) = tc
@@ -246,11 +241,6 @@ used in order to check the export list of a module.
 
 > data ValueKind = Constr QualIdent | Var QualIdent deriving (Eq,Show)
 
-> valueKind :: ValueInfo -> ValueKind
-> valueKind (DataConstructor c _ _) = Constr c
-> valueKind (NewtypeConstructor c _) = Constr c
-> valueKind (Value v _ _) = Var v
-
 > instance Entity ValueKind where
 >   origName (Constr c) = c
 >   origName (Var x) = x
@@ -316,10 +306,25 @@ data [] a = [] | a : [a]
 \end{verbatim}
 are not valid in Curry. The same is true for the -- potentially --
 infinite number of tuple types. The corresponding types are available
-in the environments \texttt{initTCEnv} and \texttt{initDCEnv}. In
-addition, the precedence of the infix list constructor is available in
-the environment \texttt{initPEnv}.
+in the environments, \texttt{initTEnv}, \texttt{initVEnv},
+\texttt{initTCEnv}, and \texttt{initDCEnv}. In addition, the
+precedence of the infix list constructor is available in the
+environment \texttt{initPEnv}.
 \begin{verbatim}
+
+> initTEnv :: TypeEnv
+> initTEnv = foldr (uncurry predefType) emptyTEnv predefTypes
+>   where emptyTEnv = emptyTopEnv (Just (map tupleType tupleTypes))
+>         predefType (TypeConstructor tc _) cs =
+>           predefTopEnv tc (Data tc (map fst cs))
+>         tupleType (TypeConstructor tc _) = Data tc [unqualify tc]
+
+> initVEnv :: FunEnv
+> initVEnv =
+>   foldr (predefCon . qualify . fst) emptyVEnv (concatMap snd predefTypes)
+>   where emptyVEnv = emptyTopEnv (Just (map tupleCon tupleTypes))
+>         predefCon c = predefTopEnv c (Constr c)
+>         tupleCon (TypeConstructor tc _) = Constr tc
 
 > initPEnv :: PEnv
 > initPEnv = predefTopEnv qConsId (PrecInfo qConsId (OpPrec InfixR 5)) emptyPEnv
@@ -327,16 +332,21 @@ the environment \texttt{initPEnv}.
 
 > initTCEnv :: TCEnv
 > initTCEnv = foldr (uncurry predefTC) emptyTCEnv predefTypes
->   where emptyTCEnv = emptyTopEnv (Just (map fst tuples))
+>   where emptyTCEnv = emptyTopEnv (Just (map tupleTC tupleTypes))
 >         predefTC (TypeConstructor tc tys) cs =
 >           predefTopEnv tc (DataType tc (length tys) (map (Just . fst) cs))
+>         tupleTC (TypeConstructor tc tys) =
+>           DataType tc (length tys) [Just (unqualify tc)]
 
 > initDCEnv :: ValueEnv
 > initDCEnv = foldr (uncurry predefDC) emptyDCEnv (concatMap snd predefTypes)
->   where emptyDCEnv = emptyTopEnv (Just (map snd tuples))
+>   where emptyDCEnv = emptyTopEnv (Just (map tupleDC tupleTypes))
 >         predefDC c ty =
 >           predefTopEnv c' (DataConstructor c' (arrowArity ty) (polyType ty))
 >           where c' = qualify c
+>         tupleDC ty@(TypeConstructor tc tys) =
+>           DataConstructor tc n (ForAll n (foldr TypeArrow ty tys))
+>           where n = length tys
 
 > predefTypes :: [(Type,[(Ident,Type)])]
 > predefTypes =
@@ -347,14 +357,9 @@ the environment \texttt{initPEnv}.
 >   where nilType a = listType a
 >         consType a = TypeArrow a (TypeArrow (listType a) (listType a))
 
-> tuples :: [(TypeInfo,ValueInfo)]
-> tuples = map tupleInfo [2..]
+> tupleTypes :: [Type]
+> tupleTypes = [tupleType (take n tvs) | n <- [2..]]
 >   where tvs = map TypeVariable [0..]
->         tupleInfo n =
->           (DataType c n [Just (unqualify c)],
->            DataConstructor c n (ForAll n (tupleConstrType (take n tvs))))
->           where c = qTupleId n
->         tupleConstrType tys = foldr TypeArrow (tupleType tys) tys
 
 \end{verbatim}
 \paragraph{Free and bound variables}

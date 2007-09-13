@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: Modules.lhs 2465 2007-09-13 19:13:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -28,7 +28,8 @@ This module controls the compilation of modules.
 > import IntfSyntaxCheck(intfSyntaxCheck)
 > import IntfCheck(intfCheck)
 > import IntfEquiv(fixInterface,intfEquiv)
-> import Imports(importInterface,importInterfaceIntf,importUnifyData)
+> import Imports(importIdents,importInterface,importInterfaceIntf,
+>                importUnifyData)
 > import Exports(exportInterface)
 > import Trust(trustEnv)
 > import Qual(Qual(..))
@@ -73,8 +74,8 @@ module for compiling a Curry source module. It applies syntax and type
 checking to the module and translates the code into one or more C code
 files. The module's interface is updated when necessary.
 
-The compiler automatically loads the prelude when compiling a module
--- except for the prelude itself -- by adding an appropriate import
+The compiler automatically loads the Prelude when compiling a module
+-- except for the Prelude itself -- by adding an appropriate import
 declaration to the module.
 \begin{verbatim}
 
@@ -118,16 +119,18 @@ declaration to the module.
 >             -> Error (PEnv,TCEnv,ValueEnv,Module Type)
 > checkModule mEnv (Module m es is ds) =
 >   do
->     (pEnv,tcEnv,tyEnv) <- importModules mEnv' is
->     (tEnv,ds') <- typeSyntaxCheck m tcEnv ds
->     (vEnv,ds'') <- syntaxCheck m tyEnv ds'
->     es' <- checkExports m is tEnv vEnv es
+>     is' <- importSyntaxCheck mEnv' is
+>     let (tEnv,vEnv) = importModuleIdents mEnv' is'
+>     (tEnv',ds') <- typeSyntaxCheck m tEnv ds
+>     (vEnv',ds'') <- syntaxCheck m vEnv ds'
+>     es' <- checkExports m is' tEnv' vEnv' es
+>     let (pEnv,tcEnv,tyEnv) = importModules mEnv' is'
 >     (pEnv',ds''') <- precCheck m pEnv $ rename ds''
 >     tcEnv' <- kindCheck m tcEnv ds'''
 >     (tyEnv',ds'''') <- typeCheck m tcEnv' tyEnv ds'''
 >     let (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv' m pEnv' tcEnv' tyEnv'
 >     return (pEnv'',tcEnv'',tyEnv'',
->             Module m (Just es') is (qual tyEnv' ds''''))
+>             Module m (Just es') is' (qual tyEnv' ds''''))
 >   where mEnv' = sanitizeInterfaces m mEnv
 
 > warnModule :: CaseMode -> [Warn] -> Module a -> [String]
@@ -236,10 +239,10 @@ declaration to the module.
 
 \end{verbatim}
 A goal is compiled with respect to the interface of a given module. If
-no module is specified, the Curry \texttt{Prelude} is used. All
-entities exported from the main module and the \texttt{Prelude} are in
-scope with their unqualified names. In addition, the entities exported
-from all loaded interfaces are in scope with their qualified names.
+no module is specified, the Curry Prelude is used. All entities
+exported from the main module and the Prelude are in scope with their
+unqualified names. In addition, the entities exported from all loaded
+interfaces are in scope with their qualified names.
 \begin{verbatim}
 
 > data Task = Eval | Type
@@ -315,13 +318,14 @@ from all loaded interfaces are in scope with their qualified names.
 >           -> Error (TCEnv,ValueEnv,Goal Type)
 > checkGoal task mEnv m ms g =
 >   do
+>     let (tEnv,vEnv) = importInterfaceIdents mEnv ms
+>     g' <- typeSyntaxCheckGoal tEnv g >>=
+>           syntaxCheckGoal vEnv
 >     let (pEnv,tcEnv,tyEnv) = importInterfaces mEnv ms
->     g' <- typeSyntaxCheckGoal tcEnv g >>=
->           syntaxCheckGoal tyEnv >>=
->           precCheckGoal m pEnv . renameGoal
->     (tyEnv',g'') <- kindCheckGoal tcEnv g' >>
->                     typeCheckGoal m tcEnv tyEnv g'
->     return (qualifyGoal task mEnv m pEnv tcEnv tyEnv' g'')
+>     g'' <- precCheckGoal m pEnv (renameGoal g')
+>     (tyEnv',g''') <- kindCheckGoal tcEnv g'' >>
+>                      typeCheckGoal m tcEnv tyEnv g''
+>     return (qualifyGoal task mEnv m pEnv tcEnv tyEnv' g''')
 
 > qualifyGoal :: Task -> ModuleEnv -> ModuleIdent -> PEnv -> TCEnv -> ValueEnv
 >             -> Goal a -> (TCEnv,ValueEnv,Goal a)
@@ -341,19 +345,26 @@ from all loaded interfaces are in scope with their qualified names.
 >         ccode' = genMain (fun qGoalId) (fmap (map name) vs)
 
 \end{verbatim}
-The function \texttt{importModules} brings the declarations of all
-imported modules into scope in the current module.
+The functions \texttt{importModuleIdents} and \texttt{importModules}
+bring the declarations of all imported modules into scope in the
+current module.
 \begin{verbatim}
 
-> importModules :: ModuleEnv -> [ImportDecl] -> Error (PEnv,TCEnv,ValueEnv)
-> importModules mEnv ds =
->   do
->     ds' <- mapE checkImportDecl ds
->     let (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs ds'
->     return (pEnv,importUnifyData tcEnv,tyEnv)
+> importSyntaxCheck :: ModuleEnv -> [ImportDecl] -> Error [ImportDecl]
+> importSyntaxCheck mEnv ds = mapE checkImportDecl ds
 >   where checkImportDecl (ImportDecl p m q asM is) =
 >           liftE (ImportDecl p m q asM)
 >                 (checkImports (moduleInterface m mEnv) is)
+
+> importModuleIdents :: ModuleEnv -> [ImportDecl] -> (TypeEnv,FunEnv)
+> importModuleIdents mEnv ds = (importUnifyData tEnv,vEnv)
+>   where (tEnv,vEnv) = foldl importModule initIdentEnvs ds
+>         importModule envs (ImportDecl _ m q asM is) =
+>           importIdents (fromMaybe m asM) q is envs (moduleInterface m mEnv)
+
+> importModules :: ModuleEnv -> [ImportDecl] -> (PEnv,TCEnv,ValueEnv)
+> importModules mEnv ds = (pEnv,importUnifyData tcEnv,tyEnv)
+>   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs ds
 >         importModule envs (ImportDecl _ m q asM is) =
 >           importInterface (fromMaybe m asM) q is envs (moduleInterface m mEnv)
 
@@ -361,15 +372,25 @@ imported modules into scope in the current module.
 > moduleInterface m mEnv =
 >   fromMaybe (internalError "moduleInterface") (lookupEnv m mEnv)
 
+> initIdentEnvs :: (TypeEnv,FunEnv)
+> initIdentEnvs = (initTEnv,initVEnv)
+
 > initEnvs :: (PEnv,TCEnv,ValueEnv)
 > initEnvs = (initPEnv,initTCEnv,initDCEnv)
 
 \end{verbatim}
-The function \texttt{importInterfaces} brings the declarations of all
-loaded modules into scope with their qualified names and in addition
-brings the declarations of the specified modules into scope with their
-unqualified names too.
+The functions \texttt{importInterfaceIdents} and
+\texttt{importInterfaces} bring the declarations of all loaded modules
+into scope with their qualified names and in addition bring the
+declarations of the specified modules into scope with their
+unqualified names, too.
 \begin{verbatim}
+
+> importInterfaceIdents :: ModuleEnv -> [ModuleIdent] -> (TypeEnv,FunEnv)
+> importInterfaceIdents mEnv ms = (importUnifyData tEnv,vEnv)
+>   where (tEnv,vEnv) =
+>           foldl (uncurry . importModule) initIdentEnvs (envToList mEnv)
+>         importModule envs m = importIdents m (m `notElem` ms) Nothing envs
 
 > importInterfaces :: ModuleEnv -> [ModuleIdent] -> (PEnv,TCEnv,ValueEnv)
 > importInterfaces mEnv ms = (pEnv,importUnifyData tcEnv,tyEnv)
@@ -399,9 +420,9 @@ with the actual definitions in the current module.
 >         entity (IFunctionDecl _ f _ _) = f
 
 \end{verbatim}
-The prelude is imported implicitly into every module that does not
-import the prelude explicitly with an import declaration. Obviously,
-no import declaration is added to the prelude itself. Furthermore, the
+The Prelude is imported implicitly into every module that does not
+import the Prelude explicitly with an import declaration. Obviously,
+no import declaration is added to the Prelude itself. Furthermore, the
 module \texttt{DebugPrelude} is imported into every module when it is
 compiled for debugging. However, none of its entities are brought into
 scope because the debugging transformation is applied to the

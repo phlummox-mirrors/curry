@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: TypeSyntaxCheck.lhs 2465 2007-09-13 19:13:20Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -27,29 +27,29 @@ of a capitalization convention.
 
 \end{verbatim}
 In order to check type constructor applications, the compiler
-maintains an environment which records all known type constructors.
-The function \texttt{typeSyntaxCheck} first initializes this
-environment from the imported type constructor environment. Next, all
-locally defined type constructors are inserted into the environment,
-and, finally, the declarations are checked within this environment.
-The final environment is returned in order to be used later for
-checking the optional export list of the current module.
+maintains an environment that records all known type constructors. The
+functions \texttt{typeSyntaxCheck} and \texttt{typeSyntaxCheckGoal}
+expect a type constructor environment that is already initialized with
+the imported type constructors. All locally defined type constructors
+are added to this environment and then the declarations are checked
+within this environment. The environment is returned in order to be
+used later for checking the optional export list of the current
+module.
 \begin{verbatim}
 
-> typeSyntaxCheck :: ModuleIdent -> TCEnv -> [TopDecl a]
+> typeSyntaxCheck :: ModuleIdent -> TypeEnv -> [TopDecl a]
 >                 -> Error (TypeEnv,[TopDecl a])
-> typeSyntaxCheck m tcEnv ds =
+> typeSyntaxCheck m env ds =
 >   do
 >     reportDuplicates duplicateType repeatedType (map tconstr tds)
->     ds' <- mapE (checkTopDecl env) ds
->     return (env,ds')
+>     ds' <- mapE (checkTopDecl env') ds
+>     return (env',ds')
 >   where tds = filter isTypeDecl ds
->         env = foldr (bindType m) (fmap typeKind tcEnv) tds
+>         env' = foldr (bindType m) env tds
 
-> typeSyntaxCheckGoal :: TCEnv -> Goal a -> Error (Goal a)
-> typeSyntaxCheckGoal tcEnv (Goal p e ds) =
+> typeSyntaxCheckGoal :: TypeEnv -> Goal a -> Error (Goal a)
+> typeSyntaxCheckGoal env (Goal p e ds) =
 >   liftE2 (Goal p) (checkExpr env p e) (mapE (checkDecl env) ds)
->   where env = fmap typeKind tcEnv
 
 > bindType :: ModuleIdent -> TopDecl a -> TypeEnv -> TypeEnv
 > bindType m (DataDecl _ tc _ cs) =

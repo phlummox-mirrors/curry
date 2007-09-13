@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2465 2007-09-13 19:13:20Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -28,7 +28,7 @@ the global environments.
 
 > intfSyntaxCheck :: [IDecl] -> Error [IDecl]
 > intfSyntaxCheck ds = mapE (checkIDecl env) ds
->   where env = foldr bindType (fmap typeKind initTCEnv) ds
+>   where env = foldr bindType initTEnv ds
 
 \end{verbatim}
 The compiler requires information about the arity of each defined type
