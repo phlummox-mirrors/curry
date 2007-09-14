@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2465 2007-09-13 19:13:20Z wlux $
+% $Id: Modules.lhs 2466 2007-09-14 08:42:03Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -107,36 +107,44 @@ declaration to the module.
 >     let is' = importPrelude debug fn m is
 >     mEnv <- loadInterfaces paths [] emptyEnv m (modules is')
 >     okM $ checkInterfaces mEnv
->     (pEnv,tcEnv,tyEnv,m') <- okM $ checkModule mEnv (Module m es is' ds)
->     liftErr $ mapM_ putErrLn $ warnModule caseMode warn m'
->     return (mEnv,pEnv,tcEnv,tyEnv,m')
+>     let mEnv' = sanitizeInterfaces m mEnv
+>     m' <- okM $ checkModuleSyntax mEnv' (Module m es is' ds)
+>     liftErr $ mapM_ putErrLn $ warnModuleSyntax caseMode warn m'
+>     (pEnv,tcEnv,tyEnv,m'') <- okM $ checkModule mEnv' m'
+>     liftErr $ mapM_ putErrLn $ warnModule warn m''
+>     return (mEnv,pEnv,tcEnv,tyEnv,m'')
 >   where modules is = [P p m | ImportDecl p m _ _ _ <- is]
 
 > parseModule :: FilePath -> String -> Error (Module ())
 > parseModule fn s = unlitLiterate fn s >>= parseSource fn
 
+> checkModuleSyntax :: ModuleEnv -> Module a -> Error (Module a)
+> checkModuleSyntax mEnv (Module m es is ds) =
+>   do
+>     is' <- importSyntaxCheck mEnv is
+>     let (tEnv,vEnv) = importModuleIdents mEnv is'
+>     (tEnv',ds') <- typeSyntaxCheck m tEnv ds
+>     (vEnv',ds'') <- syntaxCheck m vEnv ds'
+>     es' <- checkExports m is' tEnv' vEnv' es
+>     return (Module m (Just es') is' ds'')
+
 > checkModule :: ModuleEnv -> Module a
 >             -> Error (PEnv,TCEnv,ValueEnv,Module Type)
 > checkModule mEnv (Module m es is ds) =
 >   do
->     is' <- importSyntaxCheck mEnv' is
->     let (tEnv,vEnv) = importModuleIdents mEnv' is'
->     (tEnv',ds') <- typeSyntaxCheck m tEnv ds
->     (vEnv',ds'') <- syntaxCheck m vEnv ds'
->     es' <- checkExports m is' tEnv' vEnv' es
->     let (pEnv,tcEnv,tyEnv) = importModules mEnv' is'
->     (pEnv',ds''') <- precCheck m pEnv $ rename ds''
->     tcEnv' <- kindCheck m tcEnv ds'''
->     (tyEnv',ds'''') <- typeCheck m tcEnv' tyEnv ds'''
->     let (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv' m pEnv' tcEnv' tyEnv'
->     return (pEnv'',tcEnv'',tyEnv'',
->             Module m (Just es') is' (qual tyEnv' ds''''))
->   where mEnv' = sanitizeInterfaces m mEnv
+>     let (pEnv,tcEnv,tyEnv) = importModules mEnv is
+>     (pEnv',ds') <- precCheck m pEnv $ rename ds
+>     tcEnv' <- kindCheck m tcEnv ds'
+>     (tyEnv',ds'') <- typeCheck m tcEnv' tyEnv ds'
+>     let (pEnv'',tcEnv'',tyEnv'') = qualifyEnv mEnv m pEnv' tcEnv' tyEnv'
+>     return (pEnv'',tcEnv'',tyEnv'',Module m es is (qual tyEnv' ds''))
 
-> warnModule :: CaseMode -> [Warn] -> Module a -> [String]
-> warnModule caseMode warn m =
->   caseCheck caseMode m ++ unusedCheck warn m ++
->   shadowCheck warn m ++ overlapCheck warn m
+> warnModuleSyntax :: CaseMode -> [Warn] -> Module a -> [String]
+> warnModuleSyntax caseMode warn m =
+>   caseCheck caseMode m ++ unusedCheck warn m ++ shadowCheck warn m
+
+> warnModule :: [Warn] -> Module a -> [String]
+> warnModule warn m = overlapCheck warn m
 
 > transModule :: Bool -> Trust -> TCEnv -> ValueEnv -> Module Type
 >             -> (ValueEnv,TrustEnv,Module Type,[(Dump,Doc)])
@@ -282,11 +290,14 @@ interfaces are in scope with their qualified names.
 > loadGoal task paths debug caseMode warn m g fns =
 >   do
 >     (mEnv,m') <- loadGoalModules paths debug fns
->     (tcEnv,tyEnv,g') <-
+>     let ms = nub [m',preludeMIdent]
+>     g' <-
 >       okM $ maybe (return (mainGoal m')) parseGoal g >>=
->             checkGoal task mEnv m (nub [m',preludeMIdent])
->     liftErr $ mapM_ putErrLn $ warnGoal caseMode warn m g'
->     return (mEnv,tcEnv,tyEnv,g')
+>             checkGoalSyntax mEnv ms
+>     liftErr $ mapM_ putErrLn $ warnGoalSyntax caseMode warn m g'
+>     (tcEnv,tyEnv,g'') <- okM $ checkGoal task mEnv m ms g'
+>     liftErr $ mapM_ putErrLn $ warnGoal warn m g''
+>     return (mEnv,tcEnv,tyEnv,g'')
 >   where mainGoal m = Goal (first "") (Variable () (qualifyWith m mainId)) []
 
 > loadGoalModules :: [FilePath] -> Bool -> [FilePath]
@@ -314,18 +325,19 @@ interfaces are in scope with their qualified names.
 >           case break ('.' ==) cs of
 >             (cs',cs'') -> cs' : components cs''
 
+> checkGoalSyntax :: ModuleEnv -> [ModuleIdent] -> Goal a -> Error (Goal a)
+> checkGoalSyntax mEnv ms g =
+>   typeSyntaxCheckGoal tEnv g >>= syntaxCheckGoal vEnv
+>   where (tEnv,vEnv) = importInterfaceIdents mEnv ms
+
 > checkGoal :: Task -> ModuleEnv -> ModuleIdent -> [ModuleIdent] -> Goal a
 >           -> Error (TCEnv,ValueEnv,Goal Type)
 > checkGoal task mEnv m ms g =
 >   do
->     let (tEnv,vEnv) = importInterfaceIdents mEnv ms
->     g' <- typeSyntaxCheckGoal tEnv g >>=
->           syntaxCheckGoal vEnv
->     let (pEnv,tcEnv,tyEnv) = importInterfaces mEnv ms
->     g'' <- precCheckGoal m pEnv (renameGoal g')
->     (tyEnv',g''') <- kindCheckGoal tcEnv g'' >>
->                      typeCheckGoal m tcEnv tyEnv g''
->     return (qualifyGoal task mEnv m pEnv tcEnv tyEnv' g''')
+>     g' <- precCheckGoal m pEnv (renameGoal g)
+>     (tyEnv',g'') <- kindCheckGoal tcEnv g' >> typeCheckGoal m tcEnv tyEnv g'
+>     return (qualifyGoal task mEnv m pEnv tcEnv tyEnv' g'')
+>   where (pEnv,tcEnv,tyEnv) = importInterfaces mEnv ms
 
 > qualifyGoal :: Task -> ModuleEnv -> ModuleIdent -> PEnv -> TCEnv -> ValueEnv
 >             -> Goal a -> (TCEnv,ValueEnv,Goal a)
@@ -333,10 +345,13 @@ interfaces are in scope with their qualified names.
 >   where (_,tcEnv',tyEnv') = qualifyEnv mEnv m pEnv tcEnv tyEnv
 > qualifyGoal Type _ _ _ tcEnv tyEnv g = (tcEnv,tyEnv,g)
 
-> warnGoal :: CaseMode -> [Warn] -> ModuleIdent -> Goal a -> [String]
-> warnGoal caseMode warn m g =
+> warnGoalSyntax :: CaseMode -> [Warn] -> ModuleIdent -> Goal a -> [String]
+> warnGoalSyntax caseMode warn m g =
 >   caseCheckGoal caseMode g ++ unusedCheckGoal warn m g ++
->   shadowCheckGoal warn g ++ overlapCheckGoal warn g
+>   shadowCheckGoal warn g
+
+> warnGoal :: [Warn] -> ModuleIdent -> Goal a -> [String]
+> warnGoal warn m g = overlapCheckGoal warn g
 
 > genCodeGoal :: ModuleEnv -> QualIdent -> Maybe [Ident] -> IL.Module
 >             -> (CFile,[(Dump,Doc)])

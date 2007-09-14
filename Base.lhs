@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2465 2007-09-13 19:13:20Z wlux $
+% $Id: Base.lhs 2466 2007-09-14 08:42:03Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -396,6 +396,14 @@ variable, but always refers to a global function from the prelude.
 > instance QuantExpr e => QuantExpr [e] where
 >   bv = concat . map bv
 
+> instance QualExpr (TopDecl a) where
+>   qfv m (BlockDecl d) = qfv m d
+>   qfv _ _ = []
+
+> instance QuantExpr (TopDecl a) where
+>   bv (BlockDecl d) = bv d
+>   bv _ = []
+
 > instance QualExpr (Decl a) where
 >   qfv m (FunctionDecl _ _ eqs) = qfv m eqs
 >   qfv m (PatternDecl _ _ rhs) = qfv m rhs
@@ -468,8 +476,8 @@ variable, but always refers to a global function from the prelude.
 >   bv (LiteralPattern _ _) = []
 >   bv (NegativePattern _ _ _) = []
 >   bv (VariablePattern _ v) = [v | v /= anonId]
->   bv (ConstructorPattern _ c ts) = bv ts
->   bv (InfixPattern _ t1 op t2) = bv t1 ++ bv t2
+>   bv (ConstructorPattern _ _ ts) = bv ts
+>   bv (InfixPattern _ t1 _ t2) = bv t1 ++ bv t2
 >   bv (ParenPattern t) = bv t
 >   bv (TuplePattern ts) = bv ts
 >   bv (ListPattern _ ts) = bv ts
