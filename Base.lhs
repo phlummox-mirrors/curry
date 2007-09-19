@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: Base.lhs 2473 2007-09-19 16:26:56Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -15,38 +15,7 @@ in various phases of the compiler.
 > import CurryUtils
 > import List
 > import Position
-> import PredefTypes
 > import Set
-> import Types
-
-\end{verbatim}
-\paragraph{Predefined types}
-The unit and list data types must be predefined because the
-declarations
-\begin{verbatim}
-data () = ()
-data [] a = [] | a : [a]
-\end{verbatim}
-are not valid in Curry. The same is true for the -- potentially --
-infinite number of tuple types. The corresponding types are available
-in the environments, \texttt{initTEnv}, \texttt{initVEnv},
-\texttt{initTCEnv}, and \texttt{initDCEnv}. In addition, the
-precedence of the infix list constructor is available in the
-environment \texttt{initPEnv}.
-\begin{verbatim}
-
-> predefTypes :: [(Type,[(Ident,Type)])]
-> predefTypes =
->   let a = TypeVariable 0 in [
->     (unitType,   [(unitId,unitType)]),
->     (listType a, [(nilId,nilType a), (consId,consType a)])
->   ]
->   where nilType a = listType a
->         consType a = TypeArrow a (TypeArrow (listType a) (listType a))
-
-> tupleTypes :: [Type]
-> tupleTypes = [tupleType (take n tvs) | n <- [2..]]
->   where tvs = map TypeVariable [0..]
 
 \end{verbatim}
 \paragraph{Free and bound variables}

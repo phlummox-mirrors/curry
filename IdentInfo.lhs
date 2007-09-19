@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IdentInfo.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: IdentInfo.lhs 2473 2007-09-19 16:26:56Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -11,9 +11,9 @@ map type and value identifiers on their kinds.
 \begin{verbatim}
 
 > module IdentInfo where
-> import Base
 > import Ident
 > import NestEnv
+> import PredefTypes
 > import TopEnv
 > import Types
 

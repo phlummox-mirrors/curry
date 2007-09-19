@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PredefTypes.lhs 2462 2007-09-07 09:38:13Z wlux $
+% $Id: PredefTypes.lhs 2473 2007-09-19 16:26:56Z wlux $
 %
 % Copyright (c) 2002-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -31,5 +31,23 @@ compiler.
 
 > tupleType :: [Type] -> Type
 > tupleType tys = TypeConstructor (qTupleId (length tys)) tys
+
+\end{verbatim}
+The unit, list, and tuple types are predefined and available in every
+module.
+\begin{verbatim}
+
+> predefTypes :: [(Type,[(Ident,Type)])]
+> predefTypes =
+>   let a = TypeVariable 0 in [
+>     (unitType,   [(unitId,unitType)]),
+>     (listType a, [(nilId,nilType a), (consId,consType a)])
+>   ]
+>   where nilType a = listType a
+>         consType a = TypeArrow a (TypeArrow (listType a) (listType a))
+
+> tupleTypes :: [Type]
+> tupleTypes = [tupleType (take n tvs) | n <- [2..]]
+>   where tvs = map TypeVariable [0..]
 
 \end{verbatim}

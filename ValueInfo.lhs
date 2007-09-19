@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ValueInfo.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: ValueInfo.lhs 2473 2007-09-19 16:26:56Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -26,6 +26,7 @@ information.
 > module ValueInfo where
 > import Base
 > import Ident
+> import PredefTypes
 > import TopEnv
 > import Types
 

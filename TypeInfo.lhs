@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeInfo.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: TypeInfo.lhs 2473 2007-09-19 16:26:56Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -28,6 +28,7 @@ replaced by underscores in the interface.
 > import Base
 > import Ident
 > import Monad
+> import PredefTypes
 > import TopEnv
 > import Types
 
