@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: KindCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -24,6 +24,7 @@ saturated.
 > import Pretty
 > import SCC
 > import TopEnv
+> import TypeInfo
 > import TypeTrans
 
 \end{verbatim}

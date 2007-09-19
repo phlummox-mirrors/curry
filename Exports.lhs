@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: Exports.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,10 +17,13 @@ types.
 > module Exports(exportInterface) where
 > import Base
 > import Curry
+> import PrecInfo
 > import Set
 > import TopEnv
 > import Types
+> import TypeInfo
 > import TypeTrans
+> import ValueInfo
 
 > exportInterface :: Module a -> PEnv -> TCEnv -> ValueEnv -> Interface
 > exportInterface (Module m (Just (Exporting _ es)) _ _) pEnv tcEnv tyEnv =

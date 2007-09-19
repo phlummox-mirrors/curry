@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Qual.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: Qual.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,6 +19,7 @@ declaration groups as well as function arguments remain unchanged.
 > import Base
 > import Curry
 > import TopEnv
+> import ValueInfo
 
 > class Qual a where
 >   qual :: ValueEnv -> a -> a

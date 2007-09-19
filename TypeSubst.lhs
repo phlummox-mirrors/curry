@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSubst.lhs 2458 2007-09-06 20:30:52Z wlux $
+% $Id: TypeSubst.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,12 +10,12 @@ This module implements substitutions on types.
 \begin{verbatim}
 
 > module TypeSubst(module TypeSubst, idSubst,bindSubst,compose) where
-> import Base
 > import List
 > import Maybe
 > import Subst
 > import TopEnv
 > import Types
+> import ValueInfo
 
 > type TypeSubst = Subst Int Type
 

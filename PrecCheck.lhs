@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PrecCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: PrecCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,6 +19,7 @@ according to the relative precedences of the operators involved.
 > import CurryUtils
 > import Error
 > import Maybe
+> import PrecInfo
 > import TopEnv
 
 \end{verbatim}

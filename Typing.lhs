@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: Typing.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,6 +19,7 @@
 > import TopEnv
 > import Types
 > import TypeSubst
+> import ValueInfo
 
 \end{verbatim}
 After the compiler has attributed patterns and expressions with type

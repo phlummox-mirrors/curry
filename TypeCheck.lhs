@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: TypeCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -42,9 +42,11 @@ goal is returned.
 > import Set
 > import TopEnv
 > import Types
+> import TypeInfo
 > import TypeSubst
 > import TypeTrans
 > import Utils
+> import ValueInfo
 
 > infixl 5 $-$
 > infixl 1 >>-, >>=-

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Trust.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: Trust.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,10 +12,10 @@ while checking the definitions of the module.
 \begin{verbatim}
 
 > module Trust(trustEnv) where
-> import Base
 > import Curry
 > import Env
 > import PredefIdent
+> import TrustInfo
 
 \end{verbatim}
 The function \texttt{trustEnv} collects the trust attributes from all

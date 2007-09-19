@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfEquiv.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: IntfEquiv.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -20,7 +20,6 @@ inadvertently mix up these cases.
 \begin{verbatim}
 
 > module IntfEquiv(fixInterface, intfEquiv) where
-> import Base
 > import Curry
 > import List
 > import Set

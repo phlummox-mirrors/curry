@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Unlambda.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: Unlambda.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -16,7 +16,6 @@ lambda abstraction is recorded in the type environment.
 \begin{verbatim}
 
 > module Unlambda(unlambda) where
-> import Base
 > import Combined
 > import Curry
 > import CurryUtils
@@ -25,6 +24,7 @@ lambda abstraction is recorded in the type environment.
 > import TopEnv
 > import Types
 > import Typing
+> import ValueInfo
 
 > type UnlambdaState a = StateT ValueEnv Id a
 

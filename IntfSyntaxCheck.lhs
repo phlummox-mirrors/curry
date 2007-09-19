@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2465 2007-09-13 19:13:20Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -21,6 +21,7 @@ the global environments.
 > import Curry
 > import CurryUtils
 > import Error
+> import IdentInfo
 > import List
 > import Maybe
 > import Monad

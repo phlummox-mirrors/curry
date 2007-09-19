@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: OverlapCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
 %
 % Copyright (c) 2006-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,7 +12,6 @@ corresponding functions.
 \begin{verbatim}
 
 > module OverlapCheck(overlapCheck, overlapCheckGoal) where
-> import Base
 > import Curry
 > import CurryUtils
 > import List
