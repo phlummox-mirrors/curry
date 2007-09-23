@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeInfo.lhs 2473 2007-09-19 16:26:56Z wlux $
+% $Id: TypeInfo.lhs 2480 2007-09-23 11:18:18Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,7 +12,10 @@ language is first order and the only information that must be recorded
 is the arity of each type. For algebraic data types and renaming
 types, the compiler also records all data constructors belonging to
 that type, for alias types the expanded right hand side type
-expression is saved.
+expression is saved. The constructor lists are used only for the
+purpose of creating module interfaces. It is important that the
+constructors are ordered in the same way as in the data type's
+definition.
 
 Importing and exporting algebraic data types and renaming types is
 complicated by the fact that the constructors of the type may be
@@ -27,7 +30,6 @@ replaced by underscores in the interface.
 > module TypeInfo where
 > import Base
 > import Ident
-> import Monad
 > import PredefTypes
 > import TopEnv
 > import Types
@@ -42,21 +44,6 @@ replaced by underscores in the interface.
 >   origName (DataType tc _ _) = tc
 >   origName (RenamingType tc _ _) = tc
 >   origName (AliasType tc _ _) = tc
->   merge (DataType tc n cs) (DataType tc' _ cs')
->     | tc == tc' = Just (DataType tc n (mergeData cs cs'))
->     where mergeData cs cs'
->             | null cs = cs'
->             | null cs' = cs
->             | otherwise = zipWith mplus cs cs'
->   merge (DataType tc n _) (RenamingType tc' _ nc)
->     | tc == tc' = Just (RenamingType tc n nc)
->   merge (RenamingType tc n nc) (DataType tc' _ _)
->     | tc == tc' = Just (RenamingType tc n nc)
->   merge (RenamingType tc n nc) (RenamingType tc' _ _)
->     | tc == tc' = Just (RenamingType tc n nc)
->   merge (AliasType tc n ty) (AliasType tc' _ _)
->     | tc == tc' = Just (AliasType tc n ty)
->   merge _ _ = Nothing
 
 \end{verbatim}
 The initial type constructor environment \texttt{initTCEnv} is

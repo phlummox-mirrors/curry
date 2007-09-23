@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: Modules.lhs 2480 2007-09-23 11:18:18Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -384,7 +384,7 @@ current module.
 >           importIdents (fromMaybe m asM) q is envs (moduleInterface m mEnv)
 
 > importModules :: ModuleEnv -> [ImportDecl] -> (PEnv,TCEnv,ValueEnv)
-> importModules mEnv ds = (pEnv,importUnifyData tcEnv,tyEnv)
+> importModules mEnv ds = (pEnv,tcEnv,tyEnv)
 >   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs ds
 >         importModule envs (ImportDecl _ m q asM is) =
 >           importInterface (fromMaybe m asM) q is envs (moduleInterface m mEnv)
@@ -414,7 +414,7 @@ unqualified names, too.
 >         importModule envs m = importIdents m (m `notElem` ms) Nothing envs
 
 > importInterfaces :: ModuleEnv -> [ModuleIdent] -> (PEnv,TCEnv,ValueEnv)
-> importInterfaces mEnv ms = (pEnv,importUnifyData tcEnv,tyEnv)
+> importInterfaces mEnv ms = (pEnv,tcEnv,tyEnv)
 >   where (pEnv,tcEnv,tyEnv) =
 >           foldl (uncurry . importModule) initEnvs (envToList mEnv)
 >         importModule envs m = importInterface m (m `notElem` ms) Nothing envs

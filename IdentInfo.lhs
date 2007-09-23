@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IdentInfo.lhs 2473 2007-09-19 16:26:56Z wlux $
+% $Id: IdentInfo.lhs 2480 2007-09-23 11:18:18Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -12,6 +12,7 @@ map type and value identifiers on their kinds.
 
 > module IdentInfo where
 > import Ident
+> import List
 > import NestEnv
 > import PredefTypes
 > import TopEnv
@@ -36,6 +37,14 @@ and tuple types.
 > instance Entity TypeKind where
 >   origName (Data tc _) = tc
 >   origName (Alias tc) = tc
+>   merge (Data tc1 cs1) (Data tc2 cs2)
+>     | tc1 == tc2 = Just (Data tc1 (cs1 `union` cs2))
+>     | otherwise = Nothing
+>   merge (Data _ _) (Alias _) = Nothing
+>   merge (Alias _) (Data _ _) = Nothing
+>   merge (Alias tc1) (Alias tc2)
+>     | tc1 == tc2 = Just (Alias tc1)
+>     | otherwise = Nothing
 
 > initTEnv :: TypeEnv
 > initTEnv = foldr (uncurry predefType) emptyTEnv predefTypes
