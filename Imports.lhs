@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 2480 2007-09-23 11:18:18Z wlux $
+% $Id: Imports.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -41,30 +41,20 @@ unqualified import are performed.
 > importIdents :: ModuleIdent -> Bool -> Maybe ImportSpec -> (TypeEnv,FunEnv)
 >              -> Interface -> (TypeEnv,FunEnv)
 > importIdents m q is (tEnv,vEnv) (Interface m' _ ds) =
->   (importEntities tidents m q ts (importData vs) m' ds' tEnv,
->    importEntities vidents m q vs id m' ds' vEnv)
->   where ds' = filter (not . isHiddenData) ds
->         ts = isVisible addType is
+>   (importEntities tidents m q ts (importData vs) m' ds tEnv,
+>    importEntities vidents m q vs id m' ds vEnv)
+>   where ts = isVisible addType is
 >         vs = isVisible addValue is
 
 > importInterface :: ModuleIdent -> Bool -> Maybe ImportSpec
 >                 -> (PEnv,TCEnv,ValueEnv) -> Interface
 >                 -> (PEnv,TCEnv,ValueEnv)
 > importInterface m q is (pEnv,tcEnv,tyEnv) (Interface m' _ ds) =
->   (importEntities precs m q vs id m' ds' pEnv,
->    importEntities types m q ts id m' ds' tcEnv,
->    importEntities values m q vs id m' ds' tyEnv)
->   where ds' = filter (not . isHiddenData) ds
->         ts = isVisible addType is
+>   (importEntities precs m q vs id m' ds pEnv,
+>    importEntities types m q ts id m' ds tcEnv,
+>    importEntities values m q vs id m' ds tyEnv)
+>   where ts = isVisible addType is
 >         vs = isVisible addValue is
-
-> isHiddenData :: IDecl -> Bool
-> isHiddenData (IInfixDecl _ _ _ _) = False
-> isHiddenData (HidingDataDecl _ _ _) = True 
-> isHiddenData (IDataDecl _ _ _ _) = False
-> isHiddenData (INewtypeDecl _ _ _ _) = False
-> isHiddenData (ITypeDecl _ _ _ _) = False
-> isHiddenData (IFunctionDecl _ _ _ _) = False
 
 > isVisible :: (Import -> Set Ident -> Set Ident) -> Maybe ImportSpec
 >           -> Ident -> Bool
@@ -112,15 +102,23 @@ the unqualified type identifier \verb|T| would be ambiguous if
 >   (importEntitiesIntf precs m ds' pEnv,
 >    importEntitiesIntf types m ds' tcEnv,
 >    importEntitiesIntf values m ds' tyEnv)
->   where ds' = filter (isJust . localIdent m . entity) ds
+>   where ds' = map unhide (filter (isJust . localIdent m . entity) ds)
 
 > entity :: IDecl -> QualIdent
 > entity (IInfixDecl _ _ _ op) = op
 > entity (HidingDataDecl _ tc _) = tc
-> entity (IDataDecl _ tc _ _) = tc
+> entity (IDataDecl _ tc _ _ _) = tc
 > entity (INewtypeDecl _ tc _ _) = tc
 > entity (ITypeDecl _ tc _ _) = tc
 > entity (IFunctionDecl _ f _ _) = f
+
+> unhide :: IDecl -> IDecl
+> unhide (IInfixDecl p fix pr op) = IInfixDecl p fix pr op
+> unhide (HidingDataDecl p tc tvs) = IDataDecl p tc tvs [] []
+> unhide (IDataDecl p tc tvs cs _) = IDataDecl p tc tvs cs []
+> unhide (INewtypeDecl p tc tvs nc) = INewtypeDecl p tc tvs nc
+> unhide (ITypeDecl p tc tvs ty) = ITypeDecl p tc tvs ty
+> unhide (IFunctionDecl p f n ty) = IFunctionDecl p f n ty
 
 > importEntitiesIntf :: Entity a
 >                    => (ModuleIdent -> IDecl -> [I a] -> [I a])
@@ -134,16 +132,16 @@ following functions.
 \begin{verbatim}
 
 > tidents :: ModuleIdent -> IDecl -> [I TypeKind] -> [I TypeKind]
-> tidents m (HidingDataDecl _ tc _) = qual tc (tident Data m tc [])
-> tidents m (IDataDecl _ tc _ cs) =
->   qual tc (tident Data m tc (map constr (catMaybes cs)))
+> tidents m (IDataDecl _ tc _ cs cs') =
+>   qual tc (tident Data m tc (filter (`notElem` cs') (map constr cs)))
 > tidents m (INewtypeDecl _ tc _ nc) = qual tc (tident Data m tc [nconstr nc])
 > tidents m (ITypeDecl _ tc _ _) = qual tc (tident Alias m tc)
 > tidents _ _ = id
 
 > vidents :: ModuleIdent -> IDecl -> [I ValueKind] -> [I ValueKind]
-> vidents m (IDataDecl _ tc _ cs) =
->   (map (cident (qualQualify m tc) . constr) (catMaybes cs) ++)
+> vidents m (IDataDecl _ tc _ cs cs') =
+>   (map (cident (qualQualify m tc)) cs'' ++)
+>   where cs'' = filter (`notElem` cs') (map constr cs)
 > vidents m (INewtypeDecl _ tc _ nc) =
 >   (cident (qualQualify m tc) (nconstr nc) :)
 > vidents m (IFunctionDecl _ f _ _) = qual f (Var (qualQualify m f))
@@ -155,9 +153,8 @@ following functions.
 > precs _ _ = id
 
 > types :: ModuleIdent -> IDecl -> [I TypeInfo] -> [I TypeInfo]
-> types m (HidingDataDecl _ tc tvs) = qual tc (typeCon DataType m tc tvs [])
-> types m (IDataDecl _ tc tvs cs) =
->   qual tc (typeCon DataType m tc tvs (map (fmap constr) cs))
+> types m (IDataDecl _ tc tvs cs _) =
+>   qual tc (typeCon DataType m tc tvs (map constr cs))
 > types m (INewtypeDecl _ tc tvs nc) =
 >   qual tc (typeCon RenamingType m tc tvs (nconstr nc))
 > types m (ITypeDecl _ tc tvs ty) =
@@ -165,9 +162,10 @@ following functions.
 > types _ _ = id
 
 > values :: ModuleIdent -> IDecl -> [I ValueInfo] -> [I ValueInfo]
-> values m (IDataDecl _ tc tvs cs) =
->   (map (dataConstr m tc' tvs (constrType tc' tvs)) (catMaybes cs) ++)
+> values m (IDataDecl _ tc tvs cs cs') =
+>   (map (dataConstr m tc' tvs (constrType tc' tvs)) cs'' ++)
 >   where tc' = qualQualify m tc
+>         cs'' = filter ((`notElem` cs') . constr) cs
 > values m (INewtypeDecl _ tc tvs nc) =
 >   (newConstr m tc' tvs (constrType tc' tvs) nc :)
 >   where tc' = qualQualify m tc

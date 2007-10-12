@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2480 2007-09-23 11:18:18Z wlux $
+% $Id: Modules.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -435,7 +435,7 @@ with the actual definitions in the current module.
 >   Interface m' is' (filter ((Just m /=) . fst . splitQualIdent . entity) ds')
 >   where entity (IInfixDecl _ _ _ op) = op
 >         entity (HidingDataDecl _ tc _) = tc
->         entity (IDataDecl _ tc _ _) = tc
+>         entity (IDataDecl _ tc _ _ _) = tc
 >         entity (INewtypeDecl _ tc _ _) = tc
 >         entity (ITypeDecl _ tc _ _) = tc
 >         entity (IFunctionDecl _ f _ _) = f

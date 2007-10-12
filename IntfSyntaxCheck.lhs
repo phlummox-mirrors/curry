@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -23,7 +23,6 @@ the global environments.
 > import Error
 > import IdentInfo
 > import List
-> import Maybe
 > import Monad
 > import TopEnv
 
@@ -41,8 +40,8 @@ The latter must not occur in type expressions in interfaces.
 > bindType :: IDecl -> TypeEnv -> TypeEnv
 > bindType (IInfixDecl _ _ _ _) = id
 > bindType (HidingDataDecl _ tc _) = qualBindTopEnv tc (Data tc [])
-> bindType (IDataDecl _ tc _ cs) =
->   qualBindTopEnv tc (Data tc (map constr (catMaybes cs)))
+> bindType (IDataDecl _ tc _ cs cs') =
+>   qualBindTopEnv tc (Data tc (filter (`notElem` cs') (map constr cs)))
 > bindType (INewtypeDecl _ tc _ nc) = qualBindTopEnv tc (Data tc [nconstr nc])
 > bindType (ITypeDecl _ tc _ _) = qualBindTopEnv tc (Alias tc)
 > bindType (IFunctionDecl _ _ _ _) = id
@@ -57,9 +56,11 @@ during syntax checking of type expressions.
 > checkIDecl env (HidingDataDecl p tc tvs) =
 >   checkTypeLhs env p tvs &&>
 >   return (HidingDataDecl p tc tvs)
-> checkIDecl env (IDataDecl p tc tvs cs) =
->   checkTypeLhs env p tvs &&>
->   liftE (IDataDecl p tc tvs) (mapE (liftMaybe (checkConstrDecl env tvs)) cs)
+> checkIDecl env (IDataDecl p tc tvs cs cs') =
+>   do
+>     cs'' <- checkTypeLhs env p tvs &&> mapE (checkConstrDecl env tvs) cs
+>     checkHiding p tc (map constr cs) cs'
+>     return (IDataDecl p tc tvs cs'' cs')
 > checkIDecl env (INewtypeDecl p tc tvs nc) =
 >   checkTypeLhs env p tvs &&>
 >   liftE (INewtypeDecl p tc tvs) (checkNewConstrDecl env tvs nc)
@@ -124,18 +125,14 @@ during syntax checking of type expressions.
 > checkType env p (ArrowType ty1 ty2) =
 >   liftE2 ArrowType (checkType env p ty1) (checkType env p ty2)
 
+> checkHiding :: Position -> QualIdent -> [Ident] -> [Ident] -> Error ()
+> checkHiding p tc cs cs' =
+>   mapE_ (errorAt p . noConstructor tc) (nub (filter (`notElem` cs) cs'))
+
 \end{verbatim}
 \ToDo{Much of the above code could be shared with module
   \texttt{TypeSyntaxCheck}.}
 
-Auxiliary functions.
-\begin{verbatim}
-
-> liftMaybe :: Monad m => (a -> m b) -> Maybe a -> m (Maybe b)
-> liftMaybe f (Just x) = liftM Just (f x)
-> liftMaybe f Nothing = return Nothing
-
-\end{verbatim}
 Error messages.
 \begin{verbatim}
 
@@ -151,6 +148,11 @@ Error messages.
 > noVariable tv =
 >   "Type constructor " ++ name tv ++
 >   " used in left hand side of type declaration"
+
+> noConstructor :: QualIdent -> Ident -> String
+> noConstructor tc c =
+>   "Hidden constructor " ++ name c ++ " is not defined for type " ++
+>   qualName tc
 
 > unboundVariable :: Ident -> String
 > unboundVariable tv = "Undefined type variable " ++ name tv

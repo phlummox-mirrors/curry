@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeInfo.lhs 2480 2007-09-23 11:18:18Z wlux $
+% $Id: TypeInfo.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -22,9 +22,7 @@ complicated by the fact that the constructors of the type may be
 (partially) hidden in the interface. This facilitates the definition
 of abstract data types. An abstract type is always represented as a
 data type without constructors in the interface regardless of whether
-it is defined as a data type or as a renaming type. When only some
-constructors of a data type are hidden, those constructors are
-replaced by underscores in the interface.
+it is defined as a data type or as a renaming type.
 \begin{verbatim}
 
 > module TypeInfo where
@@ -35,7 +33,7 @@ replaced by underscores in the interface.
 > import Types
 
 > type TCEnv = TopEnv TypeInfo
-> data TypeInfo = DataType QualIdent Int [Maybe Ident]
+> data TypeInfo = DataType QualIdent Int [Ident]
 >               | RenamingType QualIdent Int Ident
 >               | AliasType QualIdent Int Type
 >               deriving Show
@@ -55,9 +53,9 @@ types.
 > initTCEnv = foldr (uncurry predefTC) emptyTCEnv predefTypes
 >   where emptyTCEnv = emptyTopEnv (Just (map tupleTC tupleTypes))
 >         predefTC (TypeConstructor tc tys) cs =
->           predefTopEnv tc (DataType tc (length tys) (map (Just . fst) cs))
+>           predefTopEnv tc (DataType tc (length tys) (map fst cs))
 >         tupleTC (TypeConstructor tc tys) =
->           DataType tc (length tys) [Just (unqualify tc)]
+>           DataType tc (length tys) [unqualify tc]
 
 \end{verbatim}
 The function \texttt{constrKind} returns the arity of a type
@@ -76,11 +74,11 @@ therefore should not fail.
 >     [AliasType _ n _] -> n
 >     _ -> internalError ("constrKind " ++ show tc)
 
-> constructors :: QualIdent -> TCEnv -> [Maybe Ident]
+> constructors :: QualIdent -> TCEnv -> [Ident]
 > constructors tc tcEnv =
 >   case qualLookupTopEnv tc tcEnv of
 >     [DataType _ _ cs] -> cs
->     [RenamingType _ _ c] -> [Just c]
+>     [RenamingType _ _ c] -> [c]
 >     [AliasType _ _ _] -> []
 >     _ -> internalError ("constructors " ++ show tc)
 

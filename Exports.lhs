@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: Exports.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,6 +17,7 @@ types.
 > module Exports(exportInterface) where
 > import Base
 > import Curry
+> import Monad
 > import PrecInfo
 > import Set
 > import TopEnv
@@ -55,17 +56,12 @@ types.
 > typeDecl _ _ _ _ (Export _) ds = ds
 > typeDecl m tcEnv tyEnv tvs (ExportTypeWith tc cs) ds =
 >   case qualLookupTopEnv tc tcEnv of
->     [DataType _ n cs'] -> iTypeDecl IDataDecl m tc tvs n constrs : ds
->       where constrs
->               | null cs = []
->               | otherwise =
->                   map (>>= fmap (constrDecl tcEnv tyEnv tc tvs n) . hide cs)
->                       cs'
->             hide cs c
->               | c `elem` cs = Just c
->               | otherwise = Nothing
+>     [DataType _ n cs'] -> iTypeDecl IDataDecl m tc tvs n constrs cs'' : ds
+>       where constrs = guard vis >> map (constrDecl tcEnv tyEnv tc tvs n) cs'
+>             cs'' = guard vis >> filter (`notElem` cs) cs'
+>             vis = not (null cs)
 >     [RenamingType _ n c]
->       | null cs -> iTypeDecl IDataDecl m tc tvs n [] : ds
+>       | null cs -> iTypeDecl IDataDecl m tc tvs n [] [] : ds
 >       | otherwise -> iTypeDecl INewtypeDecl m tc tvs n nc : ds
 >       where nc = newConstrDecl tcEnv tyEnv tc tvs c
 >     [AliasType _ n ty] ->
@@ -131,7 +127,7 @@ not module \texttt{B}.
 >   modules xs ms = foldr modules ms xs
 
 > instance HasModule IDecl where
->   modules (IDataDecl _ tc _ cs) = modules tc . modules cs
+>   modules (IDataDecl _ tc _ cs _) = modules tc . modules cs
 >   modules (INewtypeDecl _ tc _ nc) = modules tc . modules nc
 >   modules (ITypeDecl _ tc _ ty) = modules tc . modules ty
 >   modules (IFunctionDecl _ f _ ty) = modules f . modules ty
@@ -173,7 +169,7 @@ compiler can check them without loading the imported modules.
 >         defd = foldr definedType [] ds
 
 > definedType :: IDecl -> [QualIdent] -> [QualIdent]
-> definedType (IDataDecl _ tc _ _) tcs = tc : tcs
+> definedType (IDataDecl _ tc _ _ _) tcs = tc : tcs
 > definedType (INewtypeDecl _ tc _ _) tcs = tc : tcs
 > definedType (ITypeDecl _ tc _ _) tcs = tc : tcs
 > definedType (IFunctionDecl _ _ _ _) tcs = tcs
@@ -188,7 +184,7 @@ compiler can check them without loading the imported modules.
 >   usedTypes xs tcs = foldr usedTypes tcs xs
 
 > instance HasType IDecl where
->   usedTypes (IDataDecl _ _ _ cs) = usedTypes cs
+>   usedTypes (IDataDecl _ _ _ cs _) = usedTypes cs
 >   usedTypes (INewtypeDecl _ _ _ nc) = usedTypes nc
 >   usedTypes (ITypeDecl _ _ _ ty) = usedTypes ty
 >   usedTypes (IFunctionDecl _ _ _ ty) = usedTypes ty

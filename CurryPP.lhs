@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2464 2007-09-11 23:13:05Z wlux $
+% $Id: CurryPP.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -106,12 +106,12 @@ Declarations
 >         ppSafety Safe = text "safe"
 > ppDecl (PatternDecl _ t rhs) = ppRule (ppConstrTerm 0 t) equals rhs
 > ppDecl (FreeDecl _ vs) = ppIdentList vs <+> text "free"
-> ppDecl (TrustAnnot _ t fs) = ppPragma (ppTrust t <+> ppIdentList fs)
->   where ppTrust Suspect = text "SUSPECT"
->         ppTrust Trust = text "TRUST"
+> ppDecl (TrustAnnot _ t fs) = ppPragma (trust t) (ppIdentList fs)
+>   where trust Suspect = "SUSPECT"
+>         trust Trust = "TRUST"
 
-> ppPragma :: Doc -> Doc
-> ppPragma p = text "{-#" <+> p <+> text "#-}"
+> ppPragma :: String -> Doc -> Doc
+> ppPragma kw p = text "{-#" <+> text kw <+> p <+> text "#-}"
 
 > ppPrec :: Infix -> Maybe Integer -> Doc
 > ppPrec fix p = ppAssoc fix <+> maybe empty integer p
@@ -164,17 +164,17 @@ Interfaces
 > ppIDecl (IInfixDecl _ fix p op) = ppPrec fix (Just p) <+> ppQInfixOp op
 > ppIDecl (HidingDataDecl _ tc tvs) =
 >   text "hiding" <+> ppITypeDeclLhs "data" tc tvs
-> ppIDecl (IDataDecl _ tc tvs cs) =
+> ppIDecl (IDataDecl _ tc tvs cs cs') =
 >   sep (ppITypeDeclLhs "data" tc tvs :
->        map indent (zipWith (<+>) (equals : repeat vbar) (map ppIConstr cs)))
->   where ppIConstr = maybe (char '_') ppConstr
+>        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)) ++
+>        [indent (ppPragma "HIDING" (ppIdentList cs')) | not (null cs')])
 > ppIDecl (INewtypeDecl _ tc tvs nc) =
 >   sep [ppITypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
 > ppIDecl (ITypeDecl _ tc tvs ty) =
 >   sep [ppITypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 > ppIDecl (IFunctionDecl _ f n ty) =
 >   ppQIdent f <+> text "::" <+> maybePP ppArity n <+> ppTypeExpr 0 ty
->   where ppArity n = ppPragma (text "ARITY" <+> integer n)
+>   where ppArity n = ppPragma "ARITY" (integer n)
 
 > ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 > ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)

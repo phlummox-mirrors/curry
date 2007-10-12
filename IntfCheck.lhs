@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: IntfCheck.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -74,19 +74,15 @@ interface module only. However, this has not been implemented yet.
 >         checkData (RenamingType tc' n' _)
 >           | tc == tc' && length tvs == n' = Just (return ())
 >         checkData _ = Nothing
-> checkImport m _ tcEnv tyEnv (IDataDecl p tc tvs cs) =
+> checkImport m _ tcEnv tyEnv (IDataDecl p tc tvs cs _) =
 >   checkTypeInfo "data type" checkData tcEnv p tc
 >   where checkData (DataType tc' n' cs')
 >           | tc == tc' && length tvs == n' &&
->             (null cs || length cs == length cs') &&
->             and (zipWith isVisible cs cs') =
->               Just (mapM_ (checkConstrImport m tyEnv tc tvs) (catMaybes cs))
+>             (null cs || map constr cs == cs') =
+>               Just (mapM_ (checkConstrImport m tyEnv tc tvs) cs)
 >         checkData (RenamingType tc' n' _)
 >           | tc == tc' && length tvs == n' && null cs = Just (return ())
 >         checkData _ = Nothing
->         isVisible (Just c) (Just c') = constr c == c'
->         isVisible (Just _) Nothing = False
->         isVisible Nothing _ = True
 > checkImport m _ tcEnv tyEnv (INewtypeDecl p tc tvs nc) =
 >   checkTypeInfo "newtype" checkNewtype tcEnv p tc
 >   where checkNewtype (RenamingType tc' n' nc')

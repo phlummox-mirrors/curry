@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: CurryParser.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -295,11 +295,11 @@ directory path to the module is ignored.
 >         hidingId = qualify (mkIdent "hiding")
 
 > iDataDecl :: Parser Token IDecl a
-> iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs
->   where constrs = equals <-*> iConstrDecl `sepBy1` bar
+> iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs <*> hidden
+>   where constrs = equals <-*> constrDecl `sepBy1` bar
 >             `opt` []
->         iConstrDecl = Just <$> constrDecl <\> token Underscore
->                   <|> Nothing <$-> token Underscore
+>         hidden = pragma HidingPragma (con `sepBy` comma)
+>            `opt` []
 
 > iNewtypeDecl :: Parser Token IDecl a
 > iNewtypeDecl =
@@ -317,7 +317,10 @@ directory path to the module is ignored.
 >                               <*> option iFunctionArity <*> type0
 
 > iFunctionArity :: Parser Token Integer a
-> iFunctionArity = token (PragmaBegin ArityPragma) <-*> int <*-> token PragmaEnd
+> iFunctionArity = pragma ArityPragma int
+
+> pragma :: Pragma -> Parser Token a b -> Parser Token a b
+> pragma kw p = token (PragmaBegin kw) <-*> p <*-> token PragmaEnd
 
 \end{verbatim}
 \paragraph{Types}

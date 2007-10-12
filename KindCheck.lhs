@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: KindCheck.lhs 2491 2007-10-12 17:10:28Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -70,12 +70,12 @@ function in any particular order.
 
 > bindTC :: ModuleIdent -> TCEnv -> TopDecl a -> TCEnv -> TCEnv
 > bindTC m _ (DataDecl _ tc tvs cs) =
->   globalBindTopEnv m tc (typeCon DataType m tc tvs (map (Just . constr) cs))
+>   globalBindTopEnv m tc (typeCon DataType m tc tvs (map constr cs))
 > bindTC m _ (NewtypeDecl _ tc tvs (NewConstrDecl _ c _)) =
 >   globalBindTopEnv m tc (typeCon RenamingType m tc tvs c)
 > bindTC m tcEnv (TypeDecl _ tc tvs ty) =
->   globalBindTopEnv m tc
->                    (typeCon AliasType m tc tvs (expandMonoType tcEnv tvs ty))
+>   globalBindTopEnv m tc (typeCon AliasType m tc tvs ty')
+>   where ty' = expandMonoType tcEnv tvs ty
 > bindTC _ _ (BlockDecl _) = id
 
 > checkSynonyms :: ModuleIdent -> [TopDecl a] -> Error ()
