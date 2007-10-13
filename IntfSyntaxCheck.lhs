@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2492 2007-10-13 13:32:50Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -39,12 +39,17 @@ The latter must not occur in type expressions in interfaces.
 
 > bindType :: IDecl -> TypeEnv -> TypeEnv
 > bindType (IInfixDecl _ _ _ _) = id
-> bindType (HidingDataDecl _ tc _) = qualBindTopEnv tc (Data tc [])
-> bindType (IDataDecl _ tc _ cs cs') =
->   qualBindTopEnv tc (Data tc (filter (`notElem` cs') (map constr cs)))
-> bindType (INewtypeDecl _ tc _ nc) = qualBindTopEnv tc (Data tc [nconstr nc])
-> bindType (ITypeDecl _ tc _ _) = qualBindTopEnv tc (Alias tc)
+> bindType (HidingDataDecl _ tc _) = bindData tc [] []
+> bindType (IDataDecl _ tc _ cs cs') = bindData tc cs' (map constr cs)
+> bindType (INewtypeDecl _ tc _ nc cs') = bindData tc cs' [nconstr nc]
+> bindType (ITypeDecl _ tc _ _) = bindAlias tc
 > bindType (IFunctionDecl _ _ _ _) = id
+
+> bindData :: QualIdent -> [Ident] -> [Ident] -> TypeEnv -> TypeEnv
+> bindData tc cs' cs = qualBindTopEnv tc (Data tc (filter (`notElem` cs') cs))
+
+> bindAlias :: QualIdent -> TypeEnv -> TypeEnv
+> bindAlias tc = qualBindTopEnv tc (Alias tc)
 
 \end{verbatim}
 The checks applied to the interface are similar to those performed
@@ -61,9 +66,11 @@ during syntax checking of type expressions.
 >     cs'' <- checkTypeLhs env p tvs &&> mapE (checkConstrDecl env tvs) cs
 >     checkHiding p tc (map constr cs) cs'
 >     return (IDataDecl p tc tvs cs'' cs')
-> checkIDecl env (INewtypeDecl p tc tvs nc) =
->   checkTypeLhs env p tvs &&>
->   liftE (INewtypeDecl p tc tvs) (checkNewConstrDecl env tvs nc)
+> checkIDecl env (INewtypeDecl p tc tvs nc cs') =
+>   do
+>     nc' <- checkTypeLhs env p tvs &&> checkNewConstrDecl env tvs nc
+>     checkHiding p tc [nconstr nc] cs'
+>     return (INewtypeDecl p tc tvs nc' cs')
 > checkIDecl env (ITypeDecl p tc tvs ty) =
 >   checkTypeLhs env p tvs &&>
 >   liftE (ITypeDecl p tc tvs) (checkClosedType env p tvs ty)

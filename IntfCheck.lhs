@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: IntfCheck.lhs 2492 2007-10-13 13:32:50Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -80,10 +80,8 @@ interface module only. However, this has not been implemented yet.
 >           | tc == tc' && length tvs == n' &&
 >             (null cs || map constr cs == cs') =
 >               Just (mapM_ (checkConstrImport m tyEnv tc tvs) cs)
->         checkData (RenamingType tc' n' _)
->           | tc == tc' && length tvs == n' && null cs = Just (return ())
 >         checkData _ = Nothing
-> checkImport m _ tcEnv tyEnv (INewtypeDecl p tc tvs nc) =
+> checkImport m _ tcEnv tyEnv (INewtypeDecl p tc tvs nc _) =
 >   checkTypeInfo "newtype" checkNewtype tcEnv p tc
 >   where checkNewtype (RenamingType tc' n' nc')
 >           | tc == tc' && length tvs == n' && nconstr nc == nc' =

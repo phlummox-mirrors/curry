@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeInfo.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: TypeInfo.lhs 2492 2007-10-13 13:32:50Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,12 +17,11 @@ purpose of creating module interfaces. It is important that the
 constructors are ordered in the same way as in the data type's
 definition.
 
-Importing and exporting algebraic data types and renaming types is
-complicated by the fact that the constructors of the type may be
-(partially) hidden in the interface. This facilitates the definition
-of abstract data types. An abstract type is always represented as a
-data type without constructors in the interface regardless of whether
-it is defined as a data type or as a renaming type.
+Importing and exporting algebraic data types is complicated by the
+fact that the constructors of the type may be (partially) hidden in
+the interface. This facilitates the definition of abstract data types.
+An abstract data type is always represented as a data type without
+constructors in the interface.
 \begin{verbatim}
 
 > module TypeInfo where

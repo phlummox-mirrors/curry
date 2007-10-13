@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: Imports.lhs 2492 2007-10-13 13:32:50Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -108,7 +108,7 @@ the unqualified type identifier \verb|T| would be ambiguous if
 > entity (IInfixDecl _ _ _ op) = op
 > entity (HidingDataDecl _ tc _) = tc
 > entity (IDataDecl _ tc _ _ _) = tc
-> entity (INewtypeDecl _ tc _ _) = tc
+> entity (INewtypeDecl _ tc _ _ _) = tc
 > entity (ITypeDecl _ tc _ _) = tc
 > entity (IFunctionDecl _ f _ _) = f
 
@@ -116,7 +116,7 @@ the unqualified type identifier \verb|T| would be ambiguous if
 > unhide (IInfixDecl p fix pr op) = IInfixDecl p fix pr op
 > unhide (HidingDataDecl p tc tvs) = IDataDecl p tc tvs [] []
 > unhide (IDataDecl p tc tvs cs _) = IDataDecl p tc tvs cs []
-> unhide (INewtypeDecl p tc tvs nc) = INewtypeDecl p tc tvs nc
+> unhide (INewtypeDecl p tc tvs nc _) = INewtypeDecl p tc tvs nc []
 > unhide (ITypeDecl p tc tvs ty) = ITypeDecl p tc tvs ty
 > unhide (IFunctionDecl p f n ty) = IFunctionDecl p f n ty
 
@@ -134,16 +134,14 @@ following functions.
 > tidents :: ModuleIdent -> IDecl -> [I TypeKind] -> [I TypeKind]
 > tidents m (IDataDecl _ tc _ cs cs') =
 >   qual tc (tident Data m tc (filter (`notElem` cs') (map constr cs)))
-> tidents m (INewtypeDecl _ tc _ nc) = qual tc (tident Data m tc [nconstr nc])
+> tidents m (INewtypeDecl _ tc _ nc cs') =
+>   qual tc (tident Data m tc (filter (`notElem` cs') [nconstr nc]))
 > tidents m (ITypeDecl _ tc _ _) = qual tc (tident Alias m tc)
 > tidents _ _ = id
 
 > vidents :: ModuleIdent -> IDecl -> [I ValueKind] -> [I ValueKind]
-> vidents m (IDataDecl _ tc _ cs cs') =
->   (map (cident (qualQualify m tc)) cs'' ++)
->   where cs'' = filter (`notElem` cs') (map constr cs)
-> vidents m (INewtypeDecl _ tc _ nc) =
->   (cident (qualQualify m tc) (nconstr nc) :)
+> vidents m (IDataDecl _ tc _ cs cs') = cidents m tc cs' (map constr cs)
+> vidents m (INewtypeDecl _ tc _ nc cs') = cidents m tc cs' [nconstr nc]
 > vidents m (IFunctionDecl _ f _ _) = qual f (Var (qualQualify m f))
 > vidents _ _ = id
 
@@ -155,7 +153,7 @@ following functions.
 > types :: ModuleIdent -> IDecl -> [I TypeInfo] -> [I TypeInfo]
 > types m (IDataDecl _ tc tvs cs _) =
 >   qual tc (typeCon DataType m tc tvs (map constr cs))
-> types m (INewtypeDecl _ tc tvs nc) =
+> types m (INewtypeDecl _ tc tvs nc _) =
 >   qual tc (typeCon RenamingType m tc tvs (nconstr nc))
 > types m (ITypeDecl _ tc tvs ty) =
 >   qual tc (typeCon AliasType m tc tvs (toType m tvs ty))
@@ -166,9 +164,10 @@ following functions.
 >   (map (dataConstr m tc' tvs (constrType tc' tvs)) cs'' ++)
 >   where tc' = qualQualify m tc
 >         cs'' = filter ((`notElem` cs') . constr) cs
-> values m (INewtypeDecl _ tc tvs nc) =
->   (newConstr m tc' tvs (constrType tc' tvs) nc :)
+> values m (INewtypeDecl _ tc tvs nc cs') =
+>   (map (newConstr m tc' tvs (constrType tc' tvs)) nc' ++)
 >   where tc' = qualQualify m tc
+>         nc' = [nc | nconstr nc `notElem` cs']
 > values m (IFunctionDecl _ f n ty) =
 >   qual f (Value (qualQualify m f) n' (polyType ty'))
 >   where n' = maybe (arrowArity ty') fromInteger n
@@ -219,6 +218,11 @@ Auxiliary functions:
 
 > tident :: (QualIdent -> a) -> ModuleIdent -> QualIdent -> a
 > tident f m tc = f (qualQualify m tc)
+
+> cidents :: ModuleIdent -> QualIdent -> [Ident] -> [Ident] -> [I ValueKind]
+>         -> [I ValueKind]
+> cidents m tc cs' cs =
+>   (map (cident (qualQualify m tc)) (filter (`notElem` cs') cs) ++)
 
 > cident :: QualIdent -> Ident -> I ValueKind
 > cident tc c = (c,Constr (qualifyLike tc c))

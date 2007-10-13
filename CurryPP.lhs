@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: CurryPP.lhs 2492 2007-10-13 13:32:50Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -167,9 +167,11 @@ Interfaces
 > ppIDecl (IDataDecl _ tc tvs cs cs') =
 >   sep (ppITypeDeclLhs "data" tc tvs :
 >        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)) ++
->        [indent (ppPragma "HIDING" (ppIdentList cs')) | not (null cs')])
-> ppIDecl (INewtypeDecl _ tc tvs nc) =
->   sep [ppITypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
+>        [indent (ppHiding cs')])
+> ppIDecl (INewtypeDecl _ tc tvs nc cs') =
+>   sep [ppITypeDeclLhs "newtype" tc tvs <+> equals,
+>        indent (ppNewConstr nc),
+>        indent (ppHiding cs')]
 > ppIDecl (ITypeDecl _ tc tvs ty) =
 >   sep [ppITypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 > ppIDecl (IFunctionDecl _ f n ty) =
@@ -178,6 +180,11 @@ Interfaces
 
 > ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 > ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
+
+> ppHiding :: [Ident] -> Doc
+> ppHiding cs
+>   | null cs = empty
+>   | otherwise = ppPragma "HIDING" (ppIdentList cs)
 
 \end{verbatim}
 Types

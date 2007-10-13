@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: Exports.lhs 2492 2007-10-13 13:32:50Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -60,10 +60,9 @@ types.
 >       where constrs = guard vis >> map (constrDecl tcEnv tyEnv tc tvs n) cs'
 >             cs'' = guard vis >> filter (`notElem` cs) cs'
 >             vis = not (null cs)
->     [RenamingType _ n c]
->       | null cs -> iTypeDecl IDataDecl m tc tvs n [] [] : ds
->       | otherwise -> iTypeDecl INewtypeDecl m tc tvs n nc : ds
+>     [RenamingType _ n c] -> iTypeDecl INewtypeDecl m tc tvs n nc cs'' : ds
 >       where nc = newConstrDecl tcEnv tyEnv tc tvs c
+>             cs'' = [c | c `notElem` cs]
 >     [AliasType _ n ty] ->
 >       iTypeDecl ITypeDecl m tc tvs n (fromType tcEnv tvs ty) : ds
 >     _ -> internalError "typeDecl"
@@ -128,7 +127,7 @@ not module \texttt{B}.
 
 > instance HasModule IDecl where
 >   modules (IDataDecl _ tc _ cs _) = modules tc . modules cs
->   modules (INewtypeDecl _ tc _ nc) = modules tc . modules nc
+>   modules (INewtypeDecl _ tc _ nc _) = modules tc . modules nc
 >   modules (ITypeDecl _ tc _ ty) = modules tc . modules ty
 >   modules (IFunctionDecl _ f _ ty) = modules f . modules ty
 
@@ -170,7 +169,7 @@ compiler can check them without loading the imported modules.
 
 > definedType :: IDecl -> [QualIdent] -> [QualIdent]
 > definedType (IDataDecl _ tc _ _ _) tcs = tc : tcs
-> definedType (INewtypeDecl _ tc _ _) tcs = tc : tcs
+> definedType (INewtypeDecl _ tc _ _ _) tcs = tc : tcs
 > definedType (ITypeDecl _ tc _ _) tcs = tc : tcs
 > definedType (IFunctionDecl _ _ _ _) tcs = tcs
 
@@ -185,7 +184,7 @@ compiler can check them without loading the imported modules.
 
 > instance HasType IDecl where
 >   usedTypes (IDataDecl _ _ _ cs _) = usedTypes cs
->   usedTypes (INewtypeDecl _ _ _ nc) = usedTypes nc
+>   usedTypes (INewtypeDecl _ _ _ nc _) = usedTypes nc
 >   usedTypes (ITypeDecl _ _ _ ty) = usedTypes ty
 >   usedTypes (IFunctionDecl _ _ _ ty) = usedTypes ty
 

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfEquiv.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: IntfEquiv.lhs 2492 2007-10-13 13:32:50Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -51,8 +51,8 @@ inadvertently mix up these cases.
 >     tc1 == tc2 && tvs1 == tvs2
 >   IDataDecl _ tc1 tvs1 cs1 cs1' =~= IDataDecl _ tc2 tvs2 cs2 cs2' =
 >     tc1 == tc2 && tvs1 == tvs2 && cs1 `eqvList` cs2 && cs1' `eqvSet` cs2'
->   INewtypeDecl _ tc1 tvs1 nc1 =~= INewtypeDecl _ tc2 tvs2 nc2 =
->     tc1 == tc2 && tvs1 == tvs2 && nc1 =~= nc2
+>   INewtypeDecl _ tc1 tvs1 nc1 cs1' =~= INewtypeDecl _ tc2 tvs2 nc2 cs2' =
+>     tc1 == tc2 && tvs1 == tvs2 && nc1 =~= nc2 && cs1' `eqvSet` cs2'
 >   ITypeDecl _ tc1 tvs1 ty1 =~= ITypeDecl _ tc2 tvs2 ty2 =
 >     tc1 == tc2 && tvs1 == tvs2 && ty1 == ty2
 >   IFunctionDecl _ f1 n1 ty1 =~= IFunctionDecl _ f2 n2 ty2 =
@@ -97,7 +97,8 @@ by function \texttt{fixInterface} and the associated type class
 >   fix _ (IInfixDecl p fix pr op) = IInfixDecl p fix pr op
 >   fix _ (HidingDataDecl p tc tvs) = HidingDataDecl p tc tvs
 >   fix tcs (IDataDecl p tc tvs cs cs') = IDataDecl p tc tvs (fix tcs cs) cs'
->   fix tcs (INewtypeDecl p tc tvs nc) = INewtypeDecl p tc tvs (fix tcs nc)
+>   fix tcs (INewtypeDecl p tc tvs nc cs') =
+>     INewtypeDecl p tc tvs (fix tcs nc) cs'
 >   fix tcs (ITypeDecl p tc tvs ty) = ITypeDecl p tc tvs (fix tcs ty)
 >   fix tcs (IFunctionDecl p f n ty) = IFunctionDecl p f n (fix tcs ty)
 
@@ -128,7 +129,7 @@ by function \texttt{fixInterface} and the associated type class
 >   where tcs (IInfixDecl _ _ _ _) tcs = tcs
 >         tcs (HidingDataDecl _ tc _) tcs = tc : tcs
 >         tcs (IDataDecl _ tc _ _ _) tcs = tc : tcs
->         tcs (INewtypeDecl _ tc _ _) tcs = tc : tcs
+>         tcs (INewtypeDecl _ tc _ _ _) tcs = tc : tcs
 >         tcs (ITypeDecl _ tc _ _) tcs = tc : tcs
 >         tcs (IFunctionDecl _ _ _ _) tcs = tcs
 

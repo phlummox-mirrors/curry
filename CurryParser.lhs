@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: CurryParser.lhs 2492 2007-10-13 13:32:50Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -295,15 +295,14 @@ directory path to the module is ignored.
 >         hidingId = qualify (mkIdent "hiding")
 
 > iDataDecl :: Parser Token IDecl a
-> iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs <*> hidden
+> iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs <*> iHidden
 >   where constrs = equals <-*> constrDecl `sepBy1` bar
 >             `opt` []
->         hidden = pragma HidingPragma (con `sepBy` comma)
->            `opt` []
 
 > iNewtypeDecl :: Parser Token IDecl a
 > iNewtypeDecl =
 >   iTypeDeclLhs INewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
+>                                        <*> iHidden
 
 > iTypeDecl :: Parser Token IDecl a
 > iTypeDecl = iTypeDeclLhs ITypeDecl KW_type <*-> equals <*> type0
@@ -312,9 +311,14 @@ directory path to the module is ignored.
 >              -> Parser Token a b
 > iTypeDeclLhs f kw = f <$> position <*-> token kw <*> qtycon <*> many tyvar
 
+> iHidden :: Parser Token [Ident] a
+> iHidden = pragma HidingPragma (con `sepBy` comma)
+>     `opt` []
+
 > iFunctionDecl :: Parser Token IDecl a
-> iFunctionDecl = IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
->                               <*> option iFunctionArity <*> type0
+> iFunctionDecl =
+>   IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
+>                 <*> option iFunctionArity <*> type0
 
 > iFunctionArity :: Parser Token Integer a
 > iFunctionArity = pragma ArityPragma int
