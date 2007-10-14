@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2492 2007-10-13 13:32:50Z wlux $
+% $Id: Exports.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,6 +17,8 @@ types.
 > module Exports(exportInterface) where
 > import Base
 > import Curry
+> import CurryUtils
+> import List
 > import Monad
 > import PrecInfo
 > import Set
@@ -35,7 +37,7 @@ types.
 >         hidden = map (hiddenTypeDecl m tcEnv tvs) (hiddenTypes ds)
 >         ds =
 >           foldr (typeDecl m tcEnv tyEnv tvs)
->                 (foldr (funDecl m tcEnv tyEnv tvs) [] es)
+>                 (foldr (valueDecl m tcEnv tyEnv tvs) [] es)
 >                 es
 
 > infixDecl :: ModuleIdent -> PEnv -> Export -> [IDecl] -> [IDecl]
@@ -54,15 +56,17 @@ types.
 > typeDecl :: ModuleIdent -> TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl]
 >          -> [IDecl]
 > typeDecl _ _ _ _ (Export _) ds = ds
-> typeDecl m tcEnv tyEnv tvs (ExportTypeWith tc cs) ds =
+> typeDecl m tcEnv tyEnv tvs (ExportTypeWith tc xs) ds =
 >   case qualLookupTopEnv tc tcEnv of
->     [DataType _ n cs'] -> iTypeDecl IDataDecl m tc tvs n constrs cs'' : ds
->       where constrs = guard vis >> map (constrDecl tcEnv tyEnv tc tvs n) cs'
->             cs'' = guard vis >> filter (`notElem` cs) cs'
->             vis = not (null cs)
->     [RenamingType _ n c] -> iTypeDecl INewtypeDecl m tc tvs n nc cs'' : ds
->       where nc = newConstrDecl tcEnv tyEnv tc tvs c
->             cs'' = [c | c `notElem` cs]
+>     [DataType _ n cs] -> iTypeDecl IDataDecl m tc tvs n constrs xs' : ds
+>       where constrs = guard vis >> cs'
+>             xs' = guard vis >> filter (`notElem` xs) (cs ++ ls)
+>             cs' = map (constrDecl tcEnv tyEnv xs tc tvs n) cs
+>             ls = nub (concatMap labels cs')
+>             vis = not (null xs)
+>     [RenamingType _ n c] -> iTypeDecl INewtypeDecl m tc tvs n nc xs' : ds
+>       where nc = newConstrDecl tcEnv tyEnv xs tc tvs c
+>             xs' = [c | c `notElem` xs]
 >     [AliasType _ n ty] ->
 >       iTypeDecl ITypeDecl m tc tvs n (fromType tcEnv tvs ty) : ds
 >     _ -> internalError "typeDecl"
@@ -71,27 +75,32 @@ types.
 >           -> QualIdent -> [Ident] -> Int -> a
 > iTypeDecl f m tc tvs n = f noPos (qualUnqualify m tc) (take n tvs)
 
-> constrDecl :: TCEnv -> ValueEnv -> QualIdent -> [Ident] -> Int -> Ident
->            -> ConstrDecl
-> constrDecl tcEnv tyEnv tc tvs n c =
->   ConstrDecl noPos (drop n (take n' tvs)) c
->              (map (fromType tcEnv tvs) (arrowArgs ty))
->   where ForAll n' ty = conType (qualifyLike tc c) tyEnv
+> constrDecl :: TCEnv -> ValueEnv -> [Ident] -> QualIdent -> [Ident] -> Int
+>            -> Ident -> ConstrDecl
+> constrDecl tcEnv tyEnv xs tc tvs n c
+>   | any (`elem` xs) ls = RecordDecl noPos evs c fs
+>   | otherwise = ConstrDecl noPos evs c tys
+>   where evs = drop n (take n' tvs)
+>         (ls,ForAll n' ty) = conType (qualifyLike tc c) tyEnv
+>         tys = map (fromType tcEnv tvs) (arrowArgs ty)
+>         fs = zipWith (FieldDecl noPos . return) ls tys
 
-> newConstrDecl :: TCEnv -> ValueEnv -> QualIdent -> [Ident] -> Ident
+> newConstrDecl :: TCEnv -> ValueEnv -> [Ident] -> QualIdent -> [Ident] -> Ident
 >               -> NewConstrDecl
-> newConstrDecl tcEnv tyEnv tc tvs c =
->   NewConstrDecl noPos c (fromType tcEnv tvs (head (arrowArgs ty)))
->   where ForAll _ ty = conType (qualifyLike tc c) tyEnv
+> newConstrDecl tcEnv tyEnv xs tc tvs c
+>   | l `elem` xs = NewRecordDecl noPos c l ty'
+>   | otherwise = NewConstrDecl noPos c ty'
+>   where (l:_,ForAll _ ty) = conType (qualifyLike tc c) tyEnv
+>         ty' = fromType tcEnv tvs (head (arrowArgs ty))
 
-> funDecl :: ModuleIdent -> TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl]
->         -> [IDecl]
-> funDecl m tcEnv tyEnv tvs (Export f) ds =
+> valueDecl :: ModuleIdent -> TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl]
+>           -> [IDecl]
+> valueDecl m tcEnv tyEnv tvs (Export f) ds =
 >   IFunctionDecl noPos (qualUnqualify m f) n' (fromType tcEnv tvs ty) : ds
 >   where n = arity f tyEnv
 >         n' = if arrowArity ty == n then Nothing else Just (toInteger n)
 >         ForAll _ ty = funType f tyEnv
-> funDecl _ _ _ _ (ExportTypeWith _ _) ds = ds
+> valueDecl _ _ _ _ (ExportTypeWith _ _) ds = ds
 
 \end{verbatim}
 The compiler determines the list of imported modules from the set of
@@ -134,9 +143,14 @@ not module \texttt{B}.
 > instance HasModule ConstrDecl where
 >   modules (ConstrDecl _ _ _ tys) = modules tys
 >   modules (ConOpDecl _ _ ty1 _ ty2) = modules ty1 . modules ty2
+>   modules (RecordDecl _ _ _ fs) = modules fs
+
+> instance HasModule FieldDecl where
+>   modules (FieldDecl _ _ ty) = modules ty
 
 > instance HasModule NewConstrDecl where
 >   modules (NewConstrDecl _ _ ty) = modules ty
+>   modules (NewRecordDecl _ _ _ ty) = modules ty
 
 > instance HasModule TypeExpr where
 >   modules (ConstructorType tc tys) = modules tc . modules tys
@@ -191,9 +205,14 @@ compiler can check them without loading the imported modules.
 > instance HasType ConstrDecl where
 >   usedTypes (ConstrDecl _ _ _ tys) = usedTypes tys
 >   usedTypes (ConOpDecl _ _ ty1 _ ty2) = usedTypes ty1 . usedTypes ty2
+>   usedTypes (RecordDecl _ _ _ fs) = usedTypes fs
+
+> instance HasType FieldDecl where
+>   usedTypes (FieldDecl _ _ ty) = usedTypes ty
 
 > instance HasType NewConstrDecl where
 >   usedTypes (NewConstrDecl _ _ ty) = usedTypes ty
+>   usedTypes (NewRecordDecl _ _ _ ty) = usedTypes ty
 
 > instance HasType TypeExpr where
 >   usedTypes (ConstructorType tc tys) = (tc :) . usedTypes tys

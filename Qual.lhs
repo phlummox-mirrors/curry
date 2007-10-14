@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Qual.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: Qual.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -58,6 +58,8 @@ declaration groups as well as function arguments remain unchanged.
 >   qual tyEnv (InfixPattern a t1 op t2) =
 >     InfixPattern a (qual tyEnv t1) (qual tyEnv op) (qual tyEnv t2)
 >   qual tyEnv (ParenPattern t) = ParenPattern (qual tyEnv t)
+>   qual tyEnv (RecordPattern a c fs) =
+>     RecordPattern a (qual tyEnv c) (qual tyEnv fs)
 >   qual tyEnv (TuplePattern ts) = TuplePattern (qual tyEnv ts)
 >   qual tyEnv (ListPattern a ts) = ListPattern a (qual tyEnv ts)
 >   qual tyEnv (AsPattern v t) = AsPattern v (qual tyEnv t)
@@ -76,6 +78,8 @@ declaration groups as well as function arguments remain unchanged.
 >   qual tyEnv (Constructor a c) = Constructor a (qual tyEnv c)
 >   qual tyEnv (Paren e) = Paren (qual tyEnv e)
 >   qual tyEnv (Typed e ty) = Typed (qual tyEnv e) ty
+>   qual tyEnv (Record a c fs) = Record a (qual tyEnv c) (qual tyEnv fs)
+>   qual tyEnv (RecordUpdate e fs) = RecordUpdate (qual tyEnv e) (qual tyEnv fs)
 >   qual tyEnv (Tuple es) = Tuple (qual tyEnv es)
 >   qual tyEnv (List a es) = List a (qual tyEnv es)
 >   qual tyEnv (ListCompr e qs) = ListCompr (qual tyEnv e) (qual tyEnv qs)
@@ -109,6 +113,9 @@ declaration groups as well as function arguments remain unchanged.
 > instance Qual (InfixOp a) where
 >   qual tyEnv (InfixOp a op) = InfixOp a (qual tyEnv op)
 >   qual tyEnv (InfixConstr a op) = InfixConstr a (qual tyEnv op)
+
+> instance Qual a => Qual (Field a) where
+>   qual tyEnv (Field l x) = Field (qual tyEnv l) (qual tyEnv x)
 
 > instance Qual QualIdent where
 >   qual tyEnv x

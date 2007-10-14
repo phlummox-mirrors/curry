@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseCheck.lhs 2466 2007-09-14 08:42:03Z wlux $
+% $Id: CaseCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -26,11 +26,11 @@ four supported modes are (cf.\ Sect.~C.1 of~\cite{Hanus:Report}):
 
 In order to check identifier cases, the compiler collects and
 categorizes all type and value identifiers defined in the module. We
-recognize the following five identifier categories:
+recognize the following six identifier categories:
 \emph{TypeConstrId}, \emph{TypeVarId}, \emph{DataConstrId},
-\emph{FunctionId}, and \emph{VariableId}. At present, we do not check
-module names, even though Haskell requires them to start with an upper
-case letter.
+\emph{FunctionId}, \emph{LabelId}, and \texttt{VariableId}. At
+present, we do not check module names, even though Haskell requires
+them to start with an upper case letter.
 \begin{verbatim}
 
 > module CaseCheck(caseCheck,caseCheckGoal) where
@@ -49,6 +49,7 @@ case letter.
 >   | TypeVarId
 >   | DataConstrId
 >   | FunctionId
+>   | LabelId
 >   | VariableId
 >   deriving Show
 
@@ -90,6 +91,7 @@ categories.
 > haskellMode TypeVarId = [LowerCase]
 > haskellMode DataConstrId = [UpperCase,ColonCase]
 > haskellMode FunctionId = [LowerCase,NoColonCase]
+> haskellMode LabelId = [LowerCase,NoColonCase]
 > haskellMode VariableId = [LowerCase,NoColonCase]
 
 > prologMode :: Category -> [Case]
@@ -97,6 +99,7 @@ categories.
 > prologMode TypeVarId = [UpperCase]
 > prologMode DataConstrId = [LowerCase,ColonCase,NoColonCase]
 > prologMode FunctionId = [LowerCase,ColonCase,NoColonCase]
+> prologMode LabelId = [LowerCase,ColonCase,NoColonCase]
 > prologMode VariableId = [UpperCase]
 
 > goedelMode :: Category -> [Case]
@@ -104,6 +107,7 @@ categories.
 > goedelMode TypeVarId = [LowerCase]
 > goedelMode DataConstrId = [UpperCase,ColonCase,NoColonCase]
 > goedelMode FunctionId = [UpperCase,ColonCase,NoColonCase]
+> goedelMode LabelId = [UpperCase,ColonCase,NoColonCase]
 > goedelMode VariableId = [LowerCase]
 
 \end{verbatim}
@@ -125,7 +129,8 @@ collect all defined identifiers.
 >   names p xs ys = foldr (names p) ys xs
 
 > instance SyntaxTree (TopDecl a) where
->   names _ (DataDecl p tc tvs cs) xs = typeNames p tc tvs ++ names p cs xs
+>   names _ (DataDecl p tc tvs cs) xs =
+>     typeNames p tc tvs ++ names p cs (labelNames cs ++ xs)
 >   names _ (NewtypeDecl p tc tvs nc) xs = typeNames p tc tvs ++ names p nc xs
 >   names _ (TypeDecl p tc tvs _) xs = typeNames p tc tvs ++ xs
 >   names p (BlockDecl d) xs = names p d xs
@@ -134,16 +139,23 @@ collect all defined identifiers.
 > typeNames p tc tvs =
 >   D p TypeConstrId tc : map (D p TypeVarId) (filter (anonId /=) tvs)
 
+> labelNames :: [ConstrDecl] -> [Definition]
+> labelNames cs = [D p LabelId l | P p l <- ls]
+>   where ls = nub [P p l | RecordDecl _ _ _ fs <- cs,
+>                           FieldDecl p ls _ <- fs, l <- ls]
+
 > instance SyntaxTree ConstrDecl where
 >   names _ (ConstrDecl p evs c _) xs = constrNames p evs c ++ xs
 >   names _ (ConOpDecl p evs _ c _) xs = constrNames p evs c ++ xs
-
-> instance SyntaxTree NewConstrDecl where
->   names _ (NewConstrDecl p c _) xs = constrNames p [] c ++ xs
+>   names _ (RecordDecl p evs c _) xs = constrNames p evs c ++ xs
 
 > constrNames ::  Position -> [Ident] -> Ident -> [Definition]
 > constrNames p evs c =
 >   D p DataConstrId c : map (D p TypeVarId) (filter (anonId /=) evs)
+
+> instance SyntaxTree NewConstrDecl where
+>   names _ (NewConstrDecl p c _) xs = D p DataConstrId c : xs
+>   names _ (NewRecordDecl p c l _) xs = D p DataConstrId c : D p LabelId l : xs
 
 > instance SyntaxTree TypeExpr where
 >   names p ty xs = map (D p TypeVarId) (nub (filter (anonId /=) (fv ty))) ++ xs
@@ -181,6 +193,8 @@ collect all defined identifiers.
 >   names _ (Constructor _ _) = id
 >   names p (Paren e) = names p e
 >   names p (Typed e ty) = names p e . names p ty
+>   names p (Record _ _ fs) = names p fs
+>   names p (RecordUpdate e fs) = names p e . names p fs
 >   names p (Tuple es) = names p es
 >   names p (List _ es) = names p es
 >   names p (ListCompr e sts) = names p sts . names p e
@@ -207,6 +221,9 @@ collect all defined identifiers.
 > instance SyntaxTree (Alt a) where
 >   names _ (Alt p t rhs) = names p t . names p rhs
 
+> instance SyntaxTree a => SyntaxTree (Field a) where
+>   names p (Field _ x) = names p x
+
 \end{verbatim}
 Warning messages.
 \begin{verbatim}
@@ -220,6 +237,7 @@ Warning messages.
 > kind TypeVarId = "type variable"
 > kind DataConstrId = "data constructor"
 > kind FunctionId = "function"
+> kind LabelId = "field label"
 > kind VariableId = "variable"
 
 > start :: Case -> String

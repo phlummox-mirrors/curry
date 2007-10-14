@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2492 2007-10-13 13:32:50Z wlux $
+% $Id: CurryPP.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -79,6 +79,11 @@ Declarations
 >   sep [ppExistVars tvs,ppIdent c <+> fsep (map (ppTypeExpr 2) tys)]
 > ppConstr (ConOpDecl _ tvs ty1 op ty2) =
 >   sep [ppExistVars tvs,ppTypeExpr 1 ty1,ppInfixOp op <+> ppTypeExpr 1 ty2]
+> ppConstr (RecordDecl _ tvs c fs) =
+>   sep [ppExistVars tvs,ppIdent c <+> braces (list (map ppFieldDecl fs))]
+
+> ppFieldDecl :: FieldDecl -> Doc
+> ppFieldDecl (FieldDecl p ls ty) = ppDecl (TypeSig p ls ty)
 
 > ppExistVars :: [Ident] -> Doc
 > ppExistVars tvs
@@ -87,6 +92,8 @@ Declarations
 
 > ppNewConstr :: NewConstrDecl -> Doc
 > ppNewConstr (NewConstrDecl _ c ty) = ppIdent c <+> ppTypeExpr 2 ty
+> ppNewConstr (NewRecordDecl p c l ty) =
+>   ppIdent c <+> braces (ppDecl (TypeSig p [l] ty))
 
 > ppBlock :: [Decl a] -> Doc
 > ppBlock = vcat . map ppDecl
@@ -164,14 +171,14 @@ Interfaces
 > ppIDecl (IInfixDecl _ fix p op) = ppPrec fix (Just p) <+> ppQInfixOp op
 > ppIDecl (HidingDataDecl _ tc tvs) =
 >   text "hiding" <+> ppITypeDeclLhs "data" tc tvs
-> ppIDecl (IDataDecl _ tc tvs cs cs') =
+> ppIDecl (IDataDecl _ tc tvs cs xs) =
 >   sep (ppITypeDeclLhs "data" tc tvs :
 >        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)) ++
->        [indent (ppHiding cs')])
-> ppIDecl (INewtypeDecl _ tc tvs nc cs') =
+>        [indent (ppHiding xs)])
+> ppIDecl (INewtypeDecl _ tc tvs nc xs) =
 >   sep [ppITypeDeclLhs "newtype" tc tvs <+> equals,
 >        indent (ppNewConstr nc),
->        indent (ppHiding cs')]
+>        indent (ppHiding xs)]
 > ppIDecl (ITypeDecl _ tc tvs ty) =
 >   sep [ppITypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 > ppIDecl (IFunctionDecl _ f n ty) =
@@ -235,6 +242,8 @@ Patterns
 >            (sep [ppConstrTerm 1 t1 <+> ppQInfixOp c,
 >                  indent (ppConstrTerm 0 t2)])
 > ppConstrTerm _ (ParenPattern t) = parens (ppConstrTerm 0 t)
+> ppConstrTerm _ (RecordPattern _ c fs) =
+>   ppRecord (ppConstrTerm 0) (ppQIdent c) fs
 > ppConstrTerm _ (TuplePattern ts) = parenList (map (ppConstrTerm 0) ts)
 > ppConstrTerm _ (ListPattern _ ts) = bracketList (map (ppConstrTerm 0) ts)
 > ppConstrTerm _ (AsPattern v t) = ppIdent v <> char '@' <> ppConstrTerm 2 t
@@ -255,6 +264,8 @@ Expressions
 > ppExpr _ (Paren e) = parens (ppExpr 0 e)
 > ppExpr p (Typed e ty) =
 >   parenExp (p > 0) (ppExpr 0 e <+> text "::" <+> ppTypeExpr 0 ty)
+> ppExpr _ (Record _ c fs) = ppRecord (ppExpr 0) (ppQIdent c) fs
+> ppExpr _ (RecordUpdate e fs) = ppRecord (ppExpr 0) (ppExpr 2 e) fs
 > ppExpr _ (Tuple es) = parenList (map (ppExpr 0) es)
 > ppExpr _ (List _ es) = bracketList (map (ppExpr 0) es)
 > ppExpr _ (ListCompr e qs) =
@@ -306,6 +317,12 @@ Expressions
 > ppOp :: InfixOp a -> Doc
 > ppOp (InfixOp _ op) = ppQInfixOp op
 > ppOp (InfixConstr _ op) = ppQInfixOp op
+
+> ppRecord :: (a -> Doc) -> Doc -> [Field a] -> Doc
+> ppRecord pp c fs = c <> braces (list (map (ppField pp) fs))
+
+> ppField :: (a -> Doc) -> Field a -> Doc
+> ppField pp (Field l x) = ppQIdent l <+> equals <+> pp x
 
 \end{verbatim}
 Goals

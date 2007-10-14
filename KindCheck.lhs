@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 2491 2007-10-12 17:10:28Z wlux $
+% $Id: KindCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -71,8 +71,8 @@ function in any particular order.
 > bindTC :: ModuleIdent -> TCEnv -> TopDecl a -> TCEnv -> TCEnv
 > bindTC m _ (DataDecl _ tc tvs cs) =
 >   globalBindTopEnv m tc (typeCon DataType m tc tvs (map constr cs))
-> bindTC m _ (NewtypeDecl _ tc tvs (NewConstrDecl _ c _)) =
->   globalBindTopEnv m tc (typeCon RenamingType m tc tvs c)
+> bindTC m _ (NewtypeDecl _ tc tvs nc) =
+>   globalBindTopEnv m tc (typeCon RenamingType m tc tvs (nconstr nc))
 > bindTC m tcEnv (TypeDecl _ tc tvs ty) =
 >   globalBindTopEnv m tc (typeCon AliasType m tc tvs ty')
 >   where ty' = expandMonoType tcEnv tvs ty
@@ -130,9 +130,14 @@ Kind checking is applied to all type expressions in the program.
 > checkConstrDecl tcEnv (ConstrDecl p _ _ tys) = mapE_ (checkType tcEnv p) tys
 > checkConstrDecl tcEnv (ConOpDecl p _ ty1 _ ty2) =
 >   checkType tcEnv p ty1 &&> checkType tcEnv p ty2
+> checkConstrDecl tcEnv (RecordDecl _ _ _ fs) = mapE_ (checkFieldDecl tcEnv) fs
+
+> checkFieldDecl :: TCEnv -> FieldDecl -> Error ()
+> checkFieldDecl tcEnv (FieldDecl p _ ty) = checkType tcEnv p ty
 
 > checkNewConstrDecl :: TCEnv -> NewConstrDecl -> Error ()
 > checkNewConstrDecl tcEnv (NewConstrDecl p _ ty) = checkType tcEnv p ty
+> checkNewConstrDecl tcEnv (NewRecordDecl p _ _ ty) = checkType tcEnv p ty
 
 > checkEquation :: TCEnv -> Equation a -> Error ()
 > checkEquation tcEnv (Equation _ _ rhs) = checkRhs tcEnv rhs
@@ -153,6 +158,9 @@ Kind checking is applied to all type expressions in the program.
 > checkExpr _ _ (Constructor _ _) = return ()
 > checkExpr tcEnv p (Paren e) = checkExpr tcEnv p e
 > checkExpr tcEnv p (Typed e ty) = checkExpr tcEnv p e &&> checkType tcEnv p ty
+> checkExpr tcEnv p (Record _ _ fs) = mapE_ (checkField tcEnv p) fs
+> checkExpr tcEnv p (RecordUpdate e fs) =
+>   checkExpr tcEnv p e &&> mapE_ (checkField tcEnv p) fs
 > checkExpr tcEnv p (Tuple es) = mapE_ (checkExpr tcEnv p) es
 > checkExpr tcEnv p (List _ es) = mapE_ (checkExpr tcEnv p) es
 > checkExpr tcEnv p (ListCompr e qs) =
@@ -188,6 +196,9 @@ Kind checking is applied to all type expressions in the program.
 
 > checkAlt :: TCEnv -> Alt a -> Error ()
 > checkAlt tcEnv (Alt _ _ rhs) = checkRhs tcEnv rhs
+
+> checkField :: TCEnv -> Position -> Field (Expression a) -> Error ()
+> checkField tcEnv p (Field _ e) = checkExpr tcEnv p e
 
 > checkType :: TCEnv -> Position -> TypeExpr -> Error ()
 > checkType tcEnv p (ConstructorType tc tys) =

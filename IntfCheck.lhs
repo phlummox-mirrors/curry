@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 2492 2007-10-13 13:32:50Z wlux $
+% $Id: IntfCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -104,16 +104,24 @@ interface module only. However, this has not been implemented yet.
 > checkConstrImport m tyEnv tc tvs (ConstrDecl p evs c tys) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc c
->         checkConstr (DataConstructor c' _ (ForAll n' ty')) =
+>         checkConstr (DataConstructor c' _ _ (ForAll n' ty')) =
 >           qc == c' && length (tvs ++ evs) == n' &&
 >           toTypes m tvs tys == arrowArgs ty'
 >         checkConstr _ = False
 > checkConstrImport m tyEnv tc tvs (ConOpDecl p evs ty1 op ty2) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc op
->         checkConstr (DataConstructor c' _ (ForAll n' ty')) =
+>         checkConstr (DataConstructor c' _ _ (ForAll n' ty')) =
 >           qc == c' && length (tvs ++ evs) == n' &&
 >           toTypes m tvs [ty1,ty2] == arrowArgs ty'
+>         checkConstr _ = False
+> checkConstrImport m tyEnv tc tvs (RecordDecl p evs c fs) =
+>   checkValueInfo "data constructor" checkConstr tyEnv p qc
+>   where qc = qualifyLike tc c
+>         (ls,tys) = unzip [(l,ty) | FieldDecl _ ls ty <- fs, l <- ls]
+>         checkConstr (DataConstructor c' _ ls' (ForAll n' ty')) =
+>           qc == c' && length (tvs ++ evs) == n' && ls == ls' &&
+>           toTypes m tvs tys == arrowArgs ty'
 >         checkConstr _ = False
 
 > checkNewConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
@@ -121,8 +129,15 @@ interface module only. However, this has not been implemented yet.
 > checkNewConstrImport m tyEnv tc tvs (NewConstrDecl p c ty) =
 >   checkValueInfo "newtype constructor" checkNewConstr tyEnv p qc
 >   where qc = qualifyLike tc c
->         checkNewConstr (NewtypeConstructor c' (ForAll n' ty')) =
+>         checkNewConstr (NewtypeConstructor c' _ (ForAll n' ty')) =
 >           qc == c' && length tvs == n' &&
+>           toType m tvs ty == head (arrowArgs ty')
+>         checkNewConstr _ = False
+> checkNewConstrImport m tyEnv tc tvs (NewRecordDecl p c l ty) =
+>   checkValueInfo "newtype constructor" checkNewConstr tyEnv p qc
+>   where qc = qualifyLike tc c
+>         checkNewConstr (NewtypeConstructor c' l' (ForAll n' ty')) =
+>           qc == c' && length tvs == n' && l == l' &&
 >           toType m tvs ty == head (arrowArgs ty')
 >         checkNewConstr _ = False
 

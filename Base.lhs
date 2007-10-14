@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2473 2007-09-19 16:26:56Z wlux $
+% $Id: Base.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -91,6 +91,8 @@ variable, but always refers to a global function from the prelude.
 >   qfv _ (Constructor _ _) = []
 >   qfv m (Paren e) = qfv m e
 >   qfv m (Typed e _) = qfv m e
+>   qfv m (Record _ _ fs) = qfv m fs
+>   qfv m (RecordUpdate e fs) = qfv m e ++ qfv m fs
 >   qfv m (Tuple es) = qfv m es
 >   qfv m (List _ es) = qfv m es
 >   qfv m (ListCompr e qs) = foldr (qfvStmt m) (qfv m e) qs
@@ -128,6 +130,9 @@ variable, but always refers to a global function from the prelude.
 > instance QualExpr (InfixOp a) where
 >   qfv m op = qfv m (infixOp op)
 
+> instance QualExpr a => QualExpr (Field a) where
+>   qfv m (Field _ e) = qfv m e
+
 > instance QuantExpr (ConstrTerm a) where
 >   bv (LiteralPattern _ _) = []
 >   bv (NegativePattern _ _ _) = []
@@ -135,10 +140,14 @@ variable, but always refers to a global function from the prelude.
 >   bv (ConstructorPattern _ _ ts) = bv ts
 >   bv (InfixPattern _ t1 _ t2) = bv t1 ++ bv t2
 >   bv (ParenPattern t) = bv t
+>   bv (RecordPattern _ _ fs) = bv fs
 >   bv (TuplePattern ts) = bv ts
 >   bv (ListPattern _ ts) = bv ts
 >   bv (AsPattern v t) = v : bv t
 >   bv (LazyPattern t) = bv t
+
+> instance QuantExpr a => QuantExpr (Field a) where
+>   bv (Field _ t) = bv t
 
 > instance Expr TypeExpr where
 >   fv (ConstructorType _ tys) = fv tys

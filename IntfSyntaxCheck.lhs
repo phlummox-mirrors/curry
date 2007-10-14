@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2492 2007-10-13 13:32:50Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -40,13 +40,14 @@ The latter must not occur in type expressions in interfaces.
 > bindType :: IDecl -> TypeEnv -> TypeEnv
 > bindType (IInfixDecl _ _ _ _) = id
 > bindType (HidingDataDecl _ tc _) = bindData tc [] []
-> bindType (IDataDecl _ tc _ cs cs') = bindData tc cs' (map constr cs)
-> bindType (INewtypeDecl _ tc _ nc cs') = bindData tc cs' [nconstr nc]
+> bindType (IDataDecl _ tc _ cs xs) =
+>   bindData tc xs (map constr cs ++ nub (concatMap labels cs))
+> bindType (INewtypeDecl _ tc _ nc xs) = bindData tc xs (nconstr nc : nlabel nc)
 > bindType (ITypeDecl _ tc _ _) = bindAlias tc
 > bindType (IFunctionDecl _ _ _ _) = id
 
 > bindData :: QualIdent -> [Ident] -> [Ident] -> TypeEnv -> TypeEnv
-> bindData tc cs' cs = qualBindTopEnv tc (Data tc (filter (`notElem` cs') cs))
+> bindData tc xs' xs = qualBindTopEnv tc (Data tc (filter (`notElem` xs') xs))
 
 > bindAlias :: QualIdent -> TypeEnv -> TypeEnv
 > bindAlias tc = qualBindTopEnv tc (Alias tc)
@@ -61,16 +62,16 @@ during syntax checking of type expressions.
 > checkIDecl env (HidingDataDecl p tc tvs) =
 >   checkTypeLhs env p tvs &&>
 >   return (HidingDataDecl p tc tvs)
-> checkIDecl env (IDataDecl p tc tvs cs cs') =
+> checkIDecl env (IDataDecl p tc tvs cs xs) =
 >   do
->     cs'' <- checkTypeLhs env p tvs &&> mapE (checkConstrDecl env tvs) cs
->     checkHiding p tc (map constr cs) cs'
->     return (IDataDecl p tc tvs cs'' cs')
-> checkIDecl env (INewtypeDecl p tc tvs nc cs') =
+>     cs' <- checkTypeLhs env p tvs &&> mapE (checkConstrDecl env tvs) cs
+>     checkHiding p tc (map constr cs ++ nub (concatMap labels cs)) xs
+>     return (IDataDecl p tc tvs cs' xs)
+> checkIDecl env (INewtypeDecl p tc tvs nc xs) =
 >   do
 >     nc' <- checkTypeLhs env p tvs &&> checkNewConstrDecl env tvs nc
->     checkHiding p tc [nconstr nc] cs'
->     return (INewtypeDecl p tc tvs nc' cs')
+>     checkHiding p tc (nconstr nc : nlabel nc) xs
+>     return (INewtypeDecl p tc tvs nc' xs)
 > checkIDecl env (ITypeDecl p tc tvs ty) =
 >   checkTypeLhs env p tvs &&>
 >   liftE (ITypeDecl p tc tvs) (checkClosedType env p tvs ty)
@@ -98,11 +99,21 @@ during syntax checking of type expressions.
 >          (checkClosedType env p tvs' ty1)
 >          (checkClosedType env p tvs' ty2)
 >   where tvs' = evs ++ tvs
+> checkConstrDecl env tvs (RecordDecl p evs c fs) =
+>   checkTypeLhs env p evs &&>
+>   liftE (RecordDecl p evs c) (mapE (checkFieldDecl env tvs') fs)
+>   where tvs' = evs ++ tvs
+
+> checkFieldDecl :: TypeEnv -> [Ident] -> FieldDecl -> Error FieldDecl
+> checkFieldDecl env tvs (FieldDecl p ls ty) =
+>   liftE (FieldDecl p ls) (checkClosedType env p tvs ty)
 
 > checkNewConstrDecl :: TypeEnv -> [Ident] -> NewConstrDecl
 >                    -> Error NewConstrDecl
 > checkNewConstrDecl env tvs (NewConstrDecl p c ty) =
 >   liftE (NewConstrDecl p c) (checkClosedType env p tvs ty)
+> checkNewConstrDecl env tvs (NewRecordDecl p c l ty) =
+>   liftE (NewRecordDecl p c l) (checkClosedType env p tvs ty)
 
 > checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr
 >                 -> Error TypeExpr
@@ -133,8 +144,8 @@ during syntax checking of type expressions.
 >   liftE2 ArrowType (checkType env p ty1) (checkType env p ty2)
 
 > checkHiding :: Position -> QualIdent -> [Ident] -> [Ident] -> Error ()
-> checkHiding p tc cs cs' =
->   mapE_ (errorAt p . noConstructor tc) (nub (filter (`notElem` cs) cs'))
+> checkHiding p tc xs xs' =
+>   mapE_ (errorAt p . noElement tc) (nub (filter (`notElem` xs) xs'))
 
 \end{verbatim}
 \ToDo{Much of the above code could be shared with module
@@ -156,9 +167,9 @@ Error messages.
 >   "Type constructor " ++ name tv ++
 >   " used in left hand side of type declaration"
 
-> noConstructor :: QualIdent -> Ident -> String
-> noConstructor tc c =
->   "Hidden constructor " ++ name c ++ " is not defined for type " ++
+> noElement :: QualIdent -> Ident -> String
+> noElement tc x =
+>   "Hidden constructor or label " ++ name x ++ " is not defined for type " ++
 >   qualName tc
 
 > unboundVariable :: Ident -> String

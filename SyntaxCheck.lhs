@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: SyntaxCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -53,10 +53,13 @@ later for checking the optional export list of the current module.
 > syntaxCheck m env ds =
 >   do
 >     reportDuplicates duplicateData repeatedData cs
->     (env'',ds') <- checkTopDecls m cs env' ds
+>     (env'',ds') <-
+>       checkTopDecls m (mergeBy comparePos cs (map fst ls)) env' ds
 >     return (toplevelEnv env'',ds')
->   where env' = foldr (bindConstr m) (globalEnv env) cs
+>   where env' =
+>           foldr (bindLabel m) (foldr (bindConstr m) (globalEnv env) cs) ls
 >         cs = concatMap constrs ds
+>         ls = concatMap fieldLabels ds
 
 > syntaxCheckGoal :: FunEnv -> Goal a -> Error (Goal a)
 > syntaxCheckGoal env g = checkGoal (globalEnv env) g
@@ -64,11 +67,15 @@ later for checking the optional export list of the current module.
 > bindConstr :: ModuleIdent -> P Ident -> VarEnv -> VarEnv
 > bindConstr m (P _ c) = globalBindNestEnv m c (Constr (qualifyWith m c))
 
+> bindLabel :: ModuleIdent -> (P Ident,[Ident]) -> VarEnv -> VarEnv
+> bindLabel m (P _ l,cs) =
+>   globalBindNestEnv m l (Var (qualifyWith m l) (map (qualifyWith m) cs))
+
 > bindFunc :: ModuleIdent -> P Ident -> VarEnv -> VarEnv
-> bindFunc m (P _ f) = globalBindNestEnv m f (Var (qualifyWith m f))
+> bindFunc m (P _ f) = globalBindNestEnv m f (Var (qualifyWith m f) [])
 
 > bindVar :: P Ident -> VarEnv -> VarEnv
-> bindVar (P _ v) = localBindNestEnv v (Var (qualify v))
+> bindVar (P _ v) = localBindNestEnv v (Var (qualify v) [])
 
 \end{verbatim}
 When a module's global declaration group is checked, the compiler must
@@ -87,16 +94,19 @@ in order to check the global declaration group.
 
 > checkTopDecls :: ModuleIdent -> [P Ident] -> VarEnv -> [TopDecl a]
 >               -> Error (VarEnv,[TopDecl a])
-> checkTopDecls m cs env ds =
+> checkTopDecls m xs env ds =
 >   do
 >     ds' <- liftE joinTopEquations (mapE (checkTopDeclLhs env) ds)
->     env' <- checkDeclVars (bindFunc m) cs env [d | BlockDecl d <- ds']
+>     env' <- checkDeclVars (bindFunc m) xs env [d | BlockDecl d <- ds']
 >     ds'' <- mapE (checkTopDeclRhs env') ds'
 >     return (env',ds'')
 
 > checkTopDeclLhs :: VarEnv -> TopDecl a -> Error (TopDecl a)
+> checkTopDeclLhs _ (DataDecl p tc tvs cs) =
+>   mapE_ checkDeclLabels cs >> return (DataDecl p tc tvs cs)
+> checkTopDeclLhs _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
+> checkTopDeclLhs _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 > checkTopDeclLhs env (BlockDecl d) = liftE BlockDecl (checkDeclLhs True env d)
-> checkTopDeclLhs _ d = return d
 
 > joinTopEquations :: [TopDecl a] -> [TopDecl a]
 > joinTopEquations [] = []
@@ -108,8 +118,29 @@ in order to check the global declaration group.
 >   where (ds',ds'') = span isBlockDecl ds
 
 > checkTopDeclRhs :: VarEnv -> TopDecl a -> Error (TopDecl a)
+> checkTopDeclRhs _ (DataDecl p tc tvs cs) = return (DataDecl p tc tvs cs)
+> checkTopDeclRhs _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
+> checkTopDeclRhs _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 > checkTopDeclRhs env (BlockDecl d) = liftE BlockDecl (checkDeclRhs env d)
-> checkTopDeclRhs _ d = return d
+
+\end{verbatim}
+The compiler checks field labels in data type declarations twice
+because field labels must be globally unique and also must be unique
+for each constructor declaration, but the same label may be used in
+different constructors of the same data type. Global uniqueness is
+checked in function \texttt{checkDeclVars}, which also ensures that
+there are no conflicts between field labels and global functions,
+whereas the function \texttt{checkDeclLabels} below checks that each
+field label occurs at most once in a particular data constructor
+declaration.
+\begin{verbatim}
+
+> checkDeclLabels :: ConstrDecl -> Error ()
+> checkDeclLabels (ConstrDecl _ _ _ _) = return ()
+> checkDeclLabels (ConOpDecl _ _ _ _ _) = return ()
+> checkDeclLabels (RecordDecl p evs c fs) =
+>   mapE_ (errorAt p . duplicateLabel "declaration" . fst)
+>         (duplicates (labels (RecordDecl p evs c fs)))
 
 \end{verbatim}
 A goal is checked like the right hand side of a pattern declaration.
@@ -217,16 +248,17 @@ top-level.
 
 > checkDeclVars :: (P Ident -> VarEnv -> VarEnv) -> [P Ident] -> VarEnv
 >               -> [Decl a] -> Error VarEnv
-> checkDeclVars bindVar cs env ds =
+> checkDeclVars bindVar xs env ds =
 >   reportDuplicates duplicatePrecedence repeatedPrecedence ops &&>
->   reportDuplicates duplicateDefinition repeatedDefinition bvs &&>
+>   reportDuplicates duplicateDefinition repeatedDefinition
+>                    (mergeBy comparePos xs bvs) &&>
 >   reportDuplicates duplicateTypeSig repeatedTypeSig tys &&>
 >   reportDuplicates (const duplicateDefaultTrustAnnot)
 >                    (const repeatedDefaultTrustAnnot)
 >                    [P p () | TrustAnnot p _ [] <- ds] &&>
 >   reportDuplicates duplicateTrustAnnot repeatedTrustAnnot trs &&>
 >   mapE_ (\(P p v) -> errorAt p (noBody v))
->         (filter (`notElem` cs ++ bvs) ops ++
+>         (filter (`notElem` xs ++ bvs) ops ++
 >          filter (`notElem` bvs) (tys ++ trs)) &&>
 >   return (foldr bindVar env (nub bvs))
 >   where bvs = concatMap vars (filter isValueDecl ds)
@@ -382,6 +414,17 @@ runtime system.
 >          (checkConstrTerm p env t2)
 > checkConstrTerm p env (ParenPattern t) =
 >   liftE ParenPattern (checkConstrTerm p env t)
+> checkConstrTerm p env (RecordPattern a c fs) =
+>   do
+>     fs' <-
+>       (case qualLookupNestEnv c env of
+>          [Constr _] -> return ()
+>          rs
+>            | any isConstr rs -> errorAt p (ambiguousData rs c)
+>            | otherwise -> errorAt p (undefinedData c)) &&>
+>       mapE (checkField (checkConstrTerm p env)) fs
+>     checkFieldLabels "pattern" p env (Just c) fs'
+>     return (RecordPattern a c fs')
 > checkConstrTerm p env (TuplePattern ts) =
 >   liftE TuplePattern (mapE (checkConstrTerm p env) ts)
 > checkConstrTerm p env (ListPattern a ts) =
@@ -414,11 +457,32 @@ runtime system.
 >   case qualLookupNestEnv v env of
 >     [] -> errorAt p (undefinedVariable v)
 >     [Constr _] -> return (Constructor a v)
->     [Var _] -> return (Variable a v)
+>     [Var _ _] -> return (Variable a v)
 >     rs -> errorAt p (ambiguousIdent rs v)
 > checkExpr p env (Constructor a c) = checkExpr p env (Variable a c)
 > checkExpr p env (Paren e) = liftE Paren (checkExpr p env e)
 > checkExpr p env (Typed e ty) = liftE (flip Typed ty) (checkExpr p env e)
+> checkExpr p env (Record a c fs)
+>   | null fs =
+>       case qualLookupNestEnv c env of
+>         [Constr _] -> return (Record a c [])
+>         rs
+>           | any isConstr rs -> errorAt p (ambiguousData rs c)
+>           | otherwise -> errorAt p (undefinedData c)
+>   | otherwise = checkExpr p env (RecordUpdate (Constructor a c) fs)
+> checkExpr p env (RecordUpdate e fs) =
+>   do
+>     (e',fs') <-
+>       liftE (,) (checkExpr p env e) &&& mapE (checkField (checkExpr p env)) fs
+>     case e' of
+>       Constructor a c ->
+>         do
+>           checkFieldLabels "construction" p env (Just c) fs'
+>           return (Record a c fs')
+>       _ ->
+>         do
+>           checkFieldLabels "update" p env Nothing fs'
+>           return (RecordUpdate e' fs')
 > checkExpr p env (Tuple es) = liftE Tuple (mapE (checkExpr p env) es)
 > checkExpr p env (List a es) = liftE (List a) (mapE (checkExpr p env) es)
 > checkExpr p env (ListCompr e qs) =
@@ -498,11 +562,53 @@ runtime system.
 >   case qualLookupNestEnv v env of
 >     [] -> errorAt p (undefinedVariable v)
 >     [Constr _] -> return (InfixConstr (attr op) v)
->     [Var _] -> return (InfixOp (attr op) v)
+>     [Var _ _] -> return (InfixOp (attr op) v)
 >     rs -> errorAt p (ambiguousIdent rs v)
 >   where v = opName op
 >         attr (InfixOp a _) = a
 >         attr (InfixConstr a _) = a
+
+\end{verbatim}
+For record patterns and expressions the compiler checks that all field
+labels belong to the pattern or expression's constructor. For record
+update expressions, the compiler checks that there is at least one
+constructor which has all the specified field labels. In addition, the
+compiler always checks that no field label occurs twice. Field labels
+are always looked up in the global environment since they cannot be
+shadowed by local variables (cf.\ Sect.~3.15.1 of the revised
+Haskell'98 report~\cite{PeytonJones03:Haskell}).
+\begin{verbatim}
+
+> checkFieldLabels :: String -> Position -> VarEnv -> Maybe QualIdent
+>                  -> [Field a] -> Error ()
+> checkFieldLabels what p env c fs =
+>   do
+>     mapE (checkFieldLabel p env) ls' >>= checkLabels p env c ls'
+>     mapE_ (errorAt p . duplicateLabel what . fst)
+>           (duplicates (map unqualify ls))
+>   where ls = [l | Field l _ <- fs]
+>         ls' = nub ls
+
+> checkFieldLabel :: Position -> VarEnv -> QualIdent -> Error [QualIdent]
+> checkFieldLabel p env l =
+>   case qualLookupNestEnv l (globalEnv (toplevelEnv env)) of
+>     [Var _ cs]
+>       | null cs -> errorAt p (undefinedLabel l)
+>       | otherwise -> return cs
+>     rs
+>       | any isLabel rs -> errorAt p (ambiguousLabel rs l)
+>       | otherwise -> errorAt p (undefinedLabel l)
+
+> checkLabels :: Position -> VarEnv -> Maybe QualIdent -> [QualIdent]
+>             -> [[QualIdent]] -> Error ()
+> checkLabels p env (Just c) ls css =
+>   mapE_ (errorAt p . noLabel c) [l | (l,cs) <- zip ls css, c' `notElem` cs]
+>   where c' = origName (head (qualLookupNestEnv c env))
+> checkLabels p _ Nothing ls css =
+>   when (null (foldr1 intersect css)) (errorAt p (noCommonConstr ls))
+
+> checkField :: (a -> Error a) -> Field a -> Error (Field a)
+> checkField check (Field l x) = liftE (Field l) (check x)
 
 \end{verbatim}
 Auxiliary definitions.
@@ -512,9 +618,26 @@ Auxiliary definitions.
 > constrs (DataDecl _ _ _ cs) = map constr cs
 >   where constr (ConstrDecl p _ c _) = P p c
 >         constr (ConOpDecl p _ _ op _) = P p op
-> constrs (NewtypeDecl _ _ _ (NewConstrDecl p c _)) = [P p c]
+>         constr (RecordDecl p _ c _) = P p c
+> constrs (NewtypeDecl _ _ _ nc) = [nconstr nc]
+>   where nconstr (NewConstrDecl p c _) = P p c
+>         nconstr (NewRecordDecl p c _ _) = P p c
 > constrs (TypeDecl _ _ _ _) = []
 > constrs (BlockDecl _) = []
+
+> fieldLabels :: TopDecl a -> [(P Ident,[Ident])]
+> fieldLabels (DataDecl _ _ _ cs) =
+>   [(l,constrs cs l) | l <- nub (concatMap labels cs)]
+>   where constrs cs l = [constr c | c <- cs, l `elem` labels c]
+>         labels (ConstrDecl _ _ _ _) = []
+>         labels (ConOpDecl _ _ _ _ _) = []
+>         labels (RecordDecl _ _ _ fs) =
+>           [P p l | FieldDecl p ls _ <- fs, l <- ls]
+> fieldLabels (NewtypeDecl _ _ _ nc) = nlabel nc
+>   where nlabel (NewConstrDecl _ _ _) = []
+>         nlabel (NewRecordDecl p c l _) = [(P p l,[c])]
+> fieldLabels (TypeDecl _ _ _ _) = []
+> fieldLabels (BlockDecl _) = []
 
 > vars :: Decl a -> [P Ident]
 > vars (InfixDecl p _ _ ops) = map (P p) ops
@@ -549,7 +672,38 @@ name.
 
 > isConstr :: ValueKind -> Bool
 > isConstr (Constr _) = True
-> isConstr (Var _) = False
+> isConstr (Var _ _) = False
+
+> isLabel :: ValueKind -> Bool
+> isLabel (Constr _) = False
+> isLabel (Var _ cs) = not (null cs)
+
+\end{verbatim}
+Auxiliary functions.
+\begin{verbatim}
+
+> comparePos :: P a -> P a -> Ordering
+> comparePos (P p1 _) (P p2 _) = compare p1 p2
+
+\end{verbatim}
+The functions \texttt{merge} and \texttt{mergeBy} merge two already
+sorted lists.
+
+\ToDo{The function \texttt{merge} is commented out because it
+  conflicts with a method of the \texttt{Entity} class and thus
+  prevents compilation with hbc.}
+\begin{verbatim}
+
+merge :: Ord a => [a] -> [a] -> [a]
+merge = mergeBy compare
+
+> mergeBy :: (a -> a -> Ordering) -> [a] -> [a] -> [a]
+> mergeBy _ [] ys = ys
+> mergeBy _ (x:xs) [] = x:xs
+> mergeBy cmp (x:xs) (y:ys) =
+>   case cmp x y of
+>     GT -> y : mergeBy cmp (x:xs) ys
+>     _ -> x : mergeBy cmp xs (y:ys)
 
 \end{verbatim}
 Error messages.
@@ -567,6 +721,9 @@ Error messages.
 > undefinedData :: QualIdent -> String
 > undefinedData c = "Undefined data constructor " ++ qualName c
 
+> undefinedLabel :: QualIdent -> String
+> undefinedLabel l = "Undefined field label " ++ qualName l
+
 > ambiguousIdent :: [ValueKind] -> QualIdent -> String
 > ambiguousIdent rs
 >   | any isConstr rs = ambiguousData rs
@@ -577,6 +734,9 @@ Error messages.
 
 > ambiguousData :: [ValueKind] -> QualIdent -> String
 > ambiguousData = ambiguous "data constructor"
+
+> ambiguousLabel :: [ValueKind] -> QualIdent -> String
+> ambiguousLabel = ambiguous "field label"
 
 > ambiguous :: String -> [ValueKind] -> QualIdent -> String
 > ambiguous what rs x = show $
@@ -589,6 +749,10 @@ Error messages.
 
 > repeatedDefinition :: Ident -> String
 > repeatedDefinition v = "Redefinition of " ++ name v
+
+> duplicateLabel :: String -> Ident -> String
+> duplicateLabel what l =
+>   "Field label " ++ name l ++ " occurs more than once in record " ++ what
 
 > duplicateVariable :: Ident -> String
 > duplicateVariable v = name v ++ " occurs more than once in pattern"
@@ -627,6 +791,15 @@ Error messages.
 > nonVariable :: String -> Ident -> String
 > nonVariable what c =
 >   "Data constructor " ++ name c ++ " used in left hand side of " ++ what
+
+> noLabel :: QualIdent -> QualIdent -> String
+> noLabel c l =
+>   qualName l ++ " is not a field label of constructor " ++ show c
+
+> noCommonConstr :: [QualIdent] -> String
+> noCommonConstr ls =
+>   "No constructor has all of these fields: " ++
+>   concat (intersperse ", " (map qualName ls))
 
 > noBody :: Ident -> String
 > noBody v = name v ++ " is not defined in this scope"

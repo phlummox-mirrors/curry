@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PrecCheck.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: PrecCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -132,6 +132,8 @@ because it is used for constructing the module's interface.
 >     fixPrecT p pEnv a t1' op t2'
 > checkConstrTerm p pEnv (ParenPattern t) =
 >   liftE ParenPattern (checkConstrTerm p pEnv t)
+> checkConstrTerm p pEnv (RecordPattern a c fs) =
+>   liftE (RecordPattern a c) (mapE (checkField (checkConstrTerm p pEnv)) fs)
 > checkConstrTerm p pEnv (TuplePattern ts) =
 >   liftE TuplePattern (mapE (checkConstrTerm p pEnv) ts)
 > checkConstrTerm p pEnv (ListPattern a ts) =
@@ -162,6 +164,12 @@ because it is used for constructing the module's interface.
 > checkExpr _ _ _ (Constructor a c) = return (Constructor a c)
 > checkExpr m p pEnv (Paren e) = liftE Paren (checkExpr m p pEnv e)
 > checkExpr m p pEnv (Typed e ty) = liftE (flip Typed ty) (checkExpr m p pEnv e)
+> checkExpr m p pEnv (Record a c fs) =
+>   liftE (Record a c) (mapE (checkField (checkExpr m p pEnv)) fs)
+> checkExpr m p pEnv (RecordUpdate e fs) =
+>   liftE2 RecordUpdate
+>          (checkExpr m p pEnv e)
+>          (mapE (checkField (checkExpr m p pEnv)) fs)
 > checkExpr m p pEnv (Tuple es) = liftE Tuple (mapE (checkExpr m p pEnv) es)
 > checkExpr m p pEnv (List a es) = liftE (List a) (mapE (checkExpr m p pEnv) es)
 > checkExpr m p pEnv (ListCompr e qs) =
@@ -221,6 +229,9 @@ because it is used for constructing the module's interface.
 > checkAlt :: ModuleIdent -> PEnv -> Alt a -> Error (Alt a)
 > checkAlt m pEnv (Alt p t rhs) =
 >   liftE2 (Alt p) (checkConstrTerm p pEnv t) (checkRhs m pEnv rhs)
+
+> checkField :: (a -> Error a) -> Field a -> Error (Field a)
+> checkField check (Field l x) = liftE (Field l) (check x)
 
 \end{verbatim}
 The functions \texttt{fixPrec}, \texttt{fixUPrec}, and

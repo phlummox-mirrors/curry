@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 2463 2007-09-11 22:11:43Z wlux $
+% $Id: Renaming.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -139,10 +139,22 @@ syntax tree and renames all type and expression variables.
 >     ty1' <- renameType env' ty1
 >     ty2' <- renameType env' ty2
 >     return (ConOpDecl p evs' ty1' op ty2')
+> renameConstrDecl env (RecordDecl p evs c fs) =
+>   do
+>     env' <- bindVars env evs
+>     evs' <- mapM (renameVar env') evs
+>     fs' <- mapM (renameFieldDecl env') fs
+>     return (RecordDecl p evs' c fs')
+
+> renameFieldDecl :: RenameEnv -> FieldDecl -> RenameState FieldDecl
+> renameFieldDecl env (FieldDecl p ls ty) =
+>   liftM (FieldDecl p ls) (renameType env ty)
 
 > renameNewConstrDecl :: RenameEnv -> NewConstrDecl -> RenameState NewConstrDecl
 > renameNewConstrDecl env (NewConstrDecl p c ty) =
 >   liftM (NewConstrDecl p c) (renameType env ty)
+> renameNewConstrDecl env (NewRecordDecl p c l ty) =
+>   liftM (NewRecordDecl p c l) (renameType env ty)
 
 > renameTypeSig :: TypeExpr -> RenameState TypeExpr
 > renameTypeSig ty =
@@ -224,6 +236,8 @@ not rename this identifier in the same environment as its arguments.
 >          (renameConstrTerm env t2)
 > renameConstrTerm env (ParenPattern t) =
 >   liftM ParenPattern (renameConstrTerm env t)
+> renameConstrTerm env (RecordPattern a c fs) =
+>   liftM (RecordPattern a c) (mapM (renameField (renameConstrTerm env)) fs)
 > renameConstrTerm env (TuplePattern ts) =
 >   liftM TuplePattern (mapM (renameConstrTerm env) ts)
 > renameConstrTerm env (ListPattern a ts) =
@@ -244,6 +258,12 @@ not rename this identifier in the same environment as its arguments.
 > renameExpr env (Paren e) = liftM Paren (renameExpr env e)
 > renameExpr env (Typed e ty) =
 >   liftM2 Typed (renameExpr env e) (renameTypeSig ty)
+> renameExpr env (Record a c fs) =
+>   liftM (Record a c) (mapM (renameField (renameExpr env)) fs)
+> renameExpr env (RecordUpdate e fs) =
+>   liftM2 RecordUpdate
+>          (renameExpr env e)
+>          (mapM (renameField (renameExpr env)) fs)
 > renameExpr env (Tuple es) = liftM Tuple (mapM (renameExpr env) es)
 > renameExpr env (List a es) = liftM (List a) (mapM (renameExpr env) es)
 > renameExpr env (ListCompr e qs) =
@@ -317,5 +337,8 @@ not rename this identifier in the same environment as its arguments.
 >   do
 >     env' <- bindVars env (bv t)
 >     liftM2 (Alt p) (renameConstrTerm env' t) (renameRhs env' rhs)
+
+> renameField :: (a -> RenameState a) -> Field a -> RenameState (Field a)
+> renameField rename (Field l x) = liftM (Field l) (rename x)
 
 \end{verbatim}

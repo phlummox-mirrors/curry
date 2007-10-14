@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ImportSyntaxCheck.lhs 2492 2007-10-13 13:32:50Z wlux $
+% $Id: ImportSyntaxCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -38,35 +38,54 @@ declarations.
 > type ExpFunEnv = Env Ident ValueKind
 
 > bindType :: ModuleIdent -> IDecl -> ExpTypeEnv -> ExpTypeEnv
-> bindType m (IDataDecl _ tc _ cs cs') = bindData m tc cs' (map constr cs)
-> bindType m (INewtypeDecl _ tc _ nc cs') = bindData m tc cs' [nconstr nc]
+> bindType m (IDataDecl _ tc _ cs xs') = bindData m tc xs' xs
+>   where xs = map constr cs ++ nub (concatMap labels cs)
+> bindType m (INewtypeDecl _ tc _ nc xs') = bindData m tc xs' xs
+>   where xs = nconstr nc : nlabel nc
 > bindType m (ITypeDecl _ tc _ _) = bindAlias m tc
 > bindType _ _ = id
 
 > bindData :: ModuleIdent -> QualIdent -> [Ident] -> [Ident] -> ExpTypeEnv
 >          -> ExpTypeEnv
-> bindData m tc cs' cs =
->   bindUnqual tc (Data (qualQualify m tc) (filter (`notElem` cs') cs))
+> bindData m tc xs' xs =
+>   bindUnqual tc (Data (qualQualify m tc) (filter (`notElem` xs') xs))
 
 > bindAlias :: ModuleIdent -> QualIdent -> ExpTypeEnv -> ExpTypeEnv
 > bindAlias m tc = bindUnqual tc (Alias (qualQualify m tc))
 
 > bindValue :: ModuleIdent -> IDecl -> ExpFunEnv -> ExpFunEnv
-> bindValue m (IDataDecl _ tc _ cs cs') = bindConstrs m tc cs' (map constr cs)
-> bindValue m (INewtypeDecl _ tc _ nc cs') = bindConstrs m tc cs' [nconstr nc]
+> bindValue m (IDataDecl _ tc _ cs xs) =
+>   bindConstrs m tc xs (map constr cs) .
+>   bindLabels m tc xs [(l,constrs cs l) | l <- nub (concatMap labels cs)]
+>   where constrs cs l = [constr c | c <- cs, l `elem` labels c]
+> bindValue m (INewtypeDecl _ tc _ nc xs) =
+>   bindConstrs m tc xs [nconstr nc] .
+>   case nc of
+>     NewConstrDecl _ _ _ -> id
+>     NewRecordDecl _ c l _ -> bindLabels m tc xs [(l,[c])]
 > bindValue m (IFunctionDecl _ f _ _) = bindFun m f
 > bindValue _ _ = id
 
 > bindConstrs :: ModuleIdent -> QualIdent -> [Ident] -> [Ident] -> ExpFunEnv
 >             -> ExpFunEnv
-> bindConstrs m tc cs' cs env =
->   foldr (bindConstr (qualQualify m tc)) env (filter (`notElem` cs') cs)
+> bindConstrs m tc xs cs env =
+>   foldr (bindConstr (qualQualify m tc)) env (filter (`notElem` xs) cs)
 
 > bindConstr :: QualIdent -> Ident -> ExpFunEnv -> ExpFunEnv
 > bindConstr tc c = bindEnv c (Constr (qualifyLike tc c))
 
+> bindLabels :: ModuleIdent -> QualIdent -> [Ident] -> [(Ident,[Ident])]
+>            -> ExpFunEnv -> ExpFunEnv
+> bindLabels m tc xs ls env =
+>   foldr (uncurry (bindLabel (qualQualify m tc))) env
+>         (filter ((`notElem` xs) . fst) ls)
+
+> bindLabel :: QualIdent -> Ident -> [Ident] -> ExpFunEnv -> ExpFunEnv
+> bindLabel tc l cs =
+>   bindEnv l (Var (qualifyLike tc l) (map (qualifyLike tc) cs))
+
 > bindFun :: ModuleIdent -> QualIdent -> ExpFunEnv -> ExpFunEnv
-> bindFun m f = bindUnqual f (Var (qualQualify m f))
+> bindFun m f = bindUnqual f (Var (qualQualify m f) [])
 
 > bindUnqual :: QualIdent -> a -> Env Ident a -> Env Ident a
 > bindUnqual x = bindEnv (unqualify x)
@@ -112,15 +131,15 @@ data constructors are added.
 > expandImport :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Import
 >              -> Error [Import]
 > expandImport p m tEnv vEnv (Import x) = expandThing p m tEnv vEnv x
-> expandImport p m tEnv vEnv (ImportTypeWith tc cs) =
->   expandTypeWith p m tEnv tc cs
+> expandImport p m tEnv vEnv (ImportTypeWith tc xs) =
+>   expandTypeWith p m tEnv tc xs
 > expandImport p m tEnv vEnv (ImportTypeAll tc) = expandTypeAll p m tEnv tc
 
 > expandHiding :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Import
 >              -> Error [Import]
 > expandHiding p m tEnv vEnv (Import x) = expandHide p m tEnv vEnv x
-> expandHiding p m tEnv vEnv (ImportTypeWith tc cs) =
->   expandTypeWith p m tEnv tc cs
+> expandHiding p m tEnv vEnv (ImportTypeWith tc xs) =
+>   expandTypeWith p m tEnv tc xs
 > expandHiding p m tEnv vEnv (ImportTypeAll tc) = expandTypeAll p m tEnv tc
 
 > expandThing :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Ident
@@ -136,7 +155,7 @@ data constructors are added.
 >   case lookupEnv f vEnv of
 >     Just (Constr _) ->
 >       maybe (errorAt p (importDataConstr m f)) return tcImport
->     Just (Var _) -> return (Import f : fromMaybe [] tcImport)
+>     Just (Var _ _) -> return (Import f : fromMaybe [] tcImport)
 >     Nothing -> maybe (errorAt p (undefinedEntity m f)) return tcImport
 
 > expandHide :: Position -> ModuleIdent -> ExpTypeEnv -> ExpFunEnv -> Ident
@@ -155,24 +174,24 @@ data constructors are added.
 
 > expandTypeWith :: Position -> ModuleIdent -> ExpTypeEnv -> Ident -> [Ident]
 >                -> Error [Import]
-> expandTypeWith p m tEnv tc cs =
+> expandTypeWith p m tEnv tc xs =
 >   do
->     cs'' <- constrs p m tEnv tc
->     mapE_ (errorAt p . undefinedDataConstr m tc) (filter (`notElem` cs'') cs')
->     return [ImportTypeWith tc cs']
->   where cs' = nub cs
+>     xs'' <- elements p m tEnv tc
+>     mapE_ (errorAt p . undefinedElement m tc) (filter (`notElem` xs'') xs')
+>     return [ImportTypeWith tc xs']
+>   where xs' = nub xs
 
 > expandTypeAll :: Position -> ModuleIdent -> ExpTypeEnv -> Ident
 >               -> Error [Import]
 > expandTypeAll p m tEnv tc =
 >   do
->     cs <- constrs p m tEnv tc
->     return [ImportTypeWith tc cs]
+>     xs <- elements p m tEnv tc
+>     return [ImportTypeWith tc xs]
 
-> constrs :: Position -> ModuleIdent -> ExpTypeEnv -> Ident -> Error [Ident]
-> constrs p m tEnv tc =
+> elements :: Position -> ModuleIdent -> ExpTypeEnv -> Ident -> Error [Ident]
+> elements p m tEnv tc =
 >   case lookupEnv tc tEnv of
->     Just (Data _ cs) -> return cs
+>     Just (Data _ xs) -> return xs
 >     Just (Alias _) -> return []
 >     Nothing -> errorAt p (undefinedType m tc)
 
@@ -188,9 +207,9 @@ Error messages.
 > undefinedType m tc =
 >   "Module " ++ moduleName m ++ " does not export type " ++ name tc
 
-> undefinedDataConstr :: ModuleIdent -> Ident -> Ident -> String
-> undefinedDataConstr m tc c =
->   name c ++ " is not a data constructor of type " ++ name tc
+> undefinedElement :: ModuleIdent -> Ident -> Ident -> String
+> undefinedElement m tc c =
+>   name c ++ " is not a constructor or label of type " ++ name tc
 
 > importDataConstr :: ModuleIdent -> Ident -> String
 > importDataConstr m c = "Explicit import of data constructor " ++ name c

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ValueInfo.lhs 2473 2007-09-19 16:26:56Z wlux $
+% $Id: ValueInfo.lhs 2498 2007-10-14 13:16:00Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -9,13 +9,21 @@
 In order to test type correctness of a module, the compiler needs to
 determine the type of every data constructor, function, and variable
 in the module. For the purpose of type checking, there is no need to
-distinguish variables and functions. For all objects, their original
+distinguish variables and functions. For all entities, their original
 names and their types are saved. In addition, the compiler also saves
-the arity of functions and data constructors. For constructors, the
-arity could be computed from the constructor's type. However, this is
-not possible in general for functions. Note that the arity of a
-newtype constructor is always one, so there is no need to save it
-explicitly.
+the arity of functions and data constructors and the optional field
+labels of data and newtype constructors. For constructors, the arity
+could be computed from the constructor's type. However, this is not
+possible in general for functions. Note that the arity of a newtype
+constructor is always one, so there is no need to save it explicitly.
+
+Each data and newtype constructor is associated with a list of field
+labels for the constructor's arguments. The length of this list is
+always equal to the constructor's arity, i.e., there is exactly one
+label associated with each newtype constructor. If a constructor was
+declared without labels, an anonymous identifier is used in place of
+each label. The same holds for labels that are hidden on import or
+export.
 
 Even though value declarations may be nested, the compiler uses a flat
 environment for saving type information. This is possible because all
@@ -31,15 +39,15 @@ information.
 > import Types
 
 > type ValueEnv = TopEnv ValueInfo
-> data ValueInfo = DataConstructor QualIdent Int TypeScheme
->                | NewtypeConstructor QualIdent TypeScheme
+> data ValueInfo = DataConstructor QualIdent Int [Ident] TypeScheme
+>                | NewtypeConstructor QualIdent Ident TypeScheme
 >                | Value QualIdent Int TypeScheme
 >                deriving Show
 
 > instance Entity ValueInfo where
->   origName (DataConstructor origName _ _) = origName
->   origName (NewtypeConstructor origName _) = origName
->   origName (Value origName _ _) = origName
+>   origName (DataConstructor c _ _ _) = c
+>   origName (NewtypeConstructor c _ _) = c
+>   origName (Value x _ _) = x
 
 \end{verbatim}
 The initial value type environment \texttt{initDCEnv} is initialized
@@ -51,10 +59,13 @@ constructors.
 > initDCEnv = foldr (uncurry predefDC) emptyDCEnv (concatMap snd predefTypes)
 >   where emptyDCEnv = emptyTopEnv (Just (map tupleDC tupleTypes))
 >         predefDC c ty =
->           predefTopEnv c' (DataConstructor c' (arrowArity ty) (polyType ty))
+>           predefTopEnv c'
+>             (DataConstructor c' n (replicate n anonId) (polyType ty))
 >           where c' = qualify c
+>                 n = arrowArity ty
 >         tupleDC ty@(TypeConstructor tc tys) =
->           DataConstructor tc n (ForAll n (foldr TypeArrow ty tys))
+>           DataConstructor tc n (replicate n anonId)
+>                           (ForAll n (foldr TypeArrow ty tys))
 >           where n = length tys
 
 \end{verbatim}
@@ -75,17 +86,20 @@ expressions, respectively, from the type environment. They are
 supposed to be used only after checking for duplicate and ambiguous
 identifiers and therefore should not fail.
 
+The function \texttt{conType} also returns the list of field labels
+associated with the constructor.
+
 The function \texttt{varType} can handle ambiguous identifiers and
 returns the first available type. This makes it possible to use
 \texttt{varType} in order to determine the type of a locally defined
 function even though the function's name may be ambiguous.
 \begin{verbatim}
 
-> conType :: QualIdent -> ValueEnv -> TypeScheme
+> conType :: QualIdent -> ValueEnv -> ([Ident],TypeScheme)
 > conType c tyEnv =
 >   case qualLookupTopEnv c tyEnv of
->     [DataConstructor _ _ ty] -> ty
->     [NewtypeConstructor _ ty] -> ty
+>     [DataConstructor _ _ ls ty] -> (ls,ty)
+>     [NewtypeConstructor _ l ty] -> ([l],ty)
 >     _ -> internalError ("conType " ++ show c)
 
 > varType :: Ident -> ValueEnv -> TypeScheme
@@ -109,8 +123,8 @@ function and the function \texttt{changeArity} changes the arity of a
 > arity :: QualIdent -> ValueEnv -> Int
 > arity x tyEnv =
 >   case qualLookupTopEnv x tyEnv of
->     [DataConstructor _ n _] -> n
->     [NewtypeConstructor _ _] -> 1
+>     [DataConstructor _ n _ _] -> n
+>     [NewtypeConstructor _ _ _] -> 1
 >     [Value _ n _] -> n
 >     _ -> internalError ("arity " ++ show x)
 
@@ -128,8 +142,8 @@ in order to distinguish data and newtype constructors.
 > isNewtypeConstr :: ValueEnv -> QualIdent -> Bool
 > isNewtypeConstr tyEnv c =
 >   case qualLookupTopEnv c tyEnv of
->     [DataConstructor _ _ _] -> False
->     [NewtypeConstructor _ _] -> True
+>     [DataConstructor _ _ _ _] -> False
+>     [NewtypeConstructor _ _ _] -> True
 >     _ -> internalError ("isNewtypeConstr: " ++ show c)
 
 \end{verbatim}
