@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: CurryParser.lhs 2526 2007-10-22 11:47:50Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -295,20 +295,16 @@ directory path to the module is ignored.
 
 > intfDecl :: Parser Token IDecl a
 > intfDecl = iInfixDecl
->        <|> iHidingDecl <|> iDataDecl <|> iNewtypeDecl <|> iTypeDecl
->        <|> iFunctionDecl <\> token Id_hiding
+>        <|> hidingDataDecl <|> iDataDecl <|> iNewtypeDecl <|> iTypeDecl
+>        <|> iFunctionDecl
 
 > iInfixDecl :: Parser Token IDecl a
 > iInfixDecl = infixDeclLhs IInfixDecl <*> int <*> qfunop
 
-> iHidingDecl :: Parser Token IDecl a
-> iHidingDecl = position <*-> token Id_hiding <**> (dataDecl <|> funcDecl)
->   where dataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
->         funcDecl = hidingFunc <$-> token DoubleColon <*> option iFunctionArity
->                               <*> type0
->         hiddenData tc tvs p = HidingDataDecl p tc tvs
->         hidingFunc n ty p = IFunctionDecl p hidingId n ty
->         hidingId = qualify (mkIdent "hiding")
+> hidingDataDecl :: Parser Token IDecl a
+> hidingDataDecl =
+>   position <**> pragma DataPragma (dataDecl <$> qtycon <*> many tyvar)
+>   where dataDecl tc tvs p = HidingDataDecl p tc tvs
 
 > iDataDecl :: Parser Token IDecl a
 > iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs <*> iHidden
