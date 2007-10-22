@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: Desugar.lhs 2525 2007-10-22 11:33:10Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -101,7 +101,7 @@ incompatible with the Curry report, which deliberately defines
 > bindSuccess :: ValueEnv -> ValueEnv
 > bindSuccess = localBindTopEnv successId successCon
 >   where successCon =
->           DataConstructor (qualify successId) 0 [] (polyType successType)
+>           DataConstructor (qualify successId) [] (polyType successType)
 
 \end{verbatim}
 The desugaring phase keeps only the type, function, and value

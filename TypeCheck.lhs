@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: TypeCheck.lhs 2525 2007-10-22 11:33:10Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -152,7 +152,7 @@ name of the type could be ambiguous.
 > bindConstr :: ModuleIdent -> TCEnv -> [Ident] -> Ident -> [(Ident,TypeExpr)]
 >            -> Type -> ValueEnv -> ValueEnv
 > bindConstr m tcEnv tvs c tys ty0 =
->   globalBindTopEnv m c (DataConstructor (qualifyWith m c) (length tys) ls ty')
+>   globalBindTopEnv m c (DataConstructor (qualifyWith m c) ls ty')
 >   where ty' = polyType (normalize (length tvs) (foldr TypeArrow ty0 tys''))
 >         tys'' = expandMonoTypes tcEnv tvs tys'
 >         (ls,tys') = unzip tys

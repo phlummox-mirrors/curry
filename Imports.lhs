@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: Imports.lhs 2525 2007-10-22 11:33:10Z wlux $
 %
 % Copyright (c) 2000-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -269,7 +269,7 @@ Auxiliary functions:
 
 > con :: ModuleIdent -> QualIdent -> [Ident] -> Ident -> [(Ident,TypeExpr)]
 >     -> TypeExpr -> ValueInfo
-> con m tc tvs c tys ty0 = DataConstructor (qualifyLike tc c) (length tys) ls ty
+> con m tc tvs c tys ty0 = DataConstructor (qualifyLike tc c) ls ty
 >   where ty = polyType (toType m tvs (foldr ArrowType ty0 tys'))
 >         (ls,tys') = unzip tys
 

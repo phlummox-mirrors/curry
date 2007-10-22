@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: Typing.lhs 2525 2007-10-22 11:33:10Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -117,7 +117,7 @@ external world.
 >   where initNewtypeEnv = bindEnv qIOId ioType' emptyEnv
 >         ioType' = TypeArrow worldType (tupleType [TypeVariable 0,worldType])
 >         worldType = TypeConstructor (qualify (mkIdent "World")) []
->         bindNewtype (DataConstructor _ _ _ _) = id
+>         bindNewtype (DataConstructor _ _ _) = id
 >         bindNewtype (NewtypeConstructor _ _ (ForAll _ ty)) = bindEnv tc ty1
 >           where TypeArrow ty1 (TypeConstructor tc _) = ty
 >         bindNewtype (Value _ _ _) = id
