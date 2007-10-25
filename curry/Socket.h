@@ -1,5 +1,5 @@
 /*
- * $Id: Socket.h 2214 2007-05-30 06:58:27Z wlux $
+ * $Id: Socket.h 2537 2007-10-25 20:19:24Z wlux $
  *
  * Copyright (c) 2006-2007, Wolfgang Lux
  *
@@ -17,6 +17,8 @@
 # include <sys/socket.h>
 # include <netinet/in.h>
 # include <arpa/inet.h>
+#elif HAVE_WINSOCK2_H
+# include <winsock2.h>
 #elif HAVE_WINSOCK_H
 # include <winsock.h>
 #endif
