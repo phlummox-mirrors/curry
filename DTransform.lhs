@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 2556 2007-12-12 14:06:21Z wlux $
+% $Id: DTransform.lhs 2557 2007-12-12 18:46:29Z wlux $
 %
 % Copyright (c) 2001-2002, Rafael Caballero
 % Copyright (c) 2003-2007, Wolfgang Lux
@@ -794,14 +794,11 @@ local declarations of \texttt{aux$N$}, \texttt{result$N$}, and
 >   | a > 0 = ([],id,e,n)
 >   | otherwise = decomposeExp n e
 
-> extractBindings (Case eval exp lAlt) n =
->   decomposeExp n2 (lets (Case eval e1 lAlt'))
->   where (lTrees1,lets,e1,n1) = extractBindings exp n
->         (lAlt',n2) = newBindingsAlts createEmptyNode lAlt n1 lTrees1
+> extractBindings e@(Case _ _ _) n = decomposeExp n' e'
+>   where (e',n') = newBindings createEmptyNode e n []
 
-> extractBindings (Or e1 e2) n = decomposeExp n2 (Or e1' e2')
->   where (e1',n1) = newBindings createEmptyNode e1 n []
->         (e2',n2) = newBindings createEmptyNode e2 n1 []
+> extractBindings e@(Or _ _) n = decomposeExp n' e'
+>   where (e',n') = newBindings createEmptyNode e n []
 
 > extractBindings (Exist id exp) n = (lTrees',Exist id . lets',exp',n')
 >   where (lTrees',lets',exp',n') = extractBindings exp n
