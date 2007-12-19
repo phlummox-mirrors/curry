@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILPP.lhs 2460 2007-09-06 21:35:20Z wlux $
+% $Id: ILPP.lhs 2582 2007-12-19 18:17:02Z wlux $
 %
 % Copyright (c) 1999-2007 Wolfgang Lux
 % See LICENSE for the full license.
@@ -126,6 +126,7 @@ Marlow's pretty printer for Haskell.
 >   ppParen (p > 1)
 >           (sep [text "letrec" <+> vcat (map ppBinding bs) <+> text "in",
 >                 ppExpr 1 e])
+> ppExpr p (SrcLoc _ e) = ppExpr p e
 
 > ppInfixApp :: Int -> Expression -> QualIdent -> Expression -> Doc
 > ppInfixApp p e1 op e2 =

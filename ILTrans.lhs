@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: ILTrans.lhs 2582 2007-12-19 18:17:02Z wlux $
 %
 % Copyright (c) 1999-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -109,8 +109,7 @@ which are imported into the interface from another module.
 >   | not (isQualified tc) = translIntfData m (unqualify tc) tvs cs : ds
 > translIntfDecl _ _ ds = ds
 
-> translIntfData :: ModuleIdent -> Ident -> [Ident] -> [ConstrDecl]
->                -> IL.Decl
+> translIntfData :: ModuleIdent -> Ident -> [Ident] -> [ConstrDecl] -> IL.Decl
 > translIntfData m tc tvs cs =
 >   IL.DataDecl (qualifyWith m tc) (length tvs)
 >               (map (translIntfConstrDecl m tvs) cs)
@@ -189,7 +188,8 @@ computed for its first argument.
 >    translRhs tyEnv vs' (foldr2 bindRenameEnv emptyEnv vs ts) rhs)
 
 > translRhs :: ValueEnv -> [Ident] -> RenameEnv -> Rhs a -> IL.Expression
-> translRhs tyEnv vs env (SimpleRhs _ e _) = translExpr tyEnv vs env e
+> translRhs tyEnv vs env (SimpleRhs p e _) =
+>   IL.SrcLoc (show p) (translExpr tyEnv vs env e)
 
 \end{verbatim}
 \paragraph{Pattern Matching}
@@ -388,6 +388,7 @@ further possibilities to apply this transformation.
 >   fv (IL.Let (IL.Binding v e1) e2) = fv e1 ++ filter (/= v) (fv e2)
 >   fv (IL.Letrec bds e) = filter (`notElem` vs) (fv es ++ fv e)
 >     where (vs,es) = unzip [(v,e) | IL.Binding v e <- bds]
+>   fv (IL.SrcLoc _ e) = fv e
 
 > instance Expr IL.Alt where
 >   fv (IL.Alt t e) = filterBv t (fv e)
@@ -438,6 +439,7 @@ module.
 >   modules (IL.Exist _ e) = modules e
 >   modules (IL.Let b e) = modules b . modules e
 >   modules (IL.Letrec bs e) = modules bs . modules e
+>   modules (IL.SrcLoc _ e) = modules e
 
 > instance HasModule IL.Alt where
 >   modules (IL.Alt t e) = modules t . modules e
