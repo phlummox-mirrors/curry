@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2525 2007-10-22 11:33:10Z wlux $
+% $Id: Desugar.lhs 2579 2007-12-19 14:08:54Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -162,7 +162,7 @@ Sect.~\ref{sec:dtrans}).
 > goalModule debug tyEnv m g (Goal p e ds)
 >   | debug || isIO ty =
 >       (Nothing,
->        mkModule m p g [] (Let ds e),
+>        mkModule m p g [] (mkLet ds e),
 >        bindFun m g 0 (polyType ty) tyEnv)
 >   | otherwise =
 >       (Just vs,
@@ -171,7 +171,7 @@ Sect.~\ref{sec:dtrans}).
 >        bindFun m v0 0 (monoType ty) (bindFun m g n (polyType ty') tyEnv))
 >   where ty = typeOf e
 >         v0 = anonId
->         (vs,e') = liftGoalVars (if null ds then e else Let ds e)
+>         (vs,e') = liftGoalVars (mkLet ds e)
 >         tys = [rawType (varType v tyEnv) | v <- vs]
 >         ty' = foldr TypeArrow successType (ty:tys)
 >         n = 1 + length vs
@@ -185,7 +185,7 @@ Sect.~\ref{sec:dtrans}).
 >           [BlockDecl (funDecl p g (map (uncurry VariablePattern) vs) e)]
 
 > liftGoalVars :: Expression a -> ([Ident],Expression a)
-> liftGoalVars (Let ds e) = (concat [vs | FreeDecl _ vs <- vds],Let ds' e)
+> liftGoalVars (Let ds e) = (concat [vs | FreeDecl _ vs <- vds],mkLet ds' e)
 >   where (vds,ds') = partition isFreeDecl ds
 > liftGoalVars e = ([],e)
 
@@ -396,8 +396,8 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >     return (SimpleRhs p e' [])
 
 > expandRhs :: Expression Type -> Rhs Type -> Expression Type
-> expandRhs _ (SimpleRhs _ e ds) = Let ds e
-> expandRhs e0 (GuardedRhs es ds) = Let ds (expandGuards e0 es)
+> expandRhs _ (SimpleRhs _ e ds) = mkLet ds e
+> expandRhs e0 (GuardedRhs es ds) = mkLet ds (expandGuards e0 es)
 
 > expandGuards :: Expression Type -> [CondExpr Type] -> Expression Type
 > expandGuards e0 es
@@ -502,13 +502,13 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 > desugarExpr m _ (Lambda p ts e) =
 >   do
 >     (ds',ts') <- mapAccumM (desugarTerm m p) [] ts
->     e' <- desugarExpr m p (Let ds' e)
+>     e' <- desugarExpr m p (mkLet ds' e)
 >     return (Lambda p ts' e')
 > desugarExpr m p (Let ds e) =
 >   do
 >     ds' <- desugarDeclGroup m ds
 >     e' <- desugarExpr m p e
->     return (if null ds' then e' else Let ds' e')
+>     return (mkLet ds' e')
 > desugarExpr m p (Do sts e) = desugarExpr m p (foldr desugarStmt e sts)
 >   where desugarStmt (StmtExpr e) e' =
 >           apply (prelBind_ (ioResType (typeOf e)) (ioResType (typeOf e')))
@@ -516,7 +516,7 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >         desugarStmt (StmtBind p t e) e' =
 >           apply (prelBind (typeOf t) (ioResType (typeOf e')))
 >                 [e,Lambda p [t] e']
->         desugarStmt (StmtDecl ds) e' = Let ds e'
+>         desugarStmt (StmtDecl ds) e' = mkLet ds e'
 > desugarExpr m p (IfThenElse e1 e2 e3) =
 >   do
 >     e1' <- desugarExpr m p e1
@@ -781,7 +781,7 @@ instead of \texttt{(++)} and \texttt{map} in place of
 >         append ty (ListCompr e []) l =
 >           apply (Constructor (consType ty) qConsId) [e,l]
 >         append ty e l = apply (prelAppend ty) [e,l]
-> desugarQual m p (StmtDecl ds) e = desugarExpr m p (Let ds e)
+> desugarQual m p (StmtDecl ds) e = desugarExpr m p (mkLet ds e)
 
 \end{verbatim}
 Generation of fresh names

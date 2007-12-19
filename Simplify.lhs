@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2532 2007-10-24 16:15:08Z wlux $
+% $Id: Simplify.lhs 2579 2007-12-19 14:08:54Z wlux $
 %
 % Copyright (c) 2003-2007, Wolfgang Lux
 % See LICENSE for the full license.
@@ -409,7 +409,7 @@ functions to access the pattern variables.
 >     trEnv <- liftSt (liftRt envRt)
 >     e' <- simplifyLet m (inlineVars m tyEnv trEnv ds' env) dss e
 >     dss'' <- mapM (expandPatternBindings m tyEnv (qfv m ds' ++ qfv m e')) ds'
->     return (mkLet m (concat dss'') e')
+>     return (mkSimplLet m (concat dss'') e')
 
 > inlineVars :: ModuleIdent -> ValueEnv -> TrustEnv -> [Decl Type] -> InlineEnv
 >            -> InlineEnv
@@ -448,15 +448,15 @@ functions to access the pattern variables.
 > canInline tyEnv (Variable _ v) = not (isQualified v) || arity v tyEnv > 0
 > canInline _ _ = False
 
-> mkLet :: ModuleIdent -> [Decl a] -> Expression a -> Expression a
-> mkLet m [FreeDecl p vs] e
+> mkSimplLet :: ModuleIdent -> [Decl a] -> Expression a -> Expression a
+> mkSimplLet m [FreeDecl p vs] e
 >   | null vs' = e
 >   | otherwise = Let [FreeDecl p vs'] e
 >   where vs' = filter (`elem` qfv m e) vs
-> mkLet m [PatternDecl _ (VariablePattern _ v) (SimpleRhs _ e _)]
+> mkSimplLet m [PatternDecl _ (VariablePattern _ v) (SimpleRhs _ e _)]
 >       (Variable _ v')
 >   | v' == qualify v && v `notElem` qfv m e = e
-> mkLet m ds e
+> mkSimplLet m ds e
 >   | null (filter (`elem` qfv m e) (bv ds)) = e
 >   | otherwise = Let ds e
 
