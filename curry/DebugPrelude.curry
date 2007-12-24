@@ -19,16 +19,18 @@ data CTree = CTreeNode String [String] String String [CTree] |
 -- It not only saves time and space but it is neccessary for avoiding 
 -- non terminating computations
 clean :: [(String,CTree)] -> [CTree]
-clean []         = []
-clean ((p,x):xs) = if p=="_" 
-		   then clean xs
-		   else case x of
-                        CTreeVoid  -> rest
-		   	EmptyCTreeNode trees -> trees ++ rest
-                        CTreeNode _ _ _ _ _ -> x : rest
-		    where 
-			 rest = clean xs
-		
+clean = flatten . prune
+
+prune []         = []
+prune ((p,x):xs) = if p=="_" then prune xs else x : prune xs
+
+flatten []     = []
+flatten (x:xs) =
+  case x of
+    CTreeVoid            -> flatten xs
+    EmptyCTreeNode trees -> trees ++ flatten xs
+    CTreeNode _ _ _ _ _  -> x : flatten xs
+
 
 try' :: (a -> (Success,CTree)) -> ([a -> (Success,CTree)], CTree)
 try' g = (map wrap (try (unwrap g)), CTreeVoid)
@@ -50,14 +52,14 @@ m `bind'` f =
       (m',t2) ->
         do
           (y,t3) <- m'
-          return (y, EmptyCTreeNode (clean [(dEval x,t1),(dEval m',t2),(dEval y,t3)]))
+          return (y, EmptyCTreeNode (flatten [t1,t2,t3]))
 
 bind_' :: IOT a -> IOT b -> IOT b
 m1 `bind_'` m2 =
   do
     (x,t1) <- m1
     (y,t2) <- m2
-    return (y, EmptyCTreeNode (clean [(dEval x,t1),(dEval y,t2)]))
+    return (y, EmptyCTreeNode (flatten [t1,t2]))
 
 catch' :: IOT a -> (IOError -> (IOT a, CTree)) -> IOT a
 catch' m f = catch m (wrap f)
@@ -103,11 +105,11 @@ performIO (m,t1) =
     return (r, ioCTree t1 (r,t2))
 
 ioCTree :: CTree -> (a,CTree) -> CTree
-ioCTree CTreeVoid (r,t) = EmptyCTreeNode (clean [(dEval r,t)])
-ioCTree (EmptyCTreeNode trees) (r,t) =
-  EmptyCTreeNode (trees ++ clean [(dEval r,t)])
+ioCTree CTreeVoid (_,t) = EmptyCTreeNode (flatten [t])
+ioCTree (EmptyCTreeNode trees) (_,t) =
+  EmptyCTreeNode (trees ++ flatten [t])
 ioCTree (CTreeNode name args _ rule trees) (r,t) =
-  CTreeNode name args ("return " ++ dEval r) rule (trees ++ clean [(dEval r,t)])
+  CTreeNode name args ("return " ++ dEval r) rule (trees ++ flatten [t])
 
 
 -- rhs=debugging for navigating, rhs=prettyTree for pretty printing
