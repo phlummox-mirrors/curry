@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Options.lhs 2404 2007-07-20 14:39:32Z wlux $
+% $Id: Options.lhs 2602 2008-01-27 16:26:16Z wlux $
 %
-% Copyright (c) 2001-2007, Wolfgang Lux
+% Copyright (c) 2001-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Options.lhs}
@@ -101,9 +101,9 @@ recognized by the compiler.
 >     Option "e" ["eval"] (OptArg Eval "GOAL")
 >            "generate code to evaluate GOAL",
 >     Option "t" ["type"] (ReqArg Type "GOAL")
->            "print type of GOAL",
+>            "compute type of GOAL",
 >     Option "o" ["output"] (ReqArg Output "FILE")
->            "write code to FILE",
+>            "write code or type to FILE",
 >     Option "" ["no-icurry"] (NoArg NoInterface)
 >            "do not create an interface file",
 >     Option "" ["split-code"] (NoArg SplitCode)
