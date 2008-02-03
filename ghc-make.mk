@@ -1,29 +1,29 @@
 # Specific rules for building with ghc --make
-# $Id: ghc-make.mk 2239 2007-06-10 00:46:39Z wlux $
+# $Id: ghc-make.mk 2604 2008-02-03 17:05:49Z wlux $
 #
-# Copyright (c) 2002-2007, Wolfgang Lux
+# Copyright (c) 2002-2008, Wolfgang Lux
 # See LICENSE for the full license.
 #
 
 # specific definitions for ghc
-GHC_HCFLAGS = -H12m -i$(HC_PATH_STYLE)
+GHC_HFLAGS = -H12m -i$(HC_PATH_STYLE)
 
 # programs
 cycc: $(cycc_SRCS)
 	@case "$(MFLAGS)" in -*s*) s=-v0;; *) s=;; esac; \
-	$(HC) --make $(HCFLAGS) $(GHC_HCFLAGS) $$s -o $@ $@
+	$(HC) --make $(HFLAGS) $(GHC_HFLAGS) $$s -o $@ $@
 cymk: $(cymk_SRCS)
 	@case "$(MFLAGS)" in -*s*) s=-v0;; *) s=;; esac; \
-	$(HC) --make $(HCFLAGS) $(GHC_HCFLAGS) $$s -o $@ $@
+	$(HC) --make $(HFLAGS) $(GHC_HFLAGS) $$s -o $@ $@
 newer: $(newer_SRCS)
 	@case "$(MFLAGS)" in -*s*) s=-v0;; *) s=;; esac; \
-	$(HC) --make $(HCFLAGS) $(GHC_HCFLAGS) $$s -o $@ $@
+	$(HC) --make $(HFLAGS) $(GHC_HFLAGS) $$s -o $@ $@
 cam2c: $(cam2c_SRCS)
 	@case "$(MFLAGS)" in -*s*) s=-v0;; *) s=;; esac; \
-	$(HC) --make $(HCFLAGS) $(GHC_HCFLAGS) $$s -o $@ $@
+	$(HC) --make $(HFLAGS) $(GHC_HFLAGS) $$s -o $@ $@
 mach: $(mach_SRCS)
 	@case "$(MFLAGS)" in -*s*) s=-v0;; *) s=;; esac; \
-	$(HC) --make $(HCFLAGS) $(GHC_HCFLAGS) $$s -o $@ $@
+	$(HC) --make $(HFLAGS) $(GHC_HFLAGS) $$s -o $@ $@
 
 # compute the dependencies
 depend-dir:
