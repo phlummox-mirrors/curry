@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2449 2007-08-20 10:37:12Z wlux $
+% $Id: CGen.lhs 2619 2008-02-08 13:13:09Z wlux $
 %
-% Copyright (c) 1998-2007, Wolfgang Lux
+% Copyright (c) 1998-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CGen.lhs}
@@ -223,10 +223,10 @@ generated code.
 > dataDef :: CVisibility -> ConstrDecl -> [CTopDecl]
 > dataDef vb (ConstrDecl c tys)
 >   | null tys =
->       [CVarDef CPrivate nodeInfoType (nodeInfo c) nodeinfo,
+>       [CVarDef CPrivate nodeInfoType (nodeInfo c) (Just nodeinfo),
 >        CVarDef vb nodeInfoConstPtrType (constNode c)
->                (CInit (addr (nodeInfo c)))]
->   | otherwise = [CVarDef vb nodeInfoType (nodeInfo c) nodeinfo]
+>                (Just (CInit (addr (nodeInfo c))))]
+>   | otherwise = [CVarDef vb nodeInfoType (nodeInfo c) (Just nodeinfo)]
 >   where nodeinfo = CStruct (map CInit nodeinfo')
 >         nodeinfo' =
 >           [CExpr "CAPP_KIND",CExpr (dataTag c),closureNodeSize (length tys),
@@ -249,7 +249,7 @@ generated code.
 >                          (asNode (CAdd (CExpr "char_table") (charCode c)))]
 >           | otherwise =
 >               [CVarDef CPrivate (CConstType "struct char_node") (constChar c)
->                        (CStruct $ map CInit [addr "char_info",charCode c]),
+>                  (Just (CStruct (map CInit [addr "char_info",charCode c]))),
 >                CppDefine (constChar c) (constRef (constChar c))]
 >         taggedChar c =
 >           [CppDefine (constChar c) (CFunCall "tag_char" [charCode c])]
@@ -259,14 +259,14 @@ generated code.
 > intConstant i =
 >   CppCondDecls (CFunCall "is_large_int" [CInt i])
 >     [CVarDef CPrivate (CConstType "struct int_node") (constInt i)
->              (CStruct $ map CInit [addr "int_info",CInt i]),
+>              (Just (CStruct (map CInit [addr "int_info",CInt i]))),
 >      CppDefine (constInt i) (constRef (constInt i))]
 >     [CppDefine (constInt i) (CFunCall "tag_int" [CInt i])]
 
 > floatConstant :: Double -> CTopDecl
 > floatConstant f =
 >   CVarDef CPrivate (CConstType "struct float_node") (constFloat f)
->           (CStruct $ map CInit [addr "float_info",fval f])
+>           (Just (CStruct (map CInit [addr "float_info",fval f])))
 >   where fval f
 >           | isNaN f = error "internalError: NaN literal in CGen.floatConstant"
 >           | isInfinite f = CExpr (withSign f "1e500")
@@ -407,7 +407,7 @@ is generated.
 > evalDef :: CVisibility -> Name -> Int -> [CTopDecl]
 > evalDef vb f n =
 >   [evalDecl f | vb == CPublic] ++
->   [CVarDef vb nodeInfoType (nodeInfo f) (funInfo f n)]
+>   [CVarDef vb nodeInfoType (nodeInfo f) (Just (funInfo f n))]
 
 > lazyDef :: CVisibility -> Name -> Int -> [CTopDecl]
 > lazyDef vb f n =
@@ -434,7 +434,7 @@ is generated.
 > fun0Def vb f n =
 >   [fun0Decl f | vb == CPublic] ++
 >   [CVarDef vb (CConstType "struct closure_node") (constFunc f)
->            (CStruct [CInit (info f n),CStruct [CInit CNull]])]
+>            (Just (CStruct [CInit (info f n),CStruct [CInit CNull]]))]
 >   where info f n
 >           | n == 0 = addr (nodeInfo f)
 >           | otherwise = CExpr (pappInfoTable f)
