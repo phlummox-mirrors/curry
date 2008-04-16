@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2657 2008-04-15 12:25:07Z wlux $
+% $Id: CGen.lhs 2659 2008-04-16 07:34:24Z wlux $
 %
 % Copyright (c) 1998-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1040,8 +1040,9 @@ translation function.
 >                    (map (CInit . CExpr . contName) ks ++ [CInit CNull]) :
 >       localVar ips (Just (asNode (CExpr choices))) :
 >       saveCont vs0 [] [ips] (head ks : ks') ++
->       [CppCondStmts "YIELD_NONDET" (yieldCall v) [],
->        goto "regs.handlers->choices"]
+>       [CppCondStmts "!NO_STABILITY"
+>                     (yieldCall v)
+>                     [goto "regs.handlers->choices"]]
 >   where ips = Name "_choice_ips"
 >         choices = "_choices"
 >         yieldCall (Just v) =
