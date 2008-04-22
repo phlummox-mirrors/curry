@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2677 2008-04-22 14:42:42Z wlux $
+% $Id: CurryParser.lhs 2678 2008-04-22 14:52:45Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -134,7 +134,7 @@ directory path to the module is ignored.
 
 > topDecl :: Parser Token (TopDecl ()) a
 > topDecl = dataDecl <|> newtypeDecl <|> typeDecl <|> BlockDecl <$> blockDecl
->   where blockDecl = infixDecl <|> functionDecl <|> foreignDecl
+>   where blockDecl = infixDecl <|> typeSig <|?> functionDecl <|> foreignDecl
 >                 <|> trustAnnotation
 
 > whereClause :: Parser Token [Decl ()] a
@@ -145,7 +145,8 @@ directory path to the module is ignored.
 > localDecls = layout (block localDecl)
 
 > localDecl :: Parser Token (Decl ()) a
-> localDecl = infixDecl <|> valueDecl <|> foreignDecl <|> trustAnnotation
+> localDecl = infixDecl <|> typeSig <|?> valueDecl <|?> freeDecl <|> foreignDecl
+>         <|> trustAnnotation
 
 > dataDecl :: Parser Token (TopDecl ()) a
 > dataDecl = typeDeclLhs DataDecl KW_data <*> constrs
@@ -203,42 +204,31 @@ directory path to the module is ignored.
 > infixDeclLhs f = f <$> position <*> tokenOps infixKW
 >   where infixKW = [(KW_infix,Infix),(KW_infixl,InfixL),(KW_infixr,InfixR)]
 
+> typeSig :: Parser Token (Decl ()) a
+> typeSig =
+>   TypeSig <$> position <*> fun `sepBy1` comma <*-> token DoubleColon <*> type0
+
 > functionDecl :: Parser Token (Decl ()) a
-> functionDecl = position <**> decl
->   where decl = fun `sepBy1` comma <**> funListDecl
->           <|?> funDecl <$> lhs <*> declRhs
->         lhs = (\f -> (f,FunLhs f [])) <$> fun
+> functionDecl = funDecl <$> position <*> lhs <*> declRhs
+>   where lhs = (\f -> (f,FunLhs f [])) <$> fun
 >          <|?> funLhs
 
 > valueDecl :: Parser Token (Decl ()) a
-> valueDecl = position <**> decl
->   where decl = var `sepBy1` comma <**> valListDecl
->           <|?> valDecl <$> constrTerm0 <*> declRhs
->           <|?> funDecl <$> curriedLhs <*> declRhs
->         valDecl (ConstructorPattern _ c ts)
->           | not (isConstrId c) = funDecl (f,FunLhs f ts)
+> valueDecl = valDecl <$> position <*> constrTerm0 <*> declRhs
+>        <|?> funDecl <$> position <*> curriedLhs <*> declRhs
+>   where valDecl p (ConstructorPattern _ c ts)
+>           | not (isConstrId c) = funDecl p (f,FunLhs f ts)
 >           where f = unqualify c
->         valDecl t = opDecl id t
->         opDecl f (InfixPattern a t1 op t2)
->           | isConstrId op = opDecl (f . InfixPattern a t1 op) t2
->           | otherwise = funDecl (op',OpLhs (f t1) op' t2)
+>         valDecl p t = opDecl p id t
+>         opDecl p f (InfixPattern a t1 op t2)
+>           | isConstrId op = opDecl p (f . InfixPattern a t1 op) t2
+>           | otherwise = funDecl p (op',OpLhs (f t1) op' t2)
 >           where op' = unqualify op
->         opDecl f t = patDecl (f t)
+>         opDecl p f t = PatternDecl p (f t)
 >         isConstrId c = c == qConsId || isQualified c || isQTupleId c
 
-> funDecl :: (Ident,Lhs a) -> Rhs a -> Position -> Decl a
-> funDecl (f,lhs) rhs p = FunctionDecl p f [Equation p lhs rhs]
-
-> patDecl :: ConstrTerm a -> Rhs a -> Position -> Decl a
-> patDecl t rhs p = PatternDecl p t rhs
-
-> funListDecl :: Parser Token ([Ident] -> Position -> Decl ()) a
-> funListDecl = typeSig <$-> token DoubleColon <*> type0
->   where typeSig ty vs p = TypeSig p vs ty
-
-> valListDecl :: Parser Token ([Ident] -> Position -> Decl ()) a
-> valListDecl = funListDecl
->           <|> flip FreeDecl <$-> token KW_free
+> funDecl :: Position -> (Ident,Lhs a) -> Rhs a -> Decl a
+> funDecl p (f,lhs) rhs = FunctionDecl p f [Equation p lhs rhs]
 
 > funLhs :: Parser Token (Ident,Lhs ()) a
 > funLhs = funLhs <$> fun <*> many1 constrTerm2
@@ -265,6 +255,9 @@ directory path to the module is ignored.
 > rhs eq = rhsExpr <*> whereClause
 >   where rhsExpr = SimpleRhs <$-> eq <*> position <*> expr
 >               <|> GuardedRhs <$> many1 (condExpr eq)
+
+> freeDecl :: Parser Token (Decl ()) a
+> freeDecl = FreeDecl <$> position <*> var `sepBy1` comma <*-> token KW_free
 
 > foreignDecl :: Parser Token (Decl ()) a
 > foreignDecl =
