@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2526 2007-10-22 11:47:50Z wlux $
+% $Id: CurryParser.lhs 2677 2008-04-22 14:42:42Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryParser.lhs}
@@ -31,11 +31,13 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > parseHeader :: FilePath -> String -> Error (Module ())
 > parseHeader fn = prefixParser (moduleHeader fn <*->
->                                (leftBrace `opt` NoAttributes) <*>
->                                many (importDecl <*-> many semicolon) <*>
+>                                (leftBrace <|> layoutOn) <*>
+>                                importDecls <*>
 >                                succeed [])
 >                               lexer
 >                               fn
+>   where importDecls = (:) <$> importDecl <*> importDecls' `opt` []
+>         importDecls' = semicolon <-*> importDecls `opt` []
 
 > parseModule :: FilePath -> Parser Token (Module ()) a
 > parseModule fn = uncurry <$> moduleHeader fn <*> layout moduleDecls
@@ -59,10 +61,10 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 >            <|> flip ExportTypeWith <$> con `sepBy` comma
 
 > moduleDecls :: Parser Token ([ImportDecl],[TopDecl ()]) a
-> moduleDecls = impDecl <$> importDecl
->                       <*> (semicolon <-*> moduleDecls `opt` ([],[]))
->           <|> (,) [] <$> topDecl `sepBy` semicolon
->   where impDecl i (is,ds) = (i:is,ds)
+> moduleDecls = imp <$> importDecl <?*> semiBlock moduleDecls ([],[])
+>           <|> top <$> topDecl <*> semiBlock (block topDecl) []
+>   where imp i ~(is,ds) = (i:is,ds)
+>         top d ds = ([],d:ds)
 
 > importDecl :: Parser Token ImportDecl a
 > importDecl =
@@ -108,10 +110,10 @@ directory path to the module is ignored.
 >                  <?> "module name expected"
 
 > intfDecls :: Parser Token ([IImportDecl],[IDecl]) a
-> intfDecls = impDecl <$> iImportDecl
->                     <*> (semicolon <-*> intfDecls `opt` ([],[]))
->         <|> (,) [] <$> intfDecl `sepBy` semicolon
->   where impDecl i (is,ds) = (i:is,ds)
+> intfDecls = imp <$> iImportDecl <?*> semiBlock intfDecls ([],[])
+>         <|> intf <$> intfDecl <*> semiBlock (block intfDecl) []
+>   where imp i ~(is,ds) = (i:is,ds)
+>         intf d ds = ([],d:ds)
 
 > iImportDecl :: Parser Token IImportDecl a
 > iImportDecl = IImportDecl <$> position <*-> token KW_import <*> mIdent
@@ -124,7 +126,7 @@ directory path to the module is ignored.
 > parseGoal s = applyParser goal lexer "" s
 
 > goal :: Parser Token (Goal ()) a
-> goal = Goal <$> position <*> expr <*> localDefs
+> goal = Goal <$> position <*> expr <*> whereClause
 
 \end{verbatim}
 \paragraph{Declarations}
@@ -135,14 +137,15 @@ directory path to the module is ignored.
 >   where blockDecl = infixDecl <|> functionDecl <|> foreignDecl
 >                 <|> trustAnnotation
 
-> localDefs :: Parser Token [Decl ()] a
-> localDefs = token KW_where <-*> layout valueDecls
->       `opt` []
+> whereClause :: Parser Token [Decl ()] a
+> whereClause = token KW_where <-*> localDecls
+>         `opt` []
 
-> valueDecls :: Parser Token [Decl ()] a
-> valueDecls = localDecl `sepBy` semicolon
->   where localDecl = infixDecl <|> valueDecl <|> foreignDecl
->                 <|> trustAnnotation
+> localDecls :: Parser Token [Decl ()] a
+> localDecls = layout (block localDecl)
+
+> localDecl :: Parser Token (Decl ()) a
+> localDecl = infixDecl <|> valueDecl <|> foreignDecl <|> trustAnnotation
 
 > dataDecl :: Parser Token (TopDecl ()) a
 > dataDecl = typeDeclLhs DataDecl KW_data <*> constrs
@@ -259,7 +262,7 @@ directory path to the module is ignored.
 > declRhs = rhs equals
 
 > rhs :: Parser Token a b -> Parser Token (Rhs ()) b
-> rhs eq = rhsExpr <*> localDefs
+> rhs eq = rhsExpr <*> whereClause
 >   where rhsExpr = SimpleRhs <$-> eq <*> position <*> expr
 >               <|> GuardedRhs <$> many1 (condExpr eq)
 
@@ -363,7 +366,7 @@ directory path to the module is ignored.
 > parenType = parens tupleType
 
 > tupleType :: Parser Token TypeExpr a
-> tupleType = type0 <??> (tuple <$> many1 (comma <-*> type0))
+> tupleType = type0 <**?> (tuple <$> many1 (comma <-*> type0))
 >       `opt` ConstructorType qUnitId []
 >   where tuple tys ty = TupleType (ty:tys)
 
@@ -491,7 +494,7 @@ the left-hand side of a declaration.
 > condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 
 > expr :: Parser Token (Expression ()) a
-> expr = expr0 <??> (flip Typed <$-> token DoubleColon <*> type0)
+> expr = expr0 <**?> (flip Typed <$-> token DoubleColon <*> type0)
 
 > expr0 :: Parser Token (Expression ()) a
 > expr0 = expr1 `chainr1` (flip InfixApply <$> infixOp)
@@ -576,7 +579,7 @@ the left-hand side of a declaration.
 >                     <*-> (token RightArrow <?> "-> expected") <*> expr
 
 > letExpr :: Parser Token (Expression ()) a
-> letExpr = Let <$-> token KW_let <*> layout valueDecls
+> letExpr = Let <$-> token KW_let <*> localDecls
 >               <*-> (token KW_in <?> "in expected") <*> expr
 
 > doExpr :: Parser Token (Expression ()) a
@@ -592,7 +595,8 @@ the left-hand side of a declaration.
 >                 <*-> (token KW_of <?> "of expected") <*> layout alts
 
 > alts :: Parser Token [Alt ()] a
-> alts = alt `sepBy1` semicolon
+> alts = (:) <$> alt <*> semiBlock (block alt) []
+>    <|> semicolon <-*> alts
 
 > alt :: Parser Token (Alt ()) a
 > alt = Alt <$> position <*> constrTerm0
@@ -617,13 +621,16 @@ prefix of a let expression.
 
 > stmts :: Parser Token ([Statement ()],Expression ()) a
 > stmts = stmt reqStmts optStmts
+>     <|> semicolon <-*> stmts
 
 > reqStmts :: Parser Token (Statement () -> ([Statement ()],Expression ())) a
 > reqStmts = (\(sts,e) st -> (st : sts,e)) <$-> semicolon <*> stmts
 
 > optStmts :: Parser Token (Expression () -> ([Statement ()],Expression ())) a
-> optStmts = succeed StmtExpr <.> reqStmts
+> optStmts = semicolon <-*> optStmts'
 >      `opt` (,) []
+> optStmts' = (\(sts,e) st -> (StmtExpr st : sts,e)) <$> stmts
+>       `opt` ((,) [])
 
 > quals :: Parser Token [Statement ()] a
 > quals = stmt (succeed id) (succeed StmtExpr) `sepBy1` comma
@@ -637,7 +644,7 @@ prefix of a let expression.
 > letStmt :: Parser Token (Statement () -> a) b
 >         -> Parser Token (Expression () -> a) b
 >         -> Parser Token a b
-> letStmt stmtCont exprCont = token KW_let <-*> layout valueDecls <**> optExpr
+> letStmt stmtCont exprCont = token KW_let <-*> localDecls <**> optExpr
 >   where optExpr = flip Let <$-> token KW_in <*> expr <.> exprCont
 >               <|> succeed StmtDecl <.> stmtCont
 
@@ -749,8 +756,16 @@ prefix of a let expression.
 
 > layout :: Parser Token a b -> Parser Token a b
 > layout p = braces p
->        <|> layoutOn <-*> (p <\> token VRightBrace) <*-> layoutEnd
+>        <|> layoutOn <-*> (p <\> token VRightBrace <\> token VSemicolon)
+>                     <*-> layoutEnd
 >                     <*-> (token VRightBrace `opt` NoAttributes)
+
+> block :: Parser Token a b -> Parser Token [a] b
+> block p = q
+>   where q = (:) <$> p <?*> semiBlock q []
+
+> semiBlock :: Parser Token a b -> a -> Parser Token a b
+> semiBlock ds z = semicolon <-*> ds `opt` z
 
 \end{verbatim}
 \paragraph{More combinators}
