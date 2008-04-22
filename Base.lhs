@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: Base.lhs 2681 2008-04-22 17:23:30Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Base.lhs}
@@ -87,7 +87,8 @@ variable, but always refers to a global function from the prelude.
 
 > instance QualExpr (Expression a) where
 >   qfv _ (Literal _ _) = []
->   qfv m (Variable _ v) = maybe [] return (localIdent m v)
+>   qfv m (Variable _ v) =
+>     maybe [] (\v' -> [v' | v' /= anonId]) (localIdent m v)
 >   qfv _ (Constructor _ _) = []
 >   qfv m (Paren e) = qfv m e
 >   qfv m (Typed e _) = qfv m e

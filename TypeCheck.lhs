@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2525 2007-10-22 11:33:10Z wlux $
+% $Id: TypeCheck.lhs 2681 2008-04-22 17:23:30Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeCheck.lhs}
@@ -525,6 +525,7 @@ inferred type matches the type signature exactly.
 > isNonExpansiveApp :: ValueEnv -> Int -> Expression a -> Bool
 > isNonExpansiveApp _ _ (Literal _ _) = True
 > isNonExpansiveApp tyEnv n (Variable _ v)
+>   | unqualify v == anonId = False
 >   | isRenamed (unqualify v) = n == 0 || n < arity v tyEnv
 >   | otherwise = n < arity v tyEnv
 > isNonExpansiveApp _ _ (Constructor _ _) = True
@@ -768,7 +769,8 @@ constructor itself.
 >     return (ty,Literal ty l)
 > tcExpr _ _ _ (Variable _ v) =
 >   do
->     ty <- fetchSt >>= inst . funType v
+>     ty <- if unRenameIdent (unqualify v) == anonId then freshTypeVar
+>           else fetchSt >>= inst . funType v
 >     return (ty,Variable ty v)
 > tcExpr _ _ _ (Constructor _ c) =
 >   do

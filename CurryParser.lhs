@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2678 2008-04-22 14:52:45Z wlux $
+% $Id: CurryParser.lhs 2681 2008-04-22 17:23:30Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -505,10 +505,13 @@ the left-hand side of a declaration.
 >   where recUpdate = braces (field expr0 `sepBy1` comma)
 
 > expr4 :: Parser Token (Expression ()) a
-> expr4 = constant <|> variable <|> parenExpr <|> listExpr
+> expr4 = constant <|> anonVar <|> variable <|> parenExpr <|> listExpr
 
 > constant :: Parser Token (Expression ()) a
 > constant = Literal () <$> literal
+
+> anonVar :: Parser Token (Expression ()) a
+> anonVar = Variable () (qualify anonId) <$-> token Underscore
 
 > variable :: Parser Token (Expression ()) a
 > variable = qFunId <**> optRecord
