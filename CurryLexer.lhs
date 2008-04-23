@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryLexer.lhs 2526 2007-10-22 11:47:50Z wlux $
+% $Id: CurryLexer.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryLexer.lhs}
@@ -40,8 +40,8 @@ In this section a lexer for Curry is implemented.
 >   -- virtual punctation (inserted by layout)
 >   | VSemicolon | VRightBrace
 >   -- reserved identifiers
->   | KW_case | KW_data | KW_do | KW_else | KW_foreign | KW_free | KW_if
->   | KW_import | KW_in | KW_infix | KW_infixl | KW_infixr | KW_let
+>   | KW_case | KW_data | KW_do | KW_else | KW_fcase | KW_foreign | KW_free
+>   | KW_if | KW_import | KW_in | KW_infix | KW_infixl | KW_infixr | KW_let
 >   | KW_module | KW_newtype | KW_of | KW_then | KW_type | KW_where
 >   -- reserved operators
 >   | At | Colon | DotDot | DoubleColon | Equals | Backslash | Bar
@@ -157,6 +157,7 @@ all tokens in their source representation.
 >   showsPrec _ (Token KW_data _) = showString "`data'"
 >   showsPrec _ (Token KW_do _) = showString "`do'"
 >   showsPrec _ (Token KW_else _) = showString "`else'"
+>   showsPrec _ (Token KW_fcase _) = showString "`fcase'"
 >   showsPrec _ (Token KW_foreign _) = showString "`foreign'"
 >   showsPrec _ (Token KW_free _) = showString "`free'"
 >   showsPrec _ (Token KW_if _) = showString "`if'"
@@ -224,6 +225,7 @@ pragmas.
 >     ("data",    KW_data),
 >     ("do",      KW_do),
 >     ("else",    KW_else),
+>     ("fcase",   KW_fcase),
 >     ("foreign", KW_foreign),
 >     ("free",    KW_free),
 >     ("if",      KW_if),

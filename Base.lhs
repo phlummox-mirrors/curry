@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2681 2008-04-22 17:23:30Z wlux $
+% $Id: Base.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -111,6 +111,7 @@ variable, but always refers to a global function from the prelude.
 >   qfv m (Do sts e) = foldr (qfvStmt m) (qfv m e) sts
 >   qfv m (IfThenElse e1 e2 e3) = qfv m e1 ++ qfv m e2 ++ qfv m e3
 >   qfv m (Case e alts) = qfv m e ++ qfv m alts
+>   qfv m (Fcase e alts) = qfv m e ++ qfv m alts
 
 > qfvStmt :: ModuleIdent -> Statement a -> [Ident] -> [Ident]
 > qfvStmt m st fvs = qfv m st ++ filterBv st fvs

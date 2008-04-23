@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Unlambda.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: Unlambda.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 2007, Wolfgang Lux
+% Copyright (c) 2007-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Unlambda.lhs}
@@ -77,6 +77,8 @@ lambda abstraction is recorded in the type environment.
 >     liftM2 Let (mapM (nameLambdas m) ds) (nameLambdas m e)
 >   nameLambdas m (Case e as) =
 >     liftM2 Case (nameLambdas m e) (mapM (nameLambdas m) as)
+>   nameLambdas m (Fcase e as) =
+>     liftM2 Fcase (nameLambdas m e) (mapM (nameLambdas m) as)
 
 > instance SyntaxTree Alt where
 >   nameLambdas m (Alt p t rhs) = liftM (Alt p t) (nameLambdas m rhs)

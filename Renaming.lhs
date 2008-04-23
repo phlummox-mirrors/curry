@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: Renaming.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Renaming.lhs}
@@ -310,6 +310,8 @@ not rename this identifier in the same environment as its arguments.
 >          (renameExpr env e3)
 > renameExpr env (Case e as) =
 >   liftM2 Case (renameExpr env e) (mapM (renameAlt env) as)
+> renameExpr env (Fcase e as) =
+>   liftM2 Fcase (renameExpr env e) (mapM (renameAlt env) as)
 
 > renameOp :: RenameEnv -> InfixOp a -> RenameState (InfixOp a)
 > renameOp env (InfixOp a op) = liftM (InfixOp a) (renameQual env op)

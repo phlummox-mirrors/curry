@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: TypeSyntaxCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeSyntaxCheck.lhs}
@@ -129,8 +129,8 @@ signatures.
 >   liftE (NewRecordDecl p c l) (checkClosedType env p tvs ty)
 
 \end{verbatim}
-Checking expressions is rather straight forward. The compiler must
-only traverse the structure of expressions in order to find local
+Checking expressions is rather straightforward. The compiler must only
+traverse the structure of expressions in order to find local
 declaration groups.
 \begin{verbatim}
 
@@ -194,6 +194,8 @@ declaration groups.
 >          (checkExpr env p e3)
 > checkExpr env p (Case e alts) =
 >   liftE2 Case (checkExpr env p e) (mapE (checkAlt env) alts)
+> checkExpr env p (Fcase e alts) =
+>   liftE2 Fcase (checkExpr env p e) (mapE (checkAlt env) alts)
 
 > checkStmt :: TypeEnv -> Position -> Statement a -> Error (Statement a)
 > checkStmt env p (StmtExpr e) = liftE StmtExpr (checkExpr env p e)

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 2582 2007-12-19 18:17:02Z wlux $
+% $Id: ILTrans.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILTrans.lhs}
@@ -155,8 +155,8 @@ arguments are constructed by appending \texttt{\_1}, \texttt{\_2},
 etc. from left to right to the name that would be assigned to a
 variable occurring at the position of the constructor term.
 
-Some special care is needed for the selector functions introduced by
-the compiler in place of pattern bindings. In order to generate the
+Some special care is necessary for the selector functions introduced
+by the compiler in place of pattern bindings. In order to generate the
 code for updating all pattern variables, the equality of names between
 the pattern variables in the first argument of the selector function
 and their repeated occurrences in the remaining arguments must be
@@ -193,14 +193,14 @@ computed for its first argument.
 
 \end{verbatim}
 \paragraph{Pattern Matching}
-The pattern matching code searches for the left-most inductive
+The pattern matching code searches for the leftmost inductive
 argument position in the left hand sides of all rules defining an
 equation. An inductive position is a position where all rules have a
 constructor rooted term. If such a position is found, a \texttt{case}
 expression is generated for the argument at that position. The
 matching code is then computed recursively for all of the alternatives
 independently. If no inductive position is found, the algorithm looks
-for the left-most demanded argument position, i.e., a position where
+for the leftmost demanded argument position, i.e., a position where
 at least one of the rules has a constructor rooted term. If such a
 position is found, an \texttt{or} expression is generated with those
 cases that have a variable at the argument position in one branch and
@@ -211,11 +211,11 @@ hand sides of the remaining rules, eventually combining them using
 
 Actually, the algorithm below combines the search for inductive and
 demanded positions. The function \texttt{match} scans the argument
-lists for the left-most demanded position. If this turns out to be
+lists for the leftmost demanded position. If this turns out to be
 also an inductive position, the function \texttt{matchInductive} is
 called in order to generate a \texttt{case} expression. Otherwise, the
 function \texttt{optMatch} is called that tries to find an inductive
-position in the remaining arguments. If one is found,
+position among the remaining arguments. If one is found,
 \texttt{matchInductive} is called, otherwise the function
 \texttt{optMatch} uses the demanded argument position found by
 \texttt{match}.
@@ -303,14 +303,14 @@ position in the remaining arguments. If one is found,
 >         vars _ = []
 
 \end{verbatim}
-Note that pattern matching in case expressions has been performed in
-the \texttt{Desugar} module already, where case expressions with
-nested patterns were transformed into nested case expressions with
-flat patterns.
+Note that pattern matching of rigid case expressions has been
+performed in the \texttt{Desugar} module already, where case
+expressions with nested patterns were transformed into nested case
+expressions with flat patterns.
 
 \paragraph{Expressions}
 The translation of expressions from desugared Curry source code into
-the intermediate language is very straight forward. A minor
+the intermediate language is very straightforward. A minor
 complication arises for the translation of as-patterns, which are not
 supported in the intermediate language. They are transformed into an
 outer, flexible case expression that evaluates the scrutinized
@@ -357,19 +357,33 @@ further possibilities to apply this transformation.
 >         translBinding env (PatternDecl _ (VariablePattern _ v) rhs) =
 >           IL.Binding v (translRhs tyEnv vs env rhs)
 > translExpr tyEnv (v:vs) env (Case e alts) =
->   caseExpr (translExpr tyEnv vs env e) (map (translAlt tyEnv vs env v) alts)
+>   caseExpr (translExpr tyEnv vs env e)
+>            (map (uncurry (IL.Alt . pattern) . translAlt tyEnv vs env v) alts)
 >   where caseExpr e alts
 >           | v `elem` fv alts =
 >               IL.Case IL.Flex e
 >                       [IL.Alt (IL.VariablePattern v)
 >                               (IL.Case IL.Rigid (IL.Variable v) alts)]
 >           | otherwise = IL.Case IL.Rigid e alts
+> translExpr tyEnv (v:vs) env (Fcase e alts) =
+>   caseExpr (translExpr tyEnv vs env e)
+>            (match IL.Flex [v]
+>                   (map (apFst return . translAlt tyEnv vs env v) alts))
+>   where caseExpr e0 e1@(IL.Case _ _ alts)
+>           | v `elem` fv alts =
+>               IL.Case IL.Flex e0 [IL.Alt (IL.VariablePattern v) e1]
+>           | otherwise = IL.Case IL.Flex e0 alts
+>         caseExpr e0 (IL.Or e1 e2) = IL.Or (caseExpr e0 e1) (caseExpr e0 e2)
+>         caseExpr e0 e1@(IL.SrcLoc _ _)
+>           | v `elem` fv e1 = IL.Let (IL.Binding v e0) e1
+>           | otherwise = e1
+>         caseExpr _ _ = internalError "caseExpr"
 > translExpr _ _ _ _ = internalError "translExpr"
 
-> translAlt :: ValueEnv -> [Ident] -> RenameEnv -> Ident -> Alt a -> IL.Alt
+> translAlt :: ValueEnv -> [Ident] -> RenameEnv -> Ident -> Alt a
+>           -> (NestedTerm,IL.Expression)
 > translAlt tyEnv vs env v (Alt _ t rhs) =
->   IL.Alt (pattern (translTerm v t))
->          (translRhs tyEnv vs (bindRenameEnv v t env) rhs)
+>   (translTerm v t,translRhs tyEnv vs (bindRenameEnv v t env) rhs)
 
 > instance QuantExpr IL.ConstrTerm where
 >   bv (IL.LiteralPattern _) = []
@@ -382,7 +396,7 @@ further possibilities to apply this transformation.
 >   fv (IL.Function _ _) = []
 >   fv (IL.Constructor _ _) = []
 >   fv (IL.Apply e1 e2) = fv e1 ++ fv e2
->   fv (IL.Case _ e alts) = fv e ++ fv alts
+>   fv (IL.Case _ e as) = fv e ++ fv as
 >   fv (IL.Or e1 e2) = fv e1 ++ fv e2
 >   fv (IL.Exist v e) = filter (/= v) (fv e)
 >   fv (IL.Let (IL.Binding v e1) e2) = fv e1 ++ filter (/= v) (fv e2)

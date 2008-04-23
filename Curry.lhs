@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Curry.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: Curry.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Curry.lhs}
@@ -209,6 +209,7 @@ accommodate the empty list.
 >   | Do [Statement a] (Expression a)
 >   | IfThenElse (Expression a) (Expression a) (Expression a)
 >   | Case (Expression a) [Alt a]
+>   | Fcase (Expression a) [Alt a]
 >   deriving (Eq,Show)
 
 > data Field a = Field QualIdent a deriving (Eq,Show)
@@ -316,6 +317,7 @@ The abstract syntax tree is a functor with respect to its attributes.
 >   fmap f (IfThenElse e1 e2 e3) =
 >     IfThenElse (fmap f e1) (fmap f e2) (fmap f e3)
 >   fmap f (Case e as) = Case (fmap f e) (map (fmap f) as)
+>   fmap f (Fcase e as) = Fcase (fmap f e) (map (fmap f) as)
 
 > instance Functor InfixOp where
 >   fmap f (InfixOp a op) = InfixOp (f a) op

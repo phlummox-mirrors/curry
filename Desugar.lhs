@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2681 2008-04-22 17:23:30Z wlux $
+% $Id: Desugar.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -11,10 +11,10 @@ particular, the output of the desugarer will have the following
 properties.
 \begin{itemize}
 \item No guarded right hand sides occur in equations, pattern
-  declarations, and case alternatives. In addition, the declaration
+  declarations, and (f)case alternatives. In addition, the declaration
   lists of the right hand sides are empty; local declarations are
   transformed into let expressions.
-\item Patterns in equations and case alternatives are composed only of
+\item Patterns in equations and (f)case alternatives are composed only of
   \begin{itemize}
   \item literals,
   \item variables,
@@ -29,14 +29,15 @@ properties.
   \item (binary) applications,
   \item lambda abstractions,
   \item let expressions, and
-  \item case expressions.
+  \item (f)case expressions.
   \end{itemize}
-\item Patterns in case expression are restricted further in that all
-  arguments of a constructor pattern are variable patterns.
+\item Patterns in case expressions (but not in fcase expressions) are
+  restricted further in that all arguments of a constructor pattern
+  are variable patterns.
 \item Applications $N\:x$ in patterns and expressions, where $N$ is a
   newtype constructor, are replaced by a $x$. Note that neither the
   newtype declaration itself nor partial applications of newtype
-  constructors are changed.\footnote{It were possible to replace
+  constructors are changed.\footnote{It would be possible to replace
   partial applications of newtype constructor by \texttt{Prelude.id}.
   However, our solution yields a more accurate output when the result
   of a computation includes partial applications.}
@@ -45,7 +46,7 @@ properties.
 \ToDo{Use a different representation for the restricted code instead
 of using the syntax tree from \texttt{Curry}.}
 
-\textbf{As we are going to insert references to real prelude entities,
+\textbf{As we are going to insert references to real Prelude entities,
 all names must be properly qualified before calling this module.}
 \begin{verbatim}
 
@@ -91,9 +92,9 @@ Since the internal constructor \texttt{Success} occurs in the
 desugared code, its type is added to the type environment.
 
 Note that the definition of \texttt{Success} is not included in the
-prelude because the \texttt{Success} constructor would not be
-accessible in any module other than the prelude unless the constructor
-were also exported from the prelude. However, that would be
+Prelude because the \texttt{Success} constructor would not be
+accessible in any module other than the Prelude unless the constructor
+were also exported from the Prelude. However, that would be
 incompatible with the Curry report, which deliberately defines
 \texttt{Success} as an abstract type.
 \begin{verbatim}
@@ -301,7 +302,7 @@ always include the kind of the declaration (either \texttt{static} or
 >   where (f,ts) = flatLhs lhs
 
 \end{verbatim}
-The transformation of patterns is straight forward except for lazy
+The transformation of patterns is straightforward except for lazy
 patterns. A lazy pattern \texttt{\~}$t$ is replaced by a fresh
 variable $v$ and a new local declaration $t$~\texttt{=}~$v$ in the
 scope of the pattern. In addition, as-patterns $v$\texttt{@}$t$ where
@@ -387,8 +388,8 @@ A list of boolean guards is expanded into a nested if-then-else
 expression, whereas a constraint guard is replaced by a case
 expression. Note that if the guard type is \texttt{Success} only a
 single guard is allowed for each equation.\footnote{This change was
-introduced in version 0.8 of the Curry report.} We check for the
-type \texttt{Bool} of the guard because the guard's type defaults to
+introduced in version 0.8 of the Curry report.} We check whether the
+guard's type is \texttt{Bool} because the type defaults to
 \texttt{Success} if it is not restricted by the guard expression.
 \begin{verbatim}
 
@@ -546,29 +547,40 @@ type \texttt{Bool} of the guard because the guard's type defaults to
 >         mkCase m (_,v) e (Case e' alts)
 >           | mkVar (typeOf e') v == e' && v `notElem` qfv m alts = Case e alts
 >         mkCase _ (ty,v) e e' = Let [varDecl p ty v e] e'
+> desugarExpr m p (Fcase e alts) =
+>   liftM2 Fcase (desugarExpr m p e) (mapM (desugarFcaseAlt m) alts)
+
+> desugarFcaseAlt :: ModuleIdent -> Alt Type -> DesugarState (Alt Type)
+> desugarFcaseAlt m (Alt p t rhs) =
+>   do
+>     (ds',t') <- desugarTerm m p [] t
+>     rhs' <- desugarRhs m p (addDecls ds' rhs)
+>     return (Alt p t' rhs')
 
 \end{verbatim}
-Case expressions with nested patterns are transformed into nested case
-expressions where each expression uses only flat patterns. The
-algorithm used here is a variant of the algorithm used for
-transforming pattern matching of function heads into case expressions
-(see Sect.~\ref{sec:il-trans}). In contrast to the algorithm presented
-in Sect.~5 of~\cite{PeytonJones87:Book}, the code generated by our
-algorithm will not perform redundant matches. Furthermore, we do not
-need a special pattern match failure primitive and fatbar expressions
-in order to catch such failures. On the other hand, our algorithm can
-cause code duplication. We do not care about that because most pattern
-matching in Curry programs occurs in function heads and not in case
-expressions.
+Rigid case expressions, but not flexible fcase expressions, with
+nested patterns are transformed into nested case expressions where
+each expression uses only flat patterns. The algorithm used here is a
+variant of the algorithm used for transforming pattern matching of
+function heads and flexible case expressions into intermediate
+language case expressions (see Sect.~\ref{sec:il-trans}). In contrast
+to the algorithm presented in Sect.~5 of~\cite{PeytonJones87:Book},
+the code generated by our algorithm will not perform redundant
+matches. Furthermore, we do not need a special pattern match failure
+primitive and fatbar expressions in order to catch such failures. On
+the other hand, our algorithm can cause code duplication. We do not
+care about that because most pattern matching in Curry programs occurs
+in function heads and not in case expressions.
 
-The essential difference between pattern matching in case expressions
-and function heads is that in case expressions, alternatives are
-matched from top to bottom and evaluation commits to the first
-alternative with a matching pattern. As an extension, we support
-constraint and boolean guards in case expressions. If all boolean
-guards of an alternative fail, pattern matching continues with the
-next alternative as if the pattern did not match. No such fall-through
-behavior applies to constraint guards since it cannot be implemented
+The essential difference between pattern matching in rigid case
+expressions on one hand and function heads and flexible fcase
+expressions on the other hand is that in case expressions,
+alternatives are matched from top to bottom and evaluation commits to
+the first alternative with a matching pattern. If an alternative uses
+boolean guards and all guards of that alternative fail, pattern
+matching continues with the next alternative as if the pattern did not
+match. As an extension, we also support constraint guards, but no fall
+through behavior applies to such guards since it cannot be implemented
 without negation of constraints. For instance, the expression
 \begin{verbatim}
   case x of
@@ -697,7 +709,7 @@ where the default alternative is redundant.
 >       do
 >         tcEnv <- liftSt envRt
 >         liftM (Case (uncurry mkVar v))
->               (mapM (desugarAlt m ty prefix vs alts')
+>               (mapM (desugarCaseAlt m ty prefix vs alts')
 >                     (if allCases tcEnv v ts then ts else ts ++ ts'))
 >   where alts' = map tagAlt alts
 >         (ts',ts) = partition isVarPattern (nub (map fst alts'))
@@ -710,10 +722,10 @@ where the default alternative is redundant.
 >                 fixType (TypeConstructor tc _) = tc
 >                 fixType (TypeConstrained (ty:_) _) = fixType ty
 
-> desugarAlt :: ModuleIdent -> Type -> ([(Type,Ident)] -> [(Type,Ident)])
->            -> [(Type,Ident)] -> [(ConstrTerm Type,Match Type)]
->            -> ConstrTerm Type -> DesugarState (Alt Type)
-> desugarAlt m ty prefix vs alts t =
+> desugarCaseAlt :: ModuleIdent -> Type -> ([(Type,Ident)] -> [(Type,Ident)])
+>                -> [(Type,Ident)] -> [(ConstrTerm Type,Match Type)]
+>                -> ConstrTerm Type -> DesugarState (Alt Type)
+> desugarCaseAlt m ty prefix vs alts t =
 >   do
 >     vs' <- mapM (freshVar m "_#case") (arguments t')
 >     liftM (caseAlt (pos (snd (head alts'))) (renameArgs vs' t))
@@ -759,7 +771,7 @@ Actually, we generate slightly better code in a few special cases.
 When $t$ is a plain variable, the \texttt{case} expression degenerates
 into a let-binding and the auxiliary function thus becomes an alias
 for \texttt{(++)}. Instead of \texttt{foldr~(++)} we use the
-equivalent prelude function \texttt{concatMap}. In addition, if the
+equivalent Prelude function \texttt{concatMap}. In addition, if the
 remaining list comprehension in the body of the auxiliary function has
 no qualifiers -- i.e., if it is equivalent to \texttt{[$e$]} -- we
 avoid the construction of the singleton list by calling \texttt{(:)}

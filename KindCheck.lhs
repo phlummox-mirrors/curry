@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: KindCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{KindCheck.lhs}
@@ -187,6 +187,8 @@ Kind checking is applied to all type expressions in the program.
 > checkExpr tcEnv p (IfThenElse e1 e2 e3) =
 >   checkExpr tcEnv p e1 &&> checkExpr tcEnv p e2 &&> checkExpr tcEnv p e3
 > checkExpr tcEnv p (Case e alts) =
+>   checkExpr tcEnv p e &&> mapE_ (checkAlt tcEnv) alts
+> checkExpr tcEnv p (Fcase e alts) =
 >   checkExpr tcEnv p e &&> mapE_ (checkAlt tcEnv) alts
 
 > checkStmt :: TCEnv -> Position -> Statement a -> Error ()

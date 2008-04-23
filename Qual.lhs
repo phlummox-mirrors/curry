@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Qual.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: Qual.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 2001-2007, Wolfgang Lux
+% Copyright (c) 2001-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Qual.lhs}
@@ -101,6 +101,7 @@ declaration groups as well as function arguments remain unchanged.
 >   qual tyEnv (IfThenElse e1 e2 e3) =
 >     IfThenElse (qual tyEnv e1) (qual tyEnv e2) (qual tyEnv e3)
 >   qual tyEnv (Case e alts) = Case (qual tyEnv e) (qual tyEnv alts)
+>   qual tyEnv (Fcase e alts) = Fcase (qual tyEnv e) (qual tyEnv alts)
 
 > instance Qual (Statement a) where
 >   qual tyEnv (StmtExpr e) = StmtExpr (qual tyEnv e)

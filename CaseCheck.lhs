@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CaseCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: CaseCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 2003-2007, Wolfgang Lux
+% Copyright (c) 2003-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CaseCheck.lhs}
@@ -212,6 +212,7 @@ collect all defined identifiers.
 >   names p (Do sts e) = names p sts . names p e
 >   names p (IfThenElse e1 e2 e3) = names p e1 . names p e2 . names p e3
 >   names p (Case e as) = names p e . names p as
+>   names p (Fcase e as) = names p e . names p as
 
 > instance SyntaxTree (Statement a) where
 >   names p (StmtExpr e) = names p e

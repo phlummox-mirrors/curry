@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2681 2008-04-22 17:23:30Z wlux $
+% $Id: TypeCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -962,6 +962,12 @@ constructor itself.
 >     tyRhs <- freshTypeVar
 >     as' <- mapM (tcAlt m tcEnv tyLhs tyRhs) as
 >     return (tyRhs,Case e' as')
+> tcExpr m tcEnv p (Fcase e as) =
+>   do
+>     (tyLhs,e') <- tcExpr m tcEnv p e
+>     tyRhs <- freshTypeVar
+>     as' <- mapM (tcAlt m tcEnv tyLhs tyRhs) as
+>     return (tyRhs,Fcase e' as')
 
 > tcAlt :: ModuleIdent -> TCEnv -> Type -> Type -> Alt a -> TcState (Alt Type)
 > tcAlt m tcEnv tyLhs tyRhs a@(Alt p t rhs) =

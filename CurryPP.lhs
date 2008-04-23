@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2526 2007-10-22 11:47:50Z wlux $
+% $Id: CurryPP.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryPP.lhs}
@@ -303,6 +303,10 @@ Expressions
 > ppExpr p (Case e alts) =
 >   parenExp (p > 0)
 >            (text "case" <+> ppExpr 0 e <+> text "of" $$
+>             indent (vcat (map ppAlt alts)))
+> ppExpr p (Fcase e alts) =
+>   parenExp (p > 0)
+>            (text "fcase" <+> ppExpr 0 e <+> text "of" $$
 >             indent (vcat (map ppAlt alts)))
 
 > ppStmt :: Statement a -> Doc

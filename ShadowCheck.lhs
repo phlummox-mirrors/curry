@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: ShadowCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 2005-2007, Wolfgang Lux
+% Copyright (c) 2005-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ShadowCheck.lhs}
@@ -135,6 +135,7 @@ traversal of the syntax tree.
 >   shadow p (IfThenElse e1 e2 e3) =
 >     shadow p e1 &&& shadow p e2 &&& shadow p e3
 >   shadow p (Case e as) = shadow p e &&& shadow p as
+>   shadow p (Fcase e as) = shadow p e &&& shadow p as
 
 > instance SyntaxTree (Statement a) where
 >   shadow p (StmtExpr e) = shadow p e

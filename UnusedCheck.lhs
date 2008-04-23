@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: UnusedCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
 %
-% Copyright (c) 2005-2007, Wolfgang Lux
+% Copyright (c) 2005-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{UnusedCheck.lhs}
@@ -158,6 +158,7 @@ by a traversal of the syntax tree.
 >   used m (Do sts e) = nest (used m sts . used m e)
 >   used m (IfThenElse e1 e2 e3) = used m e1 . used m e2 . used m e3
 >   used m (Case e as) = used m e . used m as
+>   used m (Fcase e as) = used m e . used m as
 
 > instance SyntaxTree (Statement a) where
 >   used m (StmtExpr e) = used m e
