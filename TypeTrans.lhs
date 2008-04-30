@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 2472 2007-09-19 14:55:02Z wlux $
+% $Id: TypeTrans.lhs 2685 2008-04-30 16:33:27Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeTrans.lhs}
@@ -18,6 +18,7 @@ external type representations.
 > import CurryPP
 > import List
 > import Map
+> import PredefIdent
 > import PredefTypes
 > import Pretty
 > import TopEnv

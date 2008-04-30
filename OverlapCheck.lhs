@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: OverlapCheck.lhs 2685 2008-04-30 16:33:27Z wlux $
 %
 % Copyright (c) 2006-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -17,6 +17,7 @@ which both may cause unintended non-deterministic evaluation.
 > import List
 > import Options
 > import Position
+> import PredefIdent
 > import Utils
 > import ValueInfo
 
