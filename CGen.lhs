@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2659 2008-04-16 07:34:24Z wlux $
+% $Id: CGen.lhs 2686 2008-04-30 19:30:57Z wlux $
 %
 % Copyright (c) 1998-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1258,8 +1258,7 @@ first loads this address into a temporary variable and then boxes it.
 > callCFun (Just ty) v f vs = CLocalVar (ctype ty) v (Just (funCall f vs))
 
 > box :: CRetType -> Name -> CExpr -> [CStmt]
-> box Nothing v _ =
->   [localVar v (Just (constRef (constNode (mangle "()"))))]
+> box Nothing v _ = [localVar v (Just (constRef (constNode prelUnit)))]
 > box (Just TypeBool) v e =
 >   [localVar v (Just (CCond e (const prelTrue) (const prelFalse)))]
 >   where const = constRef . constNode
@@ -1460,12 +1459,13 @@ that \texttt{()} is \emph{not} a tuple name.
 
 > isTuple :: Name -> Bool
 > isTuple c = isTupleName (demangle c)
->   where isTupleName ('(':',':cs) = dropWhile (',' ==) cs == ")"
+>   where isTupleName ('P':'r':'e':'l':'u':'d':'e':'.':'(':',':cs) =
+>           dropWhile (',' ==) cs == ")"
 >         isTupleName _ = False
 
 > tupleArity :: Name -> Int
 > tupleArity c = arity (demangle c)
->   where arity ('(':',':cs)
+>   where arity ('P':'r':'e':'l':'u':'d':'e':'.':'(':',':cs)
 >           | cs'' == ")" = length cs' + 2
 >           where (cs',cs'') = span (',' ==) cs
 >         arity _ = error "internal error: tupleArity"
@@ -1678,7 +1678,8 @@ We make use of some prelude entities in the generated code.
 > prelName :: String -> Name
 > prelName x = mangleQualified ("Prelude." ++ x)
 
-> prelTrue, prelFalse :: Name
+> prelUnit, prelTrue, prelFalse :: Name
+> prelUnit = prelName "()"
 > prelTrue = prelName "True"
 > prelFalse = prelName "False"
 

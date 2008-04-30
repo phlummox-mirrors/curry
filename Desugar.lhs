@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: Desugar.lhs 2686 2008-04-30 19:30:57Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -100,9 +100,8 @@ incompatible with the Curry report, which deliberately defines
 \begin{verbatim}
 
 > bindSuccess :: ValueEnv -> ValueEnv
-> bindSuccess = localBindTopEnv successId successCon
->   where successCon =
->           DataConstructor (qualify successId) [] (polyType successType)
+> bindSuccess = qualBindTopEnv qSuccessId successCon
+>   where successCon = DataConstructor qSuccessId [] (polyType successType)
 
 \end{verbatim}
 The desugaring phase keeps only the type, function, and value
@@ -857,7 +856,7 @@ Prelude entities
 
 > truePattern = ConstructorPattern boolType qTrueId []
 > falsePattern = ConstructorPattern boolType qFalseId []
-> successPattern = ConstructorPattern successType (qualify successId) []
+> successPattern = ConstructorPattern successType qSuccessId []
 
 \end{verbatim}
 Auxiliary definitions

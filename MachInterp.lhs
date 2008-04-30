@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 2448 2007-08-20 08:55:54Z wlux $
+% $Id: MachInterp.lhs 2686 2008-04-30 19:30:57Z wlux $
 %
-% Copyright (c) 1998-2007, Wolfgang Lux
+% Copyright (c) 1998-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{MachInterp.lhs}
@@ -671,7 +671,7 @@ which returns a new constructor node from the supplied arguments.
 
 > tupleFunction :: Int -> Function
 > tupleFunction n
->   | n >= 2 = constrFunction 0 ("(" ++ replicate (n - 1) ',' ++ ")") n
+>   | n >= 2 = constrFunction 0 ("Prelude.(" ++ replicate (n - 1) ',' ++ ")") n
 >   | otherwise = error "tuples must have arity >= 2"
 
 \end{verbatim}

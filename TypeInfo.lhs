@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeInfo.lhs 2492 2007-10-13 13:32:50Z wlux $
+% $Id: TypeInfo.lhs 2686 2008-04-30 19:30:57Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeInfo.lhs}
@@ -52,7 +52,8 @@ types.
 > initTCEnv = foldr (uncurry predefTC) emptyTCEnv predefTypes
 >   where emptyTCEnv = emptyTopEnv (Just (map tupleTC tupleTypes))
 >         predefTC (TypeConstructor tc tys) cs =
->           predefTopEnv tc (DataType tc (length tys) (map fst cs))
+>           predefTopEnv tc
+>                        (DataType tc (length tys) (map (unqualify . fst) cs))
 >         tupleTC (TypeConstructor tc tys) =
 >           DataType tc (length tys) [unqualify tc]
 

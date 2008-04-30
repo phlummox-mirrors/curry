@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ValueInfo.lhs 2525 2007-10-22 11:33:10Z wlux $
+% $Id: ValueInfo.lhs 2686 2008-04-30 19:30:57Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ValueInfo.lhs}
@@ -50,9 +50,8 @@ constructors.
 > initDCEnv :: ValueEnv
 > initDCEnv = foldr (uncurry predefDC) emptyDCEnv (concatMap snd predefTypes)
 >   where emptyDCEnv = emptyTopEnv (Just (map tupleDC tupleTypes))
->         predefDC c ty = predefTopEnv c' (DataConstructor c' ls (polyType ty))
->           where c' = qualify c
->                 ls = replicate (arrowArity ty) anonId
+>         predefDC c ty = predefTopEnv c (DataConstructor c ls (polyType ty))
+>           where ls = replicate (arrowArity ty) anonId
 >         tupleDC ty@(TypeConstructor tc tys) =
 >           DataConstructor tc (replicate n anonId)
 >                           (ForAll n (foldr TypeArrow ty tys))

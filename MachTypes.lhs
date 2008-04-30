@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: MachTypes.lhs 2448 2007-08-20 08:55:54Z wlux $
+% $Id: MachTypes.lhs 2686 2008-04-30 19:30:57Z wlux $
 %
-% Copyright (c) 1998-2007, Wolfgang Lux
+% Copyright (c) 1998-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \subsection{Basic Types}
@@ -185,13 +185,14 @@ corresponding search space are saved in this node.
 > nodeTag (SearchContinuation _ _ _ _) = SearchTag
 
 > nilTag, consTag, unitTag, successTag :: NodeTag
-> nilTag  = ConstructorTag 0 "[]" 0
-> consTag = ConstructorTag 1 ":" 2
-> unitTag = ConstructorTag 0 "()" 0
-> successTag = ConstructorTag 0 "Success" 0
+> nilTag  = ConstructorTag 0 "Prelude.[]" 0
+> consTag = ConstructorTag 1 "Prelude.:" 2
+> unitTag = ConstructorTag 0 "Prelude.()" 0
+> successTag = ConstructorTag 0 "Prelude.Success" 0
 
 > isTupleName :: String -> Bool
-> isTupleName ('(':',':cs) = dropWhile (',' ==) cs == ")"
+> isTupleName ('P':'r':'e':'l':'u':'d':'e':'.':'(':',':cs) =
+>   dropWhile (',' ==) cs == ")"
 > isTupleName _ = False
 
 \end{verbatim}

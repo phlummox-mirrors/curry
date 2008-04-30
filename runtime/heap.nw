@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 2649 2008-04-02 18:17:39Z wlux $
+% $Id: heap.nw 2686 2008-04-30 19:30:57Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -822,7 +822,8 @@ is_operator(NodeInfo *info)
 {
     const char *cp;
 
-    if ( info == INFO(___91__93_) || info == INFO(___40__41_) || !info->cname )
+    if ( info == INFO(__Prelude___91__93_) || info == INFO(__Prelude___40__41_)
+	 || !info->cname )
 	return false;
 
     for ( cp = info->cname; *cp != '\0'; cp++ )

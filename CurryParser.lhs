@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryParser.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: CurryParser.lhs 2686 2008-04-30 19:30:57Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -225,7 +225,7 @@ directory path to the module is ignored.
 >           | otherwise = funDecl p (op',OpLhs (f t1) op' t2)
 >           where op' = unqualify op
 >         opDecl p f t = PatternDecl p (f t)
->         isConstrId c = c == qConsId || isQualified c || isQTupleId c
+>         isConstrId c = isQualified c || isPrimDataId c
 
 > funDecl :: Position -> (Ident,Lhs a) -> Rhs a -> Decl a
 > funDecl p (f,lhs) rhs = FunctionDecl p f [Equation p lhs rhs]
@@ -360,7 +360,7 @@ directory path to the module is ignored.
 
 > tupleType :: Parser Token TypeExpr a
 > tupleType = type0 <**?> (tuple <$> many1 (comma <-*> type0))
->       `opt` ConstructorType qUnitId []
+>       `opt` ConstructorType (qualify unitId) []
 >   where tuple tys ty = TupleType (ty:tys)
 
 > listType :: Parser Token TypeExpr a
@@ -477,7 +477,7 @@ the left-hand side of a declaration.
 
 > parenTuplePattern :: Parser Token (ConstrTerm ()) a
 > parenTuplePattern = constrTerm0 <**> optTuplePattern
->               `opt` ConstructorPattern () qUnitId []
+>               `opt` ConstructorPattern () (qualify unitId) []
 
 \end{verbatim}
 \paragraph{Expressions}
@@ -524,7 +524,7 @@ the left-hand side of a declaration.
 >             <|> Constructor () <$> tupleCommas <*-> rightParen
 >             <|> leftSectionOrTuple <\> minus <\> fminus <*-> rightParen
 >             <|> opOrRightSection <\> minus <\> fminus
->             <|> Constructor () qUnitId <$-> rightParen
+>             <|> Constructor () (qualify unitId) <$-> rightParen
 >         minusOrTuple = flip UnaryMinus <$> expr1 <.> infixOrTuple
 >                                        <*-> rightParen
 >                    <|> rightParen <-*> optRecord qualify Variable
@@ -737,7 +737,7 @@ prefix of a let expression.
 >   where mkQIdent a = qualifyWith (mkMIdent (modul a)) (mkIdent (sval a))
 
 > colon :: Parser Token QualIdent a
-> colon = qConsId <$-> token Colon
+> colon = qualify consId <$-> token Colon
 
 > minus :: Parser Token Ident a
 > minus = minusId <$-> token Sym_Minus
@@ -746,7 +746,7 @@ prefix of a let expression.
 > fminus = fminusId <$-> token Sym_MinusDot
 
 > tupleCommas :: Parser Token QualIdent a
-> tupleCommas = qTupleId . (1 + ) . length <$> many1 comma
+> tupleCommas = qualify . tupleId . (1 + ) . length <$> many1 comma
 
 \end{verbatim}
 \paragraph{Layout}

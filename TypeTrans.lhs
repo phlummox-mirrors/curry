@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 2685 2008-04-30 16:33:27Z wlux $
+% $Id: TypeTrans.lhs 2686 2008-04-30 19:30:57Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -66,8 +66,8 @@ indices independently for each type expression.
 
 > qualifyType :: ModuleIdent -> Type -> Type
 > qualifyType m (TypeConstructor tc tys) =
->   TypeConstructor (if isPrimTypeId tc then tc else qualQualify m tc)
->                   (map (qualifyType m) tys)
+>   TypeConstructor tc' (map (qualifyType m) tys)
+>   where tc' = qualQualify (if isPrimTypeId tc then preludeMIdent else m) tc
 > qualifyType _ (TypeVariable tv) = TypeVariable tv
 > qualifyType m (TypeConstrained tys tv) =
 >   TypeConstrained (map (qualifyType m) tys) tv
@@ -87,10 +87,12 @@ unqualified names.
 
 > fromType' :: [Ident] -> Type -> TypeExpr
 > fromType' tvs (TypeConstructor tc tys)
->   | isQTupleId tc = TupleType tys'
->   | tc == qListId && length tys == 1 = ListType (head tys')
+>   | tc' == unitId && length tys == 0 = ConstructorType (qualify unitId) []
+>   | tc' == listId && length tys == 1 = ListType (head tys')
+>   | isTupleId tc' = TupleType tys'
 >   | otherwise = ConstructorType tc tys'
->   where tys' = map (fromType' tvs) tys
+>   where tc' = unqualify tc
+>         tys' = map (fromType' tvs) tys
 > fromType' tvs (TypeVariable tv) =
 >   VariableType (if tv >= 0 then tvs !! tv else mkIdent ('_' : show (-tv)))
 > fromType' tvs (TypeConstrained tys _) = fromType' tvs (head tys)
