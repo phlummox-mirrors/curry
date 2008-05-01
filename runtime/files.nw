@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: files.nw 2537 2007-10-25 20:19:24Z wlux $
+% $Id: files.nw 2689 2008-05-01 16:31:50Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -52,7 +52,6 @@ extern void init_files(int, long);
 #include "search.h"
 #include "trail.h"
 #include "eval.h"
-#include "data.h"
 #include "cstring.h"
 #include "cam.h"
 #include "io_monad.h"
@@ -374,12 +373,6 @@ extern Node *primHIsSeekable(Node *);
 
 @ 
 <<files.c>>=
-DECLARE_CONST(__Prelude__False);
-DECLARE_CONST(__Prelude__True);
-
-#define Prelude_False CONST(__Prelude__False)
-#define Prelude_True  CONST(__Prelude__True)
-
 Node *
 primHIsOpen(Node *hdl)
 {

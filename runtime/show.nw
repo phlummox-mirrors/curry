@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 2205 2007-05-18 21:55:13Z wlux $
+% $Id: show.nw 2689 2008-05-01 16:31:50Z wlux $
 %
 % Copyright (c) 2001-2007, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -34,7 +34,6 @@ declarative debugger.
 #include "search.h"
 #include "trail.h"
 #include "eval.h"
-#include "data.h"
 #include "vars.h"
 #include "cstring.h"
 #include "show.h"

@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 2648 2008-04-01 16:19:46Z wlux $
+% $Id: io_monad.nw 2689 2008-05-01 16:31:50Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -65,7 +65,6 @@ DECLARE_LABEL(extern, __ioError);
 #include "threads.h"
 #include "spaces.h"
 #include "eval.h"
-#include "data.h"
 #include "io_monad.h"
 #include "cstring.h"
 #include "trace.h"
