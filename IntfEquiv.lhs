@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfEquiv.lhs 2685 2008-04-30 16:33:27Z wlux $
+% $Id: IntfEquiv.lhs 2687 2008-05-01 13:51:44Z wlux $
 %
 % Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -126,7 +126,7 @@ by function \texttt{fixInterface} and the associated type class
 
 > instance FixInterface TypeExpr where
 >   fix tcs (ConstructorType tc tys)
->     | not (isQualified tc) && not (isPrimTypeId tc) &&
+>     | not (isQualified tc) && not (isPrimTypeId tc') &&
 >       tc' `notElemSet` tcs && null tys = VariableType tc'
 >     | otherwise = ConstructorType tc (fix tcs tys)
 >     where tc' = unqualify tc

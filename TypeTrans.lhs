@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 2686 2008-04-30 19:30:57Z wlux $
+% $Id: TypeTrans.lhs 2687 2008-05-01 13:51:44Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -66,8 +66,8 @@ indices independently for each type expression.
 
 > qualifyType :: ModuleIdent -> Type -> Type
 > qualifyType m (TypeConstructor tc tys) =
->   TypeConstructor tc' (map (qualifyType m) tys)
->   where tc' = qualQualify (if isPrimTypeId tc then preludeMIdent else m) tc
+>   TypeConstructor (qualQualify m' tc) (map (qualifyType m) tys)
+>   where m' = if isPrimTypeId (unqualify tc) then preludeMIdent else m
 > qualifyType _ (TypeVariable tv) = TypeVariable tv
 > qualifyType m (TypeConstrained tys tv) =
 >   TypeConstrained (map (qualifyType m) tys) tv

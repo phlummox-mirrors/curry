@@ -1,13 +1,10 @@
--- $Id: Prelude.curry 1950 2006-07-09 14:08:35Z wlux $
+-- $Id: Prelude.curry 2687 2008-05-01 13:51:44Z wlux $
 --
--- Copyright (c) 1999-2006, Wolfgang Lux
+-- Copyright (c) 1999-2008, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module Prelude where
 import IO
-
--- Lines beginning with "--++" are part of the prelude, but are already
--- predefined by the compiler (or cannot be defined at all)
 
 -- Infix operator declarations:
 
@@ -15,8 +12,7 @@ infixl 9 !!
 infixr 9 .
 infixl 7 *, `quot`, `rem`, `div`, `mod`, *., /.
 infixl 6 +, -, +., -.
---++ infixr 5 :
-infixr 5 ++
+infixr 5 :, ++
 infix  4 =:=, =/=, ==, /=, <, >, <=, >=
 infix  4 `elem`, `notElem`
 infixr 3 &&
@@ -183,9 +179,56 @@ min :: a -> a -> a
 min x y = if x <= y then x else y
 
  
--- Pairs
+-- Tuples
 
---++ data (a,b) = (a,b)
+data (,) a b = (,) a b
+data (,,) a b c = (,,) a b c
+data (,,,) a b c d = (,,,) a b c d
+data (,,,,) a b c d e = (,,,,) a b c d e
+data (,,,,,) a b c d e f = (,,,,,) a b c d e f
+data (,,,,,,) a b c d e f g = (,,,,,,) a b c d e f g
+data (,,,,,,,) a b c d e f g h = (,,,,,,,) a b c d e f g h
+data (,,,,,,,,) a b c d e f g h i = (,,,,,,,,) a b c d e f g h i
+data (,,,,,,,,,) a b c d e f g h i j = (,,,,,,,,,) a b c d e f g h i j
+data (,,,,,,,,,,) a b c d e f g h i j k = (,,,,,,,,,,) a b c d e f g h i j k
+data (,,,,,,,,,,,) a b c d e f g h i j k l =
+  (,,,,,,,,,,,) a b c d e f g h i j k l
+data (,,,,,,,,,,,,) a b c d e f g h i j k l m =
+  (,,,,,,,,,,,,) a b c d e f g h i j k l m
+data (,,,,,,,,,,,,,) a b c d e f g h i j k l m n =
+  (,,,,,,,,,,,,,) a b c d e f g h i j k l m n
+data (,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o =
+  (,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o
+data (,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p =
+  (,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p
+data (,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q =
+  (,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q
+data (,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r =
+  (,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r
+data (,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s =
+  (,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s
+data (,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t =
+  (,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t
+data (,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u =
+  (,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u
+data (,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v =
+  (,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v
+data (,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w =
+  (,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w
+data (,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x =
+  (,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x
+data (,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y =
+  (,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y
+data (,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z =
+  (,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z
+data (,,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z a1 =
+  (,,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z a1
+data (,,,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z a1 b1 =
+  (,,,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z a1 b1
+data (,,,,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z a1 b1 c1 =
+  (,,,,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z a1 b1 c1
+data (,,,,,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z a1 b1 c1 d1 =
+  (,,,,,,,,,,,,,,,,,,,,,,,,,,,,,) a b c d e f g h i j k l m n o p q r s t u v w x y z a1 b1 c1 d1
 
 --- Selects the first component of a pair.
 fst             :: (a,b) -> a
@@ -197,12 +240,12 @@ snd (_,y)       = y
 
 
 -- Unit type
---++ data () = ()
+data () = ()
 
 
 -- Lists
 
---++ data [a] = [] | a : [a]
+data [] a = [] | a : [a]
 
 --- Evaluates the argument to spine form and returns it.
 --- Suspends until the result is bound to a non-variable spine.
@@ -481,7 +524,7 @@ showParen False x = x
 --    N `quot` M + N `rem` M = N
 --    N `div`  M + N `mod` M = N
 --    the result of quot is truncated towards zero and the result
---    of quot is truncated towards negative infinity
+--    of div is truncated towards negative infinity
 
 data Int
 foreign import ccall "prims.h primAddInt" (+) :: Int -> Int -> Int

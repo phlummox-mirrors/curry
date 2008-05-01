@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: heap.nw 2686 2008-04-30 19:30:57Z wlux $
+% $Id: heap.nw 2687 2008-05-01 13:51:44Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -739,8 +739,8 @@ info pointer of a data constructor.
 
 <<heap.h>>=
 #ifdef CURRY_RTS
-# define CONST(name)		(Node *)(&name##_node)
-# define INFO(name)		&name##_info
+# define CONST(name)		((Node *)(&name##_node))
+# define INFO(name)		(&name##_info)
 #endif
 
 @ 
@@ -796,7 +796,7 @@ sequence of commas which are enclosed in parentheses. The function
 non-alphanumeric characters except for [[']] and [[_]]. Dots ([[.]]) %'
 that precede an alphanumeric character are ignored because they are
 assumed to separate a module qualifier from the unqualified name. Note
-that the empty list and unit constructors are not considered as
+that the empty list and unit constructors are not considered
 operators.
 
 <<heap.h>>=
@@ -822,7 +822,8 @@ is_operator(NodeInfo *info)
 {
     const char *cp;
 
-    if ( info == INFO(__Prelude___91__93_) || info == INFO(__Prelude___40__41_)
+    if ( info == CONST(__Prelude___91__93_)->info
+	 || info == CONST(__Prelude___40__41_)->info
 	 || !info->cname )
 	return false;
 

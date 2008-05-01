@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeInfo.lhs 2686 2008-04-30 19:30:57Z wlux $
+% $Id: TypeInfo.lhs 2687 2008-05-01 13:51:44Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -27,7 +27,6 @@ constructors in the interface.
 > module TypeInfo where
 > import Base
 > import Ident
-> import PredefTypes
 > import TopEnv
 > import Types
 
@@ -43,19 +42,11 @@ constructors in the interface.
 >   origName (AliasType tc _ _) = tc
 
 \end{verbatim}
-The initial type constructor environment \texttt{initTCEnv} is
-initialized with the types of the predefined unit, list, and tuple
-types.
+The initial type constructor environment \texttt{initTCEnv} is empty.
 \begin{verbatim}
 
 > initTCEnv :: TCEnv
-> initTCEnv = foldr (uncurry predefTC) emptyTCEnv predefTypes
->   where emptyTCEnv = emptyTopEnv (Just (map tupleTC tupleTypes))
->         predefTC (TypeConstructor tc tys) cs =
->           predefTopEnv tc
->                        (DataType tc (length tys) (map (unqualify . fst) cs))
->         tupleTC (TypeConstructor tc tys) =
->           DataType tc (length tys) [unqualify tc]
+> initTCEnv = emptyTopEnv
 
 \end{verbatim}
 The function \texttt{constrKind} returns the arity of a type

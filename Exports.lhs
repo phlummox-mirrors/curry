@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2685 2008-04-30 16:33:27Z wlux $
+% $Id: Exports.lhs 2687 2008-05-01 13:51:44Z wlux $
 %
 % Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -178,7 +178,8 @@ compiler can check them without loading the imported modules.
 
 > hiddenTypes :: [IDecl] -> [QualIdent]
 > hiddenTypes ds =
->   filter (not . isPrimTypeId) (toListSet (foldr deleteFromSet used defd))
+>   filter (not . isPrimTypeId . unqualify)
+>          (toListSet (foldr deleteFromSet used defd))
 >   where used = fromListSet (usedTypes ds [])
 >         defd = foldr definedType [] ds
 

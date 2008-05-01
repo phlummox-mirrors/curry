@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2498 2007-10-14 13:16:00Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2687 2008-05-01 13:51:44Z wlux $
 %
-% Copyright (c) 2000-2007, Wolfgang Lux
+% Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{IntfSyntaxCheck.lhs}
@@ -12,8 +12,11 @@ disambiguate nullary type constructors and type variables. In
 addition, the compiler also checks that all type constructor
 applications are saturated. Since interface files are closed -- i.e.,
 they include declarations of all entities which are defined in other
-modules -- the compiler can perform this check without reference to
-the global environments.
+modules\footnote{Strictly speaking this is not true. The unit, list,
+  and tuple types are available in all modules but are included only
+  in the interface of the Prelude, which contains the definitions of
+  these types.} -- the compiler can perform this check without
+reference to the global environments.
 \begin{verbatim}
 
 > module IntfSyntaxCheck(intfSyntaxCheck) where
@@ -24,6 +27,7 @@ the global environments.
 > import IdentInfo
 > import List
 > import Monad
+> import PredefIdent
 > import TopEnv
 
 > intfSyntaxCheck :: [IDecl] -> Error [IDecl]
@@ -129,9 +133,11 @@ during syntax checking of type expressions.
 >   liftE2 ($)
 >          (case qualLookupTopEnv tc env of
 >             []
+>               | isPrimTypeId tc' -> return (ConstructorType tc)
 >               | not (isQualified tc) && null tys ->
->                   return (const (VariableType (unqualify tc)))
+>                   return (const (VariableType tc'))
 >               | otherwise -> errorAt p (undefinedType tc)
+>               where tc' = unqualify tc
 >             [Data _ _] -> return (ConstructorType tc)
 >             [Alias _] -> errorAt p (badTypeSynonym tc)
 >             _ -> internalError "checkType")

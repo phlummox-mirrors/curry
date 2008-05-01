@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PrecInfo.lhs 2685 2008-04-30 16:33:27Z wlux $
+% $Id: PrecInfo.lhs 2687 2008-05-01 13:51:44Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -15,7 +15,6 @@ default precedence 9 and assumed to be a left-associative operator.
 
 > module PrecInfo where
 > import Curry
-> import PredefIdent
 > import TopEnv
 
 > data OpPrec = OpPrec Infix Integer deriving Eq
@@ -45,12 +44,10 @@ because precedences are checked after renaming.
 >   origName (PrecInfo op _) = op
 
 \end{verbatim}
-The initial precedence environment \texttt{initPEnv} is initialized
-with the precedence of the predefined infix list constructor.
+The initial precedence environment \texttt{initPEnv} is empty.
 \begin{verbatim}
 
 > initPEnv :: PEnv
-> initPEnv = predefTopEnv qConsId (PrecInfo qConsId (OpPrec InfixR 5)) emptyPEnv
->   where emptyPEnv = emptyTopEnv Nothing
+> initPEnv = emptyTopEnv
 
 \end{verbatim}
