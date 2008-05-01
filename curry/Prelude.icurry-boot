@@ -108,7 +108,7 @@ data Maybe a = Nothing | Just a;
 data Ordering = LT | EQ | GT;
 type ShowS = [Char] -> [Char];
 type String = [Char];
-data Success;
+data Success = Success {-# HIDING Success #-};
 data [] a = [] | (:) a [a];
 (!!) :: [a] -> Int -> a;
 ($) :: (a -> b) -> a -> b;

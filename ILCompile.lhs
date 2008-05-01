@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 2686 2008-04-30 19:30:57Z wlux $
+% $Id: ILCompile.lhs 2688 2008-05-01 16:08:00Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -118,7 +118,6 @@ world.
 > foreignPrimitive f =
 >   case f of
 >     "failed" -> failed
->     "success" -> success
 >     "seq" -> seq
 >     "ensureNotFree" -> ensureNotFree
 >     "return" -> return
@@ -128,8 +127,6 @@ world.
 >     "fixIO" -> fixIO
 >     _ -> const . (Cam.Exec (Cam.mangle f))
 >   where failed _ _ = Cam.Choices []
->         success _ _ =
->           Cam.Return (Cam.Constr (Cam.mangleQualified "Prelude.Success") [])
 >         seq (v1:v2:_) (w1:_) =
 >           Cam.Seq (w1 Cam.:<- Cam.Enter v1) (Cam.Enter v2)
 >         ensureNotFree (v1:_) (w1:_) = rigidArg v1 w1 (Cam.Return (Cam.Var w1))

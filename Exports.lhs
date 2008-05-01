@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2687 2008-05-01 13:51:44Z wlux $
+% $Id: Exports.lhs 2688 2008-05-01 16:08:00Z wlux $
 %
 % Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -9,9 +9,20 @@
 After checking a module, the compiler generates the interface's
 declarations from the list of exported types and values. If an entity
 is imported from another module, its name is qualified with the name
-of the module containing its definition. Furthermore, newtypes whose
-constructor is not exported are transformed into (abstract) data
-types.
+of the module containing its definition.
+
+Data types whose constructors are not exported are exported as
+abstract types, i.e., their data constructors do not appear in the
+interface. If only some data constructors of a data type are not
+exported those constructors appear in the interface together with the
+exported constructors, but a pragma marks them as hidden so that they
+cannot be used in user code. A special case is made for the Prelude's
+\texttt{Success} type, whose only constructor is not exported from the
+Prelude. Since the compiler makes use of this constructor when
+desugaring guard expressions (cf.\ Sect.~\ref{sec:desugar}),
+\texttt{typeDecl}'s \texttt{DataType} case explicitly forces the
+\texttt{Success} constructor to appear as hidden data constructor in
+the interface.
 \begin{verbatim}
 
 > module Exports(exportInterface) where
@@ -64,7 +75,7 @@ types.
 >             xs' = guard vis >> filter (`notElem` xs) (cs ++ ls)
 >             cs' = map (constrDecl tcEnv tyEnv xs tc tvs n) cs
 >             ls = nub (concatMap labels cs')
->             vis = not (null xs)
+>             vis = not (null xs) || tc == qSuccessId
 >     [RenamingType _ n c] -> iTypeDecl INewtypeDecl m tc tvs n nc xs' : ds
 >       where nc = newConstrDecl tcEnv tyEnv xs tc tvs c
 >             xs' = [c | c `notElem` xs]

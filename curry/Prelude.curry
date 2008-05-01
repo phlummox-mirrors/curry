@@ -1,9 +1,41 @@
--- $Id: Prelude.curry 2687 2008-05-01 13:51:44Z wlux $
+-- $Id: Prelude.curry 2688 2008-05-01 16:08:00Z wlux $
 --
 -- Copyright (c) 1999-2008, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
-module Prelude where
+module Prelude((.), id, const, curry, uncurry, flip, until,
+               seq, ensureNotFree, ensureGround, ensureSpine,
+               ($), ($!), ($!!), ($#), ($##),
+               error, undefined, failed,
+               Bool(..), (&&), (||), not, if_then_else, otherwise, (==), (/=),
+               Ordering(..), compare, (<), (>), (<=), (>=), max, min,
+               fst, snd,
+               head, tail, null, (++), length, (!!),
+               map, foldl, foldl1, foldr, foldr1, filter,
+               zip, zip3, zipWith, zipWith3, unzip, unzip3,
+               concat, concatMap, iterate, repeat, replicate,
+               take, drop, splitAt, takeWhile, dropWhile, span, break,
+               reverse, and, or, any, all, elem, notElem, lookup,
+               Char(), ord, chr,
+               String, lines, unlines, words, unwords,
+               ShowS, show, shows, showChar, showString, showList, showParen,
+               Int(), (+), (-), (*), quot, rem, div, mod, negate,
+               Float(), (+.), (-.), (*.), (/.), negateFloat,
+               floatFromInt, truncateFloat, roundFloat,
+               enumFrom, enumFromThen, enumFromTo, enumFromThenTo,
+               Success(), (=:=), (=/=), success, (&), (&>),
+               Maybe(..), maybe,
+               Either(..), either,
+               IO(), done, return, (>>), (>>=),
+               sequenceIO, sequenceIO_, mapIO, mapIO_,
+               getChar, getLine, getContents,
+               putChar, putStr, putStrLn, print,
+               FilePath, readFile, writeFile, appendFile,
+               IOError, ioError, catch,
+               interact, doSolve,
+               (?), unknown,
+               try, inject, solveAll, once, best, findall, findfirst,
+               browse, browseList, unpack) where
 import IO
 
 -- Infix operator declarations:
@@ -572,7 +604,9 @@ enumFromThenTo n1 n2 m =
 
 
 -- Constraints
-data Success
+-- NB The Success constructor is not exported from the Prelude, but the
+--    compiler knows about it
+data Success = Success
 
 --- Equational constraint
 foreign import primitive (=:=) :: a -> a -> Success
@@ -581,14 +615,15 @@ foreign import primitive (=:=) :: a -> a -> Success
 foreign import primitive (=/=) :: a -> a -> Success
 
 --- Always satisfiable constraint
-foreign import primitive success :: Success
+success :: Success
+success = Success
 
 --- Concurrent conjunction of constraints
 foreign import primitive (&) :: Success -> Success -> Success
 
 --- Guarded evaluation
 (&>) :: Success -> a -> a
-c1 &> c2 | c1 = c2
+c &> e = case c of Success -> e
 
 
 -- Maybe type

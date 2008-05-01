@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2686 2008-04-30 19:30:57Z wlux $
+% $Id: Desugar.lhs 2688 2008-05-01 16:08:00Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -81,29 +81,6 @@ variables.
 > run m tcEnv tyEnv = runSt (callRt (callSt m tyEnv) tcEnv) 1
 
 \end{verbatim}
-During desugaring, the compiler transforms constraint guards into case
-expressions matching the guards against the constructor
-\texttt{Success}, which is defined in the runtime system. Thus, the
-compiler assumes that the type \texttt{Success} is defined by
-\begin{verbatim}
-  data Success = Success
-\end{verbatim}
-Since the internal constructor \texttt{Success} occurs in the
-desugared code, its type is added to the type environment.
-
-Note that the definition of \texttt{Success} is not included in the
-Prelude because the \texttt{Success} constructor would not be
-accessible in any module other than the Prelude unless the constructor
-were also exported from the Prelude. However, that would be
-incompatible with the Curry report, which deliberately defines
-\texttt{Success} as an abstract type.
-\begin{verbatim}
-
-> bindSuccess :: ValueEnv -> ValueEnv
-> bindSuccess = qualBindTopEnv qSuccessId successCon
->   where successCon = DataConstructor qSuccessId [] (polyType successType)
-
-\end{verbatim}
 The desugaring phase keeps only the type, function, and value
 declarations of the module. As type declarations are not desugared and
 cannot occur in local declaration groups they are filtered out
@@ -115,9 +92,8 @@ of a module.
 \begin{verbatim}
 
 > desugar :: TCEnv -> ValueEnv -> Module Type -> (Module Type,ValueEnv)
-> desugar tcEnv tyEnv (Module m es is ds) = (Module m es is ds',tyEnv'')
->   where (ds',tyEnv'') = run (desugarModule m tyEnv' ds) tcEnv tyEnv'
->         tyEnv' = bindSuccess tyEnv
+> desugar tcEnv tyEnv (Module m es is ds) = (Module m es is ds',tyEnv')
+>   where (ds',tyEnv') = run (desugarModule m tyEnv ds) tcEnv tyEnv
 
 > desugarModule :: ModuleIdent -> ValueEnv -> [TopDecl Type]
 >               -> DesugarState ([TopDecl Type],ValueEnv)
