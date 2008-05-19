@@ -1,12 +1,13 @@
--- $Id: Float.curry 1881 2006-04-03 09:21:01Z wlux $
+-- $Id: Float.curry 2700 2008-05-19 17:21:55Z wlux $
 --
--- Copyright (c) 2004, Wolfgang Lux
+-- Copyright (c) 2004-2008, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
-module Float((+.), (-.), (*.), (/.), (^), (^^), (**), (<.), (>.), (<=.), (>=.),
+module Float((+.), (-.), (*.), (/.), (^.), (^^.), (**.),
+             (<.), (>.), (<=.), (>=.),
 	     pi, i2f, truncate, round, sqrt, log, log10, exp,
 	     sin, cos, tan, asin, acos, atan, atan2, sinh, cosh, tanh) where
-infixl 8 ^, ^^, **
+infixl 8 **.
 
 -- (+.), (-.), (*.), (/.) re-exported from Prelude for compatibility with PAKCS
 -- (<.), (>.), (<=.) (>=.) ordering relations of floats
@@ -32,25 +33,9 @@ truncate = truncateFloat
 round :: Float -> Int
 round = roundFloat
 
---- x^n computes the nth power of x, n must be non-negative
-(^) :: Float -> Int -> Float
-x ^ n
-  | n > 0 = f x (n - 1) x
-  | n == 0 = 1
-  where f x n y
-          | n == 0 = y
-          | otherwise = g x n y
-        g x n y =
-          if n `rem` 2 == 0 then g (x *. x) (n `quot` 2) y
-                            else f x (n - 1) (x *. y)
-
---- x^^n computes the nth power of x, n may be negative
-(^^) :: Float -> Int -> Float
-x ^^ n = if n >= 0 then x ^ n else 1 /. x ^ (-n)
-
 --- Power
-(**) :: Float -> Float -> Float
-x ** y = exp (log x *. y)
+(**.) :: Float -> Float -> Float
+x **. y = exp (log x *. y)
 
 --- Square root
 foreign import ccall "math.h" sqrt :: Float -> Float

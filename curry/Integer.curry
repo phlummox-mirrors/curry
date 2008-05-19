@@ -1,6 +1,6 @@
--- $Id: Integer.curry 1901 2006-04-19 18:16:24Z wlux $
+-- $Id: Integer.curry 2700 2008-05-19 17:21:55Z wlux $
 --
--- Copyright (c) 2004-2006, Wolfgang Lux
+-- Copyright (c) 2004-2008, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module Integer(minInt, maxInt, pow, ilog, isqrt, factorial, binomial, abs,
@@ -17,10 +17,7 @@ foreign import ccall "prims.h primMaxInt" maxInt :: Int
 
 --- (pow m n) returns the m raised to the power of n
 pow :: Int -> Int -> Int
-pow m n
-  | n > 0 = let n' = pow m (n `quot` 2) in
-  	    if even n then n' * n' else n' * n' * m
-  | n == 0 = 1
+pow = (^)
 
 --- (ilog n) returns the floor of the logarithm in base 10 of n
 ilog :: Int -> Int
@@ -39,10 +36,6 @@ factorial n = fact 1 n
 --- Fails if m <= 0 or n <= m
 binomial :: Int -> Int -> Int
 binomial n m = foldr1 (*) [n-m+1 .. n] `quot` foldr1 (*) [1 .. m]
-
---- (abs n) returns the absolute value of n
-abs :: Int -> Int
-abs n = if n >= 0 then n else -n
 
 --- (max3 m n o) returns the maximum of m, n, and o
 max3 :: a -> a -> a -> a
@@ -82,11 +75,3 @@ bitNot = complement
 --- (bitXor m n) returns the bitwise exclusive or of m and n
 bitXor :: Int -> Int -> Int
 bitXor = xor
-
---- (even n) returns whether n is even
-even :: Int -> Bool
-even n = n `rem` 2 == 0
-
---- (odd n) returns whether n is odd
-odd :: Int -> Bool
-odd n = not (even n)
