@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2687 2008-05-01 13:51:44Z wlux $
+% $Id: Modules.lhs 2713 2008-05-20 22:20:55Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -37,10 +37,11 @@ This module controls the compilation of modules.
 > import Unlambda(unlambda)
 > import Lift(lift)
 > import qualified IL
-> import ILTrans(ilTrans,ilTransIntf)
+> import ILTrans(ilTrans)
 > import ILLift(liftProg)
 > import DTransform(dTransform,dAddMain)
-> import ILCompile(camCompile,camCompileData,fun)
+> import ILCompile(camCompile,con,fun)
+> import qualified Cam
 > import qualified CamPP(ppModule)
 > import CGen(genMain,genModule)
 > import CCode(CFile,mergeCFile)
@@ -88,14 +89,14 @@ declaration to the module.
 > compileModule :: Options -> FilePath -> ErrorT IO ()
 > compileModule opts fn =
 >   do
->     (mEnv,pEnv,tcEnv,tyEnv,m) <- loadModule paths dbg cm ws fn
+>     (pEnv,tcEnv,tyEnv,m) <- loadModule paths dbg cm ws fn
 >     let (tyEnv',trEnv,m',dumps) = transModule dbg tr tcEnv tyEnv m
 >     liftErr $ mapM_ (doDump opts) dumps
 >     let intf = exportInterface m pEnv tcEnv tyEnv'
 >     liftErr $ unless (noInterface opts) (updateInterface fn intf)
 >     let (il,dumps) = ilTransModule split dbg tyEnv' trEnv m'
 >     liftErr $ mapM_ (doDump opts) dumps
->     let (ccode,dumps) = genCodeModule (bindModule intf mEnv) il
+>     let (ccode,dumps) = genCodeModule tcEnv il
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeCode (output opts) fn ccode
 >   where paths = importPath opts
@@ -106,7 +107,7 @@ declaration to the module.
 >         ws = warn opts
 
 > loadModule :: [FilePath] -> Bool -> CaseMode -> [Warn] -> FilePath
->            -> ErrorT IO (ModuleEnv,PEnv,TCEnv,ValueEnv,Module Type)
+>            -> ErrorT IO (PEnv,TCEnv,ValueEnv,Module Type)
 > loadModule paths debug caseMode warn fn =
 >   do
 >     Module m es is ds <- liftErr (readFile fn) >>= okM . parseModule fn
@@ -118,7 +119,7 @@ declaration to the module.
 >     liftErr $ mapM_ putErrLn $ warnModuleSyntax caseMode warn m'
 >     (pEnv,tcEnv,tyEnv,m'') <- okM $ checkModule mEnv' m'
 >     liftErr $ mapM_ putErrLn $ warnModule warn tyEnv m''
->     return (mEnv,pEnv,tcEnv,tyEnv,m'')
+>     return (pEnv,tcEnv,tyEnv,m'')
 >   where modules is = [P p m | ImportDecl p m _ _ _ <- is]
 
 > parseModule :: FilePath -> String -> Error (Module ())
@@ -187,21 +188,18 @@ declaration to the module.
 >            (DumpIL,ILPP.ppModule il)] ++
 >           [(DumpTransformed,ILPP.ppModule ilDbg) | debug]
 
-> genCodeModule :: ModuleEnv -> Either IL.Module [IL.Module]
+> genCodeModule :: TCEnv -> Either IL.Module [IL.Module]
 >               -> (Either CFile [CFile],[(Dump,Doc)])
-> genCodeModule mEnv (Left il) = (Left ccode,dumps)
->   where (ccode,dumps) = genCode (ilImports mEnv il) il
-> genCodeModule mEnv (Right il) = (Right ccode,concat (transpose dumps))
->   where IL.Module m is ds = mergeILModules il
->         (ccode,dumps) =
->           unzip $ map (genCode (ilImports mEnv (IL.Module m is ds) ++ ds)) il
+> genCodeModule tcEnv (Left il) = (Left ccode,dumps)
+>   where (ccode,dumps) = genCode (dataTypes tcEnv) il
+> genCodeModule tcEnv (Right il) = (Right ccode,concat (transpose dumps))
+>   where (ccode,dumps) = unzip $ map (genCode (dataTypes tcEnv)) il
 
-> genCode :: [IL.Decl] -> IL.Module -> (CFile,[(Dump,Doc)])
-> genCode ds il = (ccode,dumps)
+> genCode :: [(Cam.Name,[Cam.Name])] -> IL.Module -> (CFile,[(Dump,Doc)])
+> genCode ts il = (ccode,dumps)
 >   where ilNormal = liftProg il
 >         cam = camCompile ilNormal
->         imports = camCompileData ds
->         ccode = genModule imports cam
+>         ccode = genModule ts cam
 >         dumps =
 >           [(DumpNormalized,ILPP.ppModule ilNormal),
 >            (DumpCam,CamPP.ppModule cam)]
@@ -222,17 +220,12 @@ declaration to the module.
 >         isCodeDecl (TypeDecl _ _ _ _) = False
 >         isCodeDecl (BlockDecl d) = isValueDecl d
 
-> mergeILModules :: [IL.Module] -> IL.Module
-> mergeILModules ms = IL.Module m (concat iss) (concat dss)
->   where IL.Module m _ _ : _ = ms
->         (iss,dss) = unzip [(is,ds) | IL.Module _ is ds <- ms]
-
-> ilImports :: ModuleEnv -> IL.Module -> [IL.Decl]
-> ilImports mEnv (IL.Module _ is _) =
->   concat [ilTransIntf i | (m,i) <- envToList mEnv, m `elem` is]
-
 > trustedFun :: TrustEnv -> QualIdent -> Bool
 > trustedFun trEnv f = maybe True (Trust ==) (lookupEnv (unqualify f) trEnv)
+
+> dataTypes :: TCEnv -> [(Cam.Name,[Cam.Name])]
+> dataTypes tcEnv = [dataType tc cs | DataType tc _ cs <- allEntities tcEnv]
+>   where dataType tc cs = (con tc,map (con . qualifyLike tc) cs)
 
 > writeCode :: Maybe FilePath -> FilePath -> Either CFile [CFile] -> IO ()
 > writeCode tfn sfn (Left cfile) = writeCCode ofn cfile
@@ -264,13 +257,13 @@ interfaces are in scope with their qualified names.
 > compileGoal :: Options -> Maybe String -> [FilePath] -> ErrorT IO ()
 > compileGoal opts g fns =
 >   do
->     (mEnv,tcEnv,tyEnv,g') <- loadGoal Eval paths dbg cm ws m g fns
+>     (tcEnv,tyEnv,g') <- loadGoal Eval paths dbg cm ws m g fns
 >     let (vs,m',tyEnv') = goalModule dbg tyEnv m mainId g'
 >     let (tyEnv'',trEnv,m'',dumps) = transModule dbg tr tcEnv tyEnv' m'
 >     liftErr $ mapM_ (doDump opts) dumps
 >     let (il,dumps) = ilTransModule1 (dAddMain mainId) dbg tyEnv'' trEnv m''
 >     liftErr $ mapM_ (doDump opts) dumps
->     let (ccode,dumps) = genCodeGoal mEnv (qualifyWith m mainId) vs il
+>     let (ccode,dumps) = genCodeGoal tcEnv (qualifyWith m mainId) vs il
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeGoalCode (output opts) ccode
 >   where m = mkMIdent []
@@ -283,7 +276,7 @@ interfaces are in scope with their qualified names.
 > typeGoal :: Options -> String -> [FilePath] -> ErrorT IO ()
 > typeGoal opts g fns =
 >   do
->     (_,tcEnv,_,Goal _ e _) <-
+>     (tcEnv,_,Goal _ e _) <-
 >       loadGoal Type paths False cm ws (mkMIdent []) (Just g) fns
 >     liftErr $ maybe putStr writeFile (output opts)
 >             $ showln (ppType tcEnv (typeOf e))
@@ -293,7 +286,7 @@ interfaces are in scope with their qualified names.
 
 > loadGoal :: Task -> [FilePath] -> Bool -> CaseMode -> [Warn]
 >          -> ModuleIdent -> Maybe String -> [FilePath]
->          -> ErrorT IO (ModuleEnv,TCEnv,ValueEnv,Goal Type)
+>          -> ErrorT IO (TCEnv,ValueEnv,Goal Type)
 > loadGoal task paths debug caseMode warn m g fns =
 >   do
 >     (mEnv,m') <- loadGoalModules paths debug fns
@@ -304,7 +297,7 @@ interfaces are in scope with their qualified names.
 >     liftErr $ mapM_ putErrLn $ warnGoalSyntax caseMode warn m g'
 >     (tcEnv,tyEnv,g'') <- okM $ checkGoal task mEnv m ms g'
 >     liftErr $ mapM_ putErrLn $ warnGoal warn tyEnv m g''
->     return (mEnv,tcEnv,tyEnv,g'')
+>     return (tcEnv,tyEnv,g'')
 >   where mainGoal m = Goal (first "") (Variable () (qualifyWith m mainId)) []
 
 > loadGoalModules :: [FilePath] -> Bool -> [FilePath]
@@ -360,10 +353,10 @@ interfaces are in scope with their qualified names.
 > warnGoal :: [Warn] -> ValueEnv -> ModuleIdent -> Goal a -> [String]
 > warnGoal warn tyEnv m g = overlapCheckGoal warn tyEnv g
 
-> genCodeGoal :: ModuleEnv -> QualIdent -> Maybe [Ident] -> IL.Module
+> genCodeGoal :: TCEnv -> QualIdent -> Maybe [Ident] -> IL.Module
 >             -> (CFile,[(Dump,Doc)])
-> genCodeGoal mEnv qGoalId vs il = (mergeCFile ccode ccode',dumps)
->   where (ccode,dumps) = genCode (ilImports mEnv il) il
+> genCodeGoal tcEnv qGoalId vs il = (mergeCFile ccode ccode',dumps)
+>   where (ccode,dumps) = genCode (dataTypes tcEnv) il
 >         ccode' = genMain (fun qGoalId) (fmap (map name) vs)
 
 \end{verbatim}
