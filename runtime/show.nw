@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: show.nw 2689 2008-05-01 16:31:50Z wlux $
+% $Id: show.nw 2711 2008-05-20 12:38:45Z wlux $
 %
-% Copyright (c) 2001-2007, Wolfgang Lux
+% Copyright (c) 2001-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Show Function}
@@ -353,6 +353,7 @@ FUNCTION(showp_1)
 	    }
 	    break;
 
+	case EAPP_KIND:
 	case PAPP_KIND:
 	    str  = node->info->cname;
 	    isop = is_operator(node->info) && !is_tuple(node->info);

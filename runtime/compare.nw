@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 2689 2008-05-01 16:31:50Z wlux $
+% $Id: compare.nw 2711 2008-05-20 12:38:45Z wlux $
 %
-% Copyright (c) 2001-2007, Wolfgang Lux
+% Copyright (c) 2001-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Polymorphic Comparisons}
@@ -164,6 +164,8 @@ FUNCTION(__compare_2)
 	    else
 		cmp = x < y ? CONST(__Prelude__LT) : CONST(__Prelude__GT);
 	    break;
+	case EAPP_KIND:
+	    FAIL("compare: existentially quantified type");
 	case PAPP_KIND:
 	    FAIL("compare: partial application");
 	case SEARCH_CONT_KIND:
@@ -173,14 +175,8 @@ FUNCTION(__compare_2)
 	    assert(is_capp_node(arg2));
 	    x = (long)node_tag(arg1);
 	    y = (long)node_tag(arg2);
-	    if ( x < 0 )
+	    if ( x == y )
 	    {
-		assert(y < 0);
-		FAIL("compare: existentially quantified type");
-	    }
-	    else if ( x == y )
-	    {
-		assert(y >= 0);
 		cmp = CONST(__Prelude__EQ);
 		n   = closure_argc(arg1);
 		assert(closure_argc(arg2) == n);
