@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2718 2008-06-12 14:04:58Z wlux $
+% $Id: Exports.lhs 2719 2008-06-12 15:15:07Z wlux $
 %
 % Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -47,10 +47,10 @@ the interface.
 >   where tvs = nameSupply
 >         imports = map (IImportDecl noPos) (filter (m /=) (usedModules ds))
 >         precs = foldr (infixDecl pEnv) [] es
->         hidden = map (hiddenTypeDecl m tcEnv tvs) (hiddenTypes m ds)
+>         hidden = map (hiddenTypeDecl tcEnv tvs) (hiddenTypes ds)
 >         ds =
 >           foldr (typeDecl tcEnv tyEnv tvs)
->                 (foldr (valueDecl tcEnv tyEnv tvs) [] es)
+>                 (foldr (valueDecl tyEnv tvs) [] es)
 >                 es
 
 > infixDecl :: PEnv -> Export -> [IDecl] -> [IDecl]
@@ -72,45 +72,44 @@ the interface.
 >     [DataType _ n cs] -> iTypeDecl IDataDecl tc tvs n constrs xs' : ds
 >       where constrs = guard vis >> cs'
 >             xs' = guard vis >> filter (`notElem` xs) (cs ++ ls)
->             cs' = map (constrDecl tcEnv tyEnv xs tc tvs n) cs
+>             cs' = map (constrDecl tyEnv xs tc tvs n) cs
 >             ls = nub (concatMap labels cs')
 >             vis = not (null xs) || tc == qSuccessId
 >     [RenamingType _ n c] -> iTypeDecl INewtypeDecl tc tvs n nc xs' : ds
->       where nc = newConstrDecl tcEnv tyEnv xs tc tvs c
+>       where nc = newConstrDecl tyEnv xs tc tvs c
 >             xs' = [c | c `notElem` xs]
->     [AliasType _ n ty] ->
->       iTypeDecl ITypeDecl tc tvs n (fromType tcEnv tvs ty) : ds
+>     [AliasType _ n ty] -> iTypeDecl ITypeDecl tc tvs n (fromType tvs ty) : ds
 >     _ -> internalError "typeDecl"
 
 > iTypeDecl :: (Position -> QualIdent -> [Ident] -> a)
 >           -> QualIdent -> [Ident] -> Int -> a
 > iTypeDecl f tc tvs n = f noPos tc (take n tvs)
 
-> constrDecl :: TCEnv -> ValueEnv -> [Ident] -> QualIdent -> [Ident] -> Int
->            -> Ident -> ConstrDecl
-> constrDecl tcEnv tyEnv xs tc tvs n c
+> constrDecl :: ValueEnv -> [Ident] -> QualIdent -> [Ident] -> Int -> Ident
+>            -> ConstrDecl
+> constrDecl tyEnv xs tc tvs n c
 >   | any (`elem` xs) ls = RecordDecl noPos evs c fs
 >   | otherwise = ConstrDecl noPos evs c tys
 >   where evs = drop n (take n' tvs)
 >         (ls,ForAll n' ty) = conType (qualifyLike tc c) tyEnv
->         tys = map (fromType tcEnv tvs) (arrowArgs ty)
+>         tys = map (fromType tvs) (arrowArgs ty)
 >         fs = zipWith (FieldDecl noPos . return) ls tys
 
-> newConstrDecl :: TCEnv -> ValueEnv -> [Ident] -> QualIdent -> [Ident] -> Ident
+> newConstrDecl :: ValueEnv -> [Ident] -> QualIdent -> [Ident] -> Ident
 >               -> NewConstrDecl
-> newConstrDecl tcEnv tyEnv xs tc tvs c
+> newConstrDecl tyEnv xs tc tvs c
 >   | l `elem` xs = NewRecordDecl noPos c l ty'
 >   | otherwise = NewConstrDecl noPos c ty'
 >   where (l:_,ForAll _ ty) = conType (qualifyLike tc c) tyEnv
->         ty' = fromType tcEnv tvs (head (arrowArgs ty))
+>         ty' = fromType tvs (head (arrowArgs ty))
 
-> valueDecl :: TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl] -> [IDecl]
-> valueDecl tcEnv tyEnv tvs (Export f) ds =
->   IFunctionDecl noPos f n' (fromType tcEnv tvs ty) : ds
+> valueDecl :: ValueEnv -> [Ident] -> Export -> [IDecl] -> [IDecl]
+> valueDecl tyEnv tvs (Export f) ds =
+>   IFunctionDecl noPos f n' (fromType tvs ty) : ds
 >   where n = arity f tyEnv
 >         n' = if arrowArity ty == n then Nothing else Just (toInteger n)
 >         ForAll _ ty = funType f tyEnv
-> valueDecl _ _ _ (ExportTypeWith _ _) ds = ds
+> valueDecl _ _ (ExportTypeWith _ _) ds = ds
 
 \end{verbatim}
 The compiler determines the list of imported modules from the set of
@@ -178,15 +177,15 @@ variables. Furthermore, by including hidden types in interfaces the
 compiler can check them without loading the imported modules.
 \begin{verbatim}
 
-> hiddenTypeDecl :: ModuleIdent -> TCEnv -> [Ident] -> QualIdent -> IDecl
-> hiddenTypeDecl m tcEnv tvs tc = HidingDataDecl noPos tc (take n tvs)
->   where n = constrKind (qualQualify m tc) tcEnv
+> hiddenTypeDecl :: TCEnv -> [Ident] -> QualIdent -> IDecl
+> hiddenTypeDecl tcEnv tvs tc = HidingDataDecl noPos tc (take n tvs)
+>   where n = constrKind tc tcEnv
 
-> hiddenTypes :: ModuleIdent -> [IDecl] -> [QualIdent]
-> hiddenTypes m ds =
+> hiddenTypes :: [IDecl] -> [QualIdent]
+> hiddenTypes ds =
 >   filter (not . isPrimTypeId . unqualify)
 >          (toListSet (foldr deleteFromSet used defd))
->   where used = fromListSet (map (qualQualify m) (usedTypes ds []))
+>   where used = fromListSet (usedTypes ds [])
 >         defd = foldr definedType [] ds
 
 > definedType :: IDecl -> [QualIdent] -> [QualIdent]

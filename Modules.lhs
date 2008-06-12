@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2718 2008-06-12 14:04:58Z wlux $
+% $Id: Modules.lhs 2719 2008-06-12 15:15:07Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -47,7 +47,7 @@ This module controls the compilation of modules.
 > import CGen(genMain,genModule)
 > import CCode(CFile,mergeCFile)
 > import CPretty(ppCFile)
-> import CurryPP(ppModule,ppInterface,ppIDecl,ppGoal)
+> import CurryPP(ppModule,ppInterface,ppIdent)
 > import qualified ILPP(ppModule)
 > import Options(Options(..),CaseMode(..),Warn(..),Dump(..))
 > import Base
@@ -616,13 +616,11 @@ from the type environment.
 > ppTypes :: TCEnv -> [(Ident,ValueInfo)] -> Doc
 > ppTypes tcEnv = vcat . map ppInfo
 >   where ppInfo (c,DataConstructor _ _ ty) =
->           ppIDecl (mkDecl c ty) <+> text "-- data constructor"
+>           ppType c ty <+> text "-- data constructor"
 >         ppInfo (c,NewtypeConstructor _ _ ty) =
->           ppIDecl (mkDecl c ty) <+> text "-- newtype constructor"
->         ppInfo (x,Value _ _ ty) = ppIDecl (mkDecl x ty)
->         mkDecl f ty =
->           IFunctionDecl undefined (qualify f) Nothing
->                         (fromType tcEnv nameSupply (rawType ty))
+>           ppType c ty <+> text "-- newtype constructor"
+>         ppInfo (x,Value _ _ ty) = ppType x ty
+>         ppType f ty = ppIdent f <+> text "::" <+> ppTypeScheme tcEnv ty
 
 \end{verbatim}
 Various file name extensions.

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 2718 2008-06-12 14:04:58Z wlux $
+% $Id: IntfCheck.lhs 2719 2008-06-12 15:15:07Z wlux $
 %
 % Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -61,86 +61,86 @@ interface module only. However, this has not been implemented yet.
 
 > intfCheck :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> [IDecl] -> Error ()
 > intfCheck m pEnv tcEnv tyEnv ds =
->   mapE_ (checkImport m pEnv tcEnv tyEnv)
+>   mapE_ (checkImport pEnv tcEnv tyEnv)
 >         (filter (isNothing . localIdent m . entity) ds)
 
-> checkImport :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> IDecl -> Error ()
-> checkImport _ pEnv _ _ (IInfixDecl p fix pr op) =
+> checkImport :: PEnv -> TCEnv -> ValueEnv -> IDecl -> Error ()
+> checkImport pEnv _ _ (IInfixDecl p fix pr op) =
 >   checkPrecInfo checkPrec pEnv p op
 >   where checkPrec (PrecInfo op' (OpPrec fix' pr')) =
 >           op == op' && fix == fix' && pr == pr'
-> checkImport _ _ tcEnv _ (HidingDataDecl p tc tvs) =
+> checkImport _ tcEnv _ (HidingDataDecl p tc tvs) =
 >   checkTypeInfo "hidden data type" checkData tcEnv p tc
 >   where checkData (DataType tc' n' _)
 >           | tc == tc' && length tvs == n' = Just (return ())
 >         checkData (RenamingType tc' n' _)
 >           | tc == tc' && length tvs == n' = Just (return ())
 >         checkData _ = Nothing
-> checkImport m _ tcEnv tyEnv (IDataDecl p tc tvs cs _) =
+> checkImport _ tcEnv tyEnv (IDataDecl p tc tvs cs _) =
 >   checkTypeInfo "data type" checkData tcEnv p tc
 >   where checkData (DataType tc' n' cs')
 >           | tc == tc' && length tvs == n' &&
 >             (null cs || map constr cs == cs') =
->               Just (mapM_ (checkConstrImport m tyEnv tc tvs) cs)
+>               Just (mapM_ (checkConstrImport tyEnv tc tvs) cs)
 >         checkData _ = Nothing
-> checkImport m _ tcEnv tyEnv (INewtypeDecl p tc tvs nc _) =
+> checkImport _ tcEnv tyEnv (INewtypeDecl p tc tvs nc _) =
 >   checkTypeInfo "newtype" checkNewtype tcEnv p tc
 >   where checkNewtype (RenamingType tc' n' nc')
 >           | tc == tc' && length tvs == n' && nconstr nc == nc' =
->               Just (checkNewConstrImport m tyEnv tc tvs nc)
+>               Just (checkNewConstrImport tyEnv tc tvs nc)
 >         checkNewtype _ = Nothing
-> checkImport m _ tcEnv _ (ITypeDecl p tc tvs ty) =
+> checkImport _ tcEnv _ (ITypeDecl p tc tvs ty) =
 >   checkTypeInfo "synonym type" checkType tcEnv p tc
 >   where checkType (AliasType tc' n' ty')
->           | tc == tc' && length tvs == n' && toType m tvs ty == ty' =
+>           | tc == tc' && length tvs == n' && toType tvs ty == ty' =
 >               Just (return ())
 >         checkType _ = Nothing
-> checkImport m _ _ tyEnv (IFunctionDecl p f n ty) =
+> checkImport _ _ tyEnv (IFunctionDecl p f n ty) =
 >   checkValueInfo "function" checkFun tyEnv p f
 >   where checkFun (Value f' n' (ForAll _ ty')) =
->           f == f' && maybe True (toInteger n' ==) n && toType m [] ty == ty'
+>           f == f' && maybe True (toInteger n' ==) n && toType [] ty == ty'
 >         checkFun _ = False
 
-> checkConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
->                   -> ConstrDecl -> Error ()
-> checkConstrImport m tyEnv tc tvs (ConstrDecl p evs c tys) =
+> checkConstrImport :: ValueEnv -> QualIdent -> [Ident] -> ConstrDecl
+>                   -> Error ()
+> checkConstrImport tyEnv tc tvs (ConstrDecl p evs c tys) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc c
 >         checkConstr (DataConstructor c' _ (ForAll n' ty')) =
 >           qc == c' && length (tvs ++ evs) == n' &&
->           toTypes m tvs tys == arrowArgs ty'
+>           toTypes tvs tys == arrowArgs ty'
 >         checkConstr _ = False
-> checkConstrImport m tyEnv tc tvs (ConOpDecl p evs ty1 op ty2) =
+> checkConstrImport tyEnv tc tvs (ConOpDecl p evs ty1 op ty2) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc op
 >         checkConstr (DataConstructor c' _ (ForAll n' ty')) =
 >           qc == c' && length (tvs ++ evs) == n' &&
->           toTypes m tvs [ty1,ty2] == arrowArgs ty'
+>           toTypes tvs [ty1,ty2] == arrowArgs ty'
 >         checkConstr _ = False
-> checkConstrImport m tyEnv tc tvs (RecordDecl p evs c fs) =
+> checkConstrImport tyEnv tc tvs (RecordDecl p evs c fs) =
 >   checkValueInfo "data constructor" checkConstr tyEnv p qc
 >   where qc = qualifyLike tc c
 >         (ls,tys) = unzip [(l,ty) | FieldDecl _ ls ty <- fs, l <- ls]
 >         checkConstr (DataConstructor c' ls' (ForAll n' ty')) =
 >           qc == c' && length (tvs ++ evs) == n' && ls == ls' &&
->           toTypes m tvs tys == arrowArgs ty'
+>           toTypes tvs tys == arrowArgs ty'
 >         checkConstr _ = False
 
-> checkNewConstrImport :: ModuleIdent -> ValueEnv -> QualIdent -> [Ident]
->                      -> NewConstrDecl -> Error ()
-> checkNewConstrImport m tyEnv tc tvs (NewConstrDecl p c ty) =
+> checkNewConstrImport :: ValueEnv -> QualIdent -> [Ident] -> NewConstrDecl
+>                      -> Error ()
+> checkNewConstrImport tyEnv tc tvs (NewConstrDecl p c ty) =
 >   checkValueInfo "newtype constructor" checkNewConstr tyEnv p qc
 >   where qc = qualifyLike tc c
 >         checkNewConstr (NewtypeConstructor c' _ (ForAll n' ty')) =
 >           qc == c' && length tvs == n' &&
->           toType m tvs ty == head (arrowArgs ty')
+>           toType tvs ty == head (arrowArgs ty')
 >         checkNewConstr _ = False
-> checkNewConstrImport m tyEnv tc tvs (NewRecordDecl p c l ty) =
+> checkNewConstrImport tyEnv tc tvs (NewRecordDecl p c l ty) =
 >   checkValueInfo "newtype constructor" checkNewConstr tyEnv p qc
 >   where qc = qualifyLike tc c
 >         checkNewConstr (NewtypeConstructor c' l' (ForAll n' ty')) =
 >           qc == c' && length tvs == n' && l == l' &&
->           toType m tvs ty == head (arrowArgs ty')
+>           toType tvs ty == head (arrowArgs ty')
 >         checkNewConstr _ = False
 
 > checkPrecInfo :: (PrecInfo -> Bool) -> PEnv -> Position

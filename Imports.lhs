@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 2718 2008-06-12 14:04:58Z wlux $
+% $Id: Imports.lhs 2719 2008-06-12 15:15:07Z wlux $
 %
 % Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -50,10 +50,10 @@ unqualified import are performed.
 > importInterface :: ModuleIdent -> Bool -> Maybe ImportSpec
 >                 -> (PEnv,TCEnv,ValueEnv) -> Interface
 >                 -> (PEnv,TCEnv,ValueEnv)
-> importInterface m q is (pEnv,tcEnv,tyEnv) (Interface m' _ ds) =
+> importInterface m q is (pEnv,tcEnv,tyEnv) (Interface _ _ ds) =
 >   (importEntities precs m q vs id ds pEnv,
->    importEntities (types m') m q ts id ds tcEnv,
->    importEntities (values m') m q vs id ds tyEnv)
+>    importEntities types m q ts id ds tcEnv,
+>    importEntities values m q vs id ds tyEnv)
 >   where ts = isVisible addType is
 >         vs = isVisible addValue is
 
@@ -101,8 +101,8 @@ the unqualified type identifier \verb|T| would be ambiguous if
 >                     -> (PEnv,TCEnv,ValueEnv)
 > importInterfaceIntf (pEnv,tcEnv,tyEnv) (Interface m _ ds) =
 >   (importEntitiesIntf precs m ds' pEnv,
->    importEntitiesIntf (types m) m ds' tcEnv,
->    importEntitiesIntf (values m) m ds' tyEnv)
+>    importEntitiesIntf types m ds' tcEnv,
+>    importEntitiesIntf values m ds' tyEnv)
 >   where ds' = map unhide (filter (isJust . localIdent m . entity) ds)
 
 > unhide :: IDecl -> IDecl
@@ -151,56 +151,52 @@ following functions.
 > precs (IInfixDecl _ fix p op) = qual op (PrecInfo op (OpPrec fix p))
 > precs _ = id
 
-> types :: ModuleIdent -> IDecl -> [I TypeInfo] -> [I TypeInfo]
-> types _ (IDataDecl _ tc tvs cs _) =
+> types :: IDecl -> [I TypeInfo] -> [I TypeInfo]
+> types (IDataDecl _ tc tvs cs _) =
 >   qual tc (typeCon DataType tc tvs (map constr cs))
-> types _ (INewtypeDecl _ tc tvs nc _) =
+> types (INewtypeDecl _ tc tvs nc _) =
 >   qual tc (typeCon RenamingType tc tvs (nconstr nc))
-> types m (ITypeDecl _ tc tvs ty) =
->   qual tc (typeCon AliasType tc tvs (toType m tvs ty))
-> types _ _ = id
+> types (ITypeDecl _ tc tvs ty) =
+>   qual tc (typeCon AliasType tc tvs (toType tvs ty))
+> types _ = id
 
-> values :: ModuleIdent -> IDecl -> [I ValueInfo] -> [I ValueInfo]
-> values m (IDataDecl _ tc tvs cs xs) =
->   (map (dataConstr m tc tvs ty0) (filter ((`notElem` xs) . constr) cs) ++) .
->   (map (uncurry (fieldLabel m tc tvs ty0)) (nubBy sameLabel ls) ++)
+> values :: IDecl -> [I ValueInfo] -> [I ValueInfo]
+> values (IDataDecl _ tc tvs cs xs) =
+>   (map (dataConstr tc tvs ty0) (filter ((`notElem` xs) . constr) cs) ++) .
+>   (map (uncurry (fieldLabel tc tvs ty0)) (nubBy sameLabel ls) ++)
 >   where ty0 = constrType tc tvs
 >         ls = [(l,ty) | RecordDecl _ _ _ fs <- cs,
 >                        FieldDecl _ ls ty <- fs, l <- ls, l `notElem` xs]
 >         sameLabel (l1,_) (l2,_) = l1 == l2
-> values m (INewtypeDecl _ tc tvs nc xs) =
->   (map (newConstr m tc tvs ty0) [nc | nconstr nc `notElem` xs] ++) .
+> values (INewtypeDecl _ tc tvs nc xs) =
+>   (map (newConstr tc tvs ty0) [nc | nconstr nc `notElem` xs] ++) .
 >   case nc of
 >     NewConstrDecl _ _ _ -> id
 >     NewRecordDecl _ c l ty
->       | l `notElem` xs -> (fieldLabel m tc tvs ty0 l ty :)
+>       | l `notElem` xs -> (fieldLabel tc tvs ty0 l ty :)
 >       | otherwise -> id
 >   where ty0 = constrType tc tvs
-> values m (IFunctionDecl _ f n ty) = qual f (Value f n' (polyType ty'))
+> values (IFunctionDecl _ f n ty) = qual f (Value f n' (polyType ty'))
 >   where n' = maybe (arrowArity ty') fromInteger n
->         ty' = toType m [] ty
-> values _ _ = id
+>         ty' = toType [] ty
+> values _ = id
 
-> dataConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> ConstrDecl
+> dataConstr :: QualIdent -> [Ident] -> TypeExpr -> ConstrDecl -> I ValueInfo
+> dataConstr tc tvs ty0 (ConstrDecl _ _ c tys) =
+>   con tc tvs c (zip (repeat anonId) tys) ty0
+> dataConstr tc tvs ty0 (ConOpDecl _ _ ty1 op ty2) =
+>   con tc tvs op [(anonId,ty1),(anonId,ty2)] ty0
+> dataConstr tc tvs ty0 (RecordDecl _ _ c fs) =
+>   con tc tvs c [(l,ty) | FieldDecl _ ls ty <- fs, l <- ls] ty0
+
+> newConstr :: QualIdent -> [Ident] -> TypeExpr -> NewConstrDecl -> I ValueInfo
+> newConstr tc tvs ty0 (NewConstrDecl _ c ty1) = ncon tc tvs c anonId ty1 ty0
+> newConstr tc tvs ty0 (NewRecordDecl _ c l ty1) = ncon tc tvs c l ty1 ty0
+
+> fieldLabel :: QualIdent -> [Ident] -> TypeExpr -> Ident -> TypeExpr
 >            -> I ValueInfo
-> dataConstr m tc tvs ty0 (ConstrDecl _ _ c tys) =
->   (c,con m tc tvs c (zip (repeat anonId) tys) ty0)
-> dataConstr m tc tvs ty0 (ConOpDecl _ _ ty1 op ty2) =
->   (op,con m tc tvs op [(anonId,ty1),(anonId,ty2)] ty0)
-> dataConstr m tc tvs ty0 (RecordDecl _ _ c fs) =
->   (c,con m tc tvs c [(l,ty) | FieldDecl _ ls ty <- fs, l <- ls] ty0)
-
-> newConstr :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> NewConstrDecl
->           -> I ValueInfo
-> newConstr m tc tvs ty0 (NewConstrDecl _ c ty1) =
->   (c,ncon m tc tvs c anonId ty1 ty0)
-> newConstr m tc tvs ty0 (NewRecordDecl _ c l ty1) =
->   (c,ncon m tc tvs c l ty1 ty0)
-
-> fieldLabel :: ModuleIdent -> QualIdent -> [Ident] -> TypeExpr -> Ident
->            -> TypeExpr -> I ValueInfo
-> fieldLabel m tc tvs ty0 l ty =
->   (l,Value (qualifyLike tc l) 1 (polyType (toType m tvs (ArrowType ty0 ty))))
+> fieldLabel tc tvs ty0 l ty =
+>   (l,Value (qualifyLike tc l) 1 (polyType (toType tvs (ArrowType ty0 ty))))
 
 > qual :: QualIdent -> a -> [I a] -> [I a]
 > qual x y = ((unqualify x,y) :)
@@ -250,16 +246,16 @@ Auxiliary functions:
 > typeCon :: (QualIdent -> Int -> a) -> QualIdent -> [Ident] -> a
 > typeCon f tc tvs = f tc (length tvs)
 
-> con :: ModuleIdent -> QualIdent -> [Ident] -> Ident -> [(Ident,TypeExpr)]
->     -> TypeExpr -> ValueInfo
-> con m tc tvs c tys ty0 = DataConstructor (qualifyLike tc c) ls ty
->   where ty = polyType (toType m tvs (foldr ArrowType ty0 tys'))
+> con :: QualIdent -> [Ident] -> Ident -> [(Ident,TypeExpr)] -> TypeExpr
+>     -> I ValueInfo
+> con tc tvs c tys ty0 = (c,DataConstructor (qualifyLike tc c) ls ty)
+>   where ty = polyType (toType tvs (foldr ArrowType ty0 tys'))
 >         (ls,tys') = unzip tys
 
-> ncon :: ModuleIdent -> QualIdent -> [Ident] -> Ident -> Ident -> TypeExpr
->      -> TypeExpr -> ValueInfo
-> ncon m tc tvs c l ty1 ty0 = NewtypeConstructor (qualifyLike tc c) l ty
->   where ty = polyType (toType m tvs (ArrowType ty1 ty0))
+> ncon :: QualIdent -> [Ident] -> Ident -> Ident -> TypeExpr -> TypeExpr
+>      -> I ValueInfo
+> ncon tc tvs c l ty1 ty0 = (c,NewtypeConstructor (qualifyLike tc c) l ty)
+>   where ty = polyType (toType tvs (ArrowType ty1 ty0))
 
 > constrType :: QualIdent -> [Ident] -> TypeExpr
 > constrType tc tvs = ConstructorType tc (map VariableType tvs)
