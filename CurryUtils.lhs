@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryUtils.lhs 2579 2007-12-19 14:08:54Z wlux $
+% $Id: CurryUtils.lhs 2718 2008-06-12 14:04:58Z wlux $
 %
-% Copyright (c) 1999-2007, Wolfgang Lux
+% Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryUtils.lhs}
@@ -132,6 +132,19 @@ in which the labels appear in the record's declaration.
 
 > orderFields :: [Field a] -> [Ident] -> [Maybe a]
 > orderFields fs ls = map (flip lookup [(unqualify l,x) | Field l x <- fs]) ls
+
+\end{verbatim}
+The function \texttt{entity} returns the qualified name of the entity
+defined by an interface declaration.
+\begin{verbatim}
+
+> entity :: IDecl -> QualIdent
+> entity (IInfixDecl _ _ _ op) = op
+> entity (HidingDataDecl _ tc _) = tc
+> entity (IDataDecl _ tc _ _ _) = tc
+> entity (INewtypeDecl _ tc _ _ _) = tc
+> entity (ITypeDecl _ tc _ _) = tc
+> entity (IFunctionDecl _ f _ _) = f
 
 \end{verbatim}
 Here are a few convenience functions for constructing (elements of)

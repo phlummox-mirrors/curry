@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 2525 2007-10-22 11:33:10Z wlux $
+% $Id: Imports.lhs 2718 2008-06-12 14:04:58Z wlux $
 %
-% Copyright (c) 2000-2007, Wolfgang Lux
+% Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Imports.lhs}
@@ -41,9 +41,9 @@ unqualified import are performed.
 
 > importIdents :: ModuleIdent -> Bool -> Maybe ImportSpec -> (TypeEnv,FunEnv)
 >              -> Interface -> (TypeEnv,FunEnv)
-> importIdents m q is (tEnv,vEnv) (Interface m' _ ds) =
->   (importEntities tidents m q ts (importData vs) m' ds tEnv,
->    importEntities vidents m q vs id m' ds vEnv)
+> importIdents m q is (tEnv,vEnv) (Interface _ _ ds) =
+>   (importEntities tidents m q ts (importData vs) ds tEnv,
+>    importEntities vidents m q vs id ds vEnv)
 >   where ts = isVisible addType is
 >         vs = isVisible addValue is
 
@@ -51,9 +51,9 @@ unqualified import are performed.
 >                 -> (PEnv,TCEnv,ValueEnv) -> Interface
 >                 -> (PEnv,TCEnv,ValueEnv)
 > importInterface m q is (pEnv,tcEnv,tyEnv) (Interface m' _ ds) =
->   (importEntities precs m q vs id m' ds pEnv,
->    importEntities types m q ts id m' ds tcEnv,
->    importEntities values m q vs id m' ds tyEnv)
+>   (importEntities precs m q vs id ds pEnv,
+>    importEntities (types m') m q ts id ds tcEnv,
+>    importEntities (values m') m q vs id ds tyEnv)
 >   where ts = isVisible addType is
 >         vs = isVisible addValue is
 
@@ -64,12 +64,12 @@ unqualified import are performed.
 > isVisible _ Nothing = const True
 
 > importEntities :: Entity a
->                => (ModuleIdent -> IDecl -> [I a] -> [I a])
+>                => (IDecl -> [I a] -> [I a])
 >                -> ModuleIdent -> Bool -> (Ident -> Bool) -> (a -> a)
->                -> ModuleIdent -> [IDecl] -> TopEnv a -> TopEnv a
-> importEntities bind m q isVisible f m' ds env =
+>                -> [IDecl] -> TopEnv a -> TopEnv a
+> importEntities bind m q isVisible f ds env =
 >   foldr (uncurry (importTopEnv q m)) env
->         [(x,f y) | (x,y) <- foldr (bind m') [] ds, isVisible x]
+>         [(x,f y) | (x,y) <- foldr bind [] ds, isVisible x]
 
 > importData :: (Ident -> Bool) -> TypeKind -> TypeKind
 > importData isVisible (Data tc xs) = Data tc (filter isVisible xs)
@@ -83,9 +83,9 @@ actually defined in the module are imported. Since the compiler
 imports all used interfaces into other interfaces, entities defined in
 one module and reexported by another module are made available by
 their defining modules. Furthermore, ignoring reexported entities
-avoids a problem with the fact that the unqualified names of entities
+avoids a problem with the fact that the unqualified name of an entity
 defined in an interface may be ambiguous if hidden data type
-declarations are taken into account. For instance, in the interface
+declarations are taken into account. For instance, for the interface
 \begin{verbatim}
   module M where {
     import N;
@@ -101,17 +101,9 @@ the unqualified type identifier \verb|T| would be ambiguous if
 >                     -> (PEnv,TCEnv,ValueEnv)
 > importInterfaceIntf (pEnv,tcEnv,tyEnv) (Interface m _ ds) =
 >   (importEntitiesIntf precs m ds' pEnv,
->    importEntitiesIntf types m ds' tcEnv,
->    importEntitiesIntf values m ds' tyEnv)
+>    importEntitiesIntf (types m) m ds' tcEnv,
+>    importEntitiesIntf (values m) m ds' tyEnv)
 >   where ds' = map unhide (filter (isJust . localIdent m . entity) ds)
-
-> entity :: IDecl -> QualIdent
-> entity (IInfixDecl _ _ _ op) = op
-> entity (HidingDataDecl _ tc _) = tc
-> entity (IDataDecl _ tc _ _ _) = tc
-> entity (INewtypeDecl _ tc _ _ _) = tc
-> entity (ITypeDecl _ tc _ _) = tc
-> entity (IFunctionDecl _ f _ _) = f
 
 > unhide :: IDecl -> IDecl
 > unhide (IInfixDecl p fix pr op) = IInfixDecl p fix pr op
@@ -122,73 +114,69 @@ the unqualified type identifier \verb|T| would be ambiguous if
 > unhide (IFunctionDecl p f n ty) = IFunctionDecl p f n ty
 
 > importEntitiesIntf :: Entity a
->                    => (ModuleIdent -> IDecl -> [I a] -> [I a])
+>                    => (IDecl -> [I a] -> [I a])
 >                    -> ModuleIdent -> [IDecl] -> TopEnv a -> TopEnv a
 > importEntitiesIntf bind m ds env =
->   foldr (uncurry (qualImportTopEnv m)) env (foldr (bind m) [] ds)
+>   foldr (uncurry (qualImportTopEnv m)) env (foldr bind [] ds)
 
 \end{verbatim}
 The list of entities exported from a module is computed with the
 following functions.
 \begin{verbatim}
 
-> tidents :: ModuleIdent -> IDecl -> [I TypeKind] -> [I TypeKind]
-> tidents m (IDataDecl _ tc _ cs xs') =
->   qual tc (tident Data m tc (filter (`notElem` xs') xs))
+> tidents :: IDecl -> [I TypeKind] -> [I TypeKind]
+> tidents (IDataDecl _ tc _ cs xs') =
+>   qual tc (Data tc (filter (`notElem` xs') xs))
 >   where xs = map constr cs ++ nub (concatMap labels cs)
-> tidents m (INewtypeDecl _ tc _ nc xs') =
->   qual tc (tident Data m tc (filter (`notElem` xs') xs))
+> tidents (INewtypeDecl _ tc _ nc xs') =
+>   qual tc (Data tc (filter (`notElem` xs') xs))
 >   where xs = nconstr nc : nlabel nc
-> tidents m (ITypeDecl _ tc _ _) = qual tc (tident Alias m tc)
-> tidents _ _ = id
+> tidents (ITypeDecl _ tc _ _) = qual tc (Alias tc)
+> tidents _ = id
 
-> vidents :: ModuleIdent -> IDecl -> [I ValueKind] -> [I ValueKind]
-> vidents m (IDataDecl _ tc _ cs xs) =
->   cidents m tc xs (map constr cs) .
->   lidents m tc xs [(l,constrs cs l) | l <- nub (concatMap labels cs)]
+> vidents :: IDecl -> [I ValueKind] -> [I ValueKind]
+> vidents (IDataDecl _ tc _ cs xs) =
+>   cidents tc xs (map constr cs) .
+>   lidents tc xs [(l,constrs cs l) | l <- nub (concatMap labels cs)]
 >   where constrs cs l = [constr c | c <- cs, l `elem` labels c]
-> vidents m (INewtypeDecl _ tc _ nc xs) =
->   cidents m tc xs [nconstr nc] .
+> vidents (INewtypeDecl _ tc _ nc xs) =
+>   cidents tc xs [nconstr nc] .
 >   case nc of
 >     NewConstrDecl _ _ _ -> id
->     NewRecordDecl _ c l _ -> lidents m tc xs [(l,[c])]
-> vidents m (IFunctionDecl _ f _ _) = qual f (Var (qualQualify m f) [])
-> vidents _ _ = id
+>     NewRecordDecl _ c l _ -> lidents tc xs [(l,[c])]
+> vidents (IFunctionDecl _ f _ _) = qual f (Var f [])
+> vidents _ = id
 
-> precs :: ModuleIdent -> IDecl -> [I PrecInfo] -> [I PrecInfo]
-> precs m (IInfixDecl _ fix p op) =
->   qual op (PrecInfo (qualQualify m op) (OpPrec fix p))
-> precs _ _ = id
+> precs :: IDecl -> [I PrecInfo] -> [I PrecInfo]
+> precs (IInfixDecl _ fix p op) = qual op (PrecInfo op (OpPrec fix p))
+> precs _ = id
 
 > types :: ModuleIdent -> IDecl -> [I TypeInfo] -> [I TypeInfo]
-> types m (IDataDecl _ tc tvs cs _) =
->   qual tc (typeCon DataType m tc tvs (map constr cs))
-> types m (INewtypeDecl _ tc tvs nc _) =
->   qual tc (typeCon RenamingType m tc tvs (nconstr nc))
+> types _ (IDataDecl _ tc tvs cs _) =
+>   qual tc (typeCon DataType tc tvs (map constr cs))
+> types _ (INewtypeDecl _ tc tvs nc _) =
+>   qual tc (typeCon RenamingType tc tvs (nconstr nc))
 > types m (ITypeDecl _ tc tvs ty) =
->   qual tc (typeCon AliasType m tc tvs (toType m tvs ty))
+>   qual tc (typeCon AliasType tc tvs (toType m tvs ty))
 > types _ _ = id
 
 > values :: ModuleIdent -> IDecl -> [I ValueInfo] -> [I ValueInfo]
 > values m (IDataDecl _ tc tvs cs xs) =
->   (map (dataConstr m tc' tvs ty0) (filter ((`notElem` xs) . constr) cs) ++) .
->   (map (uncurry (fieldLabel m tc' tvs ty0)) (nubBy sameLabel ls) ++)
->   where tc' = qualQualify m tc
->         ty0 = constrType tc' tvs
+>   (map (dataConstr m tc tvs ty0) (filter ((`notElem` xs) . constr) cs) ++) .
+>   (map (uncurry (fieldLabel m tc tvs ty0)) (nubBy sameLabel ls) ++)
+>   where ty0 = constrType tc tvs
 >         ls = [(l,ty) | RecordDecl _ _ _ fs <- cs,
 >                        FieldDecl _ ls ty <- fs, l <- ls, l `notElem` xs]
 >         sameLabel (l1,_) (l2,_) = l1 == l2
 > values m (INewtypeDecl _ tc tvs nc xs) =
->   (map (newConstr m tc' tvs ty0) [nc | nconstr nc `notElem` xs] ++) .
+>   (map (newConstr m tc tvs ty0) [nc | nconstr nc `notElem` xs] ++) .
 >   case nc of
 >     NewConstrDecl _ _ _ -> id
 >     NewRecordDecl _ c l ty
->       | l `notElem` xs -> (fieldLabel m tc' tvs ty0 l ty :)
+>       | l `notElem` xs -> (fieldLabel m tc tvs ty0 l ty :)
 >       | otherwise -> id
->   where tc' = qualQualify m tc
->         ty0 = constrType tc' tvs
-> values m (IFunctionDecl _ f n ty) =
->   qual f (Value (qualQualify m f) n' (polyType ty'))
+>   where ty0 = constrType tc tvs
+> values m (IFunctionDecl _ f n ty) = qual f (Value f n' (polyType ty'))
 >   where n' = maybe (arrowArity ty') fromInteger n
 >         ty' = toType m [] ty
 > values _ _ = id
@@ -245,27 +233,22 @@ Auxiliary functions:
 > addValue (ImportTypeWith _ cs) fs = foldr addToSet fs cs
 > addValue (ImportTypeAll _) _ = internalError "addValue"
 
-> tident :: (QualIdent -> a) -> ModuleIdent -> QualIdent -> a
-> tident f m tc = f (qualQualify m tc)
-
-> cidents :: ModuleIdent -> QualIdent -> [Ident] -> [Ident] -> [I ValueKind]
->         -> [I ValueKind]
-> cidents m tc xs cs =
->   (map (cident (qualQualify m tc)) (filter (`notElem` xs) cs) ++)
+> cidents :: QualIdent -> [Ident] -> [Ident] -> [I ValueKind] -> [I ValueKind]
+> cidents tc xs cs = (map (cident tc) (filter (`notElem` xs) cs) ++)
 
 > cident :: QualIdent -> Ident -> I ValueKind
 > cident tc c = (c,Constr (qualifyLike tc c))
 
-> lidents :: ModuleIdent -> QualIdent -> [Ident] -> [(Ident,[Ident])]
->         -> [I ValueKind] -> [I ValueKind]
-> lidents m tc xs ls = (map (uncurry (lident (qualQualify m tc))) ls' ++)
+> lidents :: QualIdent -> [Ident] -> [(Ident,[Ident])] -> [I ValueKind]
+>         -> [I ValueKind]
+> lidents tc xs ls = (map (uncurry (lident tc)) ls' ++)
 >   where ls' = filter ((`notElem` xs) . fst) ls
 
 > lident :: QualIdent -> Ident -> [Ident] -> I ValueKind
 > lident tc l cs = (l,Var (qualifyLike tc l) (map (qualifyLike tc) cs))
 
-> typeCon :: (QualIdent -> Int -> a) -> ModuleIdent -> QualIdent -> [Ident] -> a
-> typeCon f m tc tvs = f (qualQualify m tc) (length tvs)
+> typeCon :: (QualIdent -> Int -> a) -> QualIdent -> [Ident] -> a
+> typeCon f tc tvs = f tc (length tvs)
 
 > con :: ModuleIdent -> QualIdent -> [Ident] -> Ident -> [(Ident,TypeExpr)]
 >     -> TypeExpr -> ValueInfo

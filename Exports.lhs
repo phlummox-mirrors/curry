@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2688 2008-05-01 16:08:00Z wlux $
+% $Id: Exports.lhs 2718 2008-06-12 14:04:58Z wlux $
 %
 % Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -29,6 +29,7 @@ the interface.
 > import Base
 > import Curry
 > import CurryUtils
+> import IntfQual
 > import List
 > import Monad
 > import PrecInfo
@@ -42,50 +43,48 @@ the interface.
 
 > exportInterface :: Module a -> PEnv -> TCEnv -> ValueEnv -> Interface
 > exportInterface (Module m (Just (Exporting _ es)) _ _) pEnv tcEnv tyEnv =
->   Interface m imports (precs ++ hidden ++ ds)
+>   Interface m imports (unqualIntf m (precs ++ hidden ++ ds))
 >   where tvs = nameSupply
->         imports = map (IImportDecl noPos) (usedModules ds)
->         precs = foldr (infixDecl m pEnv) [] es
->         hidden = map (hiddenTypeDecl m tcEnv tvs) (hiddenTypes ds)
+>         imports = map (IImportDecl noPos) (filter (m /=) (usedModules ds))
+>         precs = foldr (infixDecl pEnv) [] es
+>         hidden = map (hiddenTypeDecl m tcEnv tvs) (hiddenTypes m ds)
 >         ds =
->           foldr (typeDecl m tcEnv tyEnv tvs)
->                 (foldr (valueDecl m tcEnv tyEnv tvs) [] es)
+>           foldr (typeDecl tcEnv tyEnv tvs)
+>                 (foldr (valueDecl tcEnv tyEnv tvs) [] es)
 >                 es
 
-> infixDecl :: ModuleIdent -> PEnv -> Export -> [IDecl] -> [IDecl]
-> infixDecl m pEnv (Export f) ds = iInfixDecl m pEnv f ds
-> infixDecl m pEnv (ExportTypeWith tc cs) ds =
->   foldr (iInfixDecl m pEnv . qualifyLike tc) ds cs
+> infixDecl :: PEnv -> Export -> [IDecl] -> [IDecl]
+> infixDecl pEnv (Export f) ds = iInfixDecl pEnv f ds
+> infixDecl pEnv (ExportTypeWith tc cs) ds =
+>   foldr (iInfixDecl pEnv . qualifyLike tc) ds cs
 
-> iInfixDecl :: ModuleIdent -> PEnv -> QualIdent -> [IDecl] -> [IDecl]
-> iInfixDecl m pEnv op ds =
+> iInfixDecl :: PEnv -> QualIdent -> [IDecl] -> [IDecl]
+> iInfixDecl pEnv op ds =
 >   case qualLookupTopEnv op pEnv of
 >     [] -> ds
->     [PrecInfo _ (OpPrec fix pr)] ->
->       IInfixDecl noPos fix pr (qualUnqualify m op) : ds
+>     [PrecInfo _ (OpPrec fix pr)] -> IInfixDecl noPos fix pr op : ds
 >     _ -> internalError "infixDecl"
 
-> typeDecl :: ModuleIdent -> TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl]
->          -> [IDecl]
-> typeDecl _ _ _ _ (Export _) ds = ds
-> typeDecl m tcEnv tyEnv tvs (ExportTypeWith tc xs) ds =
+> typeDecl :: TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl] -> [IDecl]
+> typeDecl _ _ _ (Export _) ds = ds
+> typeDecl tcEnv tyEnv tvs (ExportTypeWith tc xs) ds =
 >   case qualLookupTopEnv tc tcEnv of
->     [DataType _ n cs] -> iTypeDecl IDataDecl m tc tvs n constrs xs' : ds
+>     [DataType _ n cs] -> iTypeDecl IDataDecl tc tvs n constrs xs' : ds
 >       where constrs = guard vis >> cs'
 >             xs' = guard vis >> filter (`notElem` xs) (cs ++ ls)
 >             cs' = map (constrDecl tcEnv tyEnv xs tc tvs n) cs
 >             ls = nub (concatMap labels cs')
 >             vis = not (null xs) || tc == qSuccessId
->     [RenamingType _ n c] -> iTypeDecl INewtypeDecl m tc tvs n nc xs' : ds
+>     [RenamingType _ n c] -> iTypeDecl INewtypeDecl tc tvs n nc xs' : ds
 >       where nc = newConstrDecl tcEnv tyEnv xs tc tvs c
 >             xs' = [c | c `notElem` xs]
 >     [AliasType _ n ty] ->
->       iTypeDecl ITypeDecl m tc tvs n (fromType tcEnv tvs ty) : ds
+>       iTypeDecl ITypeDecl tc tvs n (fromType tcEnv tvs ty) : ds
 >     _ -> internalError "typeDecl"
 
-> iTypeDecl :: (Position -> QualIdent -> [Ident] -> a) -> ModuleIdent
+> iTypeDecl :: (Position -> QualIdent -> [Ident] -> a)
 >           -> QualIdent -> [Ident] -> Int -> a
-> iTypeDecl f m tc tvs n = f noPos (qualUnqualify m tc) (take n tvs)
+> iTypeDecl f tc tvs n = f noPos tc (take n tvs)
 
 > constrDecl :: TCEnv -> ValueEnv -> [Ident] -> QualIdent -> [Ident] -> Int
 >            -> Ident -> ConstrDecl
@@ -105,25 +104,21 @@ the interface.
 >   where (l:_,ForAll _ ty) = conType (qualifyLike tc c) tyEnv
 >         ty' = fromType tcEnv tvs (head (arrowArgs ty))
 
-> valueDecl :: ModuleIdent -> TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl]
->           -> [IDecl]
-> valueDecl m tcEnv tyEnv tvs (Export f) ds =
->   IFunctionDecl noPos (qualUnqualify m f) n' (fromType tcEnv tvs ty) : ds
+> valueDecl :: TCEnv -> ValueEnv -> [Ident] -> Export -> [IDecl] -> [IDecl]
+> valueDecl tcEnv tyEnv tvs (Export f) ds =
+>   IFunctionDecl noPos f n' (fromType tcEnv tvs ty) : ds
 >   where n = arity f tyEnv
 >         n' = if arrowArity ty == n then Nothing else Just (toInteger n)
 >         ForAll _ ty = funType f tyEnv
-> valueDecl _ _ _ _ (ExportTypeWith _ _) ds = ds
+> valueDecl _ _ _ (ExportTypeWith _ _) ds = ds
 
 \end{verbatim}
 The compiler determines the list of imported modules from the set of
-module qualifiers that are used in the interface. Careful readers
-probably will have noticed that the functions above carefully strip
-the module prefix from all entities that are defined in the current
-module. Note that the list of modules returned from
-\texttt{usedModules} is not necessarily a subset of the modules that
-were imported into the current module. This will happen when an
-imported module re-exports entities from another module. E.g., given
-the three modules
+module qualifiers that are used in the interface. Note that the list
+of modules returned from \texttt{usedModules} is not necessarily a
+subset of the union of the current module and the modules that were
+imported into it. This will happen when an imported module reexports
+entities from another module. E.g., given the three modules
 \begin{verbatim}
 module A where { data A = A; }
 module B(A(..)) where { import A; }
@@ -187,11 +182,11 @@ compiler can check them without loading the imported modules.
 > hiddenTypeDecl m tcEnv tvs tc = HidingDataDecl noPos tc (take n tvs)
 >   where n = constrKind (qualQualify m tc) tcEnv
 
-> hiddenTypes :: [IDecl] -> [QualIdent]
-> hiddenTypes ds =
+> hiddenTypes :: ModuleIdent -> [IDecl] -> [QualIdent]
+> hiddenTypes m ds =
 >   filter (not . isPrimTypeId . unqualify)
 >          (toListSet (foldr deleteFromSet used defd))
->   where used = fromListSet (usedTypes ds [])
+>   where used = fromListSet (map (qualQualify m) (usedTypes ds []))
 >         defd = foldr definedType [] ds
 
 > definedType :: IDecl -> [QualIdent] -> [QualIdent]

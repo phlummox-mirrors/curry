@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 2525 2007-10-22 11:33:10Z wlux $
+% $Id: IntfCheck.lhs 2718 2008-06-12 14:04:58Z wlux $
 %
-% Copyright (c) 2000-2007, Wolfgang Lux
+% Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{IntfCheck.lhs}
@@ -14,8 +14,8 @@ agree with their original definitions.
 
 One may ask why we include imported declarations at all, if the
 compiler always has to compare those declarations with the original
-definitions. The main reason for this is that it helps to avoid
-unnecessary recompilations of client modules. As an example, consider
+definitions. The main reason for this is that it helps avoiding
+unnecessary recompilation of client modules. As an example, consider
 the three modules
 \begin{verbatim}
   module A where { data T = C }
@@ -60,7 +60,9 @@ interface module only. However, this has not been implemented yet.
 > import ValueInfo
 
 > intfCheck :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> [IDecl] -> Error ()
-> intfCheck m pEnv tcEnv tyEnv = mapE_ (checkImport m pEnv tcEnv tyEnv)
+> intfCheck m pEnv tcEnv tyEnv ds =
+>   mapE_ (checkImport m pEnv tcEnv tyEnv)
+>         (filter (isNothing . localIdent m . entity) ds)
 
 > checkImport :: ModuleIdent -> PEnv -> TCEnv -> ValueEnv -> IDecl -> Error ()
 > checkImport _ pEnv _ _ (IInfixDecl p fix pr op) =
@@ -172,10 +174,7 @@ interface module only. However, this has not been implemented yet.
 >             _ -> internalError "checkValueInfo"
 
 > checkImported :: (ModuleIdent -> Ident -> Error ()) -> QualIdent -> Error ()
-> checkImported f x =
->   case splitQualIdent x of
->     (Just m,x') -> f m x'
->     (Nothing,_) -> return ()
+> checkImported f x = uncurry (f . fromJust) (splitQualIdent x)
 
 \end{verbatim}
 Error messages.
