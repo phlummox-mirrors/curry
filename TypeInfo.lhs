@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeInfo.lhs 2687 2008-05-01 13:51:44Z wlux $
+% $Id: TypeInfo.lhs 2721 2008-06-13 16:17:39Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -40,6 +40,15 @@ constructors in the interface.
 >   origName (DataType tc _ _) = tc
 >   origName (RenamingType tc _ _) = tc
 >   origName (AliasType tc _ _) = tc
+>   merge (DataType tc1 tvs1 cs1) (DataType tc2 tvs2 cs2)
+>     | tc1 == tc2 && tvs1 == tvs2 && (null cs1 || null cs2 || cs1 == cs2) =
+>         Just (DataType tc1 tvs1 (if null cs1 then cs2 else cs1))
+>   merge (RenamingType tc1 tvs1 nc1) (RenamingType tc2 tvs2 nc2)
+>     | tc1 == tc2 && tvs1 == tvs2 && nc1 == nc2 =
+>         Just (RenamingType tc1 tvs1 nc1)
+>   merge (AliasType tc1 tvs1 ty1) (AliasType tc2 tvs2 ty2)
+>     | tc1 == tc2 && tvs1 == tvs2 && ty1 == ty2 = Just (AliasType tc1 tvs1 ty1)
+>   merge _ _ = Nothing
 
 \end{verbatim}
 The initial type constructor environment \texttt{initTCEnv} is empty.
