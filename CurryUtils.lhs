@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryUtils.lhs 2718 2008-06-12 14:04:58Z wlux $
+% $Id: CurryUtils.lhs 2720 2008-06-13 11:37:13Z wlux $
 %
 % Copyright (c) 1999-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -145,6 +145,21 @@ defined by an interface declaration.
 > entity (INewtypeDecl _ tc _ _ _) = tc
 > entity (ITypeDecl _ tc _ _) = tc
 > entity (IFunctionDecl _ f _ _) = f
+
+\end{verbatim}
+The function \texttt{unhide} makes interface declarations transparent,
+i.e., it replaces hidden data type declarations by standard data type
+declarations and removes all hiding specifications from interface
+declarations.
+\begin{verbatim}
+
+> unhide :: IDecl -> IDecl
+> unhide (IInfixDecl p fix pr op) = IInfixDecl p fix pr op
+> unhide (HidingDataDecl p tc tvs) = IDataDecl p tc tvs [] []
+> unhide (IDataDecl p tc tvs cs _) = IDataDecl p tc tvs cs []
+> unhide (INewtypeDecl p tc tvs nc _) = INewtypeDecl p tc tvs nc []
+> unhide (ITypeDecl p tc tvs ty) = ITypeDecl p tc tvs ty
+> unhide (IFunctionDecl p f n ty) = IFunctionDecl p f n ty
 
 \end{verbatim}
 Here are a few convenience functions for constructing (elements of)

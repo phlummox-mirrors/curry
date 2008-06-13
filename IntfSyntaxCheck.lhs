@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2687 2008-05-01 13:51:44Z wlux $
+% $Id: IntfSyntaxCheck.lhs 2720 2008-06-13 11:37:13Z wlux $
 %
 % Copyright (c) 2000-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -30,10 +30,6 @@ reference to the global environments.
 > import PredefIdent
 > import TopEnv
 
-> intfSyntaxCheck :: [IDecl] -> Error [IDecl]
-> intfSyntaxCheck ds = mapE (checkIDecl env) ds
->   where env = foldr bindType initTEnv ds
-
 \end{verbatim}
 The compiler requires information about the arity of each defined type
 constructor as well as information whether the type constructor
@@ -41,20 +37,10 @@ denotes an algebraic data type, a renaming type, or a type synonym.
 The latter must not occur in type expressions in interfaces.
 \begin{verbatim}
 
-> bindType :: IDecl -> TypeEnv -> TypeEnv
-> bindType (IInfixDecl _ _ _ _) = id
-> bindType (HidingDataDecl _ tc _) = bindData tc [] []
-> bindType (IDataDecl _ tc _ cs xs) =
->   bindData tc xs (map constr cs ++ nub (concatMap labels cs))
-> bindType (INewtypeDecl _ tc _ nc xs) = bindData tc xs (nconstr nc : nlabel nc)
-> bindType (ITypeDecl _ tc _ _) = bindAlias tc
-> bindType (IFunctionDecl _ _ _ _) = id
-
-> bindData :: QualIdent -> [Ident] -> [Ident] -> TypeEnv -> TypeEnv
-> bindData tc xs' xs = qualBindTopEnv tc (Data tc (filter (`notElem` xs') xs))
-
-> bindAlias :: QualIdent -> TypeEnv -> TypeEnv
-> bindAlias tc = qualBindTopEnv tc (Alias tc)
+> intfSyntaxCheck :: [IDecl] -> Error [IDecl]
+> intfSyntaxCheck ds = mapE (checkIDecl env) ds
+>   where env = foldr bindType initTEnv (concatMap tidents (map unhide ds))
+>         bindType t = qualBindTopEnv (origName t) t
 
 \end{verbatim}
 The checks applied to the interface are similar to those performed
