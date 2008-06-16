@@ -1,6 +1,6 @@
 # Makefile for the Curry library
 #
-# $Id: Makefile.in 2633 2008-03-12 17:04:09Z wlux $
+# $Id: Makefile.in 2728 2008-06-16 07:08:33Z wlux $
 #
 # Copyright (c) 2004-2008, Wolfgang Lux
 # See ../LICENSE for the full license.
@@ -204,22 +204,20 @@ libcurry_g.a: $(debug_OBJS) $(debug_INTF) $(curry_INTF)
 	$(RANLIB) $@
 
 # special rules handling mutual recursion between Prelude and IO
-Prelude.c: Prelude.curry
-	rm -rf .Prelude
-	mkdir .Prelude
-	../cycc $(CYCCFLAGS) $(Prelude_CYCCFLAGS) --split-code -o .Prelude/Prelude Prelude.curry
-	touch Prelude.c
-	cmp -s Prelude.icurry $(srcdir)/Prelude.icurry-boot || \
-		{ cp -p Prelude.icurry $(srcdir)/Prelude.icurry-boot && \
-		  $(MAKE) IO.icurry; }
-
-IO.c: IO.curry $(srcdir)/Prelude.icurry-boot
+.Prelude.icurry-boot: $(srcdir)/Prelude.icurry-boot
 	cmp -s Prelude.icurry $(srcdir)/Prelude.icurry-boot || \
 		cp -p $(srcdir)/Prelude.icurry-boot Prelude.icurry
-	rm -rf .IO
-	mkdir .IO
-	../cycc $(CYCCFLAGS) $(IO_CYCCFLAGS) --split-code -o .IO/IO IO.curry
-	touch IO.c
+	touch $@
+.Prelude.icurry: Prelude.c
+	cmp -s Prelude.icurry $(srcdir)/Prelude.icurry-boot || \
+		{ cp -p Prelude.icurry $(srcdir)/Prelude.icurry-boot && \
+		  touch .Prelude.icurry-boot && \
+		  $(MAKE) Prelude.icurry; }
+	touch $@
+Prelude.icurry: .Prelude.icurry
+Prelude.o: .Prelude.icurry
+
+IO.c: .Prelude.icurry-boot
 IO.d.c: Prelude.icurry
 IO.o: Prelude.icurry
 
@@ -285,6 +283,7 @@ Makefile: $(srcdir)/Makefile.in ../config.status
 
 # clean up
 mostlyclean:
+	rm -f .Prelude.icurry .Prelude.icurry-boot
 	rm -f $(curry_CSRC) $(curry_INTF) $(curry_OBJS)
 	rm -f $(debug_CSRC) $(debug_INTF) $(debug_OBJS)
 	rm -rf $(curry_OBJS:%.o=.%) $(debug_OBJS:%.o=.%)
