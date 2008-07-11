@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 2685 2008-04-30 16:33:27Z wlux $
+% $Id: OverlapCheck.lhs 2734 2008-07-11 14:29:16Z wlux $
 %
 % Copyright (c) 2006-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -123,9 +123,7 @@ The code checking whether the equations of a function and the
 alternatives of a flexible case expression, respectively, have
 overlapping patterns is essentially a simplified version of the
 pattern matching algorithm implemented in module \texttt{ILTrans} (see
-Sect.~\ref{sec:il-trans}). The code assumes that the program is type
-correct and accordingly promotes integer constants to floating-point
-when necessary.
+Sect.~\ref{sec:il-trans}).
 
 \ToDo{Implement a similar check to report completely overlapped
   patterns, and thus unreachable alternatives, in rigid case
@@ -144,25 +142,13 @@ when necessary.
 
 > matchInductive :: [[ConstrTerm ()]] -> [[[[ConstrTerm ()]]]]
 > matchInductive =
->   map (groupRules . promote) . filter isInductive . transpose .
->     map (matches id)
+>   map groupRules . filter isInductive . transpose . map (matches id)
 >   where isInductive = all (not . isVarPattern . fst)
 
 > groupRules :: [(ConstrTerm (),a)] -> [[a]]
 > groupRules [] = []
 > groupRules ((t,ts):tss) = (ts:map snd same) : groupRules tss
 >   where (same,other) = partition ((t ==) . fst) tss
-
-> promote :: [(ConstrTerm (),a)] -> [(ConstrTerm (),a)]
-> promote tss = if any (isFloat . fst) tss then map (apFst toFloat) tss else tss
->   where isFloat (LiteralPattern _ l) =
->           case l of
->             Float _ -> True
->             _       -> False
->         isFloat (ConstructorPattern _ _ _) = False
->         toFloat (LiteralPattern a (Int i)) =
->           LiteralPattern a (Float (fromIntegral i))
->         toFloat (LiteralPattern a (Float f)) = LiteralPattern a (Float f)
 
 > matches :: ([ConstrTerm a] -> [ConstrTerm a]) -> [ConstrTerm a]
 >         -> [(ConstrTerm a,[ConstrTerm a])]
