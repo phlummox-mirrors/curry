@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2688 2008-05-01 16:08:00Z wlux $
+% $Id: Desugar.lhs 2736 2008-07-14 14:34:54Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See LICENSE for the full license.
@@ -702,15 +702,12 @@ where the default alternative is redundant.
 >                -> ConstrTerm Type -> DesugarState (Alt Type)
 > desugarCaseAlt m ty prefix vs alts t =
 >   do
->     vs' <- mapM (freshVar m "_#case") (arguments t')
->     liftM (caseAlt (pos (snd (head alts'))) (renameArgs vs' t))
+>     vs' <- mapM (freshVar m "_#case") (arguments t)
+>     liftM (caseAlt (pos (head alts')) (renameArgs vs' t))
 >           (desugarCase m ty id (prefix (vs' ++ vs))
->                        (map (expandArgs vs' . snd) alts'))
->   where alts' = filter (matchedBy t . fst) alts
->         t' = matchedArg (snd (head (filter ((t ==) . fst) alts')))
->         t1 `matchedBy` t2 = t1 == t2 || isVarPattern t2
+>                        (map (expandArgs vs') alts'))
+>   where alts' = [alt | (t',alt) <- alts, t' == t || isVarPattern t']
 >         pos (p,_,_,_) = p
->         matchedArg (_,_,t:_,_) = t
 >         expandArgs vs (p,prefix,t:ts,rhs) =
 >           (p,id,prefix (expandPatternArgs vs t ++ ts),rhs)
 >         expandPatternArgs vs t
