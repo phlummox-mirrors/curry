@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: stack.nw 2659 2008-04-16 07:34:24Z wlux $
+% $Id: stack.nw 2739 2008-08-04 15:12:44Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -49,11 +49,16 @@ void
 init_stack(unsigned int stack_size)
 {
     stack_size = (stack_size + pagemask) & ~pagemask;
-    stack_base = (Node **)malloc(stack_size + pagemask);
+    stack_base = (Node **)malloc(stack_size);
+    if ( (long)stack_base & pagemask )
+    {
+	free(stack_base);
+	stack_base = (Node **)malloc(stack_size + pagemask);
+	stack_base = (Node **)(((long)stack_base + pagemask) & ~pagemask);
+    }
     if ( stack_base == NULL )
 	sys_error("init_stack");
 
-    stack_base = (Node **)(((long)stack_base + pagemask) & ~pagemask);
     stack_end  = stack_base + stack_size / word_size;
 }
 
