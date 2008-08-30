@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: equal.nw 2747 2008-08-30 08:48:20Z wlux $
+% $Id: equal.nw 2748 2008-08-30 12:58:01Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -41,6 +41,7 @@ DECLARE_LABEL(static, ___61__61__3);
 FUNCTION(___61__61_)
 {
  ENTRY_LABEL(extern, ___61__61_)
+    C_STACK_CHECK(___61__61_);
     TRACE_FUN("==", 2);
     SAVE_REGS(1);
     EVAL(___61__61__1);

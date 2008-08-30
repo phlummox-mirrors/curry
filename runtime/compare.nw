@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 2747 2008-08-30 08:48:20Z wlux $
+% $Id: compare.nw 2748 2008-08-30 12:58:01Z wlux $
 %
 % Copyright (c) 2001-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -44,6 +44,7 @@ DECLARE_LABEL(static, __compare_3);
 FUNCTION(__compare)
 {
  ENTRY_LABEL(extern, __compare)
+    C_STACK_CHECK(__compare);
     TRACE_FUN("compare", 2);
     SAVE_REGS(1);
     EVAL(__compare_1);
