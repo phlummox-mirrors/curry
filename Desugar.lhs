@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2736 2008-07-14 14:34:54Z wlux $
+% $Id: Desugar.lhs 2756 2009-02-09 16:16:16Z wlux $
 %
-% Copyright (c) 2001-2008, Wolfgang Lux
+% Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Desugar.lhs}
@@ -59,7 +59,6 @@ all names must be properly qualified before calling this module.}
 > import Monad
 > import PredefIdent
 > import PredefTypes
-> import TopEnv
 > import Types
 > import TypeInfo
 > import Typing
@@ -123,16 +122,16 @@ with another variable. Thus, a goal
 where no free variable declarations occur in \emph{decls} is
 translated into the function
 \begin{quote}
-  \emph{f} $v_0$ $v_1$ \dots{} $v_n$ \texttt{=}
-    $v_0$ \texttt{=:=} \emph{expr}
+  \emph{f} $v_1$ \dots{} $v_n$ $v_{n+1}$ \texttt{=}
+    $v_{n+1}$ \texttt{=:=} \emph{expr}
     \texttt{where} \emph{decls}
 \end{quote}
-where $v_0$ is a fresh variable. No variables are lifted at present
-when generating code for the declarative debugger, since the debugger
-evaluates the goal within an encapsulated search and we cannot pass
-functions with arbitrary arity to the encapsulated search primitive.
-In addition, the debugger currently lacks support for showing the
-bindings of the goal's free variables.
+where $v_{n+1}$ is a fresh variable. No variables are lifted at
+present when generating code for the declarative debugger, since the
+debugger evaluates the goal within an encapsulated search and we
+cannot pass functions with arbitrary arity to the encapsulated search
+primitive. In addition, the debugger currently lacks support for
+showing the bindings of the goal's free variables.
 \begin{verbatim}
 
 > goalModule :: Bool -> ValueEnv -> ModuleIdent -> Ident -> Goal Type
@@ -144,15 +143,15 @@ bindings of the goal's free variables.
 >        bindFun m g 0 (polyType ty) tyEnv)
 >   | otherwise =
 >       (if debug then Nothing else Just vs,
->        mkModule m p g (zip (ty:tys) (v0:vs))
->                 (apply (prelUnif ty) [mkVar ty v0,e']),
->        bindFun m v0 0 (monoType ty) (bindFun m g n (polyType ty') tyEnv))
+>        mkModule m p g (zip tys vs ++ [(ty,v)])
+>                 (apply (prelUnif ty) [mkVar ty v,e']),
+>        bindFun m v 0 (monoType ty) (bindFun m g n (polyType ty') tyEnv))
 >   where ty = typeOf e
->         v0 = anonId
+>         v = anonId
 >         (vs,e') = liftGoalVars debug (mkLet ds e)
 >         tys = [rawType (varType v tyEnv) | v <- vs]
->         ty' = foldr TypeArrow successType (ty:tys)
->         n = 1 + length vs
+>         ty' = foldr TypeArrow (TypeArrow ty successType) tys
+>         n = length vs + 1
 >         isIO (TypeConstructor tc [_]) = tc == qIOId
 >         isIO _ = False
 
