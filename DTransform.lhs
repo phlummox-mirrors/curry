@@ -1,8 +1,8 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 2706 2008-05-20 08:34:14Z wlux $
+% $Id: DTransform.lhs 2763 2009-03-22 09:29:43Z wlux $
 %
 % Copyright (c) 2001-2002, Rafael Caballero
-% Copyright (c) 2003-2008, Wolfgang Lux
+% Copyright (c) 2003-2009, Wolfgang Lux
 %
 % 2002/04/10 19:00:00 Added emptyNode as constructor in type cTree
 \nwfilename{DTransform.lhs}
@@ -597,7 +597,7 @@ the list of subcomputations of the computation tree \texttt{t1}.
 > etaReduceIO e = error ("etaReduceIO " ++ showsPrec 11 e "")
 
 > debugPerformIO :: Expression
-> debugPerformIO = Function (debugQualPreludeName "performIO") 2
+> debugPerformIO = Function (debugQualPreludeName "performIO") 1
 
 \end{verbatim}
 
