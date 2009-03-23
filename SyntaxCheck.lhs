@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: SyntaxCheck.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
-% Copyright (c) 1999-2008, Wolfgang Lux
+% Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{SyntaxCheck.lhs}
@@ -107,6 +107,7 @@ in order to check the global declaration group.
 > checkTopDeclLhs _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
 > checkTopDeclLhs _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 > checkTopDeclLhs env (BlockDecl d) = liftE BlockDecl (checkDeclLhs True env d)
+> checkTopDeclLhs _ (SplitAnnot p) = return (SplitAnnot p)
 
 > joinTopEquations :: [TopDecl a] -> [TopDecl a]
 > joinTopEquations [] = []
@@ -122,6 +123,7 @@ in order to check the global declaration group.
 > checkTopDeclRhs _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
 > checkTopDeclRhs _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 > checkTopDeclRhs env (BlockDecl d) = liftE BlockDecl (checkDeclRhs env d)
+> checkTopDeclRhs _ (SplitAnnot p) = return (SplitAnnot p)
 
 \end{verbatim}
 The compiler checks field labels in data type declarations twice
@@ -628,6 +630,7 @@ Auxiliary definitions.
 >         nconstr (NewRecordDecl p c _ _) = P p c
 > constrs (TypeDecl _ _ _ _) = []
 > constrs (BlockDecl _) = []
+> constrs (SplitAnnot _) = []
 
 > fieldLabels :: TopDecl a -> [(P Ident,[Ident])]
 > fieldLabels (DataDecl _ _ _ cs) =
@@ -642,6 +645,7 @@ Auxiliary definitions.
 >         nlabel (NewRecordDecl p c l _) = [(P p l,[c])]
 > fieldLabels (TypeDecl _ _ _ _) = []
 > fieldLabels (BlockDecl _) = []
+> fieldLabels (SplitAnnot _) = []
 
 > vars :: Decl a -> [P Ident]
 > vars (InfixDecl p _ _ ops) = map (P p) ops

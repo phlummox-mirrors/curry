@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: KindCheck.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
-% Copyright (c) 1999-2008, Wolfgang Lux
+% Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{KindCheck.lhs}
@@ -77,6 +77,7 @@ function in any particular order.
 >   globalBindTopEnv m tc (typeCon AliasType m tc tvs ty')
 >   where ty' = expandMonoType tcEnv tvs ty
 > bindTC _ _ (BlockDecl _) = id
+> bindTC _ _ (SplitAnnot _) = id
 
 > checkSynonyms :: ModuleIdent -> [TopDecl a] -> Error ()
 > checkSynonyms m = mapE_ (typeDecl m) . scc bound free
@@ -84,10 +85,12 @@ function in any particular order.
 >         bound (NewtypeDecl _ tc _ _) = [tc]
 >         bound (TypeDecl _ tc _ _) = [tc]
 >         bound (BlockDecl _) = []
+>         bound (SplitAnnot _) = []
 >         free (DataDecl _ _ _ _) = []
 >         free (NewtypeDecl _ _ _ _) = []
 >         free (TypeDecl _ _ _ ty) = ft m ty []
 >         free (BlockDecl _) = []
+>         free (SplitAnnot _) = []
 
 > typeDecl :: ModuleIdent -> [TopDecl a] -> Error ()
 > typeDecl _ [] = internalError "typeDecl"
@@ -116,6 +119,7 @@ Kind checking is applied to all type expressions in the program.
 > checkTopDecl tcEnv (NewtypeDecl _ _ _ nc) = checkNewConstrDecl tcEnv nc
 > checkTopDecl tcEnv (TypeDecl p _ _ ty) = checkType tcEnv p ty
 > checkTopDecl tcEnv (BlockDecl d) = checkDecl tcEnv d
+> checkTopDecl tcEnv (SplitAnnot _) = return ()
 
 > checkDecl :: TCEnv -> Decl a -> Error ()
 > checkDecl _ (InfixDecl _ _ _ _) = return ()

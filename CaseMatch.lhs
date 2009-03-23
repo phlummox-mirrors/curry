@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseMatch.lhs 2763 2009-03-22 09:29:43Z wlux $
+% $Id: CaseMatch.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -87,6 +87,7 @@ p.~\pageref{pattern-binding} in Sect.~\ref{pattern-binding}).
 >   match _ _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
 >   match _ _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 >   match m p (BlockDecl d) = liftM BlockDecl (match m p d)
+>   match _ _ (SplitAnnot p) = return (SplitAnnot p)
 
 > instance CaseMatch Decl where
 >   match m _ (FunctionDecl p f eqs) =

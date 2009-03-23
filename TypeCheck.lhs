@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: TypeCheck.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
-% Copyright (c) 1999-2008, Wolfgang Lux
+% Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeCheck.lhs}
@@ -86,7 +86,7 @@ current module to the type environment.
 >          return (subst theta tyEnv',
 >                  tds' ++ map (BlockDecl . fmap (subst theta)) vds'))
 >       (foldr (bindConstrs m tcEnv) tyEnv tds)
->   where (tds,vds) = partition isTypeDecl ds
+>   where (vds,tds) = partition isBlockDecl ds
 
 \end{verbatim}
 Type checking of a goal is simpler because there are no type
@@ -148,6 +148,7 @@ name of the type could be ambiguous.
 >           bindLabel m tcEnv tvs ty0 l ty
 > bindConstrs _ _ (TypeDecl _ _ _ _) tyEnv = tyEnv
 > bindConstrs _ _ (BlockDecl _) tyEnv = tyEnv
+> bindConstrs _ _ (SplitAnnot _) tyEnv = tyEnv
 
 > bindConstr :: ModuleIdent -> TCEnv -> [Ident] -> Ident -> [(Ident,TypeExpr)]
 >            -> Type -> ValueEnv -> ValueEnv
@@ -211,6 +212,7 @@ the record selection function associated with the field label.
 >                            FieldDecl p ls ty <- fs, l <- ls]
 > tcTopDecl _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
 > tcTopDecl _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
+> tcTopDecl _ (SplitAnnot p) = return (SplitAnnot p)
 
 > tcFieldLabel :: TCEnv -> [Ident] -> P Ident -> TypeExpr
 >              -> Error (P Ident,Type)

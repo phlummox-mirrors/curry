@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryUtils.lhs 2720 2008-06-13 11:37:13Z wlux $
+% $Id: CurryUtils.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
-% Copyright (c) 1999-2008, Wolfgang Lux
+% Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryUtils.lhs}
@@ -13,6 +13,35 @@ and goals.
 
 > module CurryUtils where
 > import Curry
+> import List
+
+\end{verbatim}
+Some compiler phases rearrange (top-level) declarations according to
+semantic criteria. The following code allows restoring the textual
+order of textual declarations.
+\begin{verbatim}
+
+> sortDecls :: [TopDecl a] -> [TopDecl a]
+> sortDecls = sortBy (\d1 d2 -> compare (pos d1) (pos d2))
+
+> class Declaration a where
+>   pos :: a -> Position
+
+> instance Declaration (TopDecl a) where
+>   pos (DataDecl p _ _ _) = p
+>   pos (NewtypeDecl p _ _ _) = p
+>   pos (TypeDecl p _ _ _) = p
+>   pos (BlockDecl d) = pos d
+>   pos (SplitAnnot p) = p
+
+> instance Declaration (Decl a) where
+>   pos (InfixDecl p _ _ _) = p
+>   pos (TypeSig p _ _) = p
+>   pos (FunctionDecl p _ _) = p
+>   pos (ForeignDecl p _ _ _ _ _) = p
+>   pos (PatternDecl p _ _) = p
+>   pos (FreeDecl p _) = p
+>   pos (TrustAnnot p _ _) = p
 
 \end{verbatim}
 Here is a list of predicates identifying various kinds of
@@ -24,6 +53,7 @@ declarations.
 > isTypeDecl (NewtypeDecl _ _ _ _) = True
 > isTypeDecl (TypeDecl _ _ _ _) = True
 > isTypeDecl (BlockDecl _) = False
+> isTypeDecl (SplitAnnot _) = False
 > isBlockDecl (BlockDecl _) = True
 > isBlockDecl _ = False
 
@@ -97,7 +127,7 @@ declaration, respectively.
 
 \end{verbatim}
 The function \texttt{eqnArity} returns the (syntactic) arity of a
-function equation and \texttt{funLhs} returns the function name and
+function equation and \texttt{flatLhs} returns the function name and
 the list of arguments from the left hand side of a function equation.
 \begin{verbatim}
 

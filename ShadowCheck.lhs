@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: ShadowCheck.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
-% Copyright (c) 2005-2008, Wolfgang Lux
+% Copyright (c) 2005-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ShadowCheck.lhs}
@@ -163,6 +163,7 @@ variables of a (top-level) declaration together with their positions.
 >         nlabel (NewRecordDecl p _ l _) = [P p l]
 > topVars (TypeDecl _ _ _ _) = []
 > topVars (BlockDecl d) = vars d
+> topVars (SplitAnnot _) = []
 
 > vars :: Decl a -> [P Ident]
 > vars (InfixDecl _ _ _ _) = []

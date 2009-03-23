@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 2763 2009-03-22 09:29:43Z wlux $
+% $Id: DTransform.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
 % Copyright (c) 2001-2002, Rafael Caballero
 % Copyright (c) 2003-2009, Wolfgang Lux
@@ -100,6 +100,7 @@ all.
 >   generateForeign f cc s n' ty
 >   where n = typeArity ty
 >         n' = if isIOType (resultType ty) then n + 1 else n
+> debugDecl _ SplitAnnot = [SplitAnnot]
 
 > debugConstrDecl :: Type -> ConstrDecl -> (ConstrDecl,[Decl])
 > debugConstrDecl ty0 (ConstrDecl c tys) =

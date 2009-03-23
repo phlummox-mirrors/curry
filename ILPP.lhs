@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILPP.lhs 2685 2008-04-30 16:33:27Z wlux $
+% $Id: ILPP.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
-% Copyright (c) 1999-2008 Wolfgang Lux
+% Copyright (c) 1999-2009 Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILPP.lhs}
@@ -51,6 +51,7 @@ Marlow's pretty printer for Haskell.
 >   where ppCallConv Primitive = text "primitive"
 >         ppCallConv CCall = text "ccall"
 >         ppCallConv RawCall = text "rawcall"
+> ppDecl SplitAnnot = text "{-# SPLIT #-}"
 
 > ppTypeLhs :: QualIdent -> Int -> Doc
 > ppTypeLhs tc n = ppQIdent tc <+> hsep (map text (take n typeVars))

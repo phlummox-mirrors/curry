@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2762 2009-03-21 13:35:32Z wlux $
+% $Id: Desugar.lhs 2764 2009-03-23 11:14:15Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -101,7 +101,7 @@ of a module.
 >     vds' <- desugarDeclGroup m [d | BlockDecl d <- vds]
 >     tyEnv' <- fetchSt
 >     return (tds ++ map BlockDecl (concat vdss' ++ vds'),tyEnv')
->   where (tds,vds) = partition isTypeDecl ds
+>   where (vds,tds) = partition isBlockDecl ds
 
 \end{verbatim}
 Goals are desugared by converting them into a module containing just a
@@ -183,6 +183,7 @@ each field label defined in that module.
 >   newSelectorDecl m tyEnv p (qualifyWith m (nconstr nc))
 > desugarTopDecl _ _ (TypeDecl _ _ _ _) = return []
 > desugarTopDecl _ _ (BlockDecl _) = return []
+> desugarTopDecl _ _ (SplitAnnot _) = return []
 
 > selectorDecl :: ModuleIdent -> ValueEnv -> Position -> [QualIdent] -> Ident
 >              -> DesugarState (Decl Type)
