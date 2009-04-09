@@ -1,9 +1,10 @@
--- $Id: cycc.hs 1963 2006-08-28 11:57:32Z wlux $
+-- $Id: cycc.hs 2783 2009-04-09 19:55:21Z wlux $
 --
--- Copyright (c) 1999-2006, Wolfgang Lux
+-- Copyright (c) 1999-2009, Wolfgang Lux
 -- See LICENSE for the full license.
 
 import Modules
+import Goals
 import PathUtils
 import Options
 import Combined

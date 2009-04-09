@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Utils.lhs 2764 2009-03-23 11:14:15Z wlux $
+% $Id: Utils.lhs 2783 2009-04-09 19:55:21Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -40,6 +40,15 @@ here.
 
 > curry3 f x y z = f (x,y,z)
 > uncurry3 f (x,y,z) = f x y z
+
+\end{verbatim}
+\paragraph{Strings}
+The function \texttt{showLn} is a variant of \texttt{show} that adds a
+newline character to the converted string.
+\begin{verbatim}
+
+> showLn :: Show a => a -> String
+> showLn x = shows x "\n"
 
 \end{verbatim}
 \paragraph{Lists}

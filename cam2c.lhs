@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: cam2c.lhs 2713 2008-05-20 22:20:55Z wlux $
+% $Id: cam2c.lhs 2783 2009-04-09 19:55:21Z wlux $
 %
-% Copyright (c) 2005, Wolfgang Lux
+% Copyright (c) 2005-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{cam2c.lhs}
@@ -24,6 +24,7 @@ compiler.
 > import GetOpt
 > import PathUtils
 > import System
+> import Utils
 
 > main :: IO ()
 > main =
@@ -140,9 +141,8 @@ constructor tags in the code.
 >     let ts = [(tc,map constr cs) | DataDecl tc _ cs <- cam ++ cam']
 >     let ccode =
 >           maybe id (flip mergeCFile . uncurry genGoal) g (genModule ts cam)
->     maybe putStr writeFile ofn $ showln $ ppCFile ccode
->   where showln x = shows x "\n"
->         constr (ConstrDecl c _) = c
+>     maybe putStr writeFile ofn $ showLn $ ppCFile ccode
+>   where constr (ConstrDecl c _) = c
 
 > genGoal :: String -> Maybe [String] -> CFile
 > genGoal f (Just vs) =

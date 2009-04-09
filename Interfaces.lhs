@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Interfaces.lhs 2782 2009-04-09 16:14:54Z wlux $
+% $Id: Interfaces.lhs 2783 2009-04-09 19:55:21Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -11,8 +11,10 @@ goal.
 \begin{verbatim}
 
 > module Interfaces(ModuleEnv,moduleInterface,
->                   loadInterfaces,loadGoalInterfaces,updateInterface,
->                   initIdentEnvs,initEnvs) where
+>                   loadInterfaces,loadGoalInterfaces,
+>                   importModuleIdents,importModules,
+>                   importInterfaceIdents,importInterfaces,
+>                   qualifyEnv,updateInterface) where
 > import Base
 > import Combined
 > import Curry
@@ -33,6 +35,7 @@ goal.
 > import PathUtils
 > import Position
 > import PrecInfo
+> import TopEnv
 > import TypeInfo
 > import Utils
 > import ValueInfo
@@ -170,6 +173,59 @@ current module.
 >   Interface m' is' (filter ((Just m /=) . fst . splitQualIdent . entity) ds')
 
 \end{verbatim}
+The functions \texttt{importModuleIdents} and \texttt{importModules}
+bring the declarations of all imported modules into scope in the
+current module.
+\begin{verbatim}
+
+> importModuleIdents :: ModuleEnv -> [ImportDecl] -> (TypeEnv,FunEnv)
+> importModuleIdents mEnv ds = (importUnifyData tEnv,importUnifyData vEnv)
+>   where (tEnv,vEnv) = foldl importModule initIdentEnvs ds
+>         importModule envs (ImportDecl _ m q asM is) =
+>           importIdents (fromMaybe m asM) q is envs (moduleInterface m mEnv)
+
+> importModules :: ModuleEnv -> [ImportDecl] -> (PEnv,TCEnv,ValueEnv)
+> importModules mEnv ds = (pEnv,tcEnv,tyEnv)
+>   where (pEnv,tcEnv,tyEnv) = foldl importModule initEnvs ds
+>         importModule envs (ImportDecl _ m q asM is) =
+>           importInterface (fromMaybe m asM) q is envs (moduleInterface m mEnv)
+
+\end{verbatim}
+The functions \texttt{importInterfaceIdents} and
+\texttt{importInterfaces} bring the declarations of all loaded modules
+into scope with their qualified names and in addition bring the
+declarations of the specified modules into scope with their
+unqualified names, too.
+\begin{verbatim}
+
+> importInterfaceIdents :: ModuleEnv -> [ModuleIdent] -> (TypeEnv,FunEnv)
+> importInterfaceIdents mEnv ms = (importUnifyData tEnv,importUnifyData vEnv)
+>   where (tEnv,vEnv) =
+>           foldl (uncurry . importModule) initIdentEnvs (envToList mEnv)
+>         importModule envs m = importIdents m (m `notElem` ms) Nothing envs
+
+> importInterfaces :: ModuleEnv -> [ModuleIdent] -> (PEnv,TCEnv,ValueEnv)
+> importInterfaces mEnv ms = (pEnv,tcEnv,tyEnv)
+>   where (pEnv,tcEnv,tyEnv) =
+>           foldl (uncurry . importModule) initEnvs (envToList mEnv)
+>         importModule envs m = importInterface m (m `notElem` ms) Nothing envs
+
+\end{verbatim}
+The function \texttt{qualifyEnv} brings the declarations of all
+loaded modules with their qualified names into scope and in additions
+adds all local entities into scope with their qualified names.
+\begin{verbatim}
+
+> qualifyEnv :: ModuleEnv -> ModuleIdent -> PEnv -> TCEnv -> ValueEnv
+>            -> (PEnv,TCEnv,ValueEnv)
+> qualifyEnv mEnv m pEnv tcEnv tyEnv =
+>   (foldr (uncurry (globalBindTopEnv m)) pEnv' (localBindings pEnv),
+>    foldr (uncurry (globalBindTopEnv m)) tcEnv' (localBindings tcEnv),
+>    foldr (uncurry (bindTopEnv m)) tyEnv' (localBindings tyEnv))
+>   where (ms,is) = unzip (envToList mEnv)
+>         (pEnv',tcEnv',tyEnv') = foldl (importInterfaceIntf ms) initEnvs is
+
+\end{verbatim}
 After successfully checking a module, the compiler may need to update
 the module's interface file. The file will be updated only if the
 interface has been changed or the file did not exist before.
@@ -201,8 +257,7 @@ this case and therefore it doesn't matter when the file is closed.
 >       _ -> hClose h >> return False
 
 > writeInterface :: FilePath -> Interface -> IO ()
-> writeInterface ifn = writeFile ifn . showln . ppInterface
->   where showln x = unlines [show x]
+> writeInterface ifn = writeFile ifn . showLn . ppInterface
 
 > interfaceName :: FilePath -> FilePath
 > interfaceName fn = rootname fn ++ intfExt
