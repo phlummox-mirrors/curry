@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2783 2009-04-09 19:55:21Z wlux $
+% $Id: Modules.lhs 2786 2009-04-14 14:22:18Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -47,7 +47,10 @@ This module controls the compilation of modules.
 The function \texttt{compileModule} is the main entry point of this
 module for compiling a Curry source module. It applies syntax and type
 checking to the module and translates the code into one or more C code
-files. The module's interface is updated when necessary.
+files. The module's interface is updated when necessary. Note that the
+interface is computed from the environments returned by the front end
+but the source code \emph{after} applying the program transformations
+(cf.\ Sect.~\ref{sec:exports}).
 
 The compiler automatically loads the Prelude when compiling a module
 -- except for the Prelude itself -- by adding an appropriate import
@@ -60,7 +63,7 @@ declaration to the module.
 >     (pEnv,tcEnv,tyEnv,m) <- loadModule paths dbg cm ws auto fn
 >     let (tyEnv',trEnv,m',dumps) = transModule dbg tr tcEnv tyEnv m
 >     liftErr $ mapM_ (doDump opts) dumps
->     let intf = exportInterface m pEnv tcEnv tyEnv'
+>     let intf = exportInterface m' pEnv tcEnv tyEnv
 >     liftErr $ unless (noInterface opts) (updateInterface fn intf)
 >     let (il,dumps) = ilTransModule dbg tyEnv' trEnv Nothing m'
 >     liftErr $ mapM_ (doDump opts) dumps

@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2762 2009-03-21 13:35:32Z wlux $
+% $Id: Exports.lhs 2786 2009-04-14 14:22:18Z wlux $
 %
-% Copyright (c) 2000-2008, Wolfgang Lux
+% Copyright (c) 2000-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Exports.lhs}
-\section{Creating Interfaces}
+\section{Creating Interfaces}\label{sec:exports}
 After checking a module, the compiler generates the interface's
 declarations from the list of exported types and values. If an entity
 is imported from another module, its name is qualified with the name
@@ -23,14 +23,22 @@ flattening guard expressions (cf.\ Sect.~\ref{sec:flatcase}),
 \texttt{typeDecl}'s \texttt{DataType} case explicitly forces the
 \texttt{Success} constructor to appear as hidden data constructor in
 the interface.
+
+\textbf{Attention:} The compiler assumes that the environments passed
+to \texttt{exportInterface} reflect the types of the module's entities
+after type inference. However, the source code module passed to
+\texttt{exportInterface} must reflect the module's code \emph{after}
+applying all source code transformations to the program.
 \begin{verbatim}
 
 > module Exports(exportInterface) where
 > import Base
 > import Curry
 > import CurryUtils
+> import Env
 > import IntfQual
 > import List
+> import Maybe
 > import Monad
 > import PrecInfo
 > import PredefIdent
@@ -42,15 +50,16 @@ the interface.
 > import ValueInfo
 
 > exportInterface :: Module a -> PEnv -> TCEnv -> ValueEnv -> Interface
-> exportInterface (Module m (Just (Exporting _ es)) _ _) pEnv tcEnv tyEnv =
->   Interface m imports (unqualIntf m (precs ++ hidden ++ ds))
->   where tvs = nameSupply
->         imports = map (IImportDecl noPos) (filter (m /=) (usedModules ds))
+> exportInterface (Module m (Just (Exporting _ es)) _ ds) pEnv tcEnv tyEnv =
+>   Interface m imports (unqualIntf m (precs ++ hidden ++ ds'))
+>   where aEnv = bindArities m ds
+>         tvs = nameSupply
+>         imports = map (IImportDecl noPos) (filter (m /=) (usedModules ds'))
 >         precs = foldr (infixDecl pEnv) [] es
->         hidden = map (hiddenTypeDecl tcEnv tvs) (hiddenTypes ds)
->         ds =
+>         hidden = map (hiddenTypeDecl tcEnv tvs) (hiddenTypes ds')
+>         ds' =
 >           foldr (typeDecl tcEnv tyEnv tvs)
->                 (foldr (valueDecl tyEnv tvs) [] es)
+>                 (foldr (valueDecl aEnv tyEnv tvs) [] es)
 >                 es
 
 > infixDecl :: PEnv -> Export -> [IDecl] -> [IDecl]
@@ -103,13 +112,31 @@ the interface.
 >   where (l:_,ForAll _ ty) = conType (qualifyLike tc c) tyEnv
 >         ty' = fromType tvs (head (arrowArgs ty))
 
-> valueDecl :: ValueEnv -> [Ident] -> Export -> [IDecl] -> [IDecl]
-> valueDecl tyEnv tvs (Export f) ds =
+> valueDecl :: ArityEnv -> ValueEnv -> [Ident] -> Export -> [IDecl] -> [IDecl]
+> valueDecl aEnv tyEnv tvs (Export f) ds =
 >   IFunctionDecl noPos f n' (fromType tvs ty) : ds
->   where n = arity f tyEnv
+>   where n = fromMaybe (arity f tyEnv) (lookupEnv f aEnv)
 >         n' = if arrowArity ty == n then Nothing else Just (toInteger n)
 >         ForAll _ ty = funType f tyEnv
-> valueDecl _ _ (ExportTypeWith _ _) ds = ds
+> valueDecl _ _ _ (ExportTypeWith _ _) ds = ds
+
+\end{verbatim}
+Simplification can change the arity of an exported function defined in
+the current module via $\eta$-expansion (cf.\ 
+Sect.~\ref{eta-expansion}). In order to generate correct arity
+annotations, the compiler collects the arities of all user defined
+functions at the top-level of the transformed code in an auxiliary
+environment. Note that we ignore foreign function declarations here
+because their arities are fixed and cannot be changed by program
+transformations.
+\begin{verbatim}
+
+> type ArityEnv = Env QualIdent Int
+
+> bindArities :: ModuleIdent -> [TopDecl a] -> ArityEnv
+> bindArities m ds =
+>   foldr bindArity emptyEnv [(f,eqs) | BlockDecl (FunctionDecl _ f eqs) <- ds]
+>   where bindArity (f,eqs) = bindEnv (qualifyWith m f) (eqnArity (head eqs))
 
 \end{verbatim}
 The compiler determines the list of imported modules from the set of
