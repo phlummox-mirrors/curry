@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2786 2009-04-14 14:22:18Z wlux $
+% $Id: Modules.lhs 2787 2009-04-14 18:05:01Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -61,13 +61,13 @@ declaration to the module.
 > compileModule opts fn =
 >   do
 >     (pEnv,tcEnv,tyEnv,m) <- loadModule paths dbg cm ws auto fn
->     let (tyEnv',trEnv,m',dumps) = transModule dbg tr tcEnv tyEnv m
+>     let (tcEnv',tyEnv',trEnv,m',dumps) = transModule dbg tr tcEnv tyEnv m
 >     liftErr $ mapM_ (doDump opts) dumps
 >     let intf = exportInterface m' pEnv tcEnv tyEnv
 >     liftErr $ unless (noInterface opts) (updateInterface fn intf)
->     let (il,dumps) = ilTransModule dbg tyEnv' trEnv Nothing m'
+>     let (il,dumps) = ilTransModule dbg tcEnv' tyEnv' trEnv Nothing m'
 >     liftErr $ mapM_ (doDump opts) dumps
->     let (ccode,dumps) = genCodeModule split tcEnv il
+>     let (ccode,dumps) = genCodeModule split tcEnv' il
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeCode (output opts) fn ccode
 >   where paths = importPath opts

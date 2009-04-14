@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Goals.lhs 2783 2009-04-09 19:55:21Z wlux $
+% $Id: Goals.lhs 2787 2009-04-14 18:05:01Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -58,11 +58,11 @@ interfaces are in scope with their qualified names.
 >   do
 >     (tcEnv,tyEnv,g') <- loadGoal EvalGoal paths dbg cm ws m g fns
 >     let (vs,m',tyEnv') = goalModule dbg tyEnv m mainId g'
->     let (tyEnv'',trEnv,m'',dumps) = transModule dbg tr tcEnv tyEnv' m'
+>     let (tcEnv',tyEnv'',trEnv,m'',dumps) = transModule dbg tr tcEnv tyEnv' m'
 >     liftErr $ mapM_ (doDump opts) dumps
->     let (il,dumps) = ilTransModule dbg tyEnv'' trEnv (Just mainId) m''
+>     let (il,dumps) = ilTransModule dbg tcEnv' tyEnv'' trEnv (Just mainId) m''
 >     liftErr $ mapM_ (doDump opts) dumps
->     let (ccode,dumps) = genCodeGoal tcEnv (qualifyWith m mainId) vs il
+>     let (ccode,dumps) = genCodeGoal tcEnv' (qualifyWith m mainId) vs il
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeGoalCode (output opts) ccode
 >   where m = mkMIdent []
