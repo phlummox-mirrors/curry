@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Newtype.lhs 2787 2009-04-14 18:05:01Z wlux $
+% $Id: Newtype.lhs 2788 2009-04-15 18:47:52Z wlux $
 %
 % Copyright (c) 2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -102,14 +102,11 @@ synonym declaration and a function declaration.
 > transTopDecl :: ModuleIdent -> ValueEnv -> TopDecl Type
 >              -> NewtypeState [TopDecl Type]
 > transTopDecl _ _ (DataDecl p tc tvs cs) = return [DataDecl p tc tvs cs]
-> transTopDecl m tyEnv (NewtypeDecl p tc tvs nc) =
+> transTopDecl m tyEnv (NewtypeDecl p tc tvs (NewConstrDecl _ c ty)) =
 >   do
 >     v <- freshVar m "_#v" (reprType (qualifyWith m c) tyEnv)
 >     let d = funDecl p c [uncurry VariablePattern v] (uncurry mkVar v)
->     return [TypeDecl p tc tvs (ntype nc),BlockDecl d]
->   where c = nconstr nc
->         ntype (NewConstrDecl _ _ ty) = ty
->         ntype (NewRecordDecl _ _ _ ty) = ty
+>     return [TypeDecl p tc tvs ty,BlockDecl d]
 > transTopDecl _ _ (TypeDecl p tc tvs ty) = return [TypeDecl p tc tvs ty]
 > transTopDecl _ tyEnv (BlockDecl d) = return [BlockDecl (transNewt tyEnv d)]
 > transTopDecl _ _ (SplitAnnot p) = return [SplitAnnot p]
