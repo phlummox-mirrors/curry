@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Options.lhs 2788 2009-04-15 18:47:52Z wlux $
+% $Id: Options.lhs 2789 2009-04-16 16:19:47Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -71,6 +71,7 @@ all compiler options.
 >   | DumpDesugared                     -- dump source after desugaring
 >   | DumpUnlabeled                     -- dump source after removing labels
 >   | DumpNewtype                       -- dump source after removing newtypes
+>   | DumpUnlazy                        -- dump source after lifting lazy patt.
 >   | DumpFlatCase                      -- dump source after case flattening
 >   | DumpSimplified                    -- dump source after simplification
 >   | DumpUnlambda                      -- dump source after naming lambdas
@@ -151,6 +152,8 @@ recognized by the compiler.
 >            "dump source code after removing field labels",
 >     Option "" ["dump-newremoved"] (NoArg (Dump [DumpNewtype]))
 >            "dump source code after removing newtypes",
+>     Option "" ["dump-unlazy"] (NoArg (Dump [DumpUnlazy]))
+>            "dump source code after lifting lazy patterns",
 >     Option "" ["dump-flattened"] (NoArg (Dump [DumpFlatCase]))
 >            "dump source code after case flattening",
 >     Option "" ["dump-simplified"] (NoArg (Dump [DumpSimplified]))

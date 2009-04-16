@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Records.lhs 2788 2009-04-15 18:47:52Z wlux $
+% $Id: Records.lhs 2789 2009-04-16 16:19:47Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -166,6 +166,7 @@ expressions.
 >   where argument ty = maybe (fresh ty) return
 >         fresh ty = liftM (uncurry VariablePattern) (freshVar m "_#rec" ty)
 > unlabelTerm m (AsPattern v t) = liftM (AsPattern v) (unlabelTerm m t)
+> unlabelTerm m (LazyPattern t) = liftM LazyPattern (unlabelTerm m t)
 
 \end{verbatim}
 Record construction expressions are transformed into normal

@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 2788 2009-04-15 18:47:52Z wlux $
+# $Id: Makefile.in 2789 2009-04-16 16:19:47Z wlux $
 #
 # Copyright (c) 2000-2009 Wolfgang Lux
 # See LICENSE for the full license.
@@ -87,6 +87,7 @@ cycc_SRCS = \
 	Desugar.lhs \
 	Records.lhs \
 	Newtype.lhs \
+	LazyPatterns.lhs \
 	CaseMatch.lhs \
 	Simplify.lhs \
 	Unlambda.lhs \

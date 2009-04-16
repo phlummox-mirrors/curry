@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: Goals.lhs 2787 2009-04-14 18:05:01Z wlux $
+% $Id: Goals.lhs 2789 2009-04-16 16:19:47Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Goals.lhs}
-\section{Goals}
+\section{Goals}\label{sec:goals}
 This module controls the compilation of goals.
 \begin{verbatim}
 
