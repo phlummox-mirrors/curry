@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseMatch.lhs 2764 2009-03-23 11:14:15Z wlux $
+% $Id: CaseMatch.lhs 2792 2009-04-20 21:39:25Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -61,9 +61,9 @@ is effectively transformed into $t$~\texttt{=} \texttt{fcase}~$e$
 That way, the pattern $t$ in the \texttt{fcase} expression can be
 flattened. Later the compiler will replace the pattern declaration by
 individual declarations for the used variables of pattern $t$. This is
-done at the end of simplification in order to allow for a space-leak
-avoiding transformation of pattern bindings (cf.\ 
-p.~\pageref{pattern-binding} in Sect.~\ref{pattern-binding}).
+done after simplification in order to allow for a space-leak avoiding
+transformation of pattern bindings (cf.\ 
+Sect.~\ref{sec:pattern-bindings}).
 \begin{verbatim}
 
 > caseMatch :: TCEnv -> ValueEnv -> Module Type -> (Module Type,ValueEnv)

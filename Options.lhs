@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Options.lhs 2789 2009-04-16 16:19:47Z wlux $
+% $Id: Options.lhs 2792 2009-04-20 21:39:25Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -74,6 +74,7 @@ all compiler options.
 >   | DumpUnlazy                        -- dump source after lifting lazy patt.
 >   | DumpFlatCase                      -- dump source after case flattening
 >   | DumpSimplified                    -- dump source after simplification
+>   | DumpPBU                           -- dump source with pattern updates
 >   | DumpUnlambda                      -- dump source after naming lambdas
 >   | DumpLifted                        -- dump source after lambda-lifting
 >   | DumpIL                            -- dump IL code after translation
@@ -158,6 +159,8 @@ recognized by the compiler.
 >            "dump source code after case flattening",
 >     Option "" ["dump-simplified"] (NoArg (Dump [DumpSimplified]))
 >            "dump source code after simplification",
+>     Option "" ["dump-pbu"] (NoArg (Dump [DumpPBU]))
+>            "dump source code with pattern binding updates",
 >     Option "" ["dump-unlambda"] (NoArg (Dump [DumpUnlambda]))
 >            "dump source code after naming lambdas",
 >     Option "" ["dump-lifted"] (NoArg (Dump [DumpLifted]))
