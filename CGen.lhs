@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2758 2009-02-09 19:45:07Z wlux $
+% $Id: CGen.lhs 2794 2009-04-24 15:10:18Z wlux $
 %
 % Copyright (c) 1998-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1286,7 +1286,8 @@ function names introduced by the debugging transformation when the
 name of a function is printed. In particular, the debugger adds the
 prefix \texttt{\_debug\#} and a suffix \texttt{\#}$n$ to the name of
 the transformed function. Note that the prefix is added to the
-unqualified name.
+unqualified name. In addition, we also drop the renaming keys that are
+appended to the names of local variables and functions.
 \begin{verbatim}
 
 > undecorate :: String -> String
@@ -1297,11 +1298,14 @@ unqualified name.
 >       | "debug#" `isPrefixOf` cs'' -> cs' ++ undecorate (drop 6 cs'')
 >       | otherwise -> cs' ++ '_' : undecorate cs''
 >   where dropSuffix cs =
->           case break ('#' ==) cs of
+>           case break (`elem` ".#") cs of
 >             (cs',"") -> cs'
 >             (cs','#':cs'')
 >               | all isDigit cs'' -> cs'
 >               | otherwise -> cs' ++ '#' : dropSuffix cs''
+>             (cs','.':cs'')
+>               | not (null cs'') && all isDigit cs'' -> cs'
+>               | otherwise -> cs' ++ '.' : dropSuffix cs''
 
 \end{verbatim}
 The function \texttt{isPublic} is a workaround for distinguishing
@@ -1310,25 +1314,21 @@ is not yet part of the abstract machine code syntax. This function
 uses the following heuristics. All entities whose (demangled) name
 ends with a suffix \texttt{.}$n$, where $n$ is a non-empty sequence of
 decimal digits, are considered private, since that suffix can occur
-only in renamed identifiers, and all entities whose (demangled) name
-contains one of the substrings \verb"_#lambda", \verb"_#sel", and
-\verb"_#app" are considered private, too. These names are used by the
-compiler for naming lambda abstractions, lazy pattern selection
-functions, and the implicit functions introduced for lifted argument
-expressions.
+only in renamed identifiers. All entities whose (demangled) name
+contains the substring \verb"_#app" are considered private, too. These
+names are used by the compiler for naming the implicit functions
+introduced for lifted argument expressions.
 \begin{verbatim}
 
 > isPublic, isPrivate :: Name -> Bool
 > isPublic x = not (isPrivate x)
 > isPrivate (Name x) =
->   any (\cs -> any (`isPrefixOf` cs) [app,lambda,sel]) (tails x) ||
+>   any (app `isPrefixOf`) (tails x) ||
 >   case span isDigit (reverse x) of
 >     ([],_) -> False
 >     (_:_,cs) -> reverse dot `isPrefixOf` cs
 >   where Name dot = mangle "."
 >         Name app = mangle "_#app"
->         Name lambda = mangle "_#lambda"
->         Name sel = mangle "_#sel"
 
 \end{verbatim}
 In order to avoid some trivial name conflicts with the standard C

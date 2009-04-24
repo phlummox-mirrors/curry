@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PredefIdent.lhs 2792 2009-04-20 21:39:25Z wlux $
+% $Id: PredefIdent.lhs 2794 2009-04-24 15:10:18Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,10 +10,7 @@ This module defines predefined identifiers used at various places in
 the compiler.
 
 The function \texttt{lambdaId} returns the canonical name of a lambda
-abstraction, which is based on its position in the source code. The
-function \texttt{selectorId} returns the name of an auxiliary function
-that is used to extract components of a pattern in a pattern
-declaration (see Sect.~\ref{sec:pattern-bindings}).
+abstraction, which is based on its position in the source code.
 \begin{verbatim}
 
 > module PredefIdent where
@@ -69,12 +66,6 @@ declaration (see Sect.~\ref{sec:pattern-bindings}).
 > trueId  = mkIdent "True"
 > falseId = mkIdent "False"
 
-> selectorId :: Int -> Ident
-> selectorId n = mkIdent ("_#sel" ++ show n)
-
-> isSelectorId :: Ident -> Bool
-> isSelectorId x = any ("_#sel" `isPrefixOf`) (tails (name x))
-
 > mainId, minusId, fminusId :: Ident
 > mainId = mkIdent "main"
 > minusId = mkIdent "-"
@@ -111,9 +102,6 @@ declaration (see Sect.~\ref{sec:pattern-bindings}).
 > qTrueId, qFalseId :: QualIdent
 > qTrueId = qualifyWith preludeMIdent trueId
 > qFalseId = qualifyWith preludeMIdent falseId
-
-> isQSelectorId :: QualIdent -> Bool
-> isQSelectorId = isSelectorId . unqualify
 
 \end{verbatim}
 The type and data constructors of the unit, list, and tuple types are
