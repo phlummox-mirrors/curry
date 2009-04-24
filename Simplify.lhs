@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2792 2009-04-20 21:39:25Z wlux $
+% $Id: Simplify.lhs 2793 2009-04-24 11:54:28Z wlux $
 %
 % Copyright (c) 2003-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -28,6 +28,7 @@ Currently, the following optimizations are implemented:
 > import Env
 > import Monad
 > import PredefIdent
+> import PredefTypes
 > import SCC
 > import TrustInfo
 > import Types
@@ -53,13 +54,18 @@ Currently, the following optimizations are implemented:
 >     return (Module m es is ds',tyEnv)
 
 > simplifyTopDecl :: ModuleIdent -> TopDecl Type -> SimplifyState (TopDecl Type)
+> simplifyTopDecl _ (DataDecl p tc tvs cs) = return (DataDecl p tc tvs cs)
+> simplifyTopDecl _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
+> simplifyTopDecl _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 > simplifyTopDecl m (BlockDecl d) = liftM BlockDecl (simplifyDecl m emptyEnv d)
-> simplifyTopDecl _ d = return d
+> simplifyTopDecl _ (SplitAnnot p) = return (SplitAnnot p)
 
 > simplifyDecl :: ModuleIdent -> InlineEnv -> Decl Type
 >              -> SimplifyState (Decl Type)
 > simplifyDecl m env (FunctionDecl p f eqs) =
 >   liftM (FunctionDecl p f) (mapM (simplifyEquation m env) eqs)
+> simplifyDecl _ _ (ForeignDecl p cc s ie f ty) =
+>   return (ForeignDecl p cc s ie f ty)
 > simplifyDecl m env (PatternDecl p t rhs) =
 >   do
 >     rhs' <- simplifyRhs m env rhs
@@ -70,7 +76,7 @@ Currently, the following optimizations are implemented:
 >           return (funDecl p f ts e)
 >         where VariablePattern _ f = t
 >       _ -> return (PatternDecl p t rhs')
-> simplifyDecl _ _ d = return d
+> simplifyDecl _ _ (FreeDecl p vs) = return (FreeDecl p vs)
 
 > simplifyEquation :: ModuleIdent -> InlineEnv -> Equation Type
 >                  -> SimplifyState (Equation Type)
@@ -182,6 +188,7 @@ non-expansive expression.
 >   | not (isQualified x) = n == 0 || n < arity x tyEnv
 >   | otherwise = n < arity x tyEnv
 > isNonExpansive _ _ (Constructor _ _) = True
+> isNonExpansive tyEnv n (Tuple es) = n == 0 && all (isNonExpansive tyEnv 0) es
 > isNonExpansive tyEnv n (Apply e1 e2) =
 >   isNonExpansive tyEnv (n + 1) e1 && isNonExpansive tyEnv 0 e2
 > isNonExpansive tyEnv n (Lambda _ ts e) = n' < 0 || isNonExpansive tyEnv n' e
@@ -202,6 +209,7 @@ non-expansive expression.
 > exprArity _ (Literal _ _) = 0
 > exprArity tyEnv (Variable _ x) = arity x tyEnv
 > exprArity tyEnv (Constructor _ c) = arity c tyEnv
+> exprArity tyEnv (Tuple _) = 0
 > exprArity tyEnv (Apply e _) = exprArity tyEnv e - 1
 > exprArity tyEnv (Lambda _ ts _) = length ts
 > exprArity tyEnv (Let _ e) = exprArity tyEnv e
@@ -242,6 +250,7 @@ current module.
 > fixType ty (Literal _ l) = Literal ty l
 > fixType ty (Variable _ v) = Variable ty v
 > fixType ty (Constructor _ c) = Constructor ty c
+> fixType _ (Tuple es) = Tuple es
 > fixType ty (Apply e1 e2) = Apply (fixType (TypeArrow (typeOf e2) ty) e1) e2
 > fixType ty (Lambda p ts e) = Lambda p ts (fixType (foldr match ty ts) e)
 >   where match _ (TypeArrow _ ty) = ty
@@ -276,6 +285,8 @@ these values and the let declarations will be removed.
 > simplifyApp _ _ (Literal ty l) _ = return (Literal ty l)
 > simplifyApp _ _ (Variable ty v) es = return (apply (Variable ty v) es)
 > simplifyApp _ _ (Constructor ty c) es = return (apply (Constructor ty c) es)
+> simplifyApp m p (Tuple es) _ =
+>   liftM Tuple (mapM (flip (simplifyApp m p) []) es)
 > simplifyApp m p (Apply e1 e2) es =
 >   do
 >     e2' <- simplifyApp m p e2 []
@@ -323,10 +334,10 @@ annotated type has the same arity before and after the substitution.
 \ToDo{Apply the type substitution only when necessary, i.e., when the
   inlined variable has a polymorphic type.}
 
-The bindings of a let expression are sorted topologically in
-order to split them into minimal binding groups. In addition,
-local declarations occurring on the right hand side of a pattern
-declaration are lifted into the enclosing binding group using the
+The bindings of a let expression are sorted topologically in order to
+split them into minimal binding groups. In addition, local
+declarations occurring on the right hand side of variable and pattern
+declarations are lifted into the enclosing binding group using the
 equivalence (modulo $\alpha$-conversion) of \texttt{let}
 $x$~=~\texttt{let} \emph{decls} \texttt{in} $e_1$ \texttt{in} $e_2$
 and \texttt{let} \emph{decls}\texttt{;} $x$~=~$e_1$ \texttt{in} $e_2$.
@@ -348,6 +359,7 @@ functions in later phases of the compiler.
 >   where substExpr tcEnv ty =
 >           snd . expandTypeAnnot tcEnv (arrowArity ty) . withType tcEnv ty
 > simplifyExpr _ _ (Constructor ty c) = return (Constructor ty c)
+> simplifyExpr m env (Tuple es) = liftM Tuple (mapM (simplifyExpr m env) es)
 > simplifyExpr m env (Apply e1 e2) =
 >   do
 >     e1' <- simplifyExpr m env e1
@@ -392,7 +404,7 @@ functions in later phases of the compiler.
 >     (VariablePattern _ _,_) -> return [PatternDecl p t rhs]
 >     (_,SimpleRhs p' (Fcase e as) _) ->
 >       do
->         (ty,v) <- freshVar m "_#pat" (typeOf t)
+>         (ty,v) <- freshVar m "_#pat" (typeOf e)
 >         return [PatternDecl p t (SimpleRhs p' (Fcase (mkVar ty v) as) []),
 >                 PatternDecl p (VariablePattern ty v) (SimpleRhs p e [])]
 > sharePatternRhs _ d = return [d]
@@ -421,7 +433,16 @@ in recursive binding groups.
 With the list of inlineable expressions, the body of the let is
 simplified and then the declaration groups are processed from inside
 to outside to construct the simplified, nested let expression. In
-doing so unused bindings are discarded.
+doing so unused bindings are discarded and pattern bindings are
+restricted to those variables actually used in the scope of the
+declaration. In the special case where the pattern binding can be
+resolved at compile time, e.g., \texttt{c:cs = "abc"}, the pattern
+declaration is replaced by individual variable declarations, i.e.,
+\texttt{c = 'a'; cs = "bc"} in the example.
+
+\ToDo{If a pattern binding is resolved at compile time, the resulting
+  declaration group is always considered recursive, even if the
+  declarations are non-recursive as in the given example.}
 \begin{verbatim}
 
 > simplifyLet :: ModuleIdent -> InlineEnv -> [[Decl Type]] -> Expression Type
@@ -434,7 +455,8 @@ doing so unused bindings are discarded.
 >     tcEnv <- liftSt envRt
 >     trEnv <- liftSt (liftRt envRt)
 >     e' <- simplifyLet m (inlineVars m tyEnv trEnv ds' env) dss e
->     return (mkSimplLet m tcEnv ds' e')
+>     let dss'' = map (simplifyPatternDecl (qfv m ds' ++ qfv m e')) ds'
+>     return (mkSimplLet m tcEnv (concat dss'') e')
 
 > inlineVars :: ModuleIdent -> ValueEnv -> TrustEnv -> [Decl Type] -> InlineEnv
 >            -> InlineEnv
@@ -472,6 +494,23 @@ doing so unused bindings are discarded.
 > canInline _ (Constructor _ _) = True
 > canInline tyEnv (Variable _ v) = not (isQualified v) || arity v tyEnv > 0
 > canInline _ _ = False
+
+> simplifyPatternDecl :: [Ident] -> Decl Type -> [Decl Type]
+> simplifyPatternDecl fvs (PatternDecl p (TuplePattern ts) rhs) =
+>   case filterRhs rhs of
+>     SimpleRhs _ (Tuple es') _ -> zipWith (patDecl p) ts' es'
+>     rhs' -> [PatternDecl p (tuplePattern ts') rhs']
+>   where bs = [v `elem` fvs | VariablePattern ty v <- ts]
+>         ts' = filterUsed ts
+>         filterUsed xs = [x | (b,x) <- zip bs xs, b]
+>         filterRhs (SimpleRhs p e _) = SimpleRhs p (filterBody e) []
+>         filterBody (Variable _ v) =
+>           tupleExpr (filterUsed [Variable ty v | VariablePattern ty _ <- ts])
+>         filterBody (Tuple es) = tupleExpr (filterUsed es)
+>         filterBody (Fcase e [Alt p t rhs]) =
+>           Fcase e [Alt p t (filterRhs rhs)]
+>         filterBody (Let ds e) = Let ds (filterBody e)
+> simplifyPatternDecl _ d = [d]
 
 > mkSimplLet :: ModuleIdent -> TCEnv -> [Decl Type] -> Expression Type
 >            -> Expression Type
@@ -527,6 +566,7 @@ form where the arguments of all applications would be variables.
 > unapply (Literal ty l) es = (Literal ty l,es)
 > unapply (Variable ty v) es = (Variable ty v,es)
 > unapply (Constructor ty c) es = (Constructor ty c,es)
+> unapply (Tuple es') es = (Tuple es',es)
 > unapply (Apply e1 e2) es = unapply e1 (e2:es)
 > unapply (Lambda p ts e) es = (Lambda p ts e,es)
 > unapply (Let ds e) es = (Let ds e,es)
@@ -587,5 +627,19 @@ Auxiliary functions.
 >     updateSt_ (bindFun m v 0 (monoType ty))
 >     return (ty,v)
 >   where mkName n = mkIdent (prefix ++ show n)
+
+> tuplePattern :: [ConstrTerm Type] -> ConstrTerm Type
+> tuplePattern ts =
+>   case ts of
+>     [] -> ConstructorPattern unitType qUnitId []
+>     [t] -> t
+>     _ -> TuplePattern ts
+
+> tupleExpr :: [Expression Type] -> Expression Type
+> tupleExpr es =
+>   case es of
+>     [] -> Constructor unitType qUnitId
+>     [e] -> e
+>     _ -> Tuple es
 
 \end{verbatim}
