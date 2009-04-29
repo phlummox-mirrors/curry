@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Newtype.lhs 2789 2009-04-16 16:19:47Z wlux $
+% $Id: Newtype.lhs 2808 2009-04-29 13:00:19Z wlux $
 %
 % Copyright (c) 2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -174,8 +174,6 @@ removes newtype constructors in patterns and expressions.
 >   transNewt tyEnv (Lambda p ts e) =
 >     Lambda p (transNewt tyEnv ts) (transNewt tyEnv e)
 >   transNewt tyEnv (Let ds e) = Let (transNewt tyEnv ds) (transNewt tyEnv e)
->   transNewt tyEnv (IfThenElse e1 e2 e3) =
->     IfThenElse (transNewt tyEnv e1) (transNewt tyEnv e2) (transNewt tyEnv e3)
 >   transNewt tyEnv (Case e as) = Case (transNewt tyEnv e) (transNewt tyEnv as)
 >   transNewt tyEnv (Fcase e as) =
 >     Fcase (transNewt tyEnv e) (transNewt tyEnv as)

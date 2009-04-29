@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: LazyPatterns.lhs 2789 2009-04-16 16:19:47Z wlux $
+% $Id: LazyPatterns.lhs 2808 2009-04-29 13:00:19Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -184,8 +184,6 @@ alternatives are added to the body of the expression.
 >     return (Lambda p ts' (mkLet ds' e'))
 > unlazyExpr m (Let ds e) =
 >   liftM2 (Let . concat) (mapM (unlazyDecl m) ds) (unlazyExpr m e)
-> unlazyExpr m (IfThenElse e1 e2 e3) =
->   liftM3 IfThenElse (unlazyExpr m e1) (unlazyExpr m e2) (unlazyExpr m e3)
 > unlazyExpr m (Case e as) =
 >   liftM2 Case (unlazyExpr m e) (mapM (unlazyAlt m) as)
 > unlazyExpr m (Fcase e as) =

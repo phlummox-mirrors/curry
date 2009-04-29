@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Records.lhs 2789 2009-04-16 16:19:47Z wlux $
+% $Id: Records.lhs 2808 2009-04-29 13:00:19Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -240,11 +240,6 @@ solution.
 >   liftM2 (Lambda p) (mapM (unlabelTerm m) ts) (unlabelExpr m p e)
 > unlabelExpr m p (Let ds e) =
 >   liftM2 Let (mapM (unlabelDecl m) ds) (unlabelExpr m p e)
-> unlabelExpr m p (IfThenElse e1 e2 e3) =
->   liftM3 IfThenElse
->          (unlabelExpr m p e1)
->          (unlabelExpr m p e2)
->          (unlabelExpr m p e3)
 > unlabelExpr m p (Case e as) =
 >   liftM2 Case (unlabelExpr m p e) (mapM (unlabelAlt m) as)
 > unlabelExpr m p (Fcase e as) =
