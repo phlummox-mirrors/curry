@@ -1,6 +1,6 @@
--- $Id: IOExts.curry 2131 2007-03-18 22:07:41Z wlux $
+-- $Id: IOExts.curry 2850 2009-05-29 07:43:44Z wlux $
 --
--- Copyright (c) 2004-2007, Wolfgang Lux
+-- Copyright (c) 2004-2009, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module IOExts(fixIO, unsafePerformIO,unsafeInterleaveIO,
@@ -16,25 +16,15 @@ import IOVector
 import Monad
 import Unsafe(unsafePerformIO,unsafeInterleaveIO,trace)
 
--- used to prevent premature evaluation of foreign function arguments
-data Wrap a = Wrap a
-
 -- monadic fix-point operator
 foreign import primitive fixIO :: (a -> IO a) -> IO a
 
 -- mutable references
 data IORef a
 
-newIORef :: a -> IO (IORef a)
-newIORef x = primNewIORef (Wrap x)
-  where foreign import rawcall "refs.h" primNewIORef :: Wrap a -> IO (IORef a)
-
-foreign import rawcall "refs.h primReadIORef" readIORef :: IORef a -> IO a
-
-writeIORef :: IORef a -> a -> IO ()
-writeIORef r x = primWriteIORef r (Wrap x)
-  where foreign import rawcall "refs.h"
-  		       primWriteIORef :: IORef a -> Wrap a -> IO ()
+foreign import primitive newIORef :: a -> IO (IORef a)
+foreign import primitive readIORef :: IORef a -> IO a
+foreign import primitive writeIORef :: IORef a -> a -> IO ()
 
 modifyIORef :: IORef a -> (a -> a) -> IO ()
 modifyIORef r f = readIORef r >>= \x -> writeIORef r (f x)
@@ -58,22 +48,27 @@ writeIOArray :: IOArray a -> Int -> a -> IO ()
 writeIOArray (IOArray b v) i x = writeIOVector v (index b i) x
 
 freezeIOArray :: IOArray a -> IO (Array a)
-freezeIOArray (IOArray b v) = copyIOVector v >>= unsafeArray b
+freezeIOArray (IOArray b v) =
+  do
+    v' <- freezeIOVector v
+    return (vectorArray b v')
 
 thawIOArray :: Array a -> IO (IOArray a)
 thawIOArray a =
   do
-    v <- unsafeVector a
-    v' <- copyIOVector v
-    return (IOArray (bounds a) v')
+    v <- thawIOVector (vector a)
+    return (IOArray (bounds a) v)
 
 unsafeFreezeIOArray :: IOArray a -> IO (Array a)
-unsafeFreezeIOArray (IOArray b v) = unsafeArray b v
+unsafeFreezeIOArray (IOArray b v) =
+  do
+    v' <- unsafeFreezeIOVector v
+    return (vectorArray b v')
 
 unsafeThawIOArray :: Array a -> IO (IOArray a)
 unsafeThawIOArray a =
   do
-    v <- unsafeVector a
+    v <- unsafeThawIOVector (vector a)
     return (IOArray (bounds a) v)
 
 -- assorted IO functions

@@ -1,33 +1,27 @@
--- $Id: IOVector.curry 2127 2007-03-18 21:43:50Z wlux $
+-- $Id: IOVector.curry 2850 2009-05-29 07:43:44Z wlux $
 --
--- Copyright (c) 2004-2007, Wolfgang Lux
+-- Copyright (c) 2004-2009, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
-module IOVector(IOVector, newIOVector, copyIOVector, readIOVector,
-		writeIOVector, lengthIOVector) where
-
--- used to prevent premature evaluation of foreign function arguments
-data Wrap a = Wrap a
+module IOVector where
 
 -- Primitive vectors
 
+data Vector a
 data IOVector a
 
-newIOVector :: Int -> a -> IO (IOVector a)
-newIOVector n x = primNewIOVector n (Wrap x)
-  where foreign import rawcall "vector.h"
-  		       primNewIOVector :: Int -> Wrap a -> IO (IOVector a)
+foreign import primitive readVector   :: Vector a -> Int -> a
+foreign import primitive lengthVector :: Vector a -> Int
 
-foreign import rawcall "vector.h primCopyIOVector"
-	       copyIOVector :: IOVector a -> IO (IOVector a)
+foreign import primitive newIOVector    :: Int -> a -> IO (IOVector a)
+foreign import primitive readIOVector   :: IOVector a -> Int -> IO a
+foreign import primitive writeIOVector  :: IOVector a -> Int -> a -> IO ()
+foreign import primitive lengthIOVector :: IOVector a -> Int
+foreign import primitive freezeIOVector :: IOVector a -> IO (Vector a)
+foreign import primitive thawIOVector   :: Vector a -> IO (IOVector a)
 
-foreign import rawcall "vector.h primReadIOVector"
-	       readIOVector :: IOVector a -> Int -> IO a
+foreign import primitive unsafeFreezeIOVector :: IOVector a -> IO (Vector a)
+foreign import primitive unsafeThawIOVector   :: Vector a -> IO (IOVector a)
 
-writeIOVector :: IOVector a -> Int -> a -> IO ()
-writeIOVector v i x = primWriteIOVector v i (Wrap x)
-  where foreign import rawcall "vector.h"
-  		       primWriteIOVector :: IOVector a -> Int -> Wrap a -> IO ()
-
-foreign import rawcall "vector.h primLengthIOVector"
-	       lengthIOVector :: IOVector a -> Int
+copyIOVector :: IOVector a -> IO (IOVector a)
+copyIOVector v = freezeIOVector v >>= unsafeThawIOVector

@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: compare.nw 2748 2008-08-30 12:58:01Z wlux $
+% $Id: compare.nw 2850 2009-05-29 07:43:44Z wlux $
 %
-% Copyright (c) 2001-2008, Wolfgang Lux
+% Copyright (c) 2001-2009, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Polymorphic Comparisons}
@@ -169,6 +169,7 @@ FUNCTION(__compare_2)
 	    FAIL("compare: existentially quantified type");
 	case PAPP_KIND:
 	    FAIL("compare: partial application");
+	case MUTABLE_KIND:
 	case SEARCH_CONT_KIND:
 	case ABSTRACT_KIND:
 	    FAIL("compare: abstract type");
