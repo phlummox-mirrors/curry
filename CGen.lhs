@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2850 2009-05-29 07:43:44Z wlux $
+% $Id: CGen.lhs 2858 2009-06-02 13:21:50Z wlux $
 %
 % Copyright (c) 1998-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -977,9 +977,9 @@ translation function.
 
 > delayNonLocal :: (Bool,[Name],[Name]) -> Name -> [CPSCont] -> [CStmt]
 > delayNonLocal vs0 v ks =
->   [CIf (CRel (CRel (nodeKind v) "==" (CExpr "GVAR_KIND")) "&&"
->              (CFunCall "!is_local_space" [field v "g.spc"]))
->        (delay vs0 v ks)
+>   [CIf (CRel (nodeKind v) "==" (CExpr "GVAR_KIND"))
+>        (CProcCall "assert" [CFunCall "!is_local_space" [field v "g.spc"]] :
+>         delay vs0 v ks)
 >        []]
 
 > choices :: Name -> (Bool,[Name],[Name]) -> Maybe Name -> [CPSCont]
