@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2796 2009-04-24 20:39:49Z wlux $
+% $Id: Simplify.lhs 2865 2009-07-20 09:45:38Z wlux $
 %
 % Copyright (c) 2003-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -489,7 +489,8 @@ variable declarations (see \texttt{simplifyDecl} above).
 > mkSimplLet m _ [FreeDecl p vs] (fvs,e)
 >   | null vs' = (fvs,e)
 >   | otherwise = (fvs',Let [FreeDecl p vs'] e)
->   where (vs',fvs') = partition (`elem` vs) fvs
+>   where vs' = filter (`elem` fvs) vs
+>         fvs' = filter (`notElem` vs) fvs
 > mkSimplLet m tcEnv [PatternDecl _ (VariablePattern _ v) (SimpleRhs _ e _)]
 >       (_,Variable ty' v')
 >   | v' == qualify v && v `notElem` fvs = (fvs,withType tcEnv ty' e)
