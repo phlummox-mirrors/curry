@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2858 2009-06-02 13:21:50Z wlux $
+% $Id: CGen.lhs 2867 2009-07-20 10:30:02Z wlux $
 %
 % Copyright (c) 1998-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -193,9 +193,7 @@ generated code.
 > constr (ConstrDecl c tys) = (c,length tys)
 
 > tagDecl :: [Name] -> CTopDecl
-> tagDecl cs =
->   CEnumDecl [CConst (dataTag c) (Just n)
->             | (c,n) <- zip cs [0..], c /= Name "_"]
+> tagDecl cs = CEnumDecl [CConst (dataTag c) (Just n) | (c,n) <- zip cs [0..]]
 
 > dataDecl :: Name -> Int -> CTopDecl
 > dataDecl c n = head (dataDef undefined c n)
