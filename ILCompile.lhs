@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 2867 2009-07-20 10:30:02Z wlux $
+% $Id: ILCompile.lhs 2868 2009-07-20 11:37:08Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -450,14 +450,15 @@ equivalences.
 >   case unaliasStmt aliases st of
 >     Cam.Return (Cam.Var v') -> (addToFM v v' aliases,id)
 >     st'                     -> (aliases,Cam.Seq (v Cam.:<- st'))
-> unaliasStmt0 aliases (Cam.Let bds) =
->   (aliases',
->    mkLet [Cam.Bind v (unaliasExpr aliases' e) | Cam.Bind v e <- bds''])
->   where (bds',bds'') = partition isAlias bds
+> unaliasStmt0 aliases (Cam.Let bds) = (aliases',Cam.Seq (Cam.Let bds'''))
+>   where (bds',bds'') =
+>           case partition isAlias bds of
+>             (bd':bds',[]) -> (bds',[bd'])    -- cyclic chain of variable defs
+>             (bds',bds'') -> (bds',bds'')
+>         bds''' = [Cam.Bind v (unaliasExpr aliases' e) | Cam.Bind v e <- bds'']
 >         aliases' = foldr (uncurry addToFM) aliases
 >                          [(v,unaliasVar aliases' v')
 >                          | Cam.Bind v (Cam.Var v') <- bds']
->         mkLet bds = if null bds then id else Cam.Seq (Cam.Let bds)
 >         isAlias (Cam.Bind _ (Cam.Var _)) = True
 >         isAlias (Cam.Bind _ _) = False
 

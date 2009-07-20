@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 2795 2009-04-24 15:35:00Z wlux $
+% $Id: MachInterp.lhs 2868 2009-07-20 11:37:08Z wlux $
 %
 % Copyright (c) 1998-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -108,6 +108,12 @@ initialization of nodes have to be separated.
 >   do
 >     ptr' <- readState (getVar v)
 >     updateNode ptr (IndirNode ptr')
+
+> initQueueMe :: NodePtr -> MachStateT ()
+> initQueueMe ptr =
+>   do
+>     space <- readState curSpace
+>     updateNode ptr (QueueMeNode [] space)
 
 \end{verbatim}
 As a matter of convenience, we provide also some allocation functions,
