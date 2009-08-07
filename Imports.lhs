@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Imports.lhs 2721 2008-06-13 16:17:39Z wlux $
+% $Id: Imports.lhs 2892 2009-08-07 13:45:11Z wlux $
 %
-% Copyright (c) 2000-2008, Wolfgang Lux
+% Copyright (c) 2000-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Imports.lhs}
@@ -17,8 +17,8 @@ interfaces into the current module.
 > import CurryUtils
 > import IdentInfo
 > import List
-> import Maybe
 > import Map
+> import Maybe
 > import PrecInfo
 > import Set
 > import TopEnv
@@ -89,17 +89,17 @@ name.
 > importInterfaceIntf :: [ModuleIdent] -> (PEnv,TCEnv,ValueEnv) -> Interface
 >                     -> (PEnv,TCEnv,ValueEnv)
 > importInterfaceIntf ms (pEnv,tcEnv,tyEnv) (Interface m is ds) =
->   (importEntitiesIntf precs m ds' pEnv,
->    importEntitiesIntf types m ds' tcEnv,
->    importEntitiesIntf values m ds' tyEnv)
+>   (importEntitiesIntf precs ds' pEnv,
+>    importEntitiesIntf types ds' tcEnv,
+>    importEntitiesIntf values ds' tyEnv)
 >   where ms' = m : [m | IImportDecl _ m <- is, m `notElem` ms]
 >         ds' = map unhide (filter (importEntity . entity) ds)
 >         importEntity = maybe True (`elem` ms') . fst . splitQualIdent
 
-> importEntitiesIntf :: Entity a => (IDecl -> [a]) -> ModuleIdent -> [IDecl]
+> importEntitiesIntf :: Entity a => (IDecl -> [a]) -> [IDecl]
 >                    -> TopEnv a -> TopEnv a
-> importEntitiesIntf ents m ds env = foldr importEntity env (concatMap ents ds)
->   where importEntity x = qualImportTopEnv m (origName x) x
+> importEntitiesIntf ents ds env = foldr importEntity env (concatMap ents ds)
+>   where importEntity x = qualImportTopEnv (origName x) x
 
 \end{verbatim}
 The list of entities exported from a module is computed with the

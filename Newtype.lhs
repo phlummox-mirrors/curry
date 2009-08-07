@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Newtype.lhs 2808 2009-04-29 13:00:19Z wlux $
+% $Id: Newtype.lhs 2892 2009-08-07 13:45:11Z wlux $
 %
 % Copyright (c) 2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -69,7 +69,7 @@ value type environment because it is never used in source code.
 \begin{verbatim}
 
 > bindWorld :: TCEnv -> TCEnv
-> bindWorld = qualImportTopEnv (mkMIdent []) qWorldId (DataType qWorldId 0 [])
+> bindWorld = qualImportTopEnv qWorldId (DataType qWorldId 0 [])
 
 > transTypeInfo :: ValueEnv -> TypeInfo -> TypeInfo
 > transTypeInfo _ (DataType tc n cs)
