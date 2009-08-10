@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2764 2009-03-23 11:14:15Z wlux $
+% $Id: ShadowCheck.lhs 2893 2009-08-10 15:28:04Z wlux $
 %
 % Copyright (c) 2005-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -55,8 +55,8 @@ set of defined variables.
 
 > type S = Set Ident -> [P Ident]
 
-> bindVars :: [P Ident] -> S -> S
-> bindVars bvs k vs =
+> bindEnts :: [P Ident] -> S -> S
+> bindEnts bvs k vs =
 >   filter (\(P _ x) -> x `elemSet` vs) bvs ++
 >   k (foldr addToSet vs [x | P _ x <- bvs])
 
@@ -82,7 +82,7 @@ traversal of the syntax tree.
 >   shadow _ _ = id
 >
 >   shadowGroup p ds =
->     bindVars (concatMap topVars ds) >>> foldr ((&&&) . shadow p) id ds
+>     bindEnts (concatMap topEnts ds) >>> foldr ((&&&) . shadow p) id ds
 
 > instance SyntaxTree (Decl a) where
 >   shadow _ (FunctionDecl p _ eqs) = shadow p eqs
@@ -90,16 +90,16 @@ traversal of the syntax tree.
 >   shadow _ _ = id
 >
 >   shadowGroup p ds =
->     bindVars (concatMap vars ds) >>> foldr ((&&&) . shadow p) id ds
+>     bindEnts (concatMap vars ds) >>> foldr ((&&&) . shadow p) id ds
 
 > instance SyntaxTree (Equation a) where
 >   shadow _ (Equation p lhs rhs) = shadow p lhs >>> shadow p rhs
 
 > instance SyntaxTree (Lhs a) where
->   shadow p lhs = bindVars (map (P p) (bv lhs))
+>   shadow p lhs = bindEnts (map (P p) (bv lhs))
 
 > instance SyntaxTree (ConstrTerm a) where
->   shadow p t = bindVars (map (P p) (bv t))
+>   shadow p t = bindEnts (map (P p) (bv t))
 
 > instance SyntaxTree (Rhs a) where
 >   shadow _ (SimpleRhs p e ds) = shadow p ds >>> shadow p e
@@ -151,19 +151,23 @@ traversal of the syntax tree.
 >   shadow p (Field _ x) = shadow p x
 
 \end{verbatim}
-The functions \texttt{topVars} and \texttt{vars} return the bound
-variables of a (top-level) declaration together with their positions.
+The functions \texttt{topEnts} and \texttt{vars} return the names of
+the entities defined by a (top-level) declaration together with their
+positions.
 \begin{verbatim}
 
-> topVars :: TopDecl a -> [P Ident]
-> topVars (DataDecl _ _ _ cs) =
->   nub [P p l | RecordDecl _ _ _ fs <- cs, FieldDecl p ls _ <- fs, l <- ls]
-> topVars (NewtypeDecl _ _ _ nc) = nlabel nc
->   where nlabel (NewConstrDecl _ _ _) = []
->         nlabel (NewRecordDecl p _ l _) = [P p l]
-> topVars (TypeDecl _ _ _ _) = []
-> topVars (BlockDecl d) = vars d
-> topVars (SplitAnnot _) = []
+> topEnts :: TopDecl a -> [P Ident]
+> topEnts (DataDecl _ _ _ cs) = nub (concatMap ents cs)
+>   where ents (ConstrDecl p _ c _) = [P p c]
+>         ents (ConOpDecl p _ _ op _) = [P p op]
+>         ents (RecordDecl p _ c fs) =
+>           P p c : [P p l | FieldDecl p ls _ <- fs, l <- ls]
+> topEnts (NewtypeDecl _ _ _ nc) = ents nc
+>   where ents (NewConstrDecl p c _) = [P p c]
+>         ents (NewRecordDecl p c l _) = [P p c,P p l]
+> topEnts (TypeDecl _ _ _ _) = []
+> topEnts (BlockDecl d) = vars d
+> topEnts (SplitAnnot _) = []
 
 > vars :: Decl a -> [P Ident]
 > vars (InfixDecl _ _ _ _) = []
