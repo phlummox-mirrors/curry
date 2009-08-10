@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2786 2009-04-14 14:22:18Z wlux $
+% $Id: Exports.lhs 2894 2009-08-10 16:06:58Z wlux $
 %
 % Copyright (c) 2000-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -53,10 +53,13 @@ applying all source code transformations to the program.
 > exportInterface (Module m (Just (Exporting _ es)) _ ds) pEnv tcEnv tyEnv =
 >   Interface m imports (unqualIntf m (precs ++ hidden ++ ds'))
 >   where aEnv = bindArities m ds
->         tvs = nameSupply
+>         tcs = foldr definedType [] ds'
+>         tcs' = hiddenTypes ds' tcs
+>         tcs'' = [tc | Just tc <- map (localIdent m) (tcs ++ tcs')]
+>         tvs = filter (`notElem` tcs'') nameSupply
 >         imports = map (IImportDecl noPos) (filter (m /=) (usedModules ds'))
 >         precs = foldr (infixDecl pEnv) [] es
->         hidden = map (hiddenTypeDecl tcEnv tvs) (hiddenTypes ds')
+>         hidden = map (hiddenTypeDecl tcEnv tvs) tcs'
 >         ds' =
 >           foldr (typeDecl tcEnv tyEnv tvs)
 >                 (foldr (valueDecl aEnv tyEnv tvs) [] es)
@@ -208,12 +211,10 @@ compiler can check them without loading the imported modules.
 > hiddenTypeDecl tcEnv tvs tc = HidingDataDecl noPos tc (take n tvs)
 >   where n = constrKind tc tcEnv
 
-> hiddenTypes :: [IDecl] -> [QualIdent]
+> hiddenTypes :: [IDecl] -> [QualIdent] -> [QualIdent]
 > hiddenTypes ds =
->   filter (not . isPrimTypeId . unqualify)
->          (toListSet (foldr deleteFromSet used defd))
->   where used = fromListSet (usedTypes ds [])
->         defd = foldr definedType [] ds
+>   filter (not . isPrimTypeId . unqualify) .
+>   toListSet . foldr deleteFromSet (fromListSet (usedTypes ds []))
 
 > definedType :: IDecl -> [QualIdent] -> [QualIdent]
 > definedType (IDataDecl _ tc _ _ _) tcs = tc : tcs
