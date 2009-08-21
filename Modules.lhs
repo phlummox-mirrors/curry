@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2787 2009-04-14 18:05:01Z wlux $
+% $Id: Modules.lhs 2896 2009-08-21 08:22:20Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -86,7 +86,7 @@ declaration to the module.
 >     let is' = importPrelude debug fn m is
 >     mEnv <- loadInterfaces paths m (modules is')
 >     m' <- okM $ checkModuleSyntax mEnv (Module m es is' ds)
->     liftErr $ mapM_ putErrLn $ warnModuleSyntax caseMode warn m'
+>     liftErr $ mapM_ putErrLn $ warnModuleSyntax caseMode warn mEnv m'
 >     (pEnv,tcEnv,tyEnv,m'') <-
 >       okM $ checkModule mEnv (autoSplitModule autoSplit m')
 >     liftErr $ mapM_ putErrLn $ warnModule warn tyEnv m''
@@ -123,9 +123,9 @@ declaration to the module.
 >           liftE (ImportDecl p m q asM)
 >                 (checkImports (moduleInterface m mEnv) is)
 
-> warnModuleSyntax :: CaseMode -> [Warn] -> Module a -> [String]
-> warnModuleSyntax caseMode warn m =
->   caseCheck caseMode m ++ unusedCheck warn m ++ shadowCheck warn m
+> warnModuleSyntax :: CaseMode -> [Warn] -> ModuleEnv -> Module a -> [String]
+> warnModuleSyntax caseMode warn mEnv m =
+>   caseCheck caseMode m ++ unusedCheck warn m ++ shadowCheck warn mEnv m
 
 > warnModule :: [Warn] -> ValueEnv -> Module a -> [String]
 > warnModule warn tyEnv m = overlapCheck warn tyEnv m
