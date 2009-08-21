@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Goals.lhs 2896 2009-08-21 08:22:20Z wlux $
+% $Id: Goals.lhs 2897 2009-08-21 12:18:59Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -88,37 +88,44 @@ interfaces are in scope with their qualified names.
 >          -> ErrorT IO (TCEnv,ValueEnv,Goal Type)
 > loadGoal task paths debug caseMode warn m g fns =
 >   do
->     (mEnv,ms) <- loadGoalModules paths debug fns
+>     (mEnv,m',ds) <- loadGoalModules paths debug fns
 >     g' <-
->       okM $ maybe (return (mainGoal (last ms))) parseGoal g >>=
->             checkGoalSyntax mEnv ms
->     liftErr $ mapM_ putErrLn $ warnGoalSyntax caseMode warn mEnv ms m g'
->     (tcEnv,tyEnv,g'') <- okM $ checkGoal task mEnv m ms g'
+>       okM $ maybe (return (mainGoal m')) parseGoal g >>=
+>             checkGoalSyntax mEnv ds
+>     liftErr $ mapM_ putErrLn $ warnGoalSyntax caseMode warn mEnv ds m g'
+>     (tcEnv,tyEnv,g'') <- okM $ checkGoal task mEnv m ds g'
 >     liftErr $ mapM_ putErrLn $ warnGoal warn tyEnv g''
 >     return (tcEnv,tyEnv,g'')
 >   where mainGoal m = Goal (first "") (Variable () (qualifyWith m mainId)) []
 
 > loadGoalModules :: [FilePath] -> Bool -> [FilePath]
->                 -> ErrorT IO (ModuleEnv,[ModuleIdent])
+>                 -> ErrorT IO (ModuleEnv,ModuleIdent,[ImportDecl])
 > loadGoalModules paths debug fns =
 >   do
 >     (mEnv,ms') <- loadGoalInterfaces paths ms fns
->     return (mEnv,preludeMIdent : if null fns then [] else [last ms'])
->   where ms = map (P (first "")) (preludeMIdent : [debugPreludeMIdent | debug])
+>     let ds' = [importDecl p m True [] | m <- ms']
+>         ms'' = preludeMIdent : if null fns then [] else [last ms']
+>         ds'' = [importDecl p m False xs | (m,xs) <- intfImports mEnv ms'']
+>     return (mEnv,last ms'',ds' ++ ds'')
+>   where p = first ""
+>         ms = map (P p) (preludeMIdent : [debugPreludeMIdent | debug])
+>         importDecl p m q xs = ImportDecl p m q Nothing (hiding q xs)
+>         hiding True _ = Nothing
+>         hiding False xs = Just (Hiding p xs)
 
-> checkGoalSyntax :: ModuleEnv -> [ModuleIdent] -> Goal a -> Error (Goal a)
-> checkGoalSyntax mEnv ms g =
+> checkGoalSyntax :: ModuleEnv -> [ImportDecl] -> Goal a -> Error (Goal a)
+> checkGoalSyntax mEnv ds g =
 >   typeSyntaxCheckGoal tEnv g >>= syntaxCheckGoal vEnv
->   where (tEnv,vEnv) = importInterfaceIdents mEnv ms
+>   where (tEnv,vEnv) = importModuleIdents mEnv ds
 
-> checkGoal :: Task -> ModuleEnv -> ModuleIdent -> [ModuleIdent] -> Goal a
+> checkGoal :: Task -> ModuleEnv -> ModuleIdent -> [ImportDecl] -> Goal a
 >           -> Error (TCEnv,ValueEnv,Goal Type)
-> checkGoal task mEnv m ms g =
+> checkGoal task mEnv m ds g =
 >   do
 >     g' <- precCheckGoal m pEnv (renameGoal g)
 >     (tyEnv',g'') <- kindCheckGoal tcEnv g' >> typeCheckGoal m tcEnv tyEnv g'
 >     return (qualifyGoal task mEnv m pEnv tcEnv tyEnv' g'')
->   where (pEnv,tcEnv,tyEnv) = importInterfaces mEnv ms
+>   where (pEnv,tcEnv,tyEnv) = importModules mEnv ds
 
 > qualifyGoal :: Task -> ModuleEnv -> ModuleIdent -> PEnv -> TCEnv -> ValueEnv
 >             -> Goal a -> (TCEnv,ValueEnv,Goal a)
@@ -126,14 +133,45 @@ interfaces are in scope with their qualified names.
 >   where (_,tcEnv',tyEnv') = qualifyEnv mEnv m pEnv tcEnv tyEnv
 > qualifyGoal TypeGoal _ _ _ tcEnv tyEnv g = (tcEnv,tyEnv,g)
 
-> warnGoalSyntax :: CaseMode -> [Warn] -> ModuleEnv -> [ModuleIdent]
+> warnGoalSyntax :: CaseMode -> [Warn] -> ModuleEnv -> [ImportDecl]
 >                -> ModuleIdent -> Goal a -> [String]
-> warnGoalSyntax caseMode warn mEnv ms m g =
+> warnGoalSyntax caseMode warn mEnv ds m g =
 >   caseCheckGoal caseMode g ++ unusedCheckGoal warn m g ++
->   shadowCheckGoal warn mEnv ms g
+>   shadowCheckGoal warn mEnv ds g
 
 > warnGoal :: [Warn] -> ValueEnv -> Goal a -> [String]
 > warnGoal warn tyEnv g = overlapCheckGoal warn tyEnv g
+
+\end{verbatim}
+In contrast to source modules, where all imported entities share a
+common scope, we pretend modules are imported into nested scopes when
+compiling a goal. Thus, definitions from the main module can shadow
+definitions from the Prelude in the goal expression. This is achieved
+by carefully crafting appropriate hiding specifications for the import
+declarations computed by \texttt{goalImportDecls}, which hide all
+names that will be brought into scope by a subsequent import.
+\begin{verbatim}
+
+> intfImports :: ModuleEnv -> [ModuleIdent] -> [(ModuleIdent,[Import])]
+> intfImports mEnv ms = zip ms (scanr (++) [] (tail xss))
+>   where xss = [imports (moduleInterface m mEnv) | m <- ms]
+>         imports (Interface _ _ ds) = concatMap intfImport ds
+
+> intfImport :: IDecl -> [Import]
+> intfImport (IInfixDecl _ _ _ _) = []
+> intfImport (HidingDataDecl _ _ _) = []
+> intfImport (IDataDecl _ tc _ cs xs) =
+>   [ImportTypeWith (unqualify tc)
+>                   (filter (`notElem` xs) (nub (concatMap ents cs)))]
+>   where ents (ConstrDecl _ _ c _) = [c]
+>         ents (ConOpDecl _ _ _ op _) = [op]
+>         ents (RecordDecl _ _ c fs) = c : [l | FieldDecl _ ls _ <- fs, l <- ls]
+> intfImport (INewtypeDecl _ tc _ nc xs) =
+>   [ImportTypeWith (unqualify tc) (filter (`notElem` xs) (ents nc))]
+>   where ents (NewConstrDecl _ c _) = [c]
+>         ents (NewRecordDecl _ c l _) = [c,l]
+> intfImport (ITypeDecl _ tc _ _) = [ImportTypeWith (unqualify tc) []]
+> intfImport (IFunctionDecl _ f _ _) = [Import (unqualify f)]
 
 \end{verbatim}
 When syntax and type checking succeed goals are compiled by converting

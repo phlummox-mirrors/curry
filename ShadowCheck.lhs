@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2896 2009-08-21 08:22:20Z wlux $
+% $Id: ShadowCheck.lhs 2897 2009-08-21 12:18:59Z wlux $
 %
 % Copyright (c) 2005-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -31,10 +31,9 @@ definitions which shadow a declaration from an outer scope.
 >   report v $ shadow noPosition ds (const []) (imports mEnv is)
 >   where noPosition = error "noPosition"
 
-> shadowCheckGoal :: [Warn] -> ModuleEnv -> [ModuleIdent] -> Goal a -> [String]
-> shadowCheckGoal v mEnv ms (Goal p e ds) =
+> shadowCheckGoal :: [Warn] -> ModuleEnv -> [ImportDecl] -> Goal a -> [String]
+> shadowCheckGoal v mEnv is (Goal p e ds) =
 >   report v $ shadow p (SimpleRhs p e ds) (const []) (imports mEnv is)
->   where is = nub [ImportDecl undefined m False Nothing Nothing | m <- ms]
 
 > report :: [Warn] -> [P (Ident,D)] -> [String]
 > report ws
