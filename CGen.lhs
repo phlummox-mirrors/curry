@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 2908 2009-09-06 16:58:56Z wlux $
+% $Id: CGen.lhs 2909 2009-09-24 08:22:49Z wlux $
 %
 % Copyright (c) 1998-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -457,29 +457,28 @@ the suspend node associated with the abstract machine code function.
 > litInstFunction l = instDef CPrivate (litInstFunc l) (Name "v0") (LitCase l)
 
 > instDef :: CVisibility -> String -> Name -> Tag -> CTopDecl
-> instDef vb f v t = CFuncDef vb f (funCode f' (contFunVars vs ws k) st)
->   where CPSContinuation f' _ vs ws k st = cpsInst (Name "") v t
+> instDef vb f v t = CFuncDef vb f (funCode f' (vs,ws,Just CPSReturn) st)
+>   where CPSContinuation f' _ vs ws st = cpsInst (Name "") v t
 
 > funcDefs :: CVisibility -> CPSFunction -> [CTopDecl]
 > funcDefs vb f = map privFuncDecl ks ++ entryDef vb f : map funcDef ks
 >   where ks = continuations f
 
 > privFuncDecl :: CPSContinuation -> CTopDecl
-> privFuncDecl (CPSContinuation f n _ _ _ _) =
->   CFuncDecl CPrivate (cPrivName f n)
+> privFuncDecl (CPSContinuation f n _ _ _) = CFuncDecl CPrivate (cPrivName f n)
 
 > entryDef :: CVisibility -> CPSFunction -> CTopDecl
 > entryDef vb (CPSFunction f vs st) =
->   CFuncDef vb (cName f) (entryCode f (length vs) ++ funCode f (funVars vs) st)
+>   CFuncDef vb (cName f) (entryCode f vs ++ funCode f (vs,[],Nothing) st)
 
 > funcDef :: CPSContinuation -> CTopDecl
-> funcDef (CPSContinuation f n vs ws k st) =
->   CFuncDef CPrivate (cPrivName f n) (funCode f (contFunVars vs ws k) st)
+> funcDef (CPSContinuation f n vs ws st) =
+>   CFuncDef CPrivate (cPrivName f n) (funCode f (vs,ws,Just CPSReturn) st)
 
-> entryCode :: Name -> Int -> [CStmt]
-> entryCode f n =
+> entryCode :: Name -> [Name] -> [CStmt]
+> entryCode f vs =
 >   [procCall "C_STACK_CHECK" [cName f],
->    CProcCall "TRACE_FUN" [CString (undecorate (demangle f)),int n]]
+>    CProcCall "TRACE_FUN" [CString (undecorate (demangle f)),int (length vs)]]
 
 \end{verbatim}
 The compiler generates a C function from every CPS function. At the
@@ -490,12 +489,6 @@ code for an alternative of a \texttt{switch} statement is similar
 except that we avoid loading the matched variable again -- unless a
 heap check is performed.
 \begin{verbatim}
-
-> funVars :: [Name] -> ([Name],[Name],Maybe CPSCont)
-> funVars vs = (vs,[],Nothing)
-
-> contFunVars :: [Name] -> [Name] -> CPSCont -> ([Name],[Name],Maybe CPSCont)
-> contFunVars vs ws k = (vs,ws,Just k)
 
 > funCode :: Name -> ([Name],[Name],Maybe CPSCont) -> CPSStmt -> [CStmt]
 > funCode f vs st =
