@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 2916 2009-10-22 13:26:57Z wlux $
+% $Id: MachInterp.lhs 2917 2009-10-22 13:32:35Z wlux $
 %
 % Copyright (c) 1998-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1081,10 +1081,12 @@ update frame.
 
 > pbReturnCode :: Instruction
 > pbReturnCode =
->   read'updateState popCont >>= \_ ->
->   entry ["p","v"] $ seqStmts "_p" (enter "p")
->                   $ switchRigid "_p" [(successTag,const (enter "v"))]
->                   $ const (fail "Type error in pattern binding update")
+>   do
+>     read'updateState popCont
+>     read'updateState (popNodes 3) >>= updateState . pushNodes . take 2
+>     entry ["p","v"] $ seqStmts "_p" (enter "p")
+>                     $ switchRigid "_p" [(successTag,const (enter "v"))]
+>                     $ const (fail "Type error in pattern binding update")
 
 \end{verbatim}
 \subsubsection{Encapsulated Search}
