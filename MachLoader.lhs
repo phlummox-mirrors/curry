@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: MachLoader.lhs 2914 2009-10-20 17:00:47Z wlux $
+% $Id: MachLoader.lhs 2915 2009-10-22 12:56:17Z wlux $
 %
 % Copyright (c) 1998-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -216,7 +216,7 @@ names to node tags and function names to function triples.
 
 > bindConstr :: (ConstrDecl,Int) -> ConstrEnv -> ConstrEnv
 > bindConstr (ConstrDecl c tys,t) =
->   bindEnv c' (ConstructorTag t (snd $ splitQualified $ c') (length tys))
+>   bindEnv c' (ConstructorTag t c' (length tys))
 >   where c' = demangle c
 
 > lookupConstr :: Name -> ConstrEnv -> NodeTag
@@ -224,7 +224,7 @@ names to node tags and function names to function triples.
 >   case lookupEnv c' env of
 >     Just x -> x
 >     Nothing
->       | isTupleName c' -> (ConstructorTag 0 c' (length c' - 1))
+>       | isTupleName c' -> ConstructorTag 0 c' (length c' - 1)
 >       | otherwise -> error ("Undefined constructor: " ++ c')
 >   where c' = demangle c
 
