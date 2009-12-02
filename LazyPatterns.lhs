@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: LazyPatterns.lhs 2808 2009-04-29 13:00:19Z wlux $
+% $Id: LazyPatterns.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -100,6 +100,8 @@ itself.\footnote{If this transformation were performed before removing
 > unlazyTerm (VariablePattern ty v) = VariablePattern ty v
 > unlazyTerm (ConstructorPattern ty c ts) =
 >   ConstructorPattern ty c (map unlazyTerm ts)
+> unlazyTerm (FunctionPattern ty f ts) =
+>   FunctionPattern ty f (map unlazyTerm ts)
 > unlazyTerm (AsPattern v t) = AsPattern v (unlazyTerm t)
 > unlazyTerm (LazyPattern t) = lazyPattern (lazyTerm t)
 >   where lazyPattern t = if isIrrefutable t then t else LazyPattern t
@@ -114,6 +116,7 @@ itself.\footnote{If this transformation were performed before removing
 > isIrrefutable (LiteralPattern _ _) = False
 > isIrrefutable (VariablePattern _ _) = True
 > isIrrefutable (ConstructorPattern _ _ _) = False
+> isIrrefutable (FunctionPattern _ _ _) = False
 > isIrrefutable (AsPattern _ t) = isIrrefutable t
 > isIrrefutable (LazyPattern _) = True
 
@@ -139,6 +142,8 @@ form \texttt{\char`\~($v$@$t$)}.
 > liftLazy _ _ ds (VariablePattern ty v) = return (ds,VariablePattern ty v)
 > liftLazy m p ds (ConstructorPattern ty c ts) =
 >   liftM (apSnd (ConstructorPattern ty c)) (mapAccumM (liftLazy m p) ds ts)
+> liftLazy m p ds (FunctionPattern ty f ts) =
+>   liftM (apSnd (FunctionPattern ty f)) (mapAccumM (liftLazy m p) ds ts)
 > liftLazy m p ds (AsPattern v t) =
 >   case t of
 >     LazyPattern t' -> liftM (liftPattern p (typeOf t',v)) (liftLazy m p ds t')

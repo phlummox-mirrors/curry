@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: PrecCheck.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: PrecCheck.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
-% Copyright (c) 2001-2008, Wolfgang Lux
+% Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{PrecCheck.lhs}
@@ -125,6 +125,8 @@ because it is used for constructing the module's interface.
 > checkConstrTerm _ _ (VariablePattern a v) = return (VariablePattern a v)
 > checkConstrTerm p pEnv (ConstructorPattern a c ts) =
 >   liftE (ConstructorPattern a c) (mapE (checkConstrTerm p pEnv) ts)
+> checkConstrTerm p pEnv (FunctionPattern a f ts) =
+>   liftE (FunctionPattern a f) (mapE (checkConstrTerm p pEnv) ts)
 > checkConstrTerm p pEnv (InfixPattern a t1 op t2) =
 >   do
 >     (t1',t2') <-
@@ -352,20 +354,20 @@ literals. In that case, the operator's precedence must be lower than
 that of unary negation.
 \begin{verbatim}
 
-> fixPrecT :: Position -> PEnv -> a -> ConstrTerm a -> QualIdent -> ConstrTerm a
->          -> Error (ConstrTerm a)
+> fixPrecT :: Position -> PEnv -> a -> ConstrTerm a -> InfixOp ()
+>          -> ConstrTerm a -> Error (ConstrTerm a)
 > fixPrecT p pEnv a t1@(NegativePattern _ uop _) op t2
 >   | pr < 6 || pr == 6 && fix == InfixL = fixRPrecT p pEnv a t1 op t2
->   | otherwise = errorAt p $ invalidParse "unary" uop op
->   where OpPrec fix pr = prec op pEnv
+>   | otherwise = errorAt p $ invalidParse "unary" uop (opName op)
+>   where OpPrec fix pr = opPrec op pEnv
 > fixPrecT p pEnv a t1 op t2 = fixRPrecT p pEnv a t1 op t2
 
-> fixRPrecT :: Position -> PEnv -> a -> ConstrTerm a -> QualIdent
+> fixRPrecT :: Position -> PEnv -> a -> ConstrTerm a -> InfixOp ()
 >           -> ConstrTerm a -> Error (ConstrTerm a)
 > fixRPrecT p pEnv a t1 op t2@(NegativePattern _ uop _)
 >   | pr < 6 = return (InfixPattern a t1 op t2)
->   | otherwise = errorAt p $ invalidParse "unary" uop op
->   where OpPrec _ pr = prec op pEnv
+>   | otherwise = errorAt p $ invalidParse "unary" uop (opName op)
+>   where OpPrec _ pr = opPrec op pEnv
 > fixRPrecT p pEnv a1 t1 op1 (InfixPattern a2 t2 op2 t3)
 >   | pr1 < pr2 || pr1 == pr2 && fix1 == InfixR && fix2 == InfixR =
 >       return (InfixPattern a1 t1 op1 (InfixPattern a2 t2 op2 t3))
@@ -373,9 +375,10 @@ that of unary negation.
 >       do
 >         t' <- fixPrecT p pEnv a2 t1 op1 t2
 >         return (InfixPattern a1 t' op2 t3)
->   | otherwise = errorAt p $ ambiguousParse "operator" op1 op2
->   where OpPrec fix1 pr1 = prec op1 pEnv
->         OpPrec fix2 pr2 = prec op2 pEnv
+>   | otherwise =
+>       errorAt p $ ambiguousParse "operator" (opName op1) (opName op2)
+>   where OpPrec fix1 pr1 = opPrec op1 pEnv
+>         OpPrec fix2 pr2 = opPrec op2 pEnv
 > fixRPrecT _ _ a t1 op t2 = return (InfixPattern a t1 op t2)
 
 \end{verbatim}
@@ -392,9 +395,9 @@ left-hand side of the declaration is invalid.
 >   where OpPrec fix pr = prec (qualify op) pEnv
 > checkOpL p pEnv op1 (InfixPattern _ _ op2 _)
 >   | pr1 < pr2 || pr1 == pr2 && fix1 == InfixL && fix2 == InfixL = return ()
->   | otherwise = errorAt p $ invalidParse "operator" op1 op2
+>   | otherwise = errorAt p $ invalidParse "operator" op1 (opName op2)
 >   where OpPrec fix1 pr1 = prec (qualify op1) pEnv
->         OpPrec fix2 pr2 = prec op2 pEnv
+>         OpPrec fix2 pr2 = opPrec op2 pEnv
 > checkOpL _ _ _ _ = return ()
 
 > checkOpR :: Position -> PEnv -> Ident -> ConstrTerm a -> Error ()
@@ -404,9 +407,9 @@ left-hand side of the declaration is invalid.
 >   where OpPrec _ pr = prec (qualify op) pEnv
 > checkOpR p pEnv op1 (InfixPattern _ _ op2 _)
 >   | pr1 < pr2 || pr1 == pr2 && fix1 == InfixR && fix2 == InfixR = return ()
->   | otherwise = errorAt p $ invalidParse "operator" op1 op2
+>   | otherwise = errorAt p $ invalidParse "operator" op1 (opName op2)
 >   where OpPrec fix1 pr1 = prec (qualify op1) pEnv
->         OpPrec fix2 pr2 = prec op2 pEnv
+>         OpPrec fix2 pr2 = opPrec op2 pEnv
 > checkOpR _ _ _ _ = return ()
 
 \end{verbatim}

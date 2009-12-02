@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2808 2009-04-29 13:00:19Z wlux $
+% $Id: Desugar.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
 % Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -15,6 +15,7 @@ properties.
   \item literals,
   \item variables,
   \item constructor applications,
+  \item function applications (function patterns),
   \item record patterns,
   \item as-patterns, and
   \item lazy patterns.
@@ -176,8 +177,12 @@ of characters.
 > desugarTerm _ (VariablePattern ty v) = return (VariablePattern ty v)
 > desugarTerm m (ConstructorPattern ty c ts) =
 >   liftM (ConstructorPattern ty c) (mapM (desugarTerm m) ts)
+> desugarTerm m (FunctionPattern ty f ts) =
+>   liftM (FunctionPattern ty f) (mapM (desugarTerm m) ts)
 > desugarTerm m (InfixPattern ty t1 op t2) =
->   desugarTerm m (ConstructorPattern ty op [t1,t2])
+>   desugarTerm m (desugarOp ty op [t1,t2])
+>   where desugarOp ty (InfixConstr _ op) = ConstructorPattern ty op
+>         desugarOp ty (InfixOp _ op) = FunctionPattern ty op
 > desugarTerm m (ParenPattern t) = desugarTerm m t
 > desugarTerm m (RecordPattern ty c fs) =
 >   liftM (RecordPattern ty c) (mapM (desugarField (desugarTerm m)) fs)

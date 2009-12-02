@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2764 2009-03-23 11:14:15Z wlux $
+% $Id: TypeCheck.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -679,12 +679,22 @@ constructor itself.
 >     return (ty,VariablePattern ty v)
 > tcConstrTerm tcEnv p t@(ConstructorPattern _ c ts) =
 >   do
->     (ty,ts') <- tcConstrApp tcEnv p (ppConstrTerm 0 t) c ts
->     return (ty,ConstructorPattern ty c ts')
+>     ty <- fetchSt >>= skol . snd . conType c
+>     tcConstrApp tcEnv p (ppConstrTerm 0 t) c ty ts
+> tcConstrTerm tcEnv p t@(FunctionPattern _ f ts) =
+>   do
+>     ty <- fetchSt >>= inst . funType f
+>     tcFunctPattern tcEnv p (ppConstrTerm 0 t) f id ty ts
 > tcConstrTerm tcEnv p t@(InfixPattern _ t1 op t2) =
 >   do
->     (ty,[t1',t2']) <- tcConstrApp tcEnv p (ppConstrTerm 0 t) op [t1,t2]
->     return (ty,InfixPattern ty t1' op t2')
+>     ty <- tcPatternOp p op
+>     (alpha,beta,gamma) <-
+>       tcBinary p "infix pattern" (doc $-$ text "Operator:" <+> ppOp op)
+>                tcEnv ty
+>     t1' <- tcConstrArg tcEnv p doc t1 alpha
+>     t2' <- tcConstrArg tcEnv p doc t2 beta
+>     return (gamma,InfixPattern gamma t1' op t2')
+>   where doc = ppConstrTerm 0 t
 > tcConstrTerm tcEnv p (ParenPattern t) =
 >   do
 >     (ty,t') <- tcConstrTerm tcEnv p t
@@ -720,21 +730,41 @@ constructor itself.
 >     (ty,t') <- tcConstrTerm tcEnv p t
 >     return (ty,LazyPattern t')
 
-> tcConstrApp :: TCEnv -> Position -> Doc -> QualIdent -> [ConstrTerm a]
->             -> TcState (Type,[ConstrTerm Type])
-> tcConstrApp tcEnv p doc c ts =
+> tcConstrApp :: TCEnv -> Position -> Doc -> QualIdent -> Type -> [ConstrTerm a]
+>             -> TcState (Type,ConstrTerm Type)
+> tcConstrApp tcEnv p doc c ty ts =
 >   do
->     (tys,ty) <- liftM arrowUnapply (fetchSt >>= skol . snd . conType c)
 >     unless (length tys == n) (errorAt p (wrongArity c (length tys) n))
 >     ts' <- zipWithM (tcConstrArg tcEnv p doc) ts tys
->     return (ty,ts')
->   where n = length ts
+>     return (ty',ConstructorPattern ty' c ts')
+>   where (tys,ty') = arrowUnapply ty
+>         n = length ts
+
+> tcFunctPattern :: TCEnv -> Position -> Doc -> QualIdent
+>                -> ([ConstrTerm Type] -> [ConstrTerm Type]) -> Type
+>                -> [ConstrTerm a] -> TcState (Type,ConstrTerm Type)
+> tcFunctPattern _ _ _ f ts ty [] = return (ty,FunctionPattern ty f (ts []))
+> tcFunctPattern tcEnv p doc f ts ty (t':ts') =
+>   do
+>     (alpha,beta) <-
+>       tcArrow p "pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t) tcEnv ty
+>     t'' <- tcConstrArg tcEnv p doc t' alpha
+>     tcFunctPattern tcEnv p doc f (ts . (t'':)) beta ts'
+>   where t = FunctionPattern ty f (ts [])
 
 > tcConstrArg :: TCEnv -> Position -> Doc -> ConstrTerm a -> Type
 >             -> TcState (ConstrTerm Type)
 > tcConstrArg tcEnv p doc t ty =
 >   tcConstrTerm tcEnv p t >>-
 >   unify p "pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t) tcEnv ty
+
+> tcPatternOp :: Position -> InfixOp a -> TcState Type
+> tcPatternOp p (InfixConstr _ op) =
+>   do
+>     ty <- fetchSt >>= skol . snd . conType op
+>     unless (arrowArity ty == 2) (errorAt p (wrongArity op (arrowArity ty) 2))
+>     return ty
+> tcPatternOp _ (InfixOp _ op) = fetchSt >>= inst . funType op
 
 > tcRhs :: ModuleIdent -> TCEnv -> Rhs a -> TcState (Type,Rhs Type)
 > tcRhs m tcEnv (SimpleRhs p e ds) =

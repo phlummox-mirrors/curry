@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PatternBind.lhs 2796 2009-04-24 20:39:49Z wlux $
+% $Id: PatternBind.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
 % Copyright (c) 2003-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -181,6 +181,7 @@ constraint $v_0$.
 > updateDecl m p v0 vs e = uncurry (varDecl p) v0 (fixBody vs e)
 >   where fixBody vs (Tuple es) = foldr1 (cond p) (zipWith (update m) vs es)
 >         fixBody vs (Let ds e) = Let ds (fixBody vs e)
+>         fixBody vs (Case e [Alt p t rhs]) = Case e [Alt p t (fixRhs vs rhs)]
 >         fixBody vs (Fcase e [Alt p t rhs]) = Fcase e [Alt p t (fixRhs vs rhs)]
 >         fixRhs vs (SimpleRhs p e _) = SimpleRhs p (fixBody vs e) []
 

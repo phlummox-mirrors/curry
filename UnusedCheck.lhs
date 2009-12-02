@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 2764 2009-03-23 11:14:15Z wlux $
+% $Id: UnusedCheck.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
 % Copyright (c) 2005-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -118,7 +118,9 @@ by a traversal of the syntax tree.
 >   used _ (NegativePattern _ _ _) = id
 >   used _ (VariablePattern _ _) = id
 >   used m (ConstructorPattern _ c ts) = used m c . used m ts
->   used m (InfixPattern _ t1 op t2) = used m t1 . used m op . used m t2
+>   used m (FunctionPattern _ f ts) = used m f . used m ts
+>   used m (InfixPattern _ t1 op t2) =
+>     used m t1 . used m (opName op) . used m t2
 >   used m (ParenPattern t) = used m t
 >   used m (RecordPattern _ c fs) = used m c . used m fs
 >   used m (TuplePattern ts) = used m ts

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Qual.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: Qual.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
-% Copyright (c) 2001-2008, Wolfgang Lux
+% Copyright (c) 2001-2009, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Qual.lhs}
@@ -55,6 +55,8 @@ declaration groups as well as function arguments remain unchanged.
 >   qual _ (VariablePattern a v) = VariablePattern a v
 >   qual tyEnv (ConstructorPattern a c ts) =
 >     ConstructorPattern a (qual tyEnv c) (qual tyEnv ts)
+>   qual tyEnv (FunctionPattern a f ts) =
+>     FunctionPattern a (qual tyEnv f) (qual tyEnv ts)
 >   qual tyEnv (InfixPattern a t1 op t2) =
 >     InfixPattern a (qual tyEnv t1) (qual tyEnv op) (qual tyEnv t2)
 >   qual tyEnv (ParenPattern t) = ParenPattern (qual tyEnv t)
@@ -66,7 +68,7 @@ declaration groups as well as function arguments remain unchanged.
 >   qual tyEnv (LazyPattern t) = LazyPattern (qual tyEnv t)
 
 > instance Qual (Rhs a) where
->   qual tyEnv (SimpleRhs p e ds) = SimpleRhs p (qual tyEnv e) (qual tyEnv ds) 
+>   qual tyEnv (SimpleRhs p e ds) = SimpleRhs p (qual tyEnv e) (qual tyEnv ds)
 >   qual tyEnv (GuardedRhs es ds) = GuardedRhs (qual tyEnv es) (qual tyEnv ds)
 
 > instance Qual (CondExpr a) where

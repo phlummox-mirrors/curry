@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2764 2009-03-23 11:14:15Z wlux $
+% $Id: CurryPP.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -238,10 +238,12 @@ Patterns
 > ppConstrTerm p (ConstructorPattern _ c ts) =
 >   parenExp (p > 1 && not (null ts))
 >            (ppQIdent c <+> fsep (map (ppConstrTerm 2) ts))
-> ppConstrTerm p (InfixPattern _ t1 c t2) =
+> ppConstrTerm p (FunctionPattern _ f ts) =
+>   parenExp (p > 1 && not (null ts))
+>            (ppQIdent f <+> fsep (map (ppConstrTerm 2) ts))
+> ppConstrTerm p (InfixPattern _ t1 op t2) =
 >   parenExp (p > 0)
->            (sep [ppConstrTerm 1 t1 <+> ppQInfixOp c,
->                  indent (ppConstrTerm 0 t2)])
+>            (sep [ppConstrTerm 1 t1 <+> ppOp op,indent (ppConstrTerm 0 t2)])
 > ppConstrTerm _ (ParenPattern t) = parens (ppConstrTerm 0 t)
 > ppConstrTerm _ (RecordPattern _ c fs) =
 >   ppRecord (ppConstrTerm 0) (ppQIdent c) fs

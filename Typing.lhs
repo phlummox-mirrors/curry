@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 2787 2009-04-14 18:05:01Z wlux $
+% $Id: Typing.lhs 2919 2009-12-02 14:18:15Z wlux $
 %
 % Copyright (c) 2003-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -41,6 +41,7 @@ perform any (non-trivial) unifications.
 >   typeOf (NegativePattern a _ _) = typeOf a
 >   typeOf (VariablePattern a _) = typeOf a
 >   typeOf (ConstructorPattern a _ _) = typeOf a
+>   typeOf (FunctionPattern a _ _) = typeOf a
 >   typeOf (InfixPattern a _ _ _) = typeOf a
 >   typeOf (ParenPattern t) = typeOf t
 >   typeOf (RecordPattern a _ _) = typeOf a
