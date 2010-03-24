@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: UnusedCheck.lhs 2930 2010-03-24 09:11:27Z wlux $
 %
-% Copyright (c) 2005-2009, Wolfgang Lux
+% Copyright (c) 2005-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{UnusedCheck.lhs}
@@ -166,7 +166,7 @@ by a traversal of the syntax tree.
 > instance SyntaxTree (Statement a) where
 >   used m (StmtExpr e) = used m e
 >   used m (StmtBind p t e) = used m e . checkUnused p t . used m t
->   used m (StmtDecl ds) = used m ds
+>   used m (StmtDecl ds) = checkUnused noPosition ds . used m ds
 
 > instance SyntaxTree (Alt a) where
 >   used m (Alt p t rhs) = nest (checkUnused p t . used m t . used m rhs)
