@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Trust.lhs 2683 2008-04-23 16:43:26Z wlux $
+% $Id: Trust.lhs 2948 2010-06-11 14:33:48Z wlux $
 %
-% Copyright (c) 2006-2008, Wolfgang Lux
+% Copyright (c) 2006-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Trust.lhs}
@@ -58,7 +58,13 @@ the local functions \texttt{h} and \texttt{i} are trusted, but
 >     case lookupEnv f env of
 >       Just tr' -> trust tr' eqs env
 >       Nothing -> trust tr eqs (bindEnv f tr env)
->   trust tr (PatternDecl _ _ rhs) env = trust tr rhs env
+>   trust tr (PatternDecl _ t rhs) env =
+>     case t of
+>       VariablePattern _ v ->
+>         case lookupEnv v env of
+>           Just tr' -> trust tr' rhs env
+>           Nothing -> trust tr rhs (bindEnv v tr env)
+>       _ -> trust tr rhs env
 >   trust _ _ env = env
 
 >   trustList tr ds env = foldr (trust tr') env' ds
