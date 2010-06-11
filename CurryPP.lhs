@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: CurryPP.lhs 2946 2010-06-11 10:47:58Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -163,7 +163,7 @@ Interfaces
 >           where ms = moduleQualifiers m
 >         isIdent "" = False
 >         isIdent (c:cs) = isAlpha c && all isAlphaNum_ cs
->         isAlphaNum_ c = isAlphaNum c || c == '_'
+>         isAlphaNum_ c = isAlphaNum c || c `elem` "'_"
 
 > ppIImportDecl :: IImportDecl -> Doc
 > ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
