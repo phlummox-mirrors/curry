@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 2893 2009-08-10 15:28:04Z wlux $
+% $Id: TypeSyntaxCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -91,8 +91,8 @@ signatures.
 >   liftE (FunctionDecl p f) (mapE (checkEquation env) eqs)
 > checkDecl env (PatternDecl p t rhs) =
 >   liftE (PatternDecl p t) (checkRhs env rhs)
-> checkDecl env (ForeignDecl p cc s ie f ty) =
->   liftE (ForeignDecl p cc s ie f) (checkType env p [] ty)
+> checkDecl env (ForeignDecl p fi f ty) =
+>   liftE (ForeignDecl p fi f) (checkType env p [] ty)
 > checkDecl _ (FreeDecl p vs) = return (FreeDecl p vs)
 > checkDecl _ (TrustAnnot p tr fs) = return (TrustAnnot p tr fs)
 

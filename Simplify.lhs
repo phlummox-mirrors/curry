@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2936 2010-04-30 09:33:39Z wlux $
+% $Id: Simplify.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 2003-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -66,8 +66,7 @@ Currently, the following optimizations are implemented:
 >              -> SimplifyState [Decl Type]
 > simplifyDecl m env (FunctionDecl p f eqs) =
 >   liftM (return . FunctionDecl p f) (mapM (simplifyEquation m env) eqs)
-> simplifyDecl _ _ (ForeignDecl p cc s ie f ty) =
->   return [ForeignDecl p cc s ie f ty]
+> simplifyDecl _ _ (ForeignDecl p fi f ty) = return [ForeignDecl p fi f ty]
 > simplifyDecl m env (PatternDecl p t rhs) =
 >   do
 >     rhs' <- simplifyRhs m env rhs >>= etaExpand m
@@ -222,7 +221,7 @@ body is a non-expansive expression.
 
 > isNonExpansiveDecl :: ValueEnv -> Decl a -> Bool
 > isNonExpansiveDecl _ (FunctionDecl _ _ _) = True
-> isNonExpansiveDecl _ (ForeignDecl _ _ _ _ _ _) = True
+> isNonExpansiveDecl _ (ForeignDecl _ _ _ _) = True
 > isNonExpansiveDecl tyEnv (PatternDecl _ _ (SimpleRhs _ e _)) =
 >   isNonExpansive tyEnv 0 e
 > isNonExpansiveDecl _ (FreeDecl _ _) = False

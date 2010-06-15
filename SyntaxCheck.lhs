@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: SyntaxCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -188,8 +188,7 @@ the bound identifiers of the current declaration group.
 >         Just (f',lhs') -> return (funDecl f' lhs')
 >         Nothing -> errorAt p noToplevelPattern
 >   where funDecl f lhs = FunctionDecl p f [Equation p' lhs rhs]
-> disambBlockDecl _ (ForeignDecl p cc s ie f ty) =
->   return (ForeignDecl p cc s ie f ty)
+> disambBlockDecl _ (ForeignDecl p fi f ty) = return (ForeignDecl p fi f ty)
 > --disambBlockDecl _ (PatternDecl p _ _) = errorAt p noToplevelPattern
 > --disambBlockDecl _ (FreeDecl p _) = errorAt p noToplevelFree
 > disambBlockDecl _ (TrustAnnot p t fs) = return (TrustAnnot p t fs)
@@ -275,7 +274,7 @@ declarations. The final environment can be discarded.
 >   case disambLhs env lhs of
 >     Left (f',lhs') -> FunctionDecl p f' [Equation p' lhs' rhs]
 >     Right t' -> PatternDecl p' (disambTerm env t') rhs
-> disambDecl _ (ForeignDecl p cc s ie f ty) = ForeignDecl p cc s ie f ty
+> disambDecl _ (ForeignDecl p fi f ty) = ForeignDecl p fi f ty
 > disambDecl env (PatternDecl p t rhs) = PatternDecl p (disambTerm env t) rhs
 > disambDecl _ (FreeDecl p vs) = FreeDecl p vs
 > disambDecl _ (TrustAnnot p t fs) = TrustAnnot p t fs
@@ -369,10 +368,10 @@ declarations. The final environment can be discarded.
 >   where sameArity = null . tail . nub . map eqnArity
 > checkDecl env (PatternDecl p t rhs) =
 >   liftE2 (PatternDecl p) (checkConstrTerm p env t) (checkRhs env rhs)
-> checkDecl _ (ForeignDecl p cc s ie f ty) =
+> checkDecl _ (ForeignDecl p fi f ty) =
 >   do
->     ie' <- checkForeign p f cc ie
->     return (ForeignDecl p cc s ie' f ty)
+>     fi' <- checkForeign p f fi
+>     return (ForeignDecl p fi' f ty)
 > checkDecl _ d = return d
 
 > joinEquations :: [Decl a] -> [Decl a]
@@ -398,17 +397,16 @@ recognized because callbacks into Curry are not yet supported by the
 runtime system.
 \begin{verbatim}
 
-> checkForeign :: Position -> Ident -> CallConv -> Maybe String
->              -> Error (Maybe String)
-> checkForeign p f cc ie
->   | cc == CallConvPrimitive = return ie
+> checkForeign :: Position -> Ident -> ForeignImport -> Error ForeignImport
+> checkForeign p f (cc,s,ie)
+>   | cc == CallConvPrimitive = return (cc,s,ie)
 >   | otherwise =
->       maybe (checkFunName f >> return Nothing)
->             (impEnt . words . join . break ('&' ==))
+>       maybe (checkFunName f >> return (cc,s,Nothing))
+>             (impEnt cc s . words . join . break ('&' ==))
 >             ie
 >   where join (cs,[]) = cs
 >         join (cs,c':cs') = cs ++ [' ',c',' '] ++ cs'
->         impEnt ie = kind ie >> return (Just (unwords ie))
+>         impEnt cc s ie = kind ie >> return (cc,s,Just (unwords ie))
 >         kind [] = ident []
 >         kind (x:xs)
 >           | x == "static" = header xs
@@ -750,7 +748,7 @@ Auxiliary definitions.
 > vars (InfixDecl p _ _ ops) = map (P p) ops
 > vars (TypeSig p fs _) = map (P p) fs
 > vars (FunctionDecl p f _) = [P p f]
-> vars (ForeignDecl p _ _ _ f _) = [P p f]
+> vars (ForeignDecl p _ f _) = [P p f]
 > vars (PatternDecl p t _) = map (P p) (bv t)
 > vars (FreeDecl p vs) = map (P p) vs
 > vars (TrustAnnot p _ fs) = map (P p) fs

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Curry.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: Curry.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -77,13 +77,14 @@ associating types with patterns and expressions after type inference.
 >     InfixDecl Position Infix (Maybe Integer) [Ident]
 >   | TypeSig Position [Ident] TypeExpr
 >   | FunctionDecl Position Ident [Equation a]
->   | ForeignDecl Position CallConv (Maybe Safety) (Maybe String) Ident TypeExpr
+>   | ForeignDecl Position ForeignImport Ident TypeExpr
 >   | PatternDecl Position (ConstrTerm a) (Rhs a)
 >   | FreeDecl Position [Ident]
 >   | TrustAnnot Position Trust [Ident]
 >   deriving (Eq,Show)
 
 > data Infix = Infix | InfixL | InfixR deriving (Eq,Show)
+> type ForeignImport = (CallConv,Maybe Safety,Maybe String)
 > data CallConv =
 >   CallConvPrimitive | CallConvCCall | CallConvRawCall
 >   deriving (Eq,Show)
@@ -265,7 +266,7 @@ The abstract syntax tree is a functor with respect to its attributes.
 >   fmap _ (InfixDecl p fix pr ops) = InfixDecl p fix pr ops
 >   fmap _ (TypeSig p fs ty) = TypeSig p fs ty
 >   fmap f (FunctionDecl p f' eqs) = FunctionDecl p f' (map (fmap f) eqs)
->   fmap _ (ForeignDecl p cc s ie f ty) = ForeignDecl p cc s ie f ty
+>   fmap _ (ForeignDecl p fi f ty) = ForeignDecl p fi f ty
 >   fmap f (PatternDecl p t rhs) = PatternDecl p (fmap f t) (fmap f rhs)
 >   fmap _ (FreeDecl p vs) = FreeDecl p vs
 >   fmap _ (TrustAnnot p tr fs) = TrustAnnot p tr fs

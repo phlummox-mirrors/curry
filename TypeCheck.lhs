@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2932 2010-04-14 15:38:13Z wlux $
+% $Id: TypeCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -338,10 +338,10 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 
 > tcDeclGroup :: ModuleIdent -> TCEnv -> SigEnv -> [Decl a]
 >             -> TcState [Decl Type]
-> tcDeclGroup m tcEnv _ [ForeignDecl p cc s ie f ty] =
+> tcDeclGroup m tcEnv _ [ForeignDecl p fi f ty] =
 >   do
->     tcForeignFunct m tcEnv p cc ie f ty
->     return [ForeignDecl p cc s ie f ty]
+>     tcForeignFunct m tcEnv p fi f ty
+>     return [ForeignDecl p fi f ty]
 > tcDeclGroup m tcEnv sigs [FreeDecl p vs] =
 >   do
 >     bindDeclVars m tcEnv sigs p vs
@@ -508,7 +508,7 @@ inferred type matches the type signature exactly.
 >   isNonExpansive _ _ (InfixDecl _ _ _ _) = True
 >   isNonExpansive _ _ (TypeSig _ _ _) = True
 >   isNonExpansive _ _ (FunctionDecl _ _ _) = True
->   isNonExpansive _ _ (ForeignDecl _ _ _ _ _ _) = True
+>   isNonExpansive _ _ (ForeignDecl _ _ _ _) = True
 >   isNonExpansive tcEnv tyEnv (PatternDecl _ t rhs) =
 >     isVariablePattern t && isNonExpansive tcEnv tyEnv rhs
 >   isNonExpansive _ _ (FreeDecl _ _) = False
@@ -565,7 +565,7 @@ inferred type matches the type signature exactly.
 > bindDeclArity _ (TypeSig _ _ _) tyEnv = tyEnv
 > bindDeclArity _ (FunctionDecl _ f eqs) tyEnv =
 >   bindArity f (eqnArity (head eqs)) tyEnv
-> bindDeclArity tcEnv (ForeignDecl _ _ _ _ f ty) tyEnv =
+> bindDeclArity tcEnv (ForeignDecl _ _ f ty) tyEnv =
 >   bindArity f (foreignArity (expandPolyType tcEnv ty)) tyEnv
 > bindDeclArity _ (PatternDecl _ t _) tyEnv = foldr bindVarArity tyEnv (bv t)
 > bindDeclArity _ (FreeDecl _ vs) tyEnv = foldr bindVarArity tyEnv vs
@@ -603,9 +603,9 @@ special case reflects the fact that the type $\texttt{IO}\;t$ is
 equivalent to $\emph{World}\rightarrow(t,\emph{World})$.
 \begin{verbatim}
 
-> tcForeignFunct :: ModuleIdent -> TCEnv -> Position -> CallConv
->                -> Maybe String -> Ident -> TypeExpr -> TcState ()
-> tcForeignFunct m tcEnv p cc ie f ty =
+> tcForeignFunct :: ModuleIdent -> TCEnv -> Position -> ForeignImport -> Ident
+>                -> TypeExpr -> TcState ()
+> tcForeignFunct m tcEnv p (cc,_,ie) f ty =
 >   do
 >     checkForeignType cc (rawType ty')
 >     updateSt_ (bindFun m f (foreignArity ty') ty')

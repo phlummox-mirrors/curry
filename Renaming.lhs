@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: Renaming.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -181,8 +181,8 @@ syntax tree and renames all type and expression variables.
 >   do
 >     f' <- renameVar env f
 >     liftM (FunctionDecl p f') (mapM (renameEqn f' env) eqs)
-> renameDecl env (ForeignDecl p cc s ie f ty) =
->   liftM2 (ForeignDecl p cc s ie) (renameVar env f) (renameTypeSig ty)
+> renameDecl env (ForeignDecl p fi f ty) =
+>   liftM2 (ForeignDecl p fi) (renameVar env f) (renameTypeSig ty)
 > renameDecl env (PatternDecl p t rhs) =
 >   liftM2 (PatternDecl p) (renameConstrTerm env env t) (renameRhs env rhs)
 > renameDecl env (FreeDecl p vs) =

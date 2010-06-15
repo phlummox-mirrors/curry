@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 2930 2010-03-24 09:11:27Z wlux $
+% $Id: UnusedCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 2005-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -228,7 +228,7 @@ unused variables of pattern $t$.
 
 > instance Binder (Decl a) where
 >   unused used _ (FunctionDecl p f _) = unusedVars Decl used p [f]
->   unused used _ (ForeignDecl p _ _ _ f _) = unusedVars Decl used p [f]
+>   unused used _ (ForeignDecl p _ f _) = unusedVars Decl used p [f]
 >   unused used _ (PatternDecl p (VariablePattern _ v) _)
 >     | v == anonId = ([Pattern p] ++)
 >     | otherwise = unusedVars Decl used p [v]

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PatternBind.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: PatternBind.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 2003-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -90,7 +90,7 @@ were introduced in the code by the transformation.
 
 > instance SyntaxTree Decl where
 >   pbt m (FunctionDecl p f eqs) = liftM (FunctionDecl p f) (mapM (pbt m) eqs)
->   pbt _ (ForeignDecl p cc s ie f ty) = return (ForeignDecl p cc s ie f ty)
+>   pbt _ (ForeignDecl p fi f ty) = return (ForeignDecl p fi f ty)
 >   pbt m (PatternDecl p t rhs) = liftM (PatternDecl p t) (pbt m rhs)
 >   pbt _ (FreeDecl p vs) = return (FreeDecl p vs)
 
@@ -229,7 +229,7 @@ Auxiliary functions.
 
 > foreignDecl :: Position -> String -> QualIdent -> Type -> Decl a
 > foreignDecl p ie f ty =
->   ForeignDecl p CallConvPrimitive (Just Safe) (Just ie) (unqualify f)
+>   ForeignDecl p (CallConvPrimitive,Just Safe,Just ie) (unqualify f)
 >               (fromType nameSupply ty)
 
 > bindForeign :: QualIdent -> Type -> ValueEnv -> ValueEnv

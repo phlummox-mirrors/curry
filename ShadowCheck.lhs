@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2897 2009-08-21 12:18:59Z wlux $
+% $Id: ShadowCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 2005-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -189,7 +189,7 @@ positions.
 > vars (TypeSig _ _ _) = []
 > vars (FunctionDecl p f _) = [P p f]
 > vars (PatternDecl p t _) = map (P p) (bv t)
-> vars (ForeignDecl p _ _ _ f _) = [P p f]
+> vars (ForeignDecl p _ f _) = [P p f]
 > vars (FreeDecl p vs) = map (P p) vs
 > vars (TrustAnnot _ _ _) = []
 

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: Base.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -67,7 +67,7 @@ variable, but always refers to a global function from the prelude.
 
 > instance QuantExpr (Decl a) where
 >   bv (FunctionDecl _ f _) = [f]
->   bv (ForeignDecl _ _ _ _ f _) = [f]
+>   bv (ForeignDecl _ _ f _) = [f]
 >   bv (PatternDecl _ t _) = bv t
 >   bv (FreeDecl _ vs) = vs
 >   bv _ = []

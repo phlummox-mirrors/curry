@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Newtype.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: Newtype.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -125,7 +125,7 @@ removes newtype constructors in patterns and expressions.
 > instance SyntaxTree (Decl a) where
 >   transNewt tyEnv (FunctionDecl p f eqs) =
 >     FunctionDecl p f (transNewt tyEnv eqs)
->   transNewt _ (ForeignDecl p cc s ie f ty) = ForeignDecl p cc s ie f ty
+>   transNewt _ (ForeignDecl p fi f ty) = ForeignDecl p fi f ty
 >   transNewt tyEnv (PatternDecl p t rhs) =
 >     PatternDecl p (transNewt tyEnv t) (transNewt tyEnv rhs)
 >   transNewt _ (FreeDecl p vs) = FreeDecl p vs

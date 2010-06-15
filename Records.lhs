@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Records.lhs 2935 2010-04-30 08:35:54Z wlux $
+% $Id: Records.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -111,8 +111,7 @@ and expressions.
 > unlabelDecl :: ModuleIdent -> Decl Type -> UnlabelState (Decl Type)
 > unlabelDecl m (FunctionDecl p f eqs) =
 >   liftM (FunctionDecl p f) (mapM (unlabelEquation m) eqs)
-> unlabelDecl _ (ForeignDecl p cc s ie f ty) =
->   return (ForeignDecl p cc s ie f ty)
+> unlabelDecl _ (ForeignDecl p fi f ty) = return (ForeignDecl p fi f ty)
 > unlabelDecl m (PatternDecl p t rhs) =
 >   liftM2 (PatternDecl p) (unlabelTerm m t) (unlabelRhs m rhs)
 > unlabelDecl _ (FreeDecl p vs) = return (FreeDecl p vs)

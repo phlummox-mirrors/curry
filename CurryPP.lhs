@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2946 2010-06-11 10:47:58Z wlux $
+% $Id: CurryPP.lhs 2961 2010-06-15 15:37:14Z wlux $
 %
 % Copyright (c) 1999-2009, Wolfgang Lux
 % See LICENSE for the full license.
@@ -103,11 +103,12 @@ Declarations
 > ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
 > ppDecl (TypeSig _ fs ty) = ppIdentList fs <+> text "::" <+> ppTypeExpr 0 ty
 > ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
-> ppDecl (ForeignDecl p cc s ie f ty) =
->   sep [hsep [text "foreign import",ppCallConv cc,maybePP ppSafety s,
->              maybePP (text . show) ie],
+> ppDecl (ForeignDecl p fi f ty) =
+>   sep [text "foreign import" <+> ppForeignImport fi,
 >        indent (ppDecl (TypeSig p [f] ty))]
->   where ppCallConv CallConvPrimitive = text "primitive"
+>   where ppForeignImport (cc,s,ie) =
+>           ppCallConv cc <+> maybePP ppSafety s <+> maybePP (text . show) ie
+>         ppCallConv CallConvPrimitive = text "primitive"
 >         ppCallConv CallConvCCall = text "ccall"
 >         ppCallConv CallConvRawCall = text "rawcall"
 >         ppSafety Unsafe = text "unsafe"
