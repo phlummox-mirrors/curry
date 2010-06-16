@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: ILTrans.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILTrans.lhs}
@@ -42,20 +42,21 @@ according to their textual order in order to ensure that split
 annotations are inserted in IL code at the correct places.
 \begin{verbatim}
 
-> ilTrans :: TCEnv -> ValueEnv -> Module a -> IL.Module
+> ilTrans :: TCEnv -> ValueEnv -> Module Type -> IL.Module
 > ilTrans tcEnv tyEnv (Module m _ _ ds) = IL.Module m (imports m ds') ds'
 >   where ds' = concatMap (translTopDecl m tcEnv tyEnv) (sortDecls ds)
 
-> translTopDecl :: ModuleIdent -> TCEnv -> ValueEnv -> TopDecl a -> [IL.Decl]
+> translTopDecl :: ModuleIdent -> TCEnv -> ValueEnv -> TopDecl Type -> [IL.Decl]
 > translTopDecl m _ tyEnv (DataDecl _ tc tvs cs) =
 >   [translData m tyEnv tc tvs cs]
 > translTopDecl m tcEnv _ (TypeDecl _ tc _ _) = [translAlias m tcEnv tc]
 > translTopDecl m _ tyEnv (BlockDecl d) = translDecl m tyEnv d
 > translTopDecl _ _ _ (SplitAnnot _) = [IL.SplitAnnot]
 
-> translDecl :: ModuleIdent -> ValueEnv -> Decl a -> [IL.Decl]
-> translDecl m tyEnv (FunctionDecl _ _ eqs) = map (translFunction m tyEnv) eqs
-> translDecl m tyEnv (ForeignDecl _ fi f _) = [translForeign m tyEnv f fi]
+> translDecl :: ModuleIdent -> ValueEnv -> Decl Type -> [IL.Decl]
+> translDecl m tyEnv (FunctionDecl _ ty _ eqs) =
+>   map (translFunction m tyEnv ty) eqs
+> translDecl m _ (ForeignDecl _ fi ty f _) = [translForeign m f fi ty]
 > translDecl _ _ _ = []
 
 > translData :: ModuleIdent -> ValueEnv -> Ident -> [Ident] -> [ConstrDecl]
@@ -73,10 +74,9 @@ annotations are inserted in IL code at the correct places.
 >   where c = qualifyWith m (constr d)
 >         ty = rawType (snd (conType c tyEnv))
 
-> translForeign :: ModuleIdent -> ValueEnv -> Ident -> ForeignImport -> IL.Decl
-> translForeign m tyEnv f (cc,_,ie) =
->   IL.ForeignDecl (qualifyWith m f) (callConv cc) (fromJust ie)
->                  (translType (rawType (varType f tyEnv)))
+> translForeign :: ModuleIdent -> Ident -> ForeignImport -> Type -> IL.Decl
+> translForeign m f (cc,_,ie) ty =
+>   IL.ForeignDecl (qualifyWith m f) (callConv cc) (fromJust ie) (translType ty)
 >   where callConv CallConvPrimitive = IL.Primitive
 >         callConv CallConvCCall = IL.CCall
 >         callConv CallConvRawCall = IL.RawCall
@@ -106,12 +106,11 @@ intermediate language. Recall that every function has only a single
 equation and all arguments are variables at this point.
 \begin{verbatim}
 
-> translFunction :: ModuleIdent -> ValueEnv -> Equation a -> IL.Decl
-> translFunction m tyEnv (Equation _ (FunLhs f ts) rhs) =
+> translFunction :: ModuleIdent -> ValueEnv -> Type -> Equation a -> IL.Decl
+> translFunction m tyEnv ty (Equation _ (FunLhs f ts) rhs) =
 >   IL.FunctionDecl (qualifyWith m f) vs (translType ty)
 >                   (translRhs tyEnv vs rhs)
 >   where vs = [v | VariablePattern _ v <- ts]
->         ty = rawType (varType f tyEnv)
 
 > translRhs :: ValueEnv -> [Ident] -> Rhs a -> IL.Expression
 > translRhs tyEnv vs (SimpleRhs p e _) =
@@ -171,7 +170,7 @@ further possibilities to apply this transformation.
 >   IL.Apply (translExpr tyEnv vs e1) (translExpr tyEnv vs e2)
 > translExpr tyEnv vs (Let ds e) =
 >   case ds of
->     [FreeDecl _ vs'] -> IL.Exist vs' e'
+>     [FreeDecl _ vs'] -> IL.Exist (bv vs') e'
 >     [d] -> IL.Let (rec d) [translBinding vs' d] e'
 >     _ -> IL.Let IL.Rec (map (translBinding vs') ds) e'
 >   where e' = translExpr tyEnv vs' e
@@ -186,7 +185,7 @@ further possibilities to apply this transformation.
 >   where (vss',as') = unzip (map (translAlt tyEnv vs) as)
 > translExpr tyEnv vs (Fcase e as) =
 >   case e of
->     Let [FreeDecl _ [v]] (Variable _ v')
+>     Let [FreeDecl _ [FreeVar _ v]] (Variable _ v')
 >       | qualify v == v' && all isChoice as ->
 >           IL.Choice [translRhs tyEnv vs rhs | Alt _ _ rhs <- as]
 >     _ -> caseExpr IL.Flex (translExpr tyEnv vs e) (nub (concat vss')) as'

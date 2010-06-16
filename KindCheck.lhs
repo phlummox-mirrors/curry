@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: KindCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{KindCheck.lhs}
@@ -124,8 +124,8 @@ Kind checking is applied to all type expressions in the program.
 > checkDecl :: TCEnv -> Decl a -> Error ()
 > checkDecl _ (InfixDecl _ _ _ _) = return ()
 > checkDecl tcEnv (TypeSig p _ ty) = checkType tcEnv p ty
-> checkDecl tcEnv (FunctionDecl _ _ eqs) = mapE_ (checkEquation tcEnv) eqs
-> checkDecl tcEnv (ForeignDecl p _ _ ty) = checkType tcEnv p ty
+> checkDecl tcEnv (FunctionDecl _ _ _ eqs) = mapE_ (checkEquation tcEnv) eqs
+> checkDecl tcEnv (ForeignDecl p _ _ _ ty) = checkType tcEnv p ty
 > checkDecl tcEnv (PatternDecl _ _ rhs) = checkRhs tcEnv rhs
 > checkDecl _ (FreeDecl _ _) = return ()
 > checkDecl _ (TrustAnnot _ _ _) = return ()

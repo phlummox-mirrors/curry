@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Qual.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: Qual.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 2001-2009, Wolfgang Lux
+% Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Qual.lhs}
@@ -35,7 +35,7 @@ declaration groups as well as function arguments remain unchanged.
 >   qual _ d = d
 
 > instance Qual (Decl a) where
->   qual tyEnv (FunctionDecl p f eqs) = FunctionDecl p f (qual tyEnv eqs)
+>   qual tyEnv (FunctionDecl p a f eqs) = FunctionDecl p a f (qual tyEnv eqs)
 >   qual tyEnv (PatternDecl p t rhs) =
 >     PatternDecl p (qual tyEnv t) (qual tyEnv rhs)
 >   qual _ d = d

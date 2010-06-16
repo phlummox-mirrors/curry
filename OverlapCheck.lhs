@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: OverlapCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 2006-2009, Wolfgang Lux
+% Copyright (c) 2006-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{OverlapCheck.lhs}
@@ -56,7 +56,7 @@ traversal of the syntax tree.
 >   overlap tyEnv p xs ys = foldr (overlap tyEnv p) ys xs
 
 > instance Syntax (Decl a) where
->   overlap tyEnv _ (FunctionDecl p f eqs) =
+>   overlap tyEnv _ (FunctionDecl p _ f eqs) =
 >     ([P p (Just f) | isNonDet tyEnv tss] ++) . overlap tyEnv p eqs
 >     where tss = [snd (flatLhs lhs) | (Equation _ lhs _) <- eqs]
 >   overlap tyEnv _ (PatternDecl p _ rhs) = overlap tyEnv p rhs

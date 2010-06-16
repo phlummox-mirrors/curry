@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryUtils.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: CurryUtils.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryUtils.lhs}
@@ -37,8 +37,8 @@ order of textual declarations.
 > instance Declaration (Decl a) where
 >   pos (InfixDecl p _ _ _) = p
 >   pos (TypeSig p _ _) = p
->   pos (FunctionDecl p _ _) = p
->   pos (ForeignDecl p _ _ _) = p
+>   pos (FunctionDecl p _ _ _) = p
+>   pos (ForeignDecl p _ _ _ _) = p
 >   pos (PatternDecl p _ _) = p
 >   pos (FreeDecl p _) = p
 >   pos (TrustAnnot p _ _) = p
@@ -62,17 +62,17 @@ declarations.
 > isInfixDecl (InfixDecl _ _ _ _) = True
 > isInfixDecl _ = False
 > isTypeSig (TypeSig _ _ _) = True
-> isTypeSig (ForeignDecl _ _ _ _) = True
+> isTypeSig (ForeignDecl _ _ _ _ _) = True
 > isTypeSig _ = False
-> isFunDecl (FunctionDecl _ _ _) = True
-> isFunDecl (ForeignDecl _ _ _ _) = True
+> isFunDecl (FunctionDecl _ _ _ _) = True
+> isFunDecl (ForeignDecl _ _ _ _ _) = True
 > isFunDecl _ = False
 > isFreeDecl (FreeDecl _ _) = True
 > isFreeDecl _ = False
 > isTrustAnnot (TrustAnnot _ _ _) = True
 > isTrustAnnot _ = False
-> isValueDecl (FunctionDecl _ _ _) = True
-> isValueDecl (ForeignDecl _ _ _ _) = True
+> isValueDecl (FunctionDecl _ _ _ _) = True
+> isValueDecl (ForeignDecl _ _ _ _ _) = True
 > isValueDecl (PatternDecl _ _ _) = True
 > isValueDecl (FreeDecl _ _) = True
 > isValueDecl _ = False
@@ -197,8 +197,8 @@ Here are a few convenience functions for constructing (elements of)
 abstract syntax trees.
 \begin{verbatim}
 
-> funDecl :: Position -> Ident -> [ConstrTerm a] -> Expression a -> Decl a
-> funDecl p f ts e = FunctionDecl p f [funEqn p f ts e]
+> funDecl :: Position -> a -> Ident -> [ConstrTerm a] -> Expression a -> Decl a
+> funDecl p a f ts e = FunctionDecl p a f [funEqn p f ts e]
 
 > funEqn :: Position -> Ident -> [ConstrTerm a] -> Expression a -> Equation a
 > funEqn p f ts e = Equation p (FunLhs f ts) (SimpleRhs p e [])

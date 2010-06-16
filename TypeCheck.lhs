@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: TypeCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
 % Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -22,7 +22,11 @@ type annotation is present.
 The result of type checking is a (flat) top-level environment
 containing the types of all constructors, variables, and functions
 defined in a program. In addition, a type annotated source module or
-goal is returned.
+goal is returned. Note that type annotations on the left hand side of
+a declaration hold the function or variable's generalized type with
+the type scheme's for all qualifier left implicit. Type annotations on
+the right hand side of a declaration hold the particular instance at
+which a polymorphic function or variable is used.
 \begin{verbatim}
 
 > module TypeCheck(typeCheck,typeCheckGoal) where
@@ -338,14 +342,16 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 
 > tcDeclGroup :: ModuleIdent -> TCEnv -> SigEnv -> [Decl a]
 >             -> TcState [Decl Type]
-> tcDeclGroup m tcEnv _ [ForeignDecl p fi f ty] =
+> tcDeclGroup m tcEnv _ [ForeignDecl p fi _ f ty] =
 >   do
->     tcForeignFunct m tcEnv p fi f ty
->     return [ForeignDecl p fi f ty]
+>     ty' <- tcForeignFunct m tcEnv p fi f ty
+>     return [ForeignDecl p fi ty' f ty]
 > tcDeclGroup m tcEnv sigs [FreeDecl p vs] =
 >   do
->     bindDeclVars m tcEnv sigs p vs
->     return [FreeDecl p vs]
+>     bindDeclVars m tcEnv sigs p vs'
+>     tyEnv <- fetchSt
+>     return [FreeDecl p [FreeVar (rawType (varType v tyEnv)) v | v <- vs']]
+>   where vs' = bv vs
 > tcDeclGroup m tcEnv sigs ds =
 >   do
 >     tyEnv0 <- fetchSt
@@ -358,9 +364,9 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >                 not (isVariablePattern t && isNonExpansive tcEnv tyEnv rhs),
 >                 tv <- typeVars (subst theta ty)]
 >         fvs = foldr addToSet (fvEnv (subst theta tyEnv0)) tvs
->     mapM_ (uncurry (genDecl m . gen fvs . subst theta)) impDs'
+>     impDs'' <- mapM (uncurry (genDecl m . gen fvs . subst theta)) impDs'
 >     expDs' <- mapM (uncurry (tcCheckDecl m tcEnv tyEnv)) expDs
->     return (map snd impDs' ++ expDs')
+>     return (impDs'' ++ expDs')
 >   where (impDs,expDs) = partDecls sigs ds
 
 > partDecls :: SigEnv -> [Decl a] -> ([Decl a],[(TypeExpr,Decl a)])
@@ -370,14 +376,14 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 >         explicit d ty ~(impDs,expDs) = (impDs,(ty,d):expDs)
 
 > declTypeSig :: SigEnv -> Decl a -> Maybe TypeExpr
-> declTypeSig sigs (FunctionDecl _ f _) = lookupEnv f sigs
+> declTypeSig sigs (FunctionDecl _ _ f _) = lookupEnv f sigs
 > declTypeSig sigs (PatternDecl _ t _) =
 >   case t of
 >     VariablePattern _ v -> lookupEnv v sigs
 >     _ -> Nothing
 
 > bindDecl :: ModuleIdent -> TCEnv -> SigEnv -> Decl a -> TcState ()
-> bindDecl m tcEnv sigs (FunctionDecl p f eqs) =
+> bindDecl m tcEnv sigs (FunctionDecl p _ f eqs) =
 >   case lookupEnv f sigs of
 >     Just ty -> updateSt_ (bindFun m f n (expandPolyType tcEnv ty))
 >     Nothing ->
@@ -405,12 +411,12 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 
 > tcDecl :: ModuleIdent -> TCEnv -> ValueEnv -> Decl a
 >        -> TcState (Type,Decl Type)
-> tcDecl m tcEnv tyEnv0 (FunctionDecl p f eqs) =
+> tcDecl m tcEnv tyEnv0 (FunctionDecl p _ f eqs) =
 >   do
 >     theta <- liftSt fetchSt
 >     ty <- inst (varType f tyEnv0)
 >     eqs' <- mapM (tcEquation m tcEnv (fsEnv (subst theta tyEnv0)) ty f) eqs
->     return (ty,FunctionDecl p f eqs')
+>     return (ty,FunctionDecl p ty f eqs')
 > tcDecl m tcEnv _ d@(PatternDecl p t rhs) =
 >   do
 >     (ty,t') <- tcConstrTerm tcEnv p t
@@ -459,13 +465,16 @@ environment. The type has been generalized already by
 \texttt{tcDeclGroup}.
 \begin{verbatim}
 
-> genDecl :: ModuleIdent -> TypeScheme -> Decl a -> TcState ()
-> genDecl m ty (FunctionDecl _ f eqs) =
->   updateSt_ (rebindFun m f (eqnArity (head eqs)) ty)
-> genDecl m ty (PatternDecl _ t _) =
+> genDecl :: ModuleIdent -> TypeScheme -> Decl Type -> TcState (Decl Type)
+> genDecl m ty (FunctionDecl p _ f eqs) =
+>   updateSt_ (rebindFun m f (eqnArity (head eqs)) ty) >>
+>   return (FunctionDecl p (rawType ty) f eqs)
+> genDecl m ty (PatternDecl p t rhs) =
 >   case t of
->     VariablePattern _ v -> updateSt_ (rebindFun m v 0 ty)
->     _ -> return ()
+>     VariablePattern _ v ->
+>       updateSt_ (rebindFun m v 0 ty) >>
+>       return (PatternDecl p (VariablePattern (rawType ty) v) rhs)
+>     _ -> return (PatternDecl p t rhs)
 
 \end{verbatim}
 The function \texttt{tcCheckDecl} checks the type of an explicitly
@@ -488,15 +497,18 @@ inferred type matches the type signature exactly.
 >     checkDeclSig tcEnv sigTy (if poly then gen fvs ty' else monoType ty') d'
 >   where poly = isNonExpansive tcEnv tyEnv d
 
-> checkDeclSig :: TCEnv -> TypeExpr -> TypeScheme -> Decl a -> TcState (Decl a)
-> checkDeclSig tcEnv sigTy sigma (FunctionDecl p f eqs)
->   | sigma == expandPolyType tcEnv sigTy = return (FunctionDecl p f eqs)
+> checkDeclSig :: TCEnv -> TypeExpr -> TypeScheme -> Decl Type
+>              -> TcState (Decl Type)
+> checkDeclSig tcEnv sigTy sigma (FunctionDecl p _ f eqs)
+>   | sigma == expandPolyType tcEnv sigTy =
+>       return (FunctionDecl p (rawType sigma) f eqs)
 >   | otherwise = errorAt p (typeSigTooGeneral tcEnv what sigTy sigma)
 >   where what = text "Function:" <+> ppIdent f
-> checkDeclSig tcEnv sigTy sigma (PatternDecl p t rhs)
->   | sigma == expandPolyType tcEnv sigTy = return (PatternDecl p t rhs)
+> checkDeclSig tcEnv sigTy sigma (PatternDecl p (VariablePattern _ v) rhs)
+>   | sigma == expandPolyType tcEnv sigTy =
+>       return (PatternDecl p (VariablePattern (rawType sigma) v) rhs)
 >   | otherwise = errorAt p (typeSigTooGeneral tcEnv what sigTy sigma)
->   where what = text "Variable:" <+> ppConstrTerm 0 t
+>   where what = text "Variable:" <+> ppIdent v
 
 > class Binding a where
 >   isNonExpansive :: TCEnv -> ValueEnv -> a -> Bool
@@ -507,8 +519,8 @@ inferred type matches the type signature exactly.
 > instance Binding (Decl a) where
 >   isNonExpansive _ _ (InfixDecl _ _ _ _) = True
 >   isNonExpansive _ _ (TypeSig _ _ _) = True
->   isNonExpansive _ _ (FunctionDecl _ _ _) = True
->   isNonExpansive _ _ (ForeignDecl _ _ _ _) = True
+>   isNonExpansive _ _ (FunctionDecl _ _ _ _) = True
+>   isNonExpansive _ _ (ForeignDecl _ _ _ _ _) = True
 >   isNonExpansive tcEnv tyEnv (PatternDecl _ t rhs) =
 >     isVariablePattern t && isNonExpansive tcEnv tyEnv rhs
 >   isNonExpansive _ _ (FreeDecl _ _) = False
@@ -563,12 +575,12 @@ inferred type matches the type signature exactly.
 > bindDeclArity :: TCEnv -> Decl a -> ValueEnv -> ValueEnv
 > bindDeclArity _ (InfixDecl _ _ _ _) tyEnv = tyEnv
 > bindDeclArity _ (TypeSig _ _ _) tyEnv = tyEnv
-> bindDeclArity _ (FunctionDecl _ f eqs) tyEnv =
+> bindDeclArity _ (FunctionDecl _ _ f eqs) tyEnv =
 >   bindArity f (eqnArity (head eqs)) tyEnv
-> bindDeclArity tcEnv (ForeignDecl _ _ f ty) tyEnv =
->   bindArity f (foreignArity (expandPolyType tcEnv ty)) tyEnv
+> bindDeclArity tcEnv (ForeignDecl _ _ _ f ty) tyEnv =
+>   bindArity f (foreignArity (rawType (expandPolyType tcEnv ty))) tyEnv
 > bindDeclArity _ (PatternDecl _ t _) tyEnv = foldr bindVarArity tyEnv (bv t)
-> bindDeclArity _ (FreeDecl _ vs) tyEnv = foldr bindVarArity tyEnv vs
+> bindDeclArity _ (FreeDecl _ vs) tyEnv = foldr bindVarArity tyEnv (bv vs)
 > bindDeclArity _ (TrustAnnot _ _ _) tyEnv = tyEnv
 
 > bindVarArity :: Ident -> ValueEnv -> ValueEnv
@@ -604,20 +616,22 @@ equivalent to $\emph{World}\rightarrow(t,\emph{World})$.
 \begin{verbatim}
 
 > tcForeignFunct :: ModuleIdent -> TCEnv -> Position -> ForeignImport -> Ident
->                -> TypeExpr -> TcState ()
+>                -> TypeExpr -> TcState Type
 > tcForeignFunct m tcEnv p (cc,_,ie) f ty =
 >   do
->     checkForeignType cc (rawType ty')
->     updateSt_ (bindFun m f (foreignArity ty') ty')
+>     checkForeignType cc ty''
+>     updateSt_ (bindFun m f (foreignArity ty'') ty')
+>     return ty''
 >   where ty' = expandPolyType tcEnv ty
+>         ty'' = rawType ty'
 >         checkForeignType cc ty
 >           | cc == CallConvPrimitive = return ()
 >           | ie == Just "dynamic" = checkCDynCallType tcEnv p cc ty
 >           | maybe False ('&' `elem`) ie = checkCAddrType tcEnv p ty
 >           | otherwise = checkCCallType tcEnv p cc ty
 
-> foreignArity :: TypeScheme -> Int
-> foreignArity (ForAll _ ty)
+> foreignArity :: Type -> Int
+> foreignArity ty
 >   | isIO ty' = length tys + 1
 >   | otherwise = length tys
 >   where (tys,ty') = arrowUnapply ty

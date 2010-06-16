@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: LazyPatterns.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: LazyPatterns.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 2001-2009, Wolfgang Lux
+% Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{LazyPatterns.lhs}
@@ -64,9 +64,9 @@ lazy patterns.
 > unlazyTopDecl _ (SplitAnnot p) = return [SplitAnnot p]
 
 > unlazyDecl :: ModuleIdent -> Decl Type -> UnlazyState [Decl Type]
-> unlazyDecl m (FunctionDecl p f eqs) =
->   liftM (return . FunctionDecl p f) (mapM (unlazyEquation m) eqs)
-> unlazyDecl _ (ForeignDecl p fi f ty) = return [ForeignDecl p fi f ty]
+> unlazyDecl m (FunctionDecl p ty f eqs) =
+>   liftM (return . FunctionDecl p ty f) (mapM (unlazyEquation m) eqs)
+> unlazyDecl _ (ForeignDecl p fi ty f ty') = return [ForeignDecl p fi ty f ty']
 > unlazyDecl m (PatternDecl p t rhs) =
 >   do
 >     (ds',t') <- liftLazy m p [] (lazyTerm t)

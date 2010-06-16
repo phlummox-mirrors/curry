@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: TypeSyntaxCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeSyntaxCheck.lhs}
@@ -87,12 +87,12 @@ signatures.
 > checkDecl _ (InfixDecl p fix pr ops) = return (InfixDecl p fix pr ops)
 > checkDecl env (TypeSig p vs ty) =
 >   liftE (TypeSig p vs) (checkType env p [] ty)
-> checkDecl env (FunctionDecl p f eqs) =
->   liftE (FunctionDecl p f) (mapE (checkEquation env) eqs)
+> checkDecl env (FunctionDecl p a f eqs) =
+>   liftE (FunctionDecl p a f) (mapE (checkEquation env) eqs)
+> checkDecl env (ForeignDecl p fi a f ty) =
+>   liftE (ForeignDecl p fi a f) (checkType env p [] ty)
 > checkDecl env (PatternDecl p t rhs) =
 >   liftE (PatternDecl p t) (checkRhs env rhs)
-> checkDecl env (ForeignDecl p fi f ty) =
->   liftE (ForeignDecl p fi f) (checkType env p [] ty)
 > checkDecl _ (FreeDecl p vs) = return (FreeDecl p vs)
 > checkDecl _ (TrustAnnot p tr fs) = return (TrustAnnot p tr fs)
 

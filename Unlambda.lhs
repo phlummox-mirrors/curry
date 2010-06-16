@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Unlambda.lhs 2948 2010-06-11 14:33:48Z wlux $
+% $Id: Unlambda.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
 % Copyright (c) 2007-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -44,8 +44,8 @@ lambda abstraction is recorded in the type environment.
 >   nameLambdas _ d = return d
 
 > instance SyntaxTree Decl where
->   nameLambdas m (FunctionDecl p f eqs) =
->     liftM (FunctionDecl p f) (mapM (nameLambdas m) eqs)
+>   nameLambdas m (FunctionDecl p ty f eqs) =
+>     liftM (FunctionDecl p ty f) (mapM (nameLambdas m) eqs)
 >   nameLambdas m (PatternDecl p t rhs) =
 >     liftM (PatternDecl p t) (nameLambdas m rhs)
 >   nameLambdas _ d = return d
@@ -67,7 +67,7 @@ lambda abstraction is recorded in the type environment.
 >   nameLambdas m (Lambda p ts e) =
 >     do
 >       updateSt_ (bindLambda m f (length ts) ty)
->       nameLambdas m (Let [funDecl p f ts e] (mkVar ty f))
+>       nameLambdas m (Let [funDecl p ty f ts e] (mkVar ty f))
 >     where f = lambdaId p
 >           ty = typeOf (Lambda p ts e)
 >           bindLambda m f n ty tyEnv

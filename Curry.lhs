@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Curry.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: Curry.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Curry.lhs}
@@ -76,10 +76,10 @@ associating types with patterns and expressions after type inference.
 > data Decl a =
 >     InfixDecl Position Infix (Maybe Integer) [Ident]
 >   | TypeSig Position [Ident] TypeExpr
->   | FunctionDecl Position Ident [Equation a]
->   | ForeignDecl Position ForeignImport Ident TypeExpr
+>   | FunctionDecl Position a Ident [Equation a]
+>   | ForeignDecl Position ForeignImport a Ident TypeExpr
 >   | PatternDecl Position (ConstrTerm a) (Rhs a)
->   | FreeDecl Position [Ident]
+>   | FreeDecl Position [FreeVar a]
 >   | TrustAnnot Position Trust [Ident]
 >   deriving (Eq,Show)
 
@@ -90,6 +90,7 @@ associating types with patterns and expressions after type inference.
 >   deriving (Eq,Show)
 > data Safety = Unsafe | Safe deriving (Eq,Show)
 > data Trust = Suspect | Trust deriving (Eq,Show)
+> data FreeVar a = FreeVar a Ident deriving (Eq,Show)
 
 \end{verbatim}
 \paragraph{Module interfaces}
@@ -265,11 +266,15 @@ The abstract syntax tree is a functor with respect to its attributes.
 > instance Functor Decl where
 >   fmap _ (InfixDecl p fix pr ops) = InfixDecl p fix pr ops
 >   fmap _ (TypeSig p fs ty) = TypeSig p fs ty
->   fmap f (FunctionDecl p f' eqs) = FunctionDecl p f' (map (fmap f) eqs)
->   fmap _ (ForeignDecl p fi f ty) = ForeignDecl p fi f ty
+>   fmap f (FunctionDecl p a f' eqs) =
+>     FunctionDecl p (f a) f' (map (fmap f) eqs)
+>   fmap f (ForeignDecl p fi a f' ty) = ForeignDecl p fi (f a) f' ty
 >   fmap f (PatternDecl p t rhs) = PatternDecl p (fmap f t) (fmap f rhs)
->   fmap _ (FreeDecl p vs) = FreeDecl p vs
+>   fmap f (FreeDecl p vs) = FreeDecl p (map (fmap f) vs)
 >   fmap _ (TrustAnnot p tr fs) = TrustAnnot p tr fs
+
+> instance Functor FreeVar where
+>   fmap f (FreeVar a v) = FreeVar (f a) v
 
 > instance Functor Equation where
 >   fmap f (Equation p lhs rhs) = Equation p (fmap f lhs) (fmap f rhs)

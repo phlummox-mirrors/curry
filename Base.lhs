@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Base.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: Base.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Base.lhs}
@@ -61,16 +61,19 @@ variable, but always refers to a global function from the prelude.
 >   bv _ = []
 
 > instance QualExpr (Decl a) where
->   qfv m (FunctionDecl _ _ eqs) = qfv m eqs
+>   qfv m (FunctionDecl _ _ _ eqs) = qfv m eqs
 >   qfv m (PatternDecl _ t rhs) = qfv m t ++ qfv m rhs
 >   qfv _ _ = []
 
 > instance QuantExpr (Decl a) where
->   bv (FunctionDecl _ f _) = [f]
->   bv (ForeignDecl _ _ f _) = [f]
+>   bv (FunctionDecl _ _ f _) = [f]
+>   bv (ForeignDecl _ _ _ f _) = [f]
 >   bv (PatternDecl _ t _) = bv t
->   bv (FreeDecl _ vs) = vs
+>   bv (FreeDecl _ vs) = bv vs
 >   bv _ = []
+
+> instance QuantExpr (FreeVar a) where
+>   bv (FreeVar _ v) = [v]
 
 > instance QualExpr (Equation a) where
 >   qfv m (Equation _ lhs rhs) = qfv m lhs ++ filterBv lhs (qfv m rhs)

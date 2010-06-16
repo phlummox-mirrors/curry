@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Renaming.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: Renaming.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Renaming.lhs}
@@ -177,18 +177,21 @@ syntax tree and renames all type and expression variables.
 >   liftM (InfixDecl p fix pr) (mapM (renameVar env) ops)
 > renameDecl env (TypeSig p fs ty) =
 >   liftM2 (TypeSig p) (mapM (renameVar env) fs) (renameTypeSig ty)
-> renameDecl env (FunctionDecl p f eqs) =
+> renameDecl env (FunctionDecl p a f eqs) =
 >   do
 >     f' <- renameVar env f
->     liftM (FunctionDecl p f') (mapM (renameEqn f' env) eqs)
-> renameDecl env (ForeignDecl p fi f ty) =
->   liftM2 (ForeignDecl p fi) (renameVar env f) (renameTypeSig ty)
+>     liftM (FunctionDecl p a f') (mapM (renameEqn f' env) eqs)
+> renameDecl env (ForeignDecl p fi a f ty) =
+>   liftM2 (ForeignDecl p fi a) (renameVar env f) (renameTypeSig ty)
 > renameDecl env (PatternDecl p t rhs) =
 >   liftM2 (PatternDecl p) (renameConstrTerm env env t) (renameRhs env rhs)
 > renameDecl env (FreeDecl p vs) =
->   liftM (FreeDecl p) (mapM (renameVar env) vs)
+>   liftM (FreeDecl p) (mapM (renameFreeVar env) vs)
 > renameDecl env (TrustAnnot p t fs) =
 >   liftM (TrustAnnot p t) (mapM (renameVar env) fs)
+
+> renameFreeVar :: RenameEnv -> FreeVar a -> RenameState (FreeVar a)
+> renameFreeVar env (FreeVar a v) = liftM (FreeVar a) (renameVar env v)
 
 \end{verbatim}
 Note that the root of the left hand side term of an equation must be

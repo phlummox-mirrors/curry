@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: ShadowCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 2005-2009, Wolfgang Lux
+% Copyright (c) 2005-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ShadowCheck.lhs}
@@ -100,7 +100,7 @@ traversal of the syntax tree.
 >     bindEnts (concatMap topEnts ds) >>> foldr ((&&&) . shadow p) id ds
 
 > instance SyntaxTree (Decl a) where
->   shadow _ (FunctionDecl p _ eqs) = shadow p eqs
+>   shadow _ (FunctionDecl p _ _ eqs) = shadow p eqs
 >   shadow _ (PatternDecl p _ rhs) = shadow p rhs
 >   shadow _ _ = id
 >
@@ -187,10 +187,10 @@ positions.
 > vars :: Decl a -> [P Ident]
 > vars (InfixDecl _ _ _ _) = []
 > vars (TypeSig _ _ _) = []
-> vars (FunctionDecl p f _) = [P p f]
+> vars (FunctionDecl p _ f _) = [P p f]
 > vars (PatternDecl p t _) = map (P p) (bv t)
-> vars (ForeignDecl p _ f _) = [P p f]
-> vars (FreeDecl p vs) = map (P p) vs
+> vars (ForeignDecl p _ _ f _) = [P p f]
+> vars (FreeDecl p vs) = map (P p) (bv vs)
 > vars (TrustAnnot _ _ _) = []
 
 \end{verbatim}

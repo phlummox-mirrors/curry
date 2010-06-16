@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseMatch.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: CaseMatch.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
 % Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -107,12 +107,12 @@ For instance, \texttt{Just x = unknown} becomes \texttt{x = fcase
 >   match _ _ (SplitAnnot p) = return (SplitAnnot p)
 
 > instance CaseMatch Decl where
->   match m _ (FunctionDecl p f eqs) =
+>   match m _ (FunctionDecl p ty f eqs) =
 >     do
 >       (vs,e) <-
 >         matchFlex m p [(p,ts,rhs) | Equation p (FunLhs _ ts) rhs <- eqs]
->       return (funDecl p f (map (uncurry VariablePattern) vs) e)
->   match _ _ (ForeignDecl p fi f ty) = return (ForeignDecl p fi f ty)
+>       return (funDecl p ty f (map (uncurry VariablePattern) vs) e)
+>   match _ _ (ForeignDecl p fi ty f ty') = return (ForeignDecl p fi ty f ty')
 >   match m _ (PatternDecl p t rhs) =
 >     match m p rhs >>= liftM (uncurry (PatternDecl p)) . matchLhs m t
 >   match _ _ (FreeDecl p vs) = return (FreeDecl p vs)
@@ -325,7 +325,7 @@ expression was \texttt{[]}.
 
 > decls :: Position -> ConstrTerm Type -> [Decl Type]
 > decls _ (LiteralPattern _ _) = []
-> decls p (VariablePattern _ v) = [FreeDecl p [v]]
+> decls p (VariablePattern ty v) = [FreeDecl p [FreeVar ty v]]
 > decls p (ConstructorPattern _ _ ts) = concatMap (decls p) ts
 > decls p (FunctionPattern _ _ ts) = concatMap (decls p) ts
 > decls p (AsPattern v t) = varDecl p (typeOf t) v (toExpr t) : decls p t
@@ -448,7 +448,7 @@ comprehensible.
 >         v <- freshVar m "_#choice" (typeOf (head ts))
 >         return (Fcase (freeVar p v) (zipWith (Alt p) ts (rhs:rhss)))
 >   where ts = map (LiteralPattern intType . Int) [0..]
->         freeVar p v = Let [FreeDecl p [snd v]] (uncurry mkVar v)
+>         freeVar p (ty,v) = Let [FreeDecl p [FreeVar ty v]] (mkVar ty v)
 >         expr (SimpleRhs _ e _) = e
 
 > matchOr :: ModuleIdent -> Position -> Expression Type -> Expression Type

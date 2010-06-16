@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: PrecCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: PrecCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 2001-2009, Wolfgang Lux
+% Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{PrecCheck.lhs}
@@ -53,13 +53,7 @@ before adding the local fixity declarations.
 \begin{verbatim}
 
 > cleanPrecs :: Decl a -> PEnv -> PEnv
-> cleanPrecs (InfixDecl _ _ _ _) pEnv = pEnv
-> cleanPrecs (TypeSig _ _ _) pEnv = pEnv
-> cleanPrecs (FunctionDecl _ f _) pEnv = localUnimportTopEnv f pEnv
-> cleanPrecs (ForeignDecl _ _ f _) pEnv = localUnimportTopEnv f pEnv
-> cleanPrecs (PatternDecl _ t _) pEnv = foldr localUnimportTopEnv pEnv (bv t)
-> cleanPrecs (FreeDecl _ vs) pEnv = foldr localUnimportTopEnv pEnv vs
-> cleanPrecs (TrustAnnot _ _ _) pEnv = pEnv
+> cleanPrecs d pEnv = foldr localUnimportTopEnv pEnv (bv d)
 
 \end{verbatim}
 With the help of the precedence environment, the compiler checks all
@@ -89,8 +83,8 @@ because it is used for constructing the module's interface.
 > checkTopDecl _ _ d = return d
 
 > checkDecl :: ModuleIdent -> PEnv -> Decl a -> Error (Decl a)
-> checkDecl m pEnv (FunctionDecl p f eqs) =
->   liftE (FunctionDecl p f) (mapE (checkEqn m pEnv) eqs)
+> checkDecl m pEnv (FunctionDecl p a f eqs) =
+>   liftE (FunctionDecl p a f) (mapE (checkEqn m pEnv) eqs)
 > checkDecl m pEnv (PatternDecl p t rhs) =
 >   liftE2 (PatternDecl p) (checkConstrTerm p pEnv t) (checkRhs m pEnv rhs)
 > checkDecl _ _ d = return d

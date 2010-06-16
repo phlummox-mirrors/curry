@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 2961 2010-06-15 15:37:14Z wlux $
+% $Id: UnusedCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
 % Copyright (c) 2005-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -98,7 +98,8 @@ by a traversal of the syntax tree.
 >   used _ (SplitAnnot _) = id
 
 > instance SyntaxTree (Decl a) where
->   used m (FunctionDecl _ f eqs) = nest (apFst (deleteFromSet f) . used m eqs)
+>   used m (FunctionDecl _ _ f eqs) =
+>     nest (apFst (deleteFromSet f) . used m eqs)
 >   used m (PatternDecl _ (VariablePattern _ v) rhs) =
 >     nest (apFst (deleteFromSet v) . used m rhs)
 >   used m (PatternDecl _ t rhs) = used m t . used m rhs
@@ -227,8 +228,8 @@ unused variables of pattern $t$.
 >     unusedVars Data used p [c] . unusedVars Label used p [l]
 
 > instance Binder (Decl a) where
->   unused used _ (FunctionDecl p f _) = unusedVars Decl used p [f]
->   unused used _ (ForeignDecl p _ f _) = unusedVars Decl used p [f]
+>   unused used _ (FunctionDecl p _ f _) = unusedVars Decl used p [f]
+>   unused used _ (ForeignDecl p _ _ f _) = unusedVars Decl used p [f]
 >   unused used _ (PatternDecl p (VariablePattern _ v) _)
 >     | v == anonId = ([Pattern p] ++)
 >     | otherwise = unusedVars Decl used p [v]
@@ -236,7 +237,7 @@ unused variables of pattern $t$.
 >      ([Pattern p | not (any (`elemSet` used) bvs)] ++) .
 >      unusedVars Var used p bvs
 >     where bvs = bv t
->   unused used _ (FreeDecl p xs) = unusedVars Decl used p xs
+>   unused used _ (FreeDecl p vs) = unusedVars Decl used p (bv vs)
 >   unused _ _ _ = id
 
 > instance Binder (Lhs a) where

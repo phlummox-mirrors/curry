@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2894 2009-08-10 16:06:58Z wlux $
+% $Id: Exports.lhs 2963 2010-06-16 16:42:38Z wlux $
 %
-% Copyright (c) 2000-2009, Wolfgang Lux
+% Copyright (c) 2000-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Exports.lhs}
@@ -137,9 +137,8 @@ transformations.
 > type ArityEnv = Env QualIdent Int
 
 > bindArities :: ModuleIdent -> [TopDecl a] -> ArityEnv
-> bindArities m ds =
->   foldr bindArity emptyEnv [(f,eqs) | BlockDecl (FunctionDecl _ f eqs) <- ds]
->   where bindArity (f,eqs) = bindEnv (qualifyWith m f) (eqnArity (head eqs))
+> bindArities m ds = foldr (uncurry (bindEnv . qualifyWith m)) emptyEnv $
+>   [(f,eqnArity (head eqs)) | BlockDecl (FunctionDecl _ _ f eqs) <- ds]
 
 \end{verbatim}
 The compiler determines the list of imported modules from the set of
