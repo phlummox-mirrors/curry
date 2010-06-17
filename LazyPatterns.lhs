@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: LazyPatterns.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: LazyPatterns.lhs 2965 2010-06-17 17:15:35Z wlux $
 %
 % Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -23,31 +23,17 @@ variables are in scope.
 > import Types
 > import Typing
 > import Utils
-> import ValueInfo
-
-> unlazy :: ValueEnv -> Module Type -> (Module Type,ValueEnv)
-> unlazy tyEnv (Module m es is ds) = (Module m es is ds',tyEnv')
->   where (ds',tyEnv') = run (unlazyModule m tyEnv ds) tyEnv
 
 \end{verbatim}
-We use nested state monad transformers for generating unique names for
-the fresh variables replacing lazy patterns and for passing through
-the type environment, which is augmented with the types of the new
-variables.
+We use a state monad transformer for generating unique names for the
+fresh variables replacing lazy patterns.
 \begin{verbatim}
 
-> type UnlazyState a = StateT ValueEnv (StateT Int Id) a
+> type UnlazyState a = StateT Int Id a
 
-> run :: UnlazyState a -> ValueEnv -> a
-> run m tyEnv = runSt (callSt m tyEnv) 1
-
-> unlazyModule :: ModuleIdent -> ValueEnv -> [TopDecl Type]
->              -> UnlazyState ([TopDecl Type],ValueEnv)
-> unlazyModule m tyEnv ds = 
->   do
->     dss' <- mapM (unlazyTopDecl m) ds
->     tyEnv' <- fetchSt
->     return (concat dss',tyEnv')
+> unlazy :: Module Type -> Module Type
+> unlazy (Module m es is ds) =
+>   Module m es is (concat (runSt (mapM unlazyTopDecl ds) 1))
 
 \end{verbatim}
 If a pattern declaration uses lazy patterns, its lifted declarations
@@ -56,30 +42,29 @@ bindings are evaluated lazily, their patterns are transformed like
 lazy patterns.
 \begin{verbatim}
 
-> unlazyTopDecl :: ModuleIdent -> TopDecl Type -> UnlazyState [TopDecl Type]
-> unlazyTopDecl _ (DataDecl p tc tvs cs) = return [DataDecl p tc tvs cs]
-> unlazyTopDecl _ (NewtypeDecl p tc tvs nc) = return [NewtypeDecl p tc tvs nc]
-> unlazyTopDecl _ (TypeDecl p tc tvs ty) = return [TypeDecl p tc tvs ty]
-> unlazyTopDecl m (BlockDecl d) = liftM (map BlockDecl) (unlazyDecl m d)
-> unlazyTopDecl _ (SplitAnnot p) = return [SplitAnnot p]
+> unlazyTopDecl :: TopDecl Type -> UnlazyState [TopDecl Type]
+> unlazyTopDecl (DataDecl p tc tvs cs) = return [DataDecl p tc tvs cs]
+> unlazyTopDecl (NewtypeDecl p tc tvs nc) = return [NewtypeDecl p tc tvs nc]
+> unlazyTopDecl (TypeDecl p tc tvs ty) = return [TypeDecl p tc tvs ty]
+> unlazyTopDecl (BlockDecl d) = liftM (map BlockDecl) (unlazyDecl d)
+> unlazyTopDecl (SplitAnnot p) = return [SplitAnnot p]
 
-> unlazyDecl :: ModuleIdent -> Decl Type -> UnlazyState [Decl Type]
-> unlazyDecl m (FunctionDecl p ty f eqs) =
->   liftM (return . FunctionDecl p ty f) (mapM (unlazyEquation m) eqs)
-> unlazyDecl _ (ForeignDecl p fi ty f ty') = return [ForeignDecl p fi ty f ty']
-> unlazyDecl m (PatternDecl p t rhs) =
+> unlazyDecl :: Decl Type -> UnlazyState [Decl Type]
+> unlazyDecl (FunctionDecl p ty f eqs) =
+>   liftM (return . FunctionDecl p ty f) (mapM unlazyEquation eqs)
+> unlazyDecl (ForeignDecl p fi ty f ty') = return [ForeignDecl p fi ty f ty']
+> unlazyDecl (PatternDecl p t rhs) =
 >   do
->     (ds',t') <- liftLazy m p [] (lazyTerm t)
->     rhs' <- unlazyRhs m rhs
+>     (ds',t') <- liftLazy p [] (lazyTerm t)
+>     rhs' <- unlazyRhs rhs
 >     return (PatternDecl p t' rhs' : ds')
-> unlazyDecl _ (FreeDecl p vs) = return [FreeDecl p vs]
+> unlazyDecl (FreeDecl p vs) = return [FreeDecl p vs]
 
-> unlazyEquation :: ModuleIdent -> Equation Type
->                -> UnlazyState (Equation Type)
-> unlazyEquation m (Equation p (FunLhs f ts) rhs) =
+> unlazyEquation :: Equation Type -> UnlazyState (Equation Type)
+> unlazyEquation (Equation p (FunLhs f ts) rhs) =
 >   do
->     (ds',ts') <- mapAccumM (liftLazy m p) [] (map unlazyTerm ts)
->     rhs' <- unlazyRhs m rhs
+>     (ds',ts') <- mapAccumM (liftLazy p) [] (map unlazyTerm ts)
+>     rhs' <- unlazyRhs rhs
 >     return (Equation p (FunLhs f ts') (addDecls ds' rhs'))
 
 \end{verbatim}
@@ -135,20 +120,20 @@ must introduce a fresh variable when transforming a pattern of the
 form \texttt{\char`\~($v$@$t$)}.
 \begin{verbatim}
 
-> liftLazy :: ModuleIdent -> Position -> [Decl Type] -> ConstrTerm Type
+> liftLazy :: Position -> [Decl Type] -> ConstrTerm Type
 >          -> UnlazyState ([Decl Type],ConstrTerm Type)
-> liftLazy _ _ ds (LiteralPattern ty l) = return (ds,LiteralPattern ty l)
-> liftLazy _ _ ds (VariablePattern ty v) = return (ds,VariablePattern ty v)
-> liftLazy m p ds (ConstructorPattern ty c ts) =
->   liftM (apSnd (ConstructorPattern ty c)) (mapAccumM (liftLazy m p) ds ts)
-> liftLazy m p ds (FunctionPattern ty f ts) =
->   liftM (apSnd (FunctionPattern ty f)) (mapAccumM (liftLazy m p) ds ts)
-> liftLazy m p ds (AsPattern v t) =
+> liftLazy _ ds (LiteralPattern ty l) = return (ds,LiteralPattern ty l)
+> liftLazy _ ds (VariablePattern ty v) = return (ds,VariablePattern ty v)
+> liftLazy p ds (ConstructorPattern ty c ts) =
+>   liftM (apSnd (ConstructorPattern ty c)) (mapAccumM (liftLazy p) ds ts)
+> liftLazy p ds (FunctionPattern ty f ts) =
+>   liftM (apSnd (FunctionPattern ty f)) (mapAccumM (liftLazy p) ds ts)
+> liftLazy p ds (AsPattern v t) =
 >   case t of
->     LazyPattern t' -> liftM (liftPattern p (typeOf t',v)) (liftLazy m p ds t')
->     _ -> liftM (apSnd (AsPattern v)) (liftLazy m p ds t)
-> liftLazy m p ds (LazyPattern t) =
->   liftM2 (liftPattern p) (freshVar m "_#lazy" (typeOf t)) (liftLazy m p ds t)
+>     LazyPattern t' -> liftM (liftPattern p (typeOf t',v)) (liftLazy p ds t')
+>     _ -> liftM (apSnd (AsPattern v)) (liftLazy p ds t)
+> liftLazy p ds (LazyPattern t) =
+>   liftM2 (liftPattern p) (freshVar "_#lazy" (typeOf t)) (liftLazy p ds t)
 
 > liftPattern :: Position -> (a,Ident) -> ([Decl a],ConstrTerm a)
 >             -> ([Decl a],ConstrTerm a)
@@ -160,55 +145,52 @@ Lifted declarations for lazy patterns in lambda expressions and case
 alternatives are added to the body of the expression.
 \begin{verbatim}
 
-> unlazyRhs :: ModuleIdent -> Rhs Type -> UnlazyState (Rhs Type)
-> unlazyRhs m (SimpleRhs p e ds) =
+> unlazyRhs :: Rhs Type -> UnlazyState (Rhs Type)
+> unlazyRhs (SimpleRhs p e ds) =
 >   do
->     dss' <- mapM (unlazyDecl m) ds
->     e' <- unlazyExpr m e
+>     dss' <- mapM unlazyDecl ds
+>     e' <- unlazyExpr e
 >     return (SimpleRhs p e' (concat dss'))
-> unlazyRhs m (GuardedRhs es ds) =
+> unlazyRhs (GuardedRhs es ds) =
 >   do
->     dss' <- mapM (unlazyDecl m) ds
->     es' <- mapM (unlazyCondExpr m) es
+>     dss' <- mapM unlazyDecl ds
+>     es' <- mapM unlazyCondExpr es
 >     return (GuardedRhs es' (concat dss'))
 
-> unlazyCondExpr :: ModuleIdent -> CondExpr Type -> UnlazyState (CondExpr Type)
-> unlazyCondExpr m (CondExpr p g e) =
->   liftM2 (CondExpr p) (unlazyExpr m g) (unlazyExpr m e)
+> unlazyCondExpr :: CondExpr Type -> UnlazyState (CondExpr Type)
+> unlazyCondExpr (CondExpr p g e) =
+>   liftM2 (CondExpr p) (unlazyExpr g) (unlazyExpr e)
 
-> unlazyExpr :: ModuleIdent -> Expression Type -> UnlazyState (Expression Type)
-> unlazyExpr _ (Literal ty l) = return (Literal ty l)
-> unlazyExpr _ (Variable ty v) = return (Variable ty v)
-> unlazyExpr _ (Constructor ty c) = return (Constructor ty c)
-> unlazyExpr m (Apply e1 e2) = liftM2 Apply (unlazyExpr m e1) (unlazyExpr m e2)
-> unlazyExpr m (Lambda p ts e) =
+> unlazyExpr :: Expression Type -> UnlazyState (Expression Type)
+> unlazyExpr (Literal ty l) = return (Literal ty l)
+> unlazyExpr (Variable ty v) = return (Variable ty v)
+> unlazyExpr (Constructor ty c) = return (Constructor ty c)
+> unlazyExpr (Apply e1 e2) = liftM2 Apply (unlazyExpr e1) (unlazyExpr e2)
+> unlazyExpr (Lambda p ts e) =
 >   do
->     (ds',ts') <- mapAccumM (liftLazy m p) [] (map unlazyTerm ts)
->     e' <- unlazyExpr m e
+>     (ds',ts') <- mapAccumM (liftLazy p) [] (map unlazyTerm ts)
+>     e' <- unlazyExpr e
 >     return (Lambda p ts' (mkLet ds' e'))
-> unlazyExpr m (Let ds e) =
->   liftM2 (Let . concat) (mapM (unlazyDecl m) ds) (unlazyExpr m e)
-> unlazyExpr m (Case e as) =
->   liftM2 Case (unlazyExpr m e) (mapM (unlazyAlt m) as)
-> unlazyExpr m (Fcase e as) =
->   liftM2 Fcase (unlazyExpr m e) (mapM (unlazyAlt m) as)
+> unlazyExpr (Let ds e) =
+>   liftM2 (Let . concat) (mapM unlazyDecl ds) (unlazyExpr e)
+> unlazyExpr (Case e as) = liftM2 Case (unlazyExpr e) (mapM unlazyAlt as)
+> unlazyExpr (Fcase e as) = liftM2 Fcase (unlazyExpr e) (mapM unlazyAlt as)
 
-> unlazyAlt :: ModuleIdent -> Alt Type -> UnlazyState (Alt Type)
-> unlazyAlt m (Alt p t rhs) =
+> unlazyAlt :: Alt Type -> UnlazyState (Alt Type)
+> unlazyAlt (Alt p t rhs) =
 >   do
->     (ds',t') <- liftLazy m p [] (unlazyTerm t)
->     rhs' <- unlazyRhs m rhs
+>     (ds',t') <- liftLazy p [] (unlazyTerm t)
+>     rhs' <- unlazyRhs rhs
 >     return (Alt p t' (addDecls ds' rhs'))
 
 \end{verbatim}
 Generation of fresh names.
 \begin{verbatim}
 
-> freshVar :: ModuleIdent -> String -> Type -> UnlazyState (Type,Ident)
-> freshVar m prefix ty =
+> freshVar :: String -> Type -> UnlazyState (Type,Ident)
+> freshVar prefix ty =
 >   do
->     v <- liftM (mkName prefix) (liftSt (updateSt (1 +)))
->     updateSt_ (bindFun m v 0 (monoType ty))
+>     v <- liftM (mkName prefix) (updateSt (1 +))
 >     return (ty,v)
 >   where mkName pre n = mkIdent (pre ++ show n)
 

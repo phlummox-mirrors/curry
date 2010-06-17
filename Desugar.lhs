@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: Desugar.lhs 2965 2010-06-17 17:15:35Z wlux $
 %
 % Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -57,20 +57,14 @@ all names must be properly qualified before calling this module.}
 > import PredefTypes
 > import Types
 > import Typing
-> import ValueInfo
 
 \end{verbatim}
 New identifiers may be introduced while desugaring list
 comprehensions. As usual, we use a state monad transformer for
-generating unique names. In addition, the state is also used for
-passing through the type environment, which is augmented with the
-types of the new variables.
+generating unique names.
 \begin{verbatim}
 
-> type DesugarState a = StateT ValueEnv (StateT Int Id) a
-
-> run :: DesugarState a -> ValueEnv -> a
-> run m tyEnv = runSt (callSt m tyEnv) 1
+> type DesugarState a = StateT Int Id a
 
 \end{verbatim}
 The desugaring phase keeps only the type, function, and value
@@ -79,17 +73,14 @@ desugar data constructor declarations. The top-level function
 declarations are treated like a global declaration group.
 \begin{verbatim}
 
-> desugar :: ValueEnv -> Module Type -> (Module Type,ValueEnv)
-> desugar tyEnv (Module m es is ds) = (Module m es is ds',tyEnv')
->   where (ds',tyEnv') = run (desugarModule m ds) tyEnv
+> desugar :: Module Type -> Module Type
+> desugar (Module m es is ds) = Module m es is (runSt (desugarModule ds) 1)
 
-> desugarModule :: ModuleIdent -> [TopDecl Type]
->               -> DesugarState ([TopDecl Type],ValueEnv)
-> desugarModule m ds =
+> desugarModule :: [TopDecl Type] -> DesugarState [TopDecl Type]
+> desugarModule ds =
 >   do
->     vds' <- desugarDeclGroup m [d | BlockDecl d <- vds]
->     tyEnv' <- fetchSt
->     return (map desugarTopDecl tds ++ map BlockDecl vds',tyEnv')
+>     vds' <- desugarDeclGroup [d | BlockDecl d <- vds]
+>     return (map desugarTopDecl tds ++ map BlockDecl vds')
 >   where (vds,tds) = partition isBlockDecl ds
 
 > desugarTopDecl :: TopDecl a -> TopDecl a
@@ -113,13 +104,13 @@ kind of the declaration (either \texttt{static} or \texttt{dynamic})
 and the name of the imported function.
 \begin{verbatim}
 
-> desugarDeclGroup :: ModuleIdent -> [Decl Type] -> DesugarState [Decl Type]
-> desugarDeclGroup m ds = mapM (desugarDecl m) (filter isValueDecl ds)
+> desugarDeclGroup :: [Decl Type] -> DesugarState [Decl Type]
+> desugarDeclGroup ds = mapM desugarDecl (filter isValueDecl ds)
 
-> desugarDecl :: ModuleIdent -> Decl Type -> DesugarState (Decl Type)
-> desugarDecl m (FunctionDecl p ty f eqs) =
->   liftM (FunctionDecl p ty f) (mapM (desugarEquation m) eqs)
-> desugarDecl _ (ForeignDecl p (cc,s,ie) ty f ty') =
+> desugarDecl :: Decl Type -> DesugarState (Decl Type)
+> desugarDecl (FunctionDecl p ty f eqs) =
+>   liftM (FunctionDecl p ty f) (mapM desugarEquation eqs)
+> desugarDecl (ForeignDecl p (cc,s,ie) ty f ty') =
 >   return (ForeignDecl p (cc,s `mplus` Just Safe,desugarImpEnt cc ie) ty f ty')
 >   where desugarImpEnt cc ie
 >           | cc == CallConvPrimitive = ie `mplus` Just (name f)
@@ -138,14 +129,13 @@ and the name of the imported function.
 >           | otherwise = [h,x]
 >         ident [h,amp,f] = [h,amp,f]
 >         ident _ = internalError "desugarImpEnt"
-> desugarDecl m (PatternDecl p t rhs) =
->   liftM2 (PatternDecl p) (desugarTerm m t) (desugarRhs m rhs)
-> desugarDecl _ (FreeDecl p vs) = return (FreeDecl p vs)
+> desugarDecl (PatternDecl p t rhs) =
+>   liftM2 (PatternDecl p) (desugarTerm t) (desugarRhs rhs)
+> desugarDecl (FreeDecl p vs) = return (FreeDecl p vs)
 
-> desugarEquation :: ModuleIdent -> Equation Type
->                 -> DesugarState (Equation Type)
-> desugarEquation m (Equation p lhs rhs) =
->   liftM2 (Equation p . FunLhs f) (mapM (desugarTerm m) ts) (desugarRhs m rhs)
+> desugarEquation :: Equation Type -> DesugarState (Equation Type)
+> desugarEquation (Equation p lhs rhs) =
+>   liftM2 (Equation p . FunLhs f) (mapM desugarTerm ts) (desugarRhs rhs)
 >   where (f,ts) = flatLhs lhs
 
 \end{verbatim}
@@ -162,39 +152,36 @@ of characters.
 > desugarLiteral _ (Float f) = Left (Float f)
 > desugarLiteral _ (String cs) = Right (map Char cs)
 
-> desugarTerm :: ModuleIdent -> ConstrTerm Type
->             -> DesugarState (ConstrTerm Type)
-> desugarTerm m (LiteralPattern ty l) =
+> desugarTerm :: ConstrTerm Type -> DesugarState (ConstrTerm Type)
+> desugarTerm (LiteralPattern ty l) =
 >   either (return . LiteralPattern ty)
->          (desugarTerm m . ListPattern ty . map (LiteralPattern ty'))
+>          (desugarTerm . ListPattern ty . map (LiteralPattern ty'))
 >          (desugarLiteral ty l)
 >   where ty' = elemType ty
-> desugarTerm m (NegativePattern ty _ l) =
->   desugarTerm m (LiteralPattern ty (negateLiteral l))
+> desugarTerm (NegativePattern ty _ l) =
+>   desugarTerm (LiteralPattern ty (negateLiteral l))
 >   where negateLiteral (Int i) = Int (-i)
 >         negateLiteral (Float f) = Float (-f)
 >         negateLiteral _ = internalError "negateLiteral"
-> desugarTerm _ (VariablePattern ty v) = return (VariablePattern ty v)
-> desugarTerm m (ConstructorPattern ty c ts) =
->   liftM (ConstructorPattern ty c) (mapM (desugarTerm m) ts)
-> desugarTerm m (FunctionPattern ty f ts) =
->   liftM (FunctionPattern ty f) (mapM (desugarTerm m) ts)
-> desugarTerm m (InfixPattern ty t1 op t2) =
->   desugarTerm m (desugarOp ty op [t1,t2])
+> desugarTerm (VariablePattern ty v) = return (VariablePattern ty v)
+> desugarTerm (ConstructorPattern ty c ts) =
+>   liftM (ConstructorPattern ty c) (mapM desugarTerm ts)
+> desugarTerm (FunctionPattern ty f ts) =
+>   liftM (FunctionPattern ty f) (mapM desugarTerm ts)
+> desugarTerm (InfixPattern ty t1 op t2) = desugarTerm (desugarOp ty op [t1,t2])
 >   where desugarOp ty (InfixConstr _ op) = ConstructorPattern ty op
 >         desugarOp ty (InfixOp _ op) = FunctionPattern ty op
-> desugarTerm m (ParenPattern t) = desugarTerm m t
-> desugarTerm m (RecordPattern ty c fs) =
->   liftM (RecordPattern ty c) (mapM (desugarField (desugarTerm m)) fs)
-> desugarTerm m (TuplePattern ts) =
->   desugarTerm m (ConstructorPattern ty (qTupleId (length ts)) ts)
+> desugarTerm (ParenPattern t) = desugarTerm t
+> desugarTerm (RecordPattern ty c fs) =
+>   liftM (RecordPattern ty c) (mapM (desugarField desugarTerm) fs)
+> desugarTerm (TuplePattern ts) =
+>   desugarTerm (ConstructorPattern ty (qTupleId (length ts)) ts)
 >   where ty = tupleType (map typeOf ts)
-> desugarTerm m (ListPattern ty ts) =
->   liftM (foldr cons nil) (mapM (desugarTerm m) ts)
+> desugarTerm (ListPattern ty ts) = liftM (foldr cons nil) (mapM desugarTerm ts)
 >   where nil = ConstructorPattern ty qNilId []
 >         cons t ts = ConstructorPattern ty qConsId [t,ts]
-> desugarTerm m (AsPattern v t) = liftM (AsPattern v) (desugarTerm m t)
-> desugarTerm m (LazyPattern t) = liftM LazyPattern (desugarTerm m t)
+> desugarTerm (AsPattern v t) = liftM (AsPattern v) (desugarTerm t)
+> desugarTerm (LazyPattern t) = liftM LazyPattern (desugarTerm t)
 
 \end{verbatim}
 Anonymous identifiers in expressions are replaced by an expression
@@ -206,97 +193,92 @@ must remain a free variable of the goal expression and therefore must
 not be replaced.
 \begin{verbatim}
 
-> desugarRhs :: ModuleIdent -> Rhs Type -> DesugarState (Rhs Type)
-> desugarRhs m (SimpleRhs p e ds) =
+> desugarRhs :: Rhs Type -> DesugarState (Rhs Type)
+> desugarRhs (SimpleRhs p e ds) =
 >   do
->     ds' <- desugarDeclGroup m ds
->     e' <- desugarExpr m p e
+>     ds' <- desugarDeclGroup ds
+>     e' <- desugarExpr p e
 >     return (SimpleRhs p e' ds')
-> desugarRhs m (GuardedRhs es ds) =
+> desugarRhs (GuardedRhs es ds) =
 >   do
->     ds' <- desugarDeclGroup m ds
->     es' <- mapM (desugarCondExpr m) es
+>     ds' <- desugarDeclGroup ds
+>     es' <- mapM desugarCondExpr es
 >     return (GuardedRhs es' ds')
 
-> desugarCondExpr :: ModuleIdent -> CondExpr Type
->                 -> DesugarState (CondExpr Type)
-> desugarCondExpr m (CondExpr p g e) =
->   liftM2 (CondExpr p) (desugarExpr m p g) (desugarExpr m p e)
+> desugarCondExpr :: CondExpr Type -> DesugarState (CondExpr Type)
+> desugarCondExpr (CondExpr p g e) =
+>   liftM2 (CondExpr p) (desugarExpr p g) (desugarExpr p e)
 
-> desugarExpr :: ModuleIdent -> Position -> Expression Type
->             -> DesugarState (Expression Type)
-> desugarExpr m p (Literal ty l) =
+> desugarExpr :: Position -> Expression Type -> DesugarState (Expression Type)
+> desugarExpr p (Literal ty l) =
 >   either (return . Literal ty)
->          (desugarExpr m p . List ty . map (Literal (elemType ty)))
+>          (desugarExpr p . List ty . map (Literal (elemType ty)))
 >          (desugarLiteral ty l)
-> desugarExpr m p (Variable ty v)
+> desugarExpr p (Variable ty v)
 >   -- NB The name of the initial goal is anonId (not renamed, cf. goalModule
 >   --    in module Goals) and must not be changed
 >   | isRenamed v' && unRenameIdent v' == anonId =
 >       do
->         v'' <- freshVar m "_#var" ty
+>         v'' <- freshVar "_#var" ty
 >         return (Let [FreeDecl p [uncurry FreeVar v'']] (uncurry mkVar v''))
 >   | otherwise = return (Variable ty v)
 >   where v' = unqualify v
-> desugarExpr _ _ (Constructor ty c) = return (Constructor ty c)
-> desugarExpr m p (Paren e) = desugarExpr m p e
-> desugarExpr m p (Typed e _) = desugarExpr m p e
-> desugarExpr m p (Record ty c fs) =
->   liftM (Record ty c) (mapM (desugarField (desugarExpr m p)) fs)
-> desugarExpr m p (RecordUpdate e fs) =
+> desugarExpr _ (Constructor ty c) = return (Constructor ty c)
+> desugarExpr p (Paren e) = desugarExpr p e
+> desugarExpr p (Typed e _) = desugarExpr p e
+> desugarExpr p (Record ty c fs) =
+>   liftM (Record ty c) (mapM (desugarField (desugarExpr p)) fs)
+> desugarExpr p (RecordUpdate e fs) =
 >   liftM2 RecordUpdate
->          (desugarExpr m p e)
->          (mapM (desugarField (desugarExpr m p)) fs)
-> desugarExpr m p (Tuple es) =
+>          (desugarExpr p e)
+>          (mapM (desugarField (desugarExpr p)) fs)
+> desugarExpr p (Tuple es) =
 >   liftM (apply (Constructor ty (qTupleId (length es))))
->         (mapM (desugarExpr m p) es)
+>         (mapM (desugarExpr p) es)
 >   where ty = foldr TypeArrow (tupleType tys) tys
 >         tys = map typeOf es
-> desugarExpr m p (List ty es) =
->   liftM (foldr cons nil) (mapM (desugarExpr m p) es)
+> desugarExpr p (List ty es) = liftM (foldr cons nil) (mapM (desugarExpr p) es)
 >   where nil = Constructor ty qNilId
 >         cons = Apply . Apply (Constructor (consType (elemType ty)) qConsId)
-> desugarExpr m p (ListCompr e qs) =
->   desugarListCompr m e qs z >>= desugarExpr m p
+> desugarExpr p (ListCompr e qs) = desugarListCompr e qs z >>= desugarExpr p
 >   where z = List (typeOf (ListCompr e qs)) []
-> desugarExpr m p (EnumFrom e) = liftM (Apply prelEnumFrom) (desugarExpr m p e)
-> desugarExpr m p (EnumFromThen e1 e2) =
->   liftM (apply prelEnumFromThen) (mapM (desugarExpr m p) [e1,e2])
-> desugarExpr m p (EnumFromTo e1 e2) =
->   liftM (apply prelEnumFromTo) (mapM (desugarExpr m p) [e1,e2])
-> desugarExpr m p (EnumFromThenTo e1 e2 e3) =
->   liftM (apply prelEnumFromThenTo) (mapM (desugarExpr m p) [e1,e2,e3])
-> desugarExpr m p (UnaryMinus op e) =
->   liftM (Apply (unaryMinus op (typeOf e))) (desugarExpr m p e)
+> desugarExpr p (EnumFrom e) = liftM (Apply prelEnumFrom) (desugarExpr p e)
+> desugarExpr p (EnumFromThen e1 e2) =
+>   liftM (apply prelEnumFromThen) (mapM (desugarExpr p) [e1,e2])
+> desugarExpr p (EnumFromTo e1 e2) =
+>   liftM (apply prelEnumFromTo) (mapM (desugarExpr p) [e1,e2])
+> desugarExpr p (EnumFromThenTo e1 e2 e3) =
+>   liftM (apply prelEnumFromThenTo) (mapM (desugarExpr p) [e1,e2,e3])
+> desugarExpr p (UnaryMinus op e) =
+>   liftM (Apply (unaryMinus op (typeOf e))) (desugarExpr p e)
 >   where unaryMinus op ty
 >           | op == minusId =
 >               if ty == floatType then prelNegateFloat else prelNegate
 >           | op == fminusId = prelNegateFloat
 >           | otherwise = internalError "unaryMinus"
-> desugarExpr m p (Apply e1 e2) =
->   liftM2 Apply (desugarExpr m p e1) (desugarExpr m p e2)
-> desugarExpr m p (InfixApply e1 op e2) =
+> desugarExpr p (Apply e1 e2) =
+>   liftM2 Apply (desugarExpr p e1) (desugarExpr p e2)
+> desugarExpr p (InfixApply e1 op e2) =
 >   do
->     op' <- desugarExpr m p (infixOp op)
->     e1' <- desugarExpr m p e1
->     e2' <- desugarExpr m p e2
+>     op' <- desugarExpr p (infixOp op)
+>     e1' <- desugarExpr p e1
+>     e2' <- desugarExpr p e2
 >     return (Apply (Apply op' e1') e2')
-> desugarExpr m p (LeftSection e op) =
+> desugarExpr p (LeftSection e op) =
 >   do
->     op' <- desugarExpr m p (infixOp op)
->     e' <- desugarExpr m p e
+>     op' <- desugarExpr p (infixOp op)
+>     e' <- desugarExpr p e
 >     return (Apply op' e')
-> desugarExpr m p (RightSection op e) =
+> desugarExpr p (RightSection op e) =
 >   do
->     op' <- desugarExpr m p (infixOp op)
->     e' <- desugarExpr m p e
+>     op' <- desugarExpr p (infixOp op)
+>     e' <- desugarExpr p e
 >     return (Apply (Apply (prelFlip ty1 ty2 ty3) op') e')
 >   where TypeArrow ty1 (TypeArrow ty2 ty3) = typeOf (infixOp op)
-> desugarExpr m _ (Lambda p ts e) =
->   liftM2 (Lambda p) (mapM (desugarTerm m) ts) (desugarExpr m p e)
-> desugarExpr m p (Let ds e) =
->   liftM2 Let (desugarDeclGroup m ds) (desugarExpr m p e)
-> desugarExpr m p (Do sts e) = desugarExpr m p (foldr desugarStmt e sts)
+> desugarExpr _ (Lambda p ts e) =
+>   liftM2 (Lambda p) (mapM desugarTerm ts) (desugarExpr p e)
+> desugarExpr p (Let ds e) = liftM2 Let (desugarDeclGroup ds) (desugarExpr p e)
+> desugarExpr p (Do sts e) = desugarExpr p (foldr desugarStmt e sts)
 >   where desugarStmt (StmtExpr e) e' =
 >           apply (prelBind_ (ioResType (typeOf e)) (ioResType (typeOf e')))
 >                 [e,e']
@@ -304,18 +286,16 @@ not be replaced.
 >           apply (prelBind (typeOf t) (ioResType (typeOf e')))
 >                 [e,Lambda p [t] e']
 >         desugarStmt (StmtDecl ds) e' = mkLet ds e'
-> desugarExpr m p (IfThenElse e1 e2 e3) =
->   liftM3 mkCase (desugarExpr m p e1) (desugarExpr m p e2) (desugarExpr m p e3)
+> desugarExpr p (IfThenElse e1 e2 e3) =
+>   liftM3 mkCase (desugarExpr p e1) (desugarExpr p e2) (desugarExpr p e3)
 >   where mkCase e1 e2 e3 =
 >           Case e1 [caseAlt p truePattern e2,caseAlt p falsePattern e3]
-> desugarExpr m p (Case e as) =
->   liftM2 Case (desugarExpr m p e) (mapM (desugarAlt m) as)
-> desugarExpr m p (Fcase e as) =
->   liftM2 Fcase (desugarExpr m p e) (mapM (desugarAlt m) as)
+> desugarExpr p (Case e as) = liftM2 Case (desugarExpr p e) (mapM desugarAlt as)
+> desugarExpr p (Fcase e as) =
+>   liftM2 Fcase (desugarExpr p e) (mapM desugarAlt as)
 
-> desugarAlt :: ModuleIdent -> Alt Type -> DesugarState (Alt Type)
-> desugarAlt m (Alt p t rhs) =
->   liftM2 (Alt p) (desugarTerm m t) (desugarRhs m rhs)
+> desugarAlt :: Alt Type -> DesugarState (Alt Type)
+> desugarAlt (Alt p t rhs) = liftM2 (Alt p) (desugarTerm t) (desugarRhs rhs)
 
 > desugarField :: (a -> DesugarState a) -> Field a -> DesugarState (Field a)
 > desugarField desugar (Field l e) = liftM (Field l) (desugar e)
@@ -352,21 +332,21 @@ qualifiers generate fresh instances of $t$ that do not contribute to
 the list at all.
 \begin{verbatim}
 
-> desugarListCompr :: ModuleIdent -> Expression Type -> [Statement Type]
->                  -> Expression Type -> DesugarState (Expression Type)
-> desugarListCompr _ e [] z =
+> desugarListCompr :: Expression Type -> [Statement Type] -> Expression Type
+>                  -> DesugarState (Expression Type)
+> desugarListCompr e [] z =
 >   return (apply (Constructor (consType (typeOf e)) qConsId) [e,z])
-> desugarListCompr m e (q:qs) z =
->   desugarQual m q z >>= \(y,f) -> desugarListCompr m e qs y >>= return . f
+> desugarListCompr e (q:qs) z =
+>   desugarQual q z >>= \(y,f) -> desugarListCompr e qs y >>= return . f
 
-> desugarQual :: ModuleIdent -> Statement Type -> Expression Type
+> desugarQual :: Statement Type -> Expression Type
 >             -> DesugarState (Expression Type,
 >                              Expression Type -> Expression Type)
-> desugarQual _ (StmtExpr b) z = return (z,\e -> IfThenElse b e z)
-> desugarQual m (StmtBind p t l) z =
+> desugarQual (StmtExpr b) z = return (z,\e -> IfThenElse b e z)
+> desugarQual (StmtBind p t l) z =
 >   do
->     v <- freshVar m "_#var" (typeOf t)
->     y <- freshVar m "_#var" (typeOf z)
+>     v <- freshVar "_#var" (typeOf t)
+>     y <- freshVar "_#var" (typeOf z)
 >     return (uncurry mkVar y,
 >             \e -> apply (prelFoldr (fst v) (fst y)) [foldFunct v y e,z,l])
 >   where foldFunct v l e =
@@ -374,17 +354,16 @@ the list at all.
 >             (Case (uncurry mkVar v)
 >                   [caseAlt p t e,
 >                    caseAlt p (uncurry VariablePattern v) (uncurry mkVar l)])
-> desugarQual _ (StmtDecl ds) z = return (z,Let ds)
+> desugarQual (StmtDecl ds) z = return (z,Let ds)
 
 \end{verbatim}
 Generation of fresh names.
 \begin{verbatim}
 
-> freshVar :: ModuleIdent -> String -> Type -> DesugarState (Type,Ident)
-> freshVar m prefix ty =
+> freshVar :: String -> Type -> DesugarState (Type,Ident)
+> freshVar prefix ty =
 >   do
->     v <- liftM (mkName prefix) (liftSt (updateSt (1 +)))
->     updateSt_ (bindFun m v 0 (monoType ty))
+>     v <- liftM (mkName prefix) (updateSt (1 +))
 >     return (ty,v)
 >   where mkName pre n = mkIdent (pre ++ show n)
 

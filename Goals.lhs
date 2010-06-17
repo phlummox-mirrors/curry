@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Goals.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: Goals.lhs 2965 2010-06-17 17:15:35Z wlux $
 %
 % Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -123,8 +123,8 @@ interfaces are in scope with their qualified names.
 > checkGoal task mEnv m ds g =
 >   do
 >     g' <- precCheckGoal m pEnv (renameGoal g)
->     (tyEnv',g'') <- kindCheckGoal tcEnv g' >> typeCheckGoal m tcEnv tyEnv g'
->     return (qualifyGoal task mEnv m pEnv tcEnv tyEnv' g'')
+>     g'' <- kindCheckGoal tcEnv g' >> typeCheckGoal m tcEnv tyEnv g'
+>     return (qualifyGoal task mEnv m pEnv tcEnv tyEnv g'')
 >   where (pEnv,tcEnv,tyEnv) = importModules mEnv ds
 
 > qualifyGoal :: Task -> ModuleEnv -> ModuleIdent -> PEnv -> TCEnv -> ValueEnv
@@ -213,7 +213,7 @@ showing the bindings of the goal's free variables.
 >   | otherwise =
 >       (if debug then Nothing else Just [v | FreeVar _ v <- vs],
 >        mkModule m p ty' g vs' (apply (prelUnif ty) [mkVar ty v,e']),
->        bindFun m v 0 (monoType ty) (bindFun m g n (polyType ty') tyEnv))
+>        bindFun m g n (polyType ty') tyEnv)
 >   where ty = typeOf e
 >         v = anonId
 >         (vs,e') = liftGoalVars debug (mkLet ds e)

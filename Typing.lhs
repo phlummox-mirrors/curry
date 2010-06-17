@@ -1,26 +1,27 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 2919 2009-12-02 14:18:15Z wlux $
+% $Id: Typing.lhs 2965 2010-06-17 17:15:35Z wlux $
 %
-% Copyright (c) 2003-2009, Wolfgang Lux
+% Copyright (c) 2003-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Typing.lhs}
 \section{Computing the Type of Curry Expressions}
 \begin{verbatim}
 
-> module Typing(Typeable(..), etaType, withType, argumentTypes) where
+> module Typing(Typeable(..), etaType, withType, argumentTypes, bindDecls,
+>               bindLhs, bindTerms, bindTerm, declVars, termVars) where
 > import Base
 > import Curry
 > import CurryUtils
 > import Env
 > import Maybe
-> import PredefIdent
 > import PredefTypes
 > import TopEnv
 > import Types
 > import TypeInfo
 > import TypeSubst
 > import ValueInfo
+> import Utils
 
 \end{verbatim}
 After the compiler has attributed patterns and expressions with type
@@ -193,5 +194,52 @@ types occur in the constructor's result type as well.
 >   (ls,map (subst (matchType tcEnv ty0 ty idSubst)) tys)
 >   where (ls,ForAll _ ty') = conType c tyEnv
 >         (tys,ty0) = arrowUnapply ty'
+
+\end{verbatim}
+The functions \texttt{bindDecls}, \texttt{bindDecl}, \texttt{bindLhs},
+\texttt{bindTerm} augment the type environment with the types of the
+entities defined in local declaration groups and terms, respectively,
+using the types from their type attributes.
+\begin{verbatim}
+
+> bindDecls :: [Decl Type] -> ValueEnv -> ValueEnv
+> bindDecls ds tyEnv = foldr bindDecl tyEnv ds
+
+> bindDecl :: Decl Type -> ValueEnv -> ValueEnv
+> bindDecl d tyEnv = bindLocalVars (filter (unbound tyEnv) (declVars d)) tyEnv
+>   where unbound tyEnv v = null (lookupTopEnv (fst3 v) tyEnv)
+
+> bindLhs :: Lhs Type -> ValueEnv -> ValueEnv
+> bindLhs = bindTerms . snd . flatLhs
+
+> bindTerms :: [ConstrTerm Type] -> ValueEnv -> ValueEnv
+> bindTerms ts tyEnv = foldr bindTerm tyEnv ts
+
+> bindTerm :: ConstrTerm Type -> ValueEnv -> ValueEnv
+> bindTerm t tyEnv = bindLocalVars (filter (unbound tyEnv) (termVars t)) tyEnv
+>   where unbound tyEnv v = null (lookupTopEnv (fst3 v) tyEnv)
+
+> declVars :: Decl Type -> [(Ident,Int,Type)]
+> declVars (InfixDecl _ _ _ _) = []
+> declVars (TypeSig _ _ _) = []
+> declVars (FunctionDecl _ ty f eqs) = [(f,eqnArity (head eqs),ty)]
+> declVars (ForeignDecl _ _ ty f _) = [(f,foreignArity ty,ty)]
+> declVars (PatternDecl _ t _) = termVars t
+> declVars (FreeDecl _ vs) = [(v,0,ty) | FreeVar ty v <- vs]
+> declVars (TrustAnnot _ _ _) = []
+
+> termVars :: ConstrTerm Type -> [(Ident,Int,Type)]
+> termVars (LiteralPattern _ _) = []
+> termVars (NegativePattern _ _ _) = []
+> termVars (VariablePattern ty v) = [(v,0,ty)]
+> termVars (ConstructorPattern _ _ ts) = concatMap termVars ts
+> termVars (FunctionPattern _ _ ts) = concatMap termVars ts
+> termVars (InfixPattern _ t1 _ t2) = termVars t1 ++ termVars t2
+> termVars (ParenPattern t) = termVars t
+> termVars (RecordPattern _ _ fs) = concat [termVars t | Field _ t <- fs]
+> termVars (TuplePattern ts) = concatMap termVars ts
+> termVars (ListPattern _ ts) = concatMap termVars ts
+> termVars (AsPattern v t) = (v,0,typeOf t) : termVars t
+> termVars (LazyPattern t) = termVars t
 
 \end{verbatim}

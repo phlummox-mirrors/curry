@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Newtype.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: Newtype.lhs 2965 2010-06-17 17:15:35Z wlux $
 %
 % Copyright (c) 2009-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -33,25 +33,20 @@ recursive type synonyms, which are not allowed in source code.
 > import TypeInfo
 > import ValueInfo
 
-> transNewtype :: TCEnv -> ValueEnv -> Module Type
->              -> (Module Type,TCEnv,ValueEnv)
-> transNewtype tcEnv tyEnv (Module m es is ds) =
->   (Module m es is ds',bindWorld (fmap (transTypeInfo tyEnv) tcEnv),tyEnv')
->   where (ds',tyEnv') =
->           run (transModule m tyEnv ds) (fmap transValueInfo tyEnv)
-
 \end{verbatim}
 New identifiers are introduced in the definitions of the functions
-replacing newtype declarations. Once more, we use nested state monad
-transformers in order to generate unique names and pass through the
-type environment, which is augmented with the types of the new
-variables.
+replacing newtype declarations. Once more, we use a state monad
+transformer to generate unique names.
 \begin{verbatim}
 
-> type NewtypeState a = StateT ValueEnv (StateT Int Id) a
+> type NewtypeState a = StateT Int Id a
 
-> run :: NewtypeState a -> ValueEnv -> a
-> run m tyEnv = runSt (callSt m tyEnv) 1
+> transNewtype :: TCEnv -> ValueEnv -> Module Type
+>              -> (TCEnv,ValueEnv,Module Type)
+> transNewtype tcEnv tyEnv (Module m es is ds) =
+>   (bindWorld (fmap (transTypeInfo tyEnv) tcEnv),
+>    fmap transValueInfo tyEnv,
+>    Module m es is (concat (runSt (mapM (transTopDecl m tyEnv) ds) 1)))
 
 \end{verbatim}
 Besides user defined renaming types, the compiler also considers the
@@ -91,20 +86,12 @@ At the top-level, each newtype declaration is replaced by a type
 synonym declaration and a function declaration.
 \begin{verbatim}
 
-> transModule :: ModuleIdent -> ValueEnv -> [TopDecl Type]
->             -> NewtypeState ([TopDecl Type],ValueEnv)
-> transModule m tyEnv ds =
->   do
->     dss' <- mapM (transTopDecl m tyEnv) ds
->     tyEnv' <- fetchSt
->     return (concat dss',tyEnv')
-
 > transTopDecl :: ModuleIdent -> ValueEnv -> TopDecl Type
 >              -> NewtypeState [TopDecl Type]
 > transTopDecl _ _ (DataDecl p tc tvs cs) = return [DataDecl p tc tvs cs]
 > transTopDecl m tyEnv (NewtypeDecl p tc tvs (NewConstrDecl _ c ty)) =
 >   do
->     v <- freshVar m "_#v" (instType (arrowDomain ty'))
+>     v <- freshVar "_#v" (instType (arrowDomain ty'))
 >     let d = funDecl p ty' c [uncurry VariablePattern v] (uncurry mkVar v)
 >     return [TypeDecl p tc tvs ty,BlockDecl d]
 >   where ty' = rawConType (qualifyWith m c) tyEnv
@@ -214,11 +201,10 @@ variables for every instantiated type.
 Generation of fresh names.
 \begin{verbatim}
 
-> freshVar :: ModuleIdent -> String -> Type -> NewtypeState (Type,Ident)
-> freshVar m prefix ty =
+> freshVar :: String -> Type -> NewtypeState (Type,Ident)
+> freshVar prefix ty =
 >   do
->     v <- liftM (mkName prefix) (liftSt (updateSt (1 +)))
->     updateSt_ (bindFun m v 0 (monoType ty))
+>     v <- liftM (mkName prefix) (updateSt (1 +))
 >     return (ty,v)
 >   where mkName pre n = mkIdent (pre ++ show n)
 

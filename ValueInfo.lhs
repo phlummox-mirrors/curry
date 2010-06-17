@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ValueInfo.lhs 2721 2008-06-13 16:17:39Z wlux $
+% $Id: ValueInfo.lhs 2965 2010-06-17 17:15:35Z wlux $
 %
-% Copyright (c) 1999-2008, Wolfgang Lux
+% Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ValueInfo.lhs}
@@ -26,6 +26,7 @@ information.
 > module ValueInfo where
 > import Base
 > import Ident
+> import PredefIdent
 > import TopEnv
 > import Types
 
@@ -77,6 +78,19 @@ and change the type of a function in the value type environment.
 
 > rebindFun :: ModuleIdent -> Ident -> Int -> TypeScheme -> ValueEnv -> ValueEnv
 > rebindFun m f n ty = rebindTopEnv m f (Value (qualifyWith m f) n ty)
+
+\end{verbatim}
+The functions \texttt{bindLocalVar} and \texttt{bindLocalVars} add the
+type of one or many local variables or functions to the type
+environment. In contrast to global functions, we do not care about the
+name of the module containing the variable or function's definition.
+\begin{verbatim}
+
+> bindLocalVars :: [(Ident,Int,Type)] -> ValueEnv -> ValueEnv
+> bindLocalVars vs tyEnv = foldr bindLocalVar tyEnv vs
+
+> bindLocalVar :: (Ident,Int,Type) -> ValueEnv -> ValueEnv
+> bindLocalVar (v,n,ty) = localBindTopEnv v (Value (qualify v) n (polyType ty))
 
 \end{verbatim}
 The functions \texttt{conType}, \texttt{varType}, and \texttt{funType}
@@ -132,6 +146,19 @@ function and the function \texttt{changeArity} changes the arity of a
 >   case lookupTopEnv f tyEnv of
 >     Value _ _ ty : _ -> rebindFun m f n ty tyEnv
 >     _ -> internalError ("changeArity " ++ show f)
+
+\end{verbatim}
+The arity of a foreign function is equal to the arity of its type,
+except for functions with result type \texttt{IO}~$t$. Such functions
+receive an additional implicit argument that semantically represents
+the current state of the external world.
+\begin{verbatim}
+
+> foreignArity :: Type -> Int
+> foreignArity (TypeConstructor tc tys) =
+>   if tc == qIOId && length tys == 1 then 1 else 0
+> foreignArity (TypeVariable _) = 0
+> foreignArity (TypeArrow _ ty) = 1 + foreignArity ty
 
 \end{verbatim}
 The function \texttt{isNewtypeConstr} uses the value type environment

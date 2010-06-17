@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: PatternBind.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: PatternBind.lhs 2965 2010-06-17 17:15:35Z wlux $
 %
 % Copyright (c) 2003-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -56,20 +56,20 @@ were introduced in the code by the transformation.
 > import Typing
 > import ValueInfo
 
-> type PatternBindState a = StateT ValueEnv (StateT Int Id) a
+> type PatternBindState a = StateT Int Id a
 
-> pbTrans :: ValueEnv -> Module Type -> (Module Type,ValueEnv)
-> pbTrans tyEnv m = runSt (callSt (pbtModule m) tyEnv) 1
+> pbTrans :: ValueEnv -> Module Type -> (ValueEnv,Module Type)
+> pbTrans tyEnv m = runSt (pbtModule tyEnv m) 1
 
-> pbtModule :: Module Type -> PatternBindState (Module Type,ValueEnv)
-> pbtModule (Module m es is ds) =
+> pbtModule :: ValueEnv -> Module Type
+>           -> PatternBindState (ValueEnv,Module Type)
+> pbtModule tyEnv (Module m es is ds) =
 >   do
->     n <- liftSt fetchSt
+>     n <- fetchSt
 >     ds' <- mapM (pbt m) ds
->     tyEnv <- fetchSt
->     n' <- liftSt fetchSt
+>     n' <- fetchSt
 >     let ap = if n == n' then const id else ($)
->     return (Module m es is (ap (prims ++) ds'),ap bindPrims tyEnv)
+>     return (ap bindPrims tyEnv,Module m es is (ap (prims ++) ds'))
 >   where p0 = first (file (head (map pos ds)))
 >         Variable tyUpd pbUpd = pbUpdate m (TypeVariable 0)
 >         Variable tyRet pbRet = pbReturn m (TypeVariable 0)
@@ -171,7 +171,7 @@ constraint $v_0$.
 >     (VariablePattern _ _,_) -> return [PatternDecl p t rhs]
 >     (TuplePattern ts,SimpleRhs _ e _) ->
 >       do
->         v0 <- freshVar m "_#pbt" successType
+>         v0 <- freshVar "_#pbt" successType
 >         return (updateDecl m p v0 vs e :
 >                 map (selectorDecl m p (uncurry mkVar v0)) vs)
 >       where vs = [(ty,v) | VariablePattern ty v <- ts]
@@ -216,11 +216,10 @@ Pattern binding primitives.
 Generation of fresh names.
 \begin{verbatim}
 
-> freshVar :: ModuleIdent -> String -> Type -> PatternBindState (Type,Ident)
-> freshVar m prefix ty =
+> freshVar :: String -> Type -> PatternBindState (Type,Ident)
+> freshVar prefix ty =
 >   do
->     v <- liftM mkName (liftSt (updateSt (1 +)))
->     updateSt_ (bindFun m v 0 (monoType ty))
+>     v <- liftM mkName (updateSt (1 +))
 >     return (ty,v)
 >   where mkName n = mkIdent (prefix ++ show n)
 
