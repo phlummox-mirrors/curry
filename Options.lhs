@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Options.lhs 2792 2009-04-20 21:39:25Z wlux $
+% $Id: Options.lhs 2966 2010-06-18 12:18:36Z wlux $
 %
-% Copyright (c) 2001-2009, Wolfgang Lux
+% Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Options.lhs}
@@ -75,7 +75,6 @@ all compiler options.
 >   | DumpFlatCase                      -- dump source after case flattening
 >   | DumpSimplified                    -- dump source after simplification
 >   | DumpPBU                           -- dump source with pattern updates
->   | DumpUnlambda                      -- dump source after naming lambdas
 >   | DumpLifted                        -- dump source after lambda-lifting
 >   | DumpIL                            -- dump IL code after translation
 >   | DumpTransformed                   -- dump transformed code
@@ -161,8 +160,6 @@ recognized by the compiler.
 >            "dump source code after simplification",
 >     Option "" ["dump-pbu"] (NoArg (Dump [DumpPBU]))
 >            "dump source code with pattern binding updates",
->     Option "" ["dump-unlambda"] (NoArg (Dump [DumpUnlambda]))
->            "dump source code after naming lambdas",
 >     Option "" ["dump-lifted"] (NoArg (Dump [DumpLifted]))
 >            "dump source code after lambda-lifting",
 >     Option "" ["dump-il"] (NoArg (Dump [DumpIL]))

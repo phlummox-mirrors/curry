@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Common.lhs 2965 2010-06-17 17:15:35Z wlux $
+% $Id: Common.lhs 2966 2010-06-18 12:18:36Z wlux $
 %
 % Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -47,7 +47,6 @@ well as goals.
 > import Types
 > import TypeInfo
 > import TypeTrans
-> import Unlambda
 > import Utils
 > import ValueInfo
 
@@ -60,7 +59,7 @@ eventually update the module's interface.
 
 > transModule :: Bool -> Trust -> TCEnv -> ValueEnv -> Module Type
 >             -> (TCEnv,ValueEnv,TrustEnv,Module Type,[(Dump,Doc)])
-> transModule debug tr tcEnv tyEnv m = (tcEnv',tyEnv''',trEnv,nolambda,dumps)
+> transModule debug tr tcEnv tyEnv m = (tcEnv',tyEnv''',trEnv,pbu,dumps)
 >   where trEnv = if debug then trustEnv tr m else emptyEnv
 >         desugared = desugar m
 >         unlabeled = unlabel tcEnv tyEnv desugared
@@ -69,7 +68,6 @@ eventually update the module's interface.
 >         flatCase = caseMatch tcEnv' nolazy
 >         (tyEnv'',simplified) = simplify tcEnv' tyEnv' trEnv flatCase
 >         (tyEnv''',pbu) = pbTrans tyEnv'' simplified
->         nolambda = unlambda pbu
 >         dumps =
 >           [(DumpRenamed,ppModule m),
 >            (DumpTypes,ppTypes tcEnv (localBindings tyEnv)),
@@ -79,8 +77,7 @@ eventually update the module's interface.
 >            (DumpUnlazy,ppModule nolazy),
 >            (DumpFlatCase,ppModule flatCase),
 >            (DumpSimplified,ppModule simplified),
->            (DumpPBU,ppModule pbu),
->            (DumpUnlambda,ppModule nolambda)]
+>            (DumpPBU,ppModule pbu)]
 
 \end{verbatim}
 The second transformation phase translates the code into the
@@ -206,7 +203,6 @@ standard output.
 > dumpHeader DumpFlatCase = "Source code after case flattening"
 > dumpHeader DumpSimplified = "Source code after simplification"
 > dumpHeader DumpPBU = "Source code with pattern binding updates"
-> dumpHeader DumpUnlambda = "Source code after naming lambdas"
 > dumpHeader DumpLifted = "Source code after lifting"
 > dumpHeader DumpIL = "Intermediate code"
 > dumpHeader DumpTransformed = "Transformed code" 

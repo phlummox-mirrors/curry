@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Lift.lhs 2965 2010-06-17 17:15:35Z wlux $
+% $Id: Lift.lhs 2966 2010-06-18 12:18:36Z wlux $
 %
 % Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -25,6 +25,7 @@ lifted to the top-level.
 > import Env
 > import List
 > import Monad
+> import PredefIdent
 > import SCC
 > import Set
 > import Subst
@@ -240,6 +241,10 @@ variables in order to avoid an inadvertent name capturing.
 >     e1' <- abstractExpr m pre lvs env e1
 >     e2' <- abstractExpr m pre lvs env e2
 >     return (Apply e1' e2')
+> abstractExpr m pre lvs env (Lambda p ts e) =
+>   abstractDeclGroup m pre lvs env [funDecl p ty f ts e] (mkVar ty f)
+>   where f = lambdaId p
+>         ty = typeOf (Lambda p ts e)
 > abstractExpr m pre lvs env (Let ds e) = abstractDeclGroup m pre lvs env ds e
 > abstractExpr m pre lvs env (Case e alts) =
 >   do
