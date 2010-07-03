@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2965 2010-06-17 17:15:35Z wlux $
+% $Id: TypeCheck.lhs 2972 2010-07-03 14:04:33Z wlux $
 %
 % Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -346,8 +346,8 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 > tcDeclGroup m tcEnv sigs tyEnv [FreeDecl p vs] =
 >   do
 >     vs' <- mapM (tcDeclVar False tcEnv sigs p) (bv vs)
->     let tyEnv' = foldr (uncurry3 (bindFun m)) tyEnv vs'
->     return (tyEnv',[FreeDecl p [FreeVar (rawType ty) v | (v,_,ty) <- vs']])
+>     return (bindVars m tyEnv vs',[FreeDecl p (map freeVar vs')])
+>   where freeVar (v,_,ty) = FreeVar (rawType ty) v
 > tcDeclGroup m tcEnv sigs tyEnv ds =
 >   do
 >     vss <- mapM (tcDeclVars tcEnv sigs) ds
@@ -961,7 +961,7 @@ constructor itself.
 > tcExpr m tcEnv tyEnv p e@(InfixApply e1 op e2) =
 >   do
 >     ((alpha,beta,gamma),op') <-
->       tcInfixOp m tcEnv tyEnv p op >>=-
+>       tcInfixOp tyEnv op >>=-
 >       tcBinary p "infix application"
 >                (ppExpr 0 e $-$ text "Operator:" <+> ppOp op) tcEnv
 >     e1' <-
@@ -976,7 +976,7 @@ constructor itself.
 > tcExpr m tcEnv tyEnv p e@(LeftSection e1 op) =
 >   do
 >     ((alpha,beta),op') <-
->       tcInfixOp m tcEnv tyEnv p op >>=-
+>       tcInfixOp tyEnv op >>=-
 >       tcArrow p "left section" (ppExpr 0 e $-$ text "Operator:" <+> ppOp op)
 >               tcEnv
 >     e1' <-
@@ -987,7 +987,7 @@ constructor itself.
 > tcExpr m tcEnv tyEnv p e@(RightSection op e1) =
 >   do
 >     ((alpha,beta,gamma),op') <-
->       tcInfixOp m tcEnv tyEnv p op >>=-
+>       tcInfixOp tyEnv op >>=-
 >       tcBinary p "right section"
 >                (ppExpr 0 e $-$ text "Operator:" <+> ppOp op) tcEnv
 >     e1' <-
@@ -1063,7 +1063,7 @@ constructor itself.
 >     tyEnv' <- bindLambdaVars m tyEnv t
 >     (ty,t') <- tcConstrTerm tcEnv tyEnv' p t
 >     e' <-
->       tcExpr m tcEnv tyEnv' p e >>-
+>       tcExpr m tcEnv tyEnv p e >>-
 >       unify p "generator" (ppStmt q $-$ text "Term:" <+> ppExpr 0 e)
 >             tcEnv (listType ty)
 >     return (tyEnv',StmtBind p t' e')
@@ -1086,7 +1086,7 @@ constructor itself.
 >     tyEnv' <- bindLambdaVars m tyEnv t
 >     (ty,t') <- tcConstrTerm tcEnv tyEnv' p t
 >     e' <-
->       tcExpr m tcEnv tyEnv' p e >>-
+>       tcExpr m tcEnv tyEnv p e >>-
 >       unify p "statement" (ppStmt st $-$ text "Term:" <+> ppExpr 0 e)
 >             tcEnv (ioType ty)
 >     return (tyEnv',StmtBind p t' e')
@@ -1095,15 +1095,14 @@ constructor itself.
 >     (tyEnv',ds') <- tcDecls m tcEnv tyEnv ds
 >     return (tyEnv',StmtDecl ds')
 
-> tcInfixOp :: ModuleIdent -> TCEnv -> ValueEnv -> Position -> InfixOp a
->           -> TcState (Type,InfixOp Type)
-> tcInfixOp m tcEnv tyEnv p (InfixOp a op) =
+> tcInfixOp :: ValueEnv -> InfixOp a -> TcState (Type,InfixOp Type)
+> tcInfixOp tyEnv (InfixOp _ op) =
 >   do
->     (ty,_) <- tcExpr m tcEnv tyEnv p (Variable a op)
+>     ty <- inst (funType op tyEnv)
 >     return (ty,InfixOp ty op)
-> tcInfixOp m tcEnv tyEnv p (InfixConstr a op) =
+> tcInfixOp tyEnv (InfixConstr a op) =
 >   do
->     (ty,_) <- tcExpr m tcEnv tyEnv p (Constructor a op)
+>     ty <- inst (snd (conType op tyEnv))
 >     return (ty,InfixConstr ty op)
 
 > tcField :: (TCEnv -> ValueEnv -> Position -> a b -> TcState (Type,a Type))
