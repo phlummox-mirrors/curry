@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseMatch.lhs 2965 2010-06-17 17:15:35Z wlux $
+% $Id: CaseMatch.lhs 2973 2010-07-03 14:10:13Z wlux $
 %
 % Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -182,9 +182,8 @@ if it is not restricted by the guard expression.
 >   match m p (Case e as) =
 >     do
 >       e' <- match m p e
->       ([v],e'') <- matchRigid m ty [(p,[t],rhs) | Alt p t rhs <- as]
+>       ([v],e'') <- matchRigid m [(p,[t],rhs) | Alt p t rhs <- as]
 >       return (mkCase m p v e' e'')
->     where ty = typeOf (Case e as)
 >   match m p (Fcase e as) =
 >     do
 >       e' <- match m p e
@@ -221,13 +220,13 @@ declarations that define the variables occurring in $t_i$.
 >             (ts',fpss) <- mapAndUnzipM liftFP ts
 >             return (p,ts',inject id p (concat fpss) rhs)
 
-> matchRigid :: ModuleIdent -> Type -> [Match Type]
+> matchRigid :: ModuleIdent -> [Match Type]
 >            -> CaseMatchState ([(Type,Ident)],Expression Type)
-> matchRigid m ty as =
+> matchRigid m as =
 >   do
 >     as' <- mapM elimFP as
 >     vs <- matchVars [ts | (_,_,ts,_) <- as']
->     e <- rigidMatch m ty id vs as'
+>     e <- rigidMatch m id vs as'
 >     return (vs,e)
 >   where elimFP (p,ts,rhs) =
 >           do
@@ -564,28 +563,28 @@ alternatives. Thus, the example is effectively transformed into
 where the default alternative is redundant.
 \begin{verbatim}
 
-> rigidMatch :: ModuleIdent -> Type -> ([(Type,Ident)] -> [(Type,Ident)])
+> rigidMatch :: ModuleIdent -> ([(Type,Ident)] -> [(Type,Ident)])
 >            -> [(Type,Ident)] -> [Match' Type]
 >            -> CaseMatchState (Expression Type)
-> rigidMatch m ty prefix [] (a:as) = matchAlt vs a (matchFail vs as)
+> rigidMatch m prefix [] (a:as) = matchAlt vs a (matchFail vs as)
 >   where vs = prefix []
 >         resetArgs (p,prefix,ts,rhs) = (p,id,prefix ts,rhs)
 >         matchAlt vs (p,prefix,_,rhs) =
 >           matchRhs m p (foldr2 (bindVars p . snd) rhs vs (prefix []))
 >         matchFail vs as
 >           | null as = Nothing
->           | otherwise = Just (rigidMatch m ty id vs (map resetArgs as))
-> rigidMatch m ty prefix (v:vs) as
+>           | otherwise = Just (rigidMatch m id vs (map resetArgs as))
+> rigidMatch m prefix (v:vs) as
 >   | isVarPattern (fst (head as')) =
 >       if all (isVarPattern . fst) (tail as') then
->         rigidMatch m ty prefix vs (map (matchVar (snd v)) as)
+>         rigidMatch m prefix vs (map (matchVar (snd v)) as)
 >       else
->         rigidMatch m ty (prefix . (v:)) vs (map skipArg as)
+>         rigidMatch m (prefix . (v:)) vs (map skipArg as)
 >   | otherwise =
 >       do
 >         tcEnv <- envRt
 >         liftM (Case (uncurry mkVar v))
->               (mapM (matchCaseAlt m ty prefix v vs as')
+>               (mapM (matchCaseAlt m prefix v vs as')
 >                     (if allCases tcEnv v ts then ts else ts ++ ts'))
 >   where as' = map tagAlt as
 >         (ts',ts) = partition isVarPattern (nub (map fst as'))
@@ -597,15 +596,15 @@ where the default alternative is redundant.
 >                 fixType (TypeConstructor tc _) = tc
 >                 fixType (TypeConstrained (ty:_) _) = fixType ty
 
-> matchCaseAlt :: ModuleIdent -> Type -> ([(Type,Ident)] -> [(Type,Ident)])
+> matchCaseAlt :: ModuleIdent -> ([(Type,Ident)] -> [(Type,Ident)])
 >              -> (Type,Ident) -> [(Type,Ident)]
 >              -> [(ConstrTerm (),Match' Type)] -> ConstrTerm ()
 >              -> CaseMatchState (Alt Type)
-> matchCaseAlt m ty prefix v vs as t =
+> matchCaseAlt m prefix v vs as t =
 >   do
 >     vs' <- matchVars (map arguments ts)
 >     let ts' = map (uncurry VariablePattern) vs'
->     e' <- rigidMatch m ty id (prefix (vs' ++ vs)) (map (expandArg ts') as')
+>     e' <- rigidMatch m id (prefix (vs' ++ vs)) (map (expandArg ts') as')
 >     return (caseAlt (pos (head as')) (renameArgs (snd v) vs' t') e')
 >   where t'
 >           | isVarPattern t = uncurry VariablePattern v
