@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 2965 2010-06-17 17:15:35Z wlux $
+% $Id: Simplify.lhs 2980 2010-07-09 13:45:37Z wlux $
 %
 % Copyright (c) 2003-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -231,9 +231,9 @@ body is a non-expansive expression.
 > exprArity _ (Literal _ _) = 0
 > exprArity tyEnv (Variable _ x) = arity x tyEnv
 > exprArity tyEnv (Constructor _ c) = arity c tyEnv
-> exprArity tyEnv (Tuple _) = 0
+> exprArity _ (Tuple _) = 0
 > exprArity tyEnv (Apply e _) = exprArity tyEnv e - 1
-> exprArity tyEnv (Lambda _ ts _) = length ts
+> exprArity _ (Lambda _ ts _) = length ts
 > exprArity tyEnv (Let ds e) = exprArity (bindDecls ds tyEnv) e
 > exprArity _ (Case _ _) = 0
 > exprArity _ (Fcase _ _) = 0
@@ -417,6 +417,7 @@ in later phases of the compiler.
 >     rhs' <- simplifyRhs m (bindTerm t tyEnv) env rhs
 >     return (Alt p (simplifyPattern (qfv m rhs') t) rhs')
 
+> simplifyPattern :: [Ident] -> ConstrTerm a -> ConstrTerm a
 > simplifyPattern _ (LiteralPattern a l) = LiteralPattern a l
 > simplifyPattern _ (VariablePattern a v) = VariablePattern a v
 > simplifyPattern fvs (ConstructorPattern a c ts) =
@@ -641,7 +642,7 @@ Generation of fresh names.
 >   do
 >     v <- liftM mkName (liftRt (liftRt (updateSt (1 +))))
 >     return (ty,v)
->   where mkName n = mkIdent (prefix ++ show n)
+>   where mkName n = renameIdent (mkIdent (prefix ++ show n)) n
 
 \end{verbatim}
 Auxiliary functions.

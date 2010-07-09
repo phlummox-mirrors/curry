@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Newtype.lhs 2965 2010-06-17 17:15:35Z wlux $
+% $Id: Newtype.lhs 2980 2010-07-09 13:45:37Z wlux $
 %
 % Copyright (c) 2009-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -206,7 +206,7 @@ Generation of fresh names.
 >   do
 >     v <- liftM (mkName prefix) (updateSt (1 +))
 >     return (ty,v)
->   where mkName pre n = mkIdent (pre ++ show n)
+>   where mkName pre n = renameIdent (mkIdent (pre ++ show n)) n
 
 \end{verbatim}
 Auxiliary functions.

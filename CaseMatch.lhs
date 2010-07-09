@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseMatch.lhs 2973 2010-07-03 14:10:13Z wlux $
+% $Id: CaseMatch.lhs 2980 2010-07-09 13:45:37Z wlux $
 %
 % Copyright (c) 2001-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -625,7 +625,7 @@ Generation of fresh names
 >   do
 >     v <- liftM (mkName prefix) (liftRt (updateSt (1 +)))
 >     return (ty,v)
->   where mkName pre n = mkIdent (pre ++ show n)
+>   where mkName pre n = renameIdent (mkIdent (pre ++ show n)) n
 
 \end{verbatim}
 Prelude entities
