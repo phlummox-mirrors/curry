@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2972 2010-07-03 14:04:33Z wlux $
+% $Id: TypeCheck.lhs 2983 2010-07-11 18:15:09Z wlux $
 %
 % Copyright (c) 1999-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -99,7 +99,7 @@ declarations.
 >               -> Error (Goal Type)
 > typeCheckGoal m tcEnv tyEnv g = run $
 >   do
->     g' <- tcGoal m tcEnv tyEnv g
+>     (_,g') <- tcGoal m tcEnv tyEnv g
 >     theta <- fetchSt
 >     return (fmap (subst theta) g')
 
@@ -426,21 +426,18 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 > tcEquation :: ModuleIdent -> TCEnv -> ValueEnv -> Set Int -> Type -> Ident
 >            -> Equation a -> TcState (Equation Type)
 > tcEquation m tcEnv tyEnv fs ty f eq@(Equation p lhs rhs) =
->   do
->     eq' <-
->       tcEqn m tcEnv tyEnv p lhs rhs >>-
->       unify p "function declaration" (ppEquation eq) tcEnv ty
->     checkSkolems p tcEnv (text "Function:" <+> ppIdent f) fs ty
->     return eq'
+>   tcEqn m tcEnv tyEnv fs p lhs rhs >>-
+>   unify p "equation" (ppEquation eq) tcEnv ty
 
-> tcEqn :: ModuleIdent -> TCEnv -> ValueEnv -> Position -> Lhs a -> Rhs a
->       -> TcState (Type,Equation Type)
-> tcEqn m tcEnv tyEnv p lhs rhs =
+> tcEqn :: ModuleIdent -> TCEnv -> ValueEnv -> Set Int -> Position
+>       -> Lhs a -> Rhs a -> TcState (Type,Equation Type)
+> tcEqn m tcEnv tyEnv fs p lhs rhs =
 >   do
 >     tyEnv' <- bindLambdaVars m tyEnv lhs
 >     (tys,lhs') <- tcLhs tcEnv tyEnv' p lhs
 >     (ty,rhs') <- tcRhs m tcEnv tyEnv' rhs
->     return (foldr TypeArrow ty tys,Equation p lhs' rhs')
+>     checkSkolems p "Equation" ppEquation tcEnv tyEnv fs
+>                  (foldr TypeArrow ty tys) (Equation p lhs' rhs')
 
 > bindLambdaVars :: QuantExpr t => ModuleIdent -> ValueEnv -> t
 >                -> TcState ValueEnv
@@ -449,13 +446,13 @@ $\forall\alpha.\texttt{Bool}\rightarrow[\alpha]\rightarrow[\alpha]$.
 > lambdaVar :: Ident -> TcState (Ident,Int,TypeScheme)
 > lambdaVar v = freshTypeVar >>= \ty -> return (v,0,monoType ty)
 
-> tcGoal :: ModuleIdent -> TCEnv -> ValueEnv -> Goal a -> TcState (Goal Type)
+> tcGoal :: ModuleIdent -> TCEnv -> ValueEnv -> Goal a
+>        -> TcState (Type,Goal Type)
 > tcGoal m tcEnv tyEnv (Goal p e ds) =
 >   do
 >     (tyEnv',ds') <- tcDecls m tcEnv tyEnv ds
 >     (ty,e') <- tcExpr m tcEnv tyEnv' p e
->     checkSkolems p tcEnv (text "Goal:" <+> ppExpr 0 e) zeroSet ty
->     return (Goal p e' ds')
+>     checkSkolems p "Goal" ppGoal tcEnv tyEnv zeroSet ty (Goal p e' ds')
 
 \end{verbatim}
 After \texttt{tcDeclGroup} has generalized the types of the implicitly
@@ -826,8 +823,7 @@ constructor itself.
 >   do
 >     g' <- tcExpr m tcEnv tyEnv p g >>- unify p "guard" (ppExpr 0 g) tcEnv gty
 >     e' <-
->       tcExpr m tcEnv tyEnv p e >>-
->       unify p "guarded expression" (ppExpr 0 e) tcEnv ty
+>       tcExpr m tcEnv tyEnv p e >>- unify p "expression" (ppExpr 0 e) tcEnv ty
 >     return (CondExpr p g' e')
 
 > tcExpr :: ModuleIdent -> TCEnv -> ValueEnv -> Position -> Expression a
@@ -888,9 +884,11 @@ constructor itself.
 >           unify p "expression" (doc $-$ text "Term:" <+> ppExpr 0 e) tcEnv ty
 > tcExpr m tcEnv tyEnv p (ListCompr e qs) =
 >   do
+>     fs <- liftM (fsEnv . flip subst tyEnv) fetchSt
 >     (tyEnv',qs') <- mapAccumM (flip (tcQual m tcEnv) p) tyEnv qs
 >     (ty,e') <- tcExpr m tcEnv tyEnv' p e
->     return (listType ty,ListCompr e' qs')
+>     checkSkolems p "Expression" (ppExpr 0) tcEnv tyEnv fs
+>                  (listType ty) (ListCompr e' qs')
 > tcExpr m tcEnv tyEnv p e@(EnumFrom e1) =
 >   do
 >     e1' <-
@@ -997,22 +995,26 @@ constructor itself.
 >     return (TypeArrow alpha gamma,RightSection op' e1')
 > tcExpr m tcEnv tyEnv _ (Lambda p ts e) =
 >   do
+>     fs <- liftM (fsEnv . flip subst tyEnv) fetchSt
 >     tyEnv' <- bindLambdaVars m tyEnv ts
 >     (tys,ts') <- liftM unzip $ mapM (tcConstrTerm tcEnv tyEnv' p) ts
 >     (ty,e') <- tcExpr m tcEnv tyEnv' p e
->     return (foldr TypeArrow ty tys,Lambda p ts' e')
+>     checkSkolems p "Expression" (ppExpr 0) tcEnv tyEnv fs
+>                  (foldr TypeArrow ty tys) (Lambda p ts' e')
 > tcExpr m tcEnv tyEnv p (Let ds e) =
 >   do
+>     fs <- liftM (fsEnv . flip subst tyEnv) fetchSt
 >     (tyEnv',ds') <- tcDecls m tcEnv tyEnv ds
 >     (ty,e') <- tcExpr m tcEnv tyEnv' p e
->     return (ty,Let ds' e')
+>     checkSkolems p "Expression" (ppExpr 0) tcEnv tyEnv fs ty (Let ds' e')
 > tcExpr m tcEnv tyEnv p (Do sts e) =
 >   do
+>     fs <- liftM (fsEnv . flip subst tyEnv) fetchSt
 >     (tyEnv',sts') <- mapAccumM (flip (tcStmt m tcEnv) p) tyEnv sts
 >     ty <- liftM ioType freshTypeVar
 >     e' <-
 >       tcExpr m tcEnv tyEnv' p e >>- unify p "statement" (ppExpr 0 e) tcEnv ty
->     return (ty,Do sts' e')
+>     checkSkolems p "Expression" (ppExpr 0) tcEnv tyEnv fs ty (Do sts' e')
 > tcExpr m tcEnv tyEnv p e@(IfThenElse e1 e2 e3) =
 >   do
 >     e1' <-
@@ -1029,27 +1031,33 @@ constructor itself.
 >   do
 >     (tyLhs,e') <- tcExpr m tcEnv tyEnv p e
 >     tyRhs <- freshTypeVar
->     as' <- mapM (tcAlt m tcEnv tyEnv tyLhs tyRhs) as
+>     fs <- liftM (fsEnv . flip subst tyEnv) fetchSt
+>     as' <- mapM (tcAlt m tcEnv tyEnv fs tyLhs tyRhs) as
 >     return (tyRhs,Case e' as')
 > tcExpr m tcEnv tyEnv p (Fcase e as) =
 >   do
 >     (tyLhs,e') <- tcExpr m tcEnv tyEnv p e
 >     tyRhs <- freshTypeVar
->     as' <- mapM (tcAlt m tcEnv tyEnv tyLhs tyRhs) as
+>     fs <- liftM (fsEnv . flip subst tyEnv) fetchSt
+>     as' <- mapM (tcAlt m tcEnv tyEnv fs tyLhs tyRhs) as
 >     return (tyRhs,Fcase e' as')
 
-> tcAlt :: ModuleIdent -> TCEnv -> ValueEnv -> Type -> Type -> Alt a
+> tcAlt :: ModuleIdent -> TCEnv -> ValueEnv -> Set Int -> Type -> Type -> Alt a
 >       -> TcState (Alt Type)
-> tcAlt m tcEnv tyEnv tyLhs tyRhs a@(Alt p t rhs) =
+> tcAlt m tcEnv tyEnv fs tyLhs tyRhs a@(Alt p t rhs) =
+>   tcAltern m tcEnv tyEnv fs tyLhs tyRhs p t rhs >>- 
+>   unify p "case alternative" (ppAlt a) tcEnv tyRhs
+
+> tcAltern :: ModuleIdent -> TCEnv -> ValueEnv -> Set Int -> Type -> Type
+>          -> Position -> ConstrTerm a -> Rhs a -> TcState (Type,Alt Type)
+> tcAltern m tcEnv tyEnv fs tyLhs tyRhs p t rhs =
 >   do
 >     tyEnv' <- bindLambdaVars m tyEnv t
 >     t' <-
->       tcConstrTerm tcEnv tyEnv' p t >>-
->       unify p "case pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t)
->             tcEnv tyLhs
->     rhs' <- tcRhs m tcEnv tyEnv' rhs >>- unify p "case branch" doc tcEnv tyRhs
->     return (Alt p t' rhs')
->   where doc = ppAlt a
+>       tcConstrTerm tcEnv tyEnv' p t >>- unify p "case pattern" doc tcEnv tyLhs
+>     (ty',rhs') <- tcRhs m tcEnv tyEnv' rhs
+>     checkSkolems p "Alternative" ppAlt tcEnv tyEnv fs ty' (Alt p t' rhs')
+>   where doc = ppAlt (Alt p t rhs) $-$ text "Term:" <+> ppConstrTerm 0 t
 
 > tcQual :: ModuleIdent -> TCEnv -> ValueEnv -> Position -> Statement a
 >        -> TcState (ValueEnv,Statement Type)
@@ -1213,18 +1221,33 @@ of~\cite{PeytonJones87:Book}).
 >                  (unifyTypes tcEnv (subst theta ty1) (subst theta ty2))
 
 \end{verbatim}
-For each function declaration, the type checker ensures that no skolem
-type escapes its scope. This is slightly more general than the
-algorithm in~\cite{LauferOdersky94:AbstractTypes}, which checks for
-escaping skolems at every let binding, but is still sound.
+Whenever type inference succeeds for a function equation, $($f$)$case
+alternative, etc., which may open an existentially quantified data
+type and thus bring fresh skolem constants into scope the compiler
+checks that none of those skolem constants escape their scope through
+the result type or the type environment. E.g., for the sample program
+\begin{verbatim}
+  data Key a = forall b. b (b -> a)
+  f (Key x _) = x 
+  g k x = fcase k of { Key _ f -> f x }
+\end{verbatim}
+a skolem constant escapes in the (result) type of \texttt{f} and in
+the type of the environment variable \texttt{x} for the fcase
+expression in the definition of \texttt{g}
+(cf.~\cite{LauferOdersky94:AbstractTypes}).
 \begin{verbatim}
 
-> checkSkolems :: Position -> TCEnv -> Doc -> Set Int -> Type -> TcState ()
-> checkSkolems p tcEnv what fs ty =
+> checkSkolems :: Position -> String -> (a -> Doc) -> TCEnv -> ValueEnv
+>              -> Set Int -> Type -> a -> TcState (Type,a)
+> checkSkolems p what pp tcEnv tyEnv fs ty x =
 >   do
->     ty' <- liftM (flip subst ty) fetchSt
->     unless (all (`elemSet` fs) (typeSkolems ty'))
->            (errorAt p (skolemEscapingScope tcEnv what ty'))
+>     theta <- fetchSt
+>     let esc = filter escape [(v,subst theta ty) | (v,ty) <- (empty,ty) : tys]
+>     unless (null esc) (errorAt p (skolemEscapingScope tcEnv what (pp x) esc))
+>     return (ty,x)
+>   where tys = [(var v,rawType ty) | (v,Value _ _ ty) <- localBindings tyEnv]
+>         escape = any (`notElemSet` fs) . typeSkolems . snd
+>         var v = text "Variable:" <+> ppIdent v
 
 \end{verbatim}
 \paragraph{Instantiation and Generalization}
@@ -1358,10 +1381,11 @@ Error functions.
 > skolemFieldLabel l =
 >   "Existential type escapes with type of record selector " ++ name l
 
-> skolemEscapingScope :: TCEnv -> Doc -> Type -> String
-> skolemEscapingScope tcEnv what ty = show $
->   vcat [text "Existential type escapes out of its scope", what,
->         text "Type:" <+> ppType tcEnv ty]
+> skolemEscapingScope :: TCEnv -> String -> Doc -> [(Doc,Type)] -> String
+> skolemEscapingScope tcEnv what doc esc = show $ vcat $
+>   text "Existential type escapes out of its scope" :
+>   sep [text what <> colon,indent doc] :
+>   [whence $$ text "Type:" <+> ppType tcEnv ty | (whence,ty) <- esc]
 
 > invalidCType :: String -> TCEnv -> Type -> String
 > invalidCType what tcEnv ty = show $
