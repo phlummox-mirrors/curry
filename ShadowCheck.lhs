@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: ShadowCheck.lhs 2986 2010-07-24 14:43:45Z wlux $
 %
 % Copyright (c) 2005-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -204,16 +204,18 @@ names of the imported entities.
 
 > imports :: ModuleEnv -> [ImportDecl] -> FM Ident D
 > imports mEnv is = foldr importModule zeroFM is
->   where importModule (ImportDecl _ m False _ is) xs =
->           foldr (importEnt m) xs (visible is (ents (moduleInterface m mEnv)))
+>   where importModule (ImportDecl _ m q _ is) xs =
+>           foldr (importEnt m) xs (visible q is xs')
+>           where xs' = ents (moduleInterface m mEnv)
 >         importEnt m x xs =
 >           addToFM x (I (m : maybe [] (\(I ms) -> ms) (lookupFM x xs))) xs
 >         ents (Interface _ _ ds) = concatMap intfEnts ds
 
-> visible :: Maybe ImportSpec -> [Ident] -> [Ident]
-> visible Nothing = id
-> visible (Just (Importing _ is)) = const (foldr impEnts [] is)
-> visible (Just (Hiding _ is)) = filter (`notElem` foldr impEnts [] is)
+> visible :: Bool -> Maybe ImportSpec -> [Ident] -> [Ident]
+> visible True _ = const []
+> visible False Nothing = id
+> visible False (Just (Importing _ is)) = const (foldr impEnts [] is)
+> visible False (Just (Hiding _ is)) = filter (`notElem` foldr impEnts [] is)
 
 > impEnts :: Import -> [Ident] -> [Ident]
 > impEnts (Import x) = (x:)
