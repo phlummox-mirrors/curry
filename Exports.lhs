@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Exports.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: Exports.lhs 3010 2010-10-04 09:54:49Z wlux $
 %
 % Copyright (c) 2000-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -11,18 +11,18 @@ declarations from the list of exported types and values. If an entity
 is imported from another module, its name is qualified with the name
 of the module containing its definition.
 
-Data types whose constructors are not exported are exported as
-abstract types, i.e., their data constructors do not appear in the
-interface. If only some data constructors of a data type are not
-exported those constructors appear in the interface together with the
-exported constructors, but a pragma marks them as hidden so that they
-cannot be used in user code. A special case is made for the Prelude's
-\texttt{Success} type, whose only constructor is not exported from the
-Prelude. Since the compiler makes use of this constructor when
-flattening guard expressions (cf.\ Sect.~\ref{sec:flatcase}),
-\texttt{typeDecl}'s \texttt{DataType} case explicitly forces the
-\texttt{Success} constructor to appear as hidden data constructor in
-the interface.
+Data types and renaming types whose constructors and field labels are
+not exported are exported as abstract types, i.e., their constructors
+do not appear in the interface. If only some constructors or field
+labels of a type are not exported all constructors appear in the
+interface, but a pragma marks the constructors and field labels which
+are not exported as hidden to prevent their use in user code. A
+special case is made for the Prelude's \texttt{Success} type, whose
+only constructor is not exported from the Prelude. Since the compiler
+makes use of this constructor when flattening guard expressions (cf.\ 
+Sect.~\ref{sec:flatcase}), \texttt{typeDecl}'s \texttt{DataType} case
+explicitly forces the \texttt{Success} constructor to appear as hidden
+data constructor in the interface.
 
 \textbf{Attention:} The compiler assumes that the environments passed
 to \texttt{exportInterface} reflect the types of the module's entities
@@ -39,7 +39,6 @@ applying all source code transformations to the program.
 > import IntfQual
 > import List
 > import Maybe
-> import Monad
 > import PrecInfo
 > import PredefIdent
 > import Set
@@ -81,13 +80,15 @@ applying all source code transformations to the program.
 > typeDecl _ _ _ (Export _) ds = ds
 > typeDecl tcEnv tyEnv tvs (ExportTypeWith tc xs) ds =
 >   case qualLookupTopEnv tc tcEnv of
->     [DataType _ n cs] -> iTypeDecl IDataDecl tc tvs n constrs xs' : ds
->       where constrs = guard vis >> cs'
->             xs' = guard vis >> filter (`notElem` xs) (cs ++ ls)
+>     [DataType _ n cs]
+>       | null xs && tc /= qSuccessId -> iTypeDecl IDataDecl tc tvs n [] [] : ds
+>       | otherwise -> iTypeDecl IDataDecl tc tvs n cs' xs' : ds
+>       where xs' = filter (`notElem` xs) (cs ++ ls)
 >             cs' = map (constrDecl tyEnv xs tc tvs n) cs
 >             ls = nub (concatMap labels cs')
->             vis = not (null xs) || tc == qSuccessId
->     [RenamingType _ n c] -> iTypeDecl INewtypeDecl tc tvs n nc xs' : ds
+>     [RenamingType _ n c]
+>       | null xs -> iTypeDecl IDataDecl tc tvs n [] [] : ds
+>       | otherwise -> iTypeDecl INewtypeDecl tc tvs n nc xs' : ds
 >       where nc = newConstrDecl tyEnv xs tc tvs c
 >             xs' = [c | c `notElem` xs]
 >     [AliasType _ n ty] -> iTypeDecl ITypeDecl tc tvs n (fromType tvs ty) : ds

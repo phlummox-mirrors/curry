@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: IntfCheck.lhs 2721 2008-06-13 16:17:39Z wlux $
+% $Id: IntfCheck.lhs 3010 2010-10-04 09:54:49Z wlux $
 %
-% Copyright (c) 2000-2008, Wolfgang Lux
+% Copyright (c) 2000-2010, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{IntfCheck.lhs}
@@ -91,6 +91,8 @@ error for both.
 >           | tc == tc' && length tvs == n' &&
 >             (null cs || map constr cs == cs') =
 >               Just (mapM_ (checkConstrImport tyEnv tc tvs) cs)
+>         checkData (RenamingType tc' n' _)
+>           | tc == tc' && length tvs == n' && null cs = Just (return ())
 >         checkData _ = Nothing
 > checkImport _ tcEnv tyEnv (INewtypeDecl p tc tvs nc _) =
 >   checkTypeInfo "newtype" checkNewtype tcEnv p tc
