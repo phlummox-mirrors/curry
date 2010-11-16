@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: OverlapCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: OverlapCheck.lhs 3014 2010-11-16 21:09:29Z wlux $
 %
 % Copyright (c) 2006-2010, Wolfgang Lux
 % See LICENSE for the full license.
@@ -123,7 +123,7 @@ The code checking whether the equations of a function and the
 alternatives of a flexible case expression, respectively, have
 overlapping patterns is essentially a simplified version of the
 pattern matching algorithm implemented in module \texttt{ILTrans} (see
-Sect.~\ref{sec:il-trans}).
+Sect.~\ref{sec:flatcase}).
 
 \ToDo{Implement a similar check to report completely overlapped
   patterns, and thus unreachable alternatives, in rigid case
