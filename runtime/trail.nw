@@ -1,5 +1,5 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: trail.nw 2739 2008-08-04 15:12:44Z wlux $
+% $Id: trail.nw 3018 2010-12-20 08:53:42Z wlux $
 %
 % Copyright (c) 2002-2008, Wolfgang Lux
 % See ../LICENSE for the full license.
@@ -66,7 +66,7 @@ trail_overflow()
 {
     fprintf(stderr,
 	    "Trail overflow; current size: %u bytes\n"
-	    "USE +RTS -tSIZE to increase trail size\n",
+	    "USE +RTS -tSIZE -RTS to increase trail size\n",
 	    trailsize);
     exit(2);
 }
