@@ -1,4 +1,4 @@
-dnl $Id: configure-bin.in 2239 2007-06-10 00:46:39Z wlux $
+dnl $Id: configure-bin.in 3017 2010-12-20 08:45:05Z wlux $
 dnl
 dnl Copyright (c) 2002-2007, Wolfgang Lux
 dnl
@@ -22,7 +22,7 @@ fi
 
 dnl Check for Cygpath
 HC_PATH_STYLE="%HC_PATH_STYLE%"
-if test "$HC_PATH_STYLE" = Windows; then
+if test "$HC_PATH_STYLE" = windows; then
   AC_PATH_PROG(CYGPATH, cygpath)
 fi
 
