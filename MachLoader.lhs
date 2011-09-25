@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: MachLoader.lhs 2916 2009-10-22 13:26:57Z wlux $
+% $Id: MachLoader.lhs 3046 2011-09-25 22:56:32Z wlux $
 %
-% Copyright (c) 1998-2009, Wolfgang Lux
+% Copyright (c) 1998-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{MachLoader.lhs}
@@ -56,14 +56,14 @@ in order to allow mutual recursion between functions.
 
 > type Instrument = Stmt -> Instruction -> Instruction
 
-> translate :: Maybe Instrument -> ConstrEnv -> FunEnv -> [(Name,[Name],Stmt)]
->          -> FunEnv
+> translate :: Maybe Instrument -> ConstrEnv -> FunEnv
+>           -> [(Visibility,Name,[Name],Stmt)] -> FunEnv
 > translate instrument cEnv fEnv fs = fEnv'
 >   where fEnv' = foldr (bindFun . translFun instrument cEnv fEnv') fEnv fs
 
-> translFun :: Maybe Instrument -> ConstrEnv -> FunEnv -> (Name,[Name],Stmt)
->           -> (Name,Int,Instruction)
-> translFun instrument cEnv fEnv (f,vs,st) =
+> translFun :: Maybe Instrument -> ConstrEnv -> FunEnv
+>           -> (Visibility,Name,[Name],Stmt) -> (Name,Int,Instruction)
+> translFun instrument cEnv fEnv (_,f,vs,st) =
 >   (f,length vs,entry (map show vs) (transl st))
 >   where transl = maybe translStmt translInstrumented instrument
 >         translInstrumented instrument st = instrument st (translStmt st)
@@ -213,7 +213,7 @@ names to node tags and function names to function triples.
 > initConstrEnv = emptyEnv
 
 > bindConstr :: (ConstrDecl,Int) -> ConstrEnv -> ConstrEnv
-> bindConstr (ConstrDecl c tys,t) =
+> bindConstr (ConstrDecl _ c tys,t) =
 >   bindEnv c' (ConstructorTag t c' (length tys))
 >   where c' = demangle c
 
@@ -257,7 +257,7 @@ names to node tags and function names to function triples.
 >   where f' = demangle f
 
 > bindConstrFun :: (ConstrDecl,Int) -> FunEnv -> FunEnv
-> bindConstrFun (ConstrDecl c tys,t) =
+> bindConstrFun (ConstrDecl _ c tys,t) =
 >   bindEnv c' (constrFunction t c' (length tys))
 >   where c' = demangle c
 

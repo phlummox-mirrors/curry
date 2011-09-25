@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CamParser.lhs 2913 2009-10-20 10:06:04Z wlux $
+% $Id: CamParser.lhs 3046 2011-09-25 22:56:32Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CamParser.lhs}
@@ -85,6 +85,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >   | KW_let
 >   | KW_papp
 >   | KW_pointer
+>   | KW_private
 >   | KW_return
 >   | KW_rigid
 >   | KW_stable
@@ -139,6 +140,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >   showsPrec _ KW_let = showKeyword "let"
 >   showsPrec _ KW_papp = showKeyword "papp"
 >   showsPrec _ KW_pointer = showKeyword "pointer"
+>   showsPrec _ KW_private = showKeyword "private"
 >   showsPrec _ KW_return = showKeyword "return"
 >   showsPrec _ KW_rigid = showKeyword "rigid"
 >   showsPrec _ KW_stable = showKeyword "stable"
@@ -174,6 +176,7 @@ in appendix~\ref{sec:ll-parsecomb}.
 >     ("let",     KW_let),
 >     ("papp",    KW_papp),
 >     ("pointer", KW_pointer),
+>     ("private", KW_private),
 >     ("return",  KW_return),
 >     ("rigid",   KW_rigid),
 >     ("stable",  KW_stable),
@@ -305,18 +308,19 @@ in appendix~\ref{sec:ll-parsecomb}.
 > importDecl = ImportDecl <$-> keyword KW_import <*> checkName
 
 > dataDecl :: Parser Token Decl a
-> dataDecl = DataDecl <$-> keyword KW_data <*> checkName <*> (nameList `opt` [])
->                     <*> (equals <-*> (constrDecl `sepBy1` bar) `opt` [])
+> dataDecl =
+>   DataDecl <$-> keyword KW_data <*> checkName <*> (nameList `opt` [])
+>            <*> (equals <-*> (constrDecl `sepBy1` bar) `opt` [])
 
 > constrDecl :: Parser Token ConstrDecl a
-> constrDecl = ConstrDecl <$> name <*> (parenList typ `opt` [])
+> constrDecl = ConstrDecl <$> vis <*> name <*> (parenList typ `opt` [])
 
 > typ, atyp :: Parser Token Type a
 > typ = atyp `chainr1` (TypeArr <$-> rightArrow)
 > atyp = name <**> (flip TypeApp <$> parenList typ `opt` TypeVar)
 
 > funcDecl :: Parser Token Decl a
-> funcDecl = FunctionDecl <$> name <*> nameList <*> braces stmt
+> funcDecl = FunctionDecl <$> vis <*> name <*> nameList <*> braces stmt
 
 > stmt :: Parser Token Stmt a
 > stmt = name <**> nameStmt
@@ -380,6 +384,10 @@ in appendix~\ref{sec:ll-parsecomb}.
 >        <|> TypePtr <$-> keyword KW_pointer
 >        <|> TypeFunPtr <$-> keyword KW_fun
 >        <|> TypeStablePtr <$-> keyword KW_stable
+
+> vis :: Parser Token Visibility a
+> vis = Private <$-> keyword KW_private
+>   <|> succeed Exported
 
 > name, checkName :: Parser Token Name a
 > name = Name . sval <$> token Ident
