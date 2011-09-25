@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILPP.lhs 2869 2009-07-21 14:29:03Z wlux $
+% $Id: ILPP.lhs 3045 2011-09-25 15:30:01Z wlux $
 %
-% Copyright (c) 1999-2009 Wolfgang Lux
+% Copyright (c) 1999-2011 Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILPP.lhs}
@@ -26,9 +26,12 @@ Marlow's pretty printer for Haskell.
 > altIndent = 2
 
 > ppModule :: Module -> Doc
-> ppModule (Module m is ds) =
->   vcat (text "module" <+> text (show m) <+> text "where" :
->         map ppImport is ++ map ppDecl ds)
+> ppModule (Module m es is ds) =
+>   vcat (ppHeader m es : map ppImport is ++ map ppDecl ds)
+
+> ppHeader :: ModuleIdent -> [QualIdent] -> Doc
+> ppHeader m es =
+>   text "module" <+> text (show m) <+> ppTuple ppQIdent es <+> text "where"
 
 > ppImport :: ModuleIdent -> Doc
 > ppImport m = text "import" <+> text (show m)
@@ -64,7 +67,7 @@ Marlow's pretty printer for Haskell.
 
 > ppType :: Int -> Type -> Doc
 > ppType p (TypeConstructor tc tys)
->   | isQTupleId tc = parens (fsep (punctuate comma (map (ppType 0) tys)))
+>   | isQTupleId tc = ppTuple (ppType 0) tys
 >   | tc == qListId = brackets (ppType 0 (head tys))
 >   | otherwise =
 >       ppParen (p > 1 && not (null tys))
@@ -96,7 +99,7 @@ Marlow's pretty printer for Haskell.
 > ppConstrTerm (ConstructorPattern c [v1,v2])
 >   | isQInfixOp c = ppIdent v1 <+> ppQInfixOp c <+> ppIdent v2
 > ppConstrTerm (ConstructorPattern c vs)
->   | isQTupleId c = parens (fsep (punctuate comma (map ppIdent vs)))
+>   | isQTupleId c = ppTuple ppIdent vs
 >   | otherwise = ppQIdent c <+> fsep (map ppIdent vs)
 > ppConstrTerm (VariablePattern v) = ppIdent v
 
@@ -166,5 +169,8 @@ Marlow's pretty printer for Haskell.
 
 > ppParen :: Bool -> Doc -> Doc
 > ppParen p = if p then parens else id
+
+> ppTuple :: (a -> Doc) -> [a] -> Doc
+> ppTuple f = parens . fsep . punctuate comma . map f
 
 \end{verbatim}

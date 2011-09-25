@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 3014 2010-11-16 21:09:29Z wlux $
+% $Id: ILTrans.lhs 3045 2011-09-25 15:30:01Z wlux $
 %
-% Copyright (c) 1999-2010, Wolfgang Lux
+% Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILTrans.lhs}
@@ -41,8 +41,13 @@ split annotations are inserted in IL code at the correct places.
 \begin{verbatim}
 
 > ilTrans :: TCEnv -> ValueEnv -> Module Type -> IL.Module
-> ilTrans tcEnv tyEnv (Module m _ _ ds) = IL.Module m (imports m ds') ds'
+> ilTrans tcEnv tyEnv (Module m es _ ds) =
+>   IL.Module m (exports es) (imports m ds') ds'
 >   where ds' = concatMap (translTopDecl m tcEnv tyEnv) (sortDecls ds)
+>         exports (Just (Exporting _ es)) =
+>           filter (isJust . localIdent m) (concatMap values es)
+>         values (Export x) = [x]
+>         values (ExportTypeWith tc cs) = map (qualifyLike tc) cs
 
 > translTopDecl :: ModuleIdent -> TCEnv -> ValueEnv -> TopDecl Type -> [IL.Decl]
 > translTopDecl m _ tyEnv (DataDecl _ tc tvs cs) =
