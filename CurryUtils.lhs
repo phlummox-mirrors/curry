@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CurryUtils.lhs 3048 2011-10-02 14:14:03Z wlux $
+% $Id: CurryUtils.lhs 3049 2011-10-02 15:07:27Z wlux $
 %
 % Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
@@ -13,34 +13,6 @@ and goals.
 
 > module CurryUtils where
 > import Curry
-> import List
-
-\end{verbatim}
-Some compiler phases rearrange (top-level) declarations according to
-semantic criteria. The following code allows restoring the textual
-order of textual declarations.
-\begin{verbatim}
-
-> sortDecls :: [TopDecl a] -> [TopDecl a]
-> sortDecls = sortBy (\d1 d2 -> compare (pos d1) (pos d2))
-
-> class Declaration a where
->   pos :: a -> Position
-
-> instance Declaration (TopDecl a) where
->   pos (DataDecl p _ _ _) = p
->   pos (NewtypeDecl p _ _ _) = p
->   pos (TypeDecl p _ _ _) = p
->   pos (BlockDecl d) = pos d
-
-> instance Declaration (Decl a) where
->   pos (InfixDecl p _ _ _) = p
->   pos (TypeSig p _ _) = p
->   pos (FunctionDecl p _ _ _) = p
->   pos (ForeignDecl p _ _ _ _) = p
->   pos (PatternDecl p _ _) = p
->   pos (FreeDecl p _) = p
->   pos (TrustAnnot p _ _) = p
 
 \end{verbatim}
 Here is a list of predicates identifying various kinds of
