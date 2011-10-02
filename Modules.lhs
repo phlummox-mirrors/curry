@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 2952 2010-06-12 22:27:52Z wlux $
+% $Id: Modules.lhs 3047 2011-10-02 11:15:38Z wlux $
 %
-% Copyright (c) 1999-2010, Wolfgang Lux
+% Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Modules.lhs}
@@ -60,7 +60,7 @@ declaration to the module.
 > compileModule :: Options -> FilePath -> ErrorT IO ()
 > compileModule opts fn =
 >   do
->     (pEnv,tcEnv,tyEnv,m) <- loadModule paths dbg cm ws auto fn
+>     (pEnv,tcEnv,tyEnv,m) <- loadModule paths dbg cm ws fn
 >     let (tcEnv',tyEnv',trEnv,m',dumps) = transModule dbg tr tcEnv tyEnv m
 >     liftErr $ mapM_ (doDump opts) dumps
 >     let intf = exportInterface m' pEnv tcEnv tyEnv
@@ -72,23 +72,21 @@ declaration to the module.
 >               writeCode (output opts) fn ccode
 >   where paths = importPath opts
 >         split = splitCode opts
->         auto = autoSplit opts
 >         dbg = debug opts
 >         tr = if trusted opts then Trust else Suspect
 >         cm = caseMode opts
 >         ws = warn opts
 
-> loadModule :: [FilePath] -> Bool -> CaseMode -> [Warn] -> Bool -> FilePath
+> loadModule :: [FilePath] -> Bool -> CaseMode -> [Warn] -> FilePath
 >            -> ErrorT IO (PEnv,TCEnv,ValueEnv,Module Type)
-> loadModule paths debug caseMode warn autoSplit fn =
+> loadModule paths debug caseMode warn fn =
 >   do
 >     Module m es is ds <- liftErr (readFile fn) >>= okM . parseModule fn
 >     let is' = importPrelude debug fn m is
 >     mEnv <- loadInterfaces paths m (modules is')
 >     m' <- okM $ checkModuleSyntax mEnv (Module m es is' ds)
 >     liftErr $ mapM_ putErrLn $ warnModuleSyntax caseMode warn mEnv m'
->     (pEnv,tcEnv,tyEnv,m'') <-
->       okM $ checkModule mEnv (autoSplitModule autoSplit m')
+>     (pEnv,tcEnv,tyEnv,m'') <- okM $ checkModule mEnv m'
 >     liftErr $ mapM_ putErrLn $ warnModule warn tyEnv m''
 >     return (pEnv,tcEnv,tyEnv,m'')
 >   where modules is = [P p m | ImportDecl p m _ _ _ <- is]
@@ -129,12 +127,6 @@ declaration to the module.
 
 > warnModule :: [Warn] -> ValueEnv -> Module a -> [String]
 > warnModule warn tyEnv m = overlapCheck warn tyEnv m
-
-> autoSplitModule :: Bool -> Module a -> Module a
-> autoSplitModule True (Module m es is ds) =
->   Module m es is (foldr addSplitAnnot [] ds)
->   where addSplitAnnot d ds = SplitAnnot (pos d) : d : ds
-> autoSplitModule False m = m
 
 \end{verbatim}
 The Prelude is imported implicitly into every module other than the
