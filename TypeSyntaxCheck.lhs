@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeSyntaxCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: TypeSyntaxCheck.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 1999-2010, Wolfgang Lux
+% Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeSyntaxCheck.lhs}
@@ -61,7 +61,6 @@ module.
 > bindType m (TypeDecl _ tc _ _) =
 >   globalBindTopEnv m tc (Alias (qualifyWith m tc))
 > bindType _ (BlockDecl _) = id
-> bindType _ (SplitAnnot _) = id
 
 \end{verbatim}
 The compiler allows anonymous type variables on the left hand side of
@@ -81,7 +80,6 @@ signatures.
 >   checkTypeLhs p tvs &&>
 >   liftE (TypeDecl p tc tvs) (checkClosedType env p tvs ty)
 > checkTopDecl env (BlockDecl d) = liftE BlockDecl (checkDecl env d)
-> checkTopDecl _ (SplitAnnot p) = return (SplitAnnot p)
 
 > checkDecl :: TypeEnv -> Decl a -> Error (Decl a)
 > checkDecl _ (InfixDecl p fix pr ops) = return (InfixDecl p fix pr ops)
@@ -268,7 +266,6 @@ Auxiliary definitions.
 > tconstr (NewtypeDecl p tc _ _) = P p tc
 > tconstr (TypeDecl p tc _ _) = P p tc
 > tconstr (BlockDecl _) = internalError "tconstr"
-> tconstr (SplitAnnot _) = internalError "tconstr"
 
 \end{verbatim}
 Error messages.

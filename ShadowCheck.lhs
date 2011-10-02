@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ShadowCheck.lhs 2986 2010-07-24 14:43:45Z wlux $
+% $Id: ShadowCheck.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 2005-2010, Wolfgang Lux
+% Copyright (c) 2005-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ShadowCheck.lhs}
@@ -182,7 +182,6 @@ positions.
 >         ents (NewRecordDecl p c l _) = [P p c,P p l]
 > topEnts (TypeDecl _ _ _ _) = []
 > topEnts (BlockDecl d) = vars d
-> topEnts (SplitAnnot _) = []
 
 > vars :: Decl a -> [P Ident]
 > vars (InfixDecl _ _ _ _) = []

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: PatternBind.lhs 2980 2010-07-09 13:45:37Z wlux $
+% $Id: PatternBind.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 2003-2010, Wolfgang Lux
+% Copyright (c) 2003-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{PatternBind.lhs}
@@ -86,7 +86,6 @@ were introduced in the code by the transformation.
 >   pbt _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
 >   pbt _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 >   pbt m (BlockDecl d) = liftM BlockDecl (pbt m d)
->   pbt _ (SplitAnnot p) = return (SplitAnnot p)
 
 > instance SyntaxTree Decl where
 >   pbt m (FunctionDecl p ty f eqs) =

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryUtils.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: CurryUtils.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 1999-2010, Wolfgang Lux
+% Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryUtils.lhs}
@@ -32,7 +32,6 @@ order of textual declarations.
 >   pos (NewtypeDecl p _ _ _) = p
 >   pos (TypeDecl p _ _ _) = p
 >   pos (BlockDecl d) = pos d
->   pos (SplitAnnot p) = p
 
 > instance Declaration (Decl a) where
 >   pos (InfixDecl p _ _ _) = p
@@ -53,7 +52,6 @@ declarations.
 > isTypeDecl (NewtypeDecl _ _ _ _) = True
 > isTypeDecl (TypeDecl _ _ _ _) = True
 > isTypeDecl (BlockDecl _) = False
-> isTypeDecl (SplitAnnot _) = False
 > isBlockDecl (BlockDecl _) = True
 > isBlockDecl _ = False
 

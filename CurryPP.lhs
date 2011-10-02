@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryPP.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: CurryPP.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 1999-2010, Wolfgang Lux
+% Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryPP.lhs}
@@ -70,7 +70,6 @@ Declarations
 > ppTopDecl (TypeDecl _ tc tvs ty) =
 >   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 > ppTopDecl (BlockDecl d) = ppDecl d
-> ppTopDecl (SplitAnnot _) = ppPragma "SPLIT" empty
 
 > ppTypeDeclLhs :: String -> Ident -> [Ident] -> Doc
 > ppTypeDeclLhs kw tc tvs = text kw <+> ppIdent tc <+> hsep (map ppIdent tvs)

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 2983 2010-07-11 18:15:09Z wlux $
+% $Id: TypeCheck.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 1999-2010, Wolfgang Lux
+% Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeCheck.lhs}
@@ -148,7 +148,6 @@ name of the type could be ambiguous.
 >           bindLabel m tcEnv tvs ty0 l ty
 > bindConstrs _ _ (TypeDecl _ _ _ _) tyEnv = tyEnv
 > bindConstrs _ _ (BlockDecl _) tyEnv = tyEnv
-> bindConstrs _ _ (SplitAnnot _) tyEnv = tyEnv
 
 > bindConstr :: ModuleIdent -> TCEnv -> [Ident] -> Ident -> [(Ident,TypeExpr)]
 >            -> Type -> ValueEnv -> ValueEnv
@@ -212,7 +211,6 @@ the record selection function associated with the field label.
 >                            FieldDecl p ls ty <- fs, l <- ls]
 > tcTopDecl _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
 > tcTopDecl _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
-> tcTopDecl _ (SplitAnnot p) = return (SplitAnnot p)
 
 > tcFieldLabel :: TCEnv -> [Ident] -> P Ident -> TypeExpr
 >              -> Error (P Ident,Type)

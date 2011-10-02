@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 2980 2010-07-09 13:45:37Z wlux $
+% $Id: Desugar.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 2001-2010, Wolfgang Lux
+% Copyright (c) 2001-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Desugar.lhs}
@@ -93,7 +93,6 @@ declarations are treated like a global declaration group.
 > desugarTopDecl (NewtypeDecl p tc tvs nc) = NewtypeDecl p tc tvs nc
 > desugarTopDecl (TypeDecl p tc tvs ty) = TypeDecl p tc tvs ty
 > --desugarTopDecl (BlockDecl d) = BlockDecl d
-> desugarTopDecl (SplitAnnot p) = SplitAnnot p
 
 \end{verbatim}
 Within a declaration group, all fixity declarations, type signatures,

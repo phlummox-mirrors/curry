@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 3037 2011-07-18 08:48:41Z wlux $
+% $Id: Simplify.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
 % Copyright (c) 2003-2011, Wolfgang Lux
 % See LICENSE for the full license.
@@ -65,7 +65,6 @@ Currently, the following optimizations are implemented:
 >   do
 >     (tyEnv',ds') <- simplifyDecl m tyEnv emptyEnv d
 >     return (tyEnv',map BlockDecl ds')
-> simplifyTopDecl _ tyEnv (SplitAnnot p) = return (tyEnv,[SplitAnnot p])
 
 > simplifyDecl :: ModuleIdent -> ValueEnv -> InlineEnv -> Decl Type
 >              -> SimplifyState (ValueEnv,[Decl Type])

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CaseCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: CaseCheck.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 2003-2010, Wolfgang Lux
+% Copyright (c) 2003-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CaseCheck.lhs}
@@ -134,7 +134,6 @@ collect all defined identifiers.
 >   names _ (NewtypeDecl p tc tvs nc) xs = typeNames p tc tvs ++ names p nc xs
 >   names _ (TypeDecl p tc tvs _) xs = typeNames p tc tvs ++ xs
 >   names p (BlockDecl d) xs = names p d xs
->   names _ (SplitAnnot _) xs = xs
 
 > typeNames :: Position -> Ident -> [Ident] -> [Definition]
 > typeNames p tc tvs =

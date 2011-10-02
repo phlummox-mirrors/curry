@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: UnusedCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: UnusedCheck.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 2005-2010, Wolfgang Lux
+% Copyright (c) 2005-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{UnusedCheck.lhs}
@@ -95,7 +95,6 @@ by a traversal of the syntax tree.
 >   used _ (NewtypeDecl _ _ _ _) = id
 >   used _ (TypeDecl _ _ _ _) = id
 >   used m (BlockDecl d) = used m d
->   used _ (SplitAnnot _) = id
 
 > instance SyntaxTree (Decl a) where
 >   used m (FunctionDecl _ _ f eqs) =
@@ -211,7 +210,6 @@ unused variables of pattern $t$.
 >   unused used p (NewtypeDecl _ _ _ nc) = unused used p nc
 >   unused _ _ (TypeDecl _ _ _ _) = id
 >   unused used p (BlockDecl d) = unused used p d
->   unused _ _ (SplitAnnot _) = id
 
 > instance Binder ConstrDecl where
 >   unused used _ (ConstrDecl p _ c _) = unusedVars Data used p [c]

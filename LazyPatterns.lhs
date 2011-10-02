@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: LazyPatterns.lhs 2980 2010-07-09 13:45:37Z wlux $
+% $Id: LazyPatterns.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 2001-2010, Wolfgang Lux
+% Copyright (c) 2001-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{LazyPatterns.lhs}
@@ -47,7 +47,6 @@ lazy patterns.
 > unlazyTopDecl (NewtypeDecl p tc tvs nc) = return [NewtypeDecl p tc tvs nc]
 > unlazyTopDecl (TypeDecl p tc tvs ty) = return [TypeDecl p tc tvs ty]
 > unlazyTopDecl (BlockDecl d) = liftM (map BlockDecl) (unlazyDecl d)
-> unlazyTopDecl (SplitAnnot p) = return [SplitAnnot p]
 
 > unlazyDecl :: Decl Type -> UnlazyState [Decl Type]
 > unlazyDecl (FunctionDecl p ty f eqs) =

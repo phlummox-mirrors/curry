@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: SyntaxCheck.lhs 2963 2010-06-16 16:42:38Z wlux $
+% $Id: SyntaxCheck.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
-% Copyright (c) 1999-2010, Wolfgang Lux
+% Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{SyntaxCheck.lhs}
@@ -175,7 +175,6 @@ the bound identifiers of the current declaration group.
 > disambTopDecl _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
 > disambTopDecl _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 > disambTopDecl env (BlockDecl d) = liftE BlockDecl (disambBlockDecl env d)
-> disambTopDecl _ (SplitAnnot p) = return (SplitAnnot p)
 
 > disambBlockDecl :: VarEnv -> Decl a -> Error (Decl a)
 > disambBlockDecl _ (InfixDecl p fix pr ops) = return (InfixDecl p fix pr ops)
@@ -225,7 +224,6 @@ the bound identifiers of the current declaration group.
 > checkTopDecl _ (NewtypeDecl p tc tvs nc) = return (NewtypeDecl p tc tvs nc)
 > checkTopDecl _ (TypeDecl p tc tvs ty) = return (TypeDecl p tc tvs ty)
 > checkTopDecl env (BlockDecl d) = liftE BlockDecl (checkDecl env d)
-> checkTopDecl _ (SplitAnnot p) = return (SplitAnnot p)
 
 \end{verbatim}
 The compiler checks field labels in data type declarations twice
@@ -725,7 +723,6 @@ Auxiliary definitions.
 >         nconstr (NewRecordDecl p c _ _) = P p c
 > constrs (TypeDecl _ _ _ _) = []
 > constrs (BlockDecl _) = []
-> constrs (SplitAnnot _) = []
 
 > fieldLabels :: TopDecl a -> [(P Ident,[Ident])]
 > fieldLabels (DataDecl _ _ _ cs) =
@@ -740,7 +737,6 @@ Auxiliary definitions.
 >         nlabel (NewRecordDecl p c l _) = [(P p l,[c])]
 > fieldLabels (TypeDecl _ _ _ _) = []
 > fieldLabels (BlockDecl _) = []
-> fieldLabels (SplitAnnot _) = []
 
 > vars :: Decl a -> [P Ident]
 > vars (InfixDecl p _ _ ops) = map (P p) ops

@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: ILCompile.lhs 3046 2011-09-25 22:56:32Z wlux $
+% $Id: ILCompile.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
 % Copyright (c) 1999-2011, Wolfgang Lux
 % See LICENSE for the full license.
@@ -34,7 +34,6 @@ language into abstract machine code.
 > compileDecl _ (TypeDecl _ _ _) = []
 > compileDecl es (FunctionDecl f vs _ e) = [compileFun es f vs e]
 > compileDecl es (ForeignDecl f cc ie ty) = [compileForeign es f cc ie ty]
-> compileDecl _ SplitAnnot = []
 
 > compileData :: [QualIdent] -> QualIdent -> Int -> [ConstrDecl] -> Cam.Decl
 > compileData es tc n cs =

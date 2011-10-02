@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: SplitModule.lhs 3047 2011-10-02 11:15:38Z wlux $
+% $Id: SplitModule.lhs 3048 2011-10-02 14:14:03Z wlux $
 %
 % Copyright (c) 2011, Wolfgang Lux
 % See LICENSE for the full license.
@@ -105,14 +105,12 @@ functions, respectively, for a given declaration.
 > defs (TypeDecl _ _ _) = []
 > defs (FunctionDecl f _ _ _) = [f]
 > defs (ForeignDecl f _ _ _) = [f]
-> defs SplitAnnot = []
 
 > funs :: Decl -> [QualIdent]
 > funs (DataDecl _ _ _) = []
 > funs (TypeDecl _ _ _) = []
 > funs (FunctionDecl _ _ _ e) = usedFuns e []
 > funs (ForeignDecl _ _ _ _) = []
-> funs SplitAnnot = []
 
 > class Expr a where
 >   usedFuns :: a -> [QualIdent] -> [QualIdent]
