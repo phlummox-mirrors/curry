@@ -1,4 +1,4 @@
-dnl $Id: configure.in 3068 2012-03-24 09:23:00Z wlux $
+dnl $Id: configure.in 3070 2012-03-24 09:44:05Z wlux $
 dnl
 dnl Copyright (c) 2002-2012, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -207,7 +207,7 @@ eof
         else
           AC_MSG_RESULT([no])
         fi
-        rm -f conftest* a.out
+        rm -rf conftest* a.out
         ;;
     esac
     CURRY_HC_HLIB(HC,
