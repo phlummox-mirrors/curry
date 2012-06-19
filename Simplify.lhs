@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Simplify.lhs 3048 2011-10-02 14:14:03Z wlux $
+% $Id: Simplify.lhs 3078 2012-06-19 13:17:36Z wlux $
 %
 % Copyright (c) 2003-2011, Wolfgang Lux
 % See LICENSE for the full license.
@@ -400,7 +400,7 @@ in later phases of the compiler.
 >   do
 >     (ts',e') <- simplifyAppExpr m tyEnv' p env e >>= etaExpand tyEnv'
 >     let ts'' = map (simplifyPattern (qfv m (Lambda p ts' e'))) ts ++ ts'
->     return (etaReduce m tyEnv' p ts'' e')
+>     return (etaReduce m (bindTerms ts' tyEnv') p ts'' e')
 >   where tyEnv' = bindTerms ts tyEnv
 > simplifyExpr m tyEnv p env (Let ds e) =
 >   simplifyLet m tyEnv p env (scc bv (qfv m) (foldr hoistDecls [] ds)) e
