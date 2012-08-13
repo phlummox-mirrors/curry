@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 3089 2012-08-13 08:47:09Z wlux $
+% $Id: CGen.lhs 3091 2012-08-13 09:31:41Z wlux $
 %
 % Copyright (c) 1998-2012, Wolfgang Lux
 % See LICENSE for the full license.
@@ -569,7 +569,7 @@ into their respective argument registers.
 >   [setReg i (arg i) | i <- [0..n-1]] ++
 >   CIf (CRel (contAddr vs0 CPSReturn) "==" (CExpr "update"))
 >       (localVar v' (Just (stk 0)) : lockIndir v v')
->       (stackCheck vs0 (CPSExec (CPSPrim (CPSEval False v)) k [v]) ++
+>       (stackCheck vs0 (CPSExec (CPSEval False v) k [v]) ++
 >        saveVars vs0 (contVars vs0 [] [] k) ++
 >        setRet (contAddr vs0 k) :
 >        lock v) :
@@ -904,7 +904,7 @@ translation function.
 > exec vs0 f vs k =
 >   saveVars vs0 vs0' ++
 >   case f of
->     CPSPrim (CPSEval tagged v) ->
+>     CPSEval tagged v ->
 >       [tagSwitch vs0' v (taggedSwitch tagged) [cCase "EVAL_TAG" sts'],
 >        gotoExpr ret]
 >     _ -> sts'
@@ -923,9 +923,9 @@ translation function.
 
 > entry :: CPSFun -> CExpr
 > entry (CPSFun f) = CExpr (cName f)
-> entry (CPSPrim (CPSEval _ v)) = field v "info->eval"
-> entry (CPSPrim CPSUnify) = CExpr "bind_var"
-> entry (CPSPrim CPSDelay) = CExpr "sync_var"
+> entry (CPSEval _ v) = field v "info->eval"
+> entry CPSUnify = CExpr "bind_var"
+> entry CPSDelay = CExpr "sync_var"
 
 > contFrame :: ([Name],CPSCont) -> CPSCont -> [CExpr]
 > contFrame _ CPSReturn = []
