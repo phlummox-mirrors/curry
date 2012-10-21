@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: MachInterp.lhs 2917 2009-10-22 13:32:35Z wlux $
+% $Id: MachInterp.lhs 3101 2012-10-21 10:20:42Z wlux $
 %
-% Copyright (c) 1998-2009, Wolfgang Lux
+% Copyright (c) 1998-2012, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{MachInterp.lhs}
@@ -1560,7 +1560,7 @@ fake world.
 >             disjunct <- browse freeVars goal
 >             disjuncts <- failAndBacktrack >>= showResults (n+1) freeVars goal
 >             return (sep . disjunct . disjuncts)
->           where sep = if n > 0 then showString " | " else id
+>           where sep = if n > 0 then showChar '\n' else id
 >         allocGoal (f,code,n) vs
 >           | length vs < n = allocClosure (f,code,n) vs
 >           | otherwise = allocLazy (f,code,n) vs
