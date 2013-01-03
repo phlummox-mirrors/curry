@@ -180,6 +180,7 @@ enumFromThenTo :: Int -> Int -> Int -> [Int];
 enumFromTo :: Int -> Int -> [Int];
 error :: [Char] -> a;
 even :: Int -> Bool;
+fail :: {-# ARITY 2 #-} [Char] -> IO a;
 failed :: a;
 filter :: (a -> Bool) -> [a] -> [a];
 findall :: (a -> Success) -> [a];

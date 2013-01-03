@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Desugar.lhs 3048 2011-10-02 14:14:03Z wlux $
+% $Id: Desugar.lhs 3120 2013-01-03 16:58:08Z wlux $
 %
-% Copyright (c) 2001-2011, Wolfgang Lux
+% Copyright (c) 2001-2013, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Desugar.lhs}
@@ -277,14 +277,8 @@ not be replaced.
 > desugarExpr _ (Lambda p ts e) =
 >   liftM2 (Lambda p) (mapM desugarTerm ts) (desugarExpr p e)
 > desugarExpr p (Let ds e) = liftM2 Let (desugarDeclGroup ds) (desugarExpr p e)
-> desugarExpr p (Do sts e) = desugarExpr p (foldr desugarStmt e sts)
->   where desugarStmt (StmtExpr e) e' =
->           apply (prelBind_ (ioResType (typeOf e)) (ioResType (typeOf e')))
->                 [e,e']
->         desugarStmt (StmtBind p t e) e' =
->           apply (prelBind (typeOf t) (ioResType (typeOf e')))
->                 [e,Lambda p [t] e']
->         desugarStmt (StmtDecl ds) e' = mkLet ds e'
+> desugarExpr p (Do sts e) =
+>   desugarStmts sts e (ioResType (typeOf e)) >>= desugarExpr p
 > desugarExpr p (IfThenElse e1 e2 e3) =
 >   liftM3 mkCase (desugarExpr p e1) (desugarExpr p e2) (desugarExpr p e3)
 >   where mkCase e1 e2 e3 =
@@ -311,13 +305,13 @@ foldr applications.
       \semant{L}{\texttt{[$e$|$qs$]}}(\texttt{[]}) \\
     \semant{L}{\texttt{[$e$|]}}(z) &=& \texttt{$e$:$z$} \\
     \semant{L}{\texttt{[$e$|$b$,$qs$]}}(z) &=&
-      \texttt{if $b$ then $\semant{L}{\texttt{[$e$|$qs$]}}(z)$ else $z$} \\
-    \semant{L}{\texttt{[$e$|$t$<-$l$,$qs$]}}(z) &=& \\
-    \texttt{foldr} & \multicolumn{2}{l}{\texttt{(\char`\\$x$ $y$ -> case $x$ of \char`\{\
-          $t$ -> $\semant{L}{\texttt{[$e$|$qs$]}}(y)$; \_ -> $y$ \char`\}) $z$ $l$}}\\
+      \hbox{\texttt{if} $b$ \texttt{then} $\semant{L}{\texttt{[$e$|$qs$]}}(z)$ \texttt{else} $z$} \\
+    \semant{L}{\texttt{[$e$|$t$<-$l$,$qs$]}}(z) &=&
+    \hbox{\texttt{foldr} \texttt{(\bs}$x$ $y$ \texttt{->} \texttt{case} $x$ \texttt{of} \texttt{\lb}
+          $t$ \texttt{->} $\semant{L}{\texttt{[$e$|$qs$]}}(y)$\texttt{;} \_ \texttt{->} $y$ \texttt{\rb)} $z$ $l$}\\
      \textrm{where} & \multicolumn{2}{@{}l}{\textrm{$x$, $y$ are fresh identifiers}} \\
     \semant{L}{\texttt{[$e$|let $ds$,$qs$]}}(z) &=&
-      \texttt{let $ds$ in $\semant{L}{\texttt{[$e$|$qs$]}}(z)$} \\
+      \hbox{\texttt{let} $ds$ \texttt{in} $\semant{L}{\texttt{[$e$|$qs$]}}(z)$} \\
   \end{array}
 \end{displaymath}
 Note that the transformation scheme uses a rigid case expression to
@@ -344,16 +338,77 @@ the list at all.
 > desugarQual (StmtExpr b) z = return (z,\e -> IfThenElse b e z)
 > desugarQual (StmtBind p t l) z =
 >   do
->     v <- freshVar "_#var" (typeOf t)
+>     x <- freshVar "_#var" (typeOf t)
 >     y <- freshVar "_#var" (typeOf z)
 >     return (uncurry mkVar y,
->             \e -> apply (prelFoldr (fst v) (fst y)) [foldFunct v y e,z,l])
+>             \e -> apply (prelFoldr (fst x) (fst y)) [foldFunct x y e,z,l])
 >   where foldFunct v l e =
 >           Lambda p [uncurry VariablePattern v,uncurry VariablePattern l]
 >             (Case (uncurry mkVar v)
 >                   [caseAlt p t e,
 >                    caseAlt p (uncurry VariablePattern v) (uncurry mkVar l)])
 > desugarQual (StmtDecl ds) z = return (z,Let ds)
+
+\end{verbatim}
+The do notation provides syntactic sugar for sequences of I/O
+actions. It is desugared according to the following rules.
+\begin{quote}
+  \begin{tabular}{r@{ }c@{ }l}
+    \texttt{do} \texttt{\lb} \textit{expr} \texttt{\rb}
+    & $\leadsto$
+    & \textit{expr} \\
+    \texttt{do} \texttt{\lb} \textit{expr}\texttt{;} \textit{stmts} \texttt{\rb}
+    & $\leadsto$
+    & \textit{expr} \texttt{>>}
+      \texttt{do} \texttt{\lb} \textit{stmts} \texttt{\rb} \\
+    \texttt{do} \texttt{\lb} $p$ \texttt{<-} \textit{expr}\texttt{;}
+      \textit{stmts} \texttt{\rb}
+    & $\leadsto$
+    & \textit{expr} \texttt{>>=} \texttt{\bs}$z$ \texttt{->}
+      \texttt{case} $z$ \texttt{of} \texttt{\lb} \\
+    & & \quad \begin{tabular}[t]{@{}l@{ \texttt{->} }l}
+      $p$ & \texttt{do} \texttt{\lb} \textit{stmts} \texttt{\rb}\texttt{;} \\
+      \texttt{\_} & \texttt{Prelude.fail} \texttt{"$\dots$"}
+    \end{tabular} \\
+    & & \texttt{\rb} \\
+    where & \multicolumn{2}{@{}l}{$z$ is a fresh identifier} \\
+    \texttt{do} \texttt{\lb}
+      \texttt{let} \texttt{\lb} \textit{decls} \texttt{\rb}\texttt{;}
+      \textit{stmts} \texttt{\rb}
+    & $\leadsto$
+    & \texttt{let} \texttt{\lb} \textit{decls} \texttt{\rb} \texttt{in}
+      \texttt{do} \texttt{\lb} \textit{stmts} \texttt{\rb} \\
+  \end{tabular}
+\end{quote}
+Note that our translation of bindings statements $p$ \texttt{<-}
+\textit{expr} uses a rigid case expression to match the pattern $p$,
+which once again differs from the Curry report (cf.\ Sect.~7.2
+in~\cite{Hanus:Report}). The advantage of our translation scheme is
+that it allows catching match failures as in Haskell.
+\begin{verbatim}
+
+> desugarStmts :: [Statement Type] -> Expression Type -> Type
+>              -> DesugarState (Expression Type)
+> desugarStmts [] e _ = return e
+> desugarStmts (st:sts) e ty =
+>   desugarStmt st ty >>= \f -> desugarStmts sts e ty >>= return . f
+
+> desugarStmt :: Statement Type -> Type
+>             -> DesugarState (Expression Type -> Expression Type)
+> desugarStmt (StmtExpr e) ty =
+>   return (\e' -> apply (prelBind_ (ioResType (typeOf e)) ty) [e,e'])
+> desugarStmt (StmtBind p t e) ty =
+>   do
+>     z <- freshVar "_#var" (typeOf t)
+>     return (\e' -> apply (prelBind (fst z) ty) [e,bindFunct z e'])
+>   where bindFunct v e =
+>           Lambda p [uncurry VariablePattern v]
+>             (Case (uncurry mkVar v)
+>                   [caseAlt p t e,
+>                    caseAlt p (uncurry VariablePattern v) (failedMatch ty)])
+>         failedMatch ty =
+>           apply (prelFail ty) [Literal stringType (String "match failed")]
+> desugarStmt (StmtDecl ds) _ = return (Let ds)
 
 \end{verbatim}
 Generation of fresh names.
@@ -372,6 +427,7 @@ Prelude entities.
 
 > prelBind a b = preludeFun [ioType a,a `TypeArrow` ioType b] (ioType b) ">>="
 > prelBind_ a b = preludeFun [ioType a,ioType b] (ioType b) ">>"
+> prelFail a = preludeFun [stringType] (ioType a) "fail"
 > prelFlip a b c = preludeFun [a `TypeArrow` (b `TypeArrow` c),b,a] c "flip"
 > prelEnumFrom = preludeFun [intType] (listType intType) "enumFrom"
 > prelEnumFromTo = preludeFun [intType,intType] (listType intType) "enumFromTo"

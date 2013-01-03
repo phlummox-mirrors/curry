@@ -1,6 +1,6 @@
--- $Id: Prelude.curry 3090 2012-08-13 09:17:44Z wlux $
+-- $Id: Prelude.curry 3120 2013-01-03 16:58:08Z wlux $
 --
--- Copyright (c) 1999-2012, Wolfgang Lux
+-- Copyright (c) 1999-2013, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module Prelude((.), id, const, curry, uncurry, flip, until,
@@ -28,7 +28,7 @@ module Prelude((.), id, const, curry, uncurry, flip, until,
                Success(), (=:=), (=/=), (=:<=), success, (&), (&>),
                Maybe(..), maybe,
                Either(..), either,
-               IO(), done, return, (>>), (>>=),
+               IO(), done, return, (>>), (>>=), fail,
                sequenceIO, sequenceIO_, mapIO, mapIO_,
                getChar, getLine, getContents,
                putChar, putStr, putStrLn, print,
@@ -710,6 +710,10 @@ done = return ()
 foreign import primitive return :: a -> IO a
 foreign import primitive (>>)   :: IO a -> IO b        -> IO b
 foreign import primitive (>>=)  :: IO a -> (a -> IO b) -> IO b
+
+--- Raise an error in the IO monad
+fail :: String -> IO a
+fail s = ioError ({-userError-} s)
 
 --- Action that (lazily) reads file and returns its contents.
 readFile :: FilePath -> IO String
