@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 3048 2011-10-02 14:14:03Z wlux $
+% $Id: TypeCheck.lhs 3125 2013-04-13 14:39:29Z wlux $
 %
-% Copyright (c) 1999-2011, Wolfgang Lux
+% Copyright (c) 1999-2013, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeCheck.lhs}
@@ -1066,12 +1066,16 @@ constructor itself.
 >     return (tyEnv,StmtExpr e')
 > tcQual m tcEnv tyEnv _ q@(StmtBind p t e) =
 >   do
->     tyEnv' <- bindLambdaVars m tyEnv t
->     (ty,t') <- tcConstrTerm tcEnv tyEnv' p t
+>     alpha <- freshTypeVar
 >     e' <-
 >       tcExpr m tcEnv tyEnv p e >>-
 >       unify p "generator" (ppStmt q $-$ text "Term:" <+> ppExpr 0 e)
->             tcEnv (listType ty)
+>             tcEnv (listType alpha)
+>     tyEnv' <- bindLambdaVars m tyEnv t
+>     t' <-
+>       tcConstrTerm tcEnv tyEnv' p t >>-
+>       unify p "generator" (ppStmt q $-$ text "Term:" <+> ppConstrTerm 0 t)
+>             tcEnv alpha
 >     return (tyEnv',StmtBind p t' e')
 > tcQual m tcEnv tyEnv _ (StmtDecl ds) =
 >   do
@@ -1089,12 +1093,16 @@ constructor itself.
 >     return (tyEnv,StmtExpr e')
 > tcStmt m tcEnv tyEnv _ st@(StmtBind p t e) =
 >   do
->     tyEnv' <- bindLambdaVars m tyEnv t
->     (ty,t') <- tcConstrTerm tcEnv tyEnv' p t
+>     alpha <- freshTypeVar
 >     e' <-
 >       tcExpr m tcEnv tyEnv p e >>-
 >       unify p "statement" (ppStmt st $-$ text "Term:" <+> ppExpr 0 e)
->             tcEnv (ioType ty)
+>             tcEnv (ioType alpha)
+>     tyEnv' <- bindLambdaVars m tyEnv t
+>     t' <-
+>       tcConstrTerm tcEnv tyEnv' p t >>-
+>       unify p "statement" (ppStmt st $-$ text "Term:" <+> ppConstrTerm 0 t)
+>             tcEnv alpha
 >     return (tyEnv',StmtBind p t' e')
 > tcStmt m tcEnv tyEnv _ (StmtDecl ds) =
 >   do
