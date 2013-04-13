@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 3125 2013-04-13 14:39:29Z wlux $
+% $Id: TypeCheck.lhs 3126 2013-04-13 15:10:33Z wlux $
 %
 % Copyright (c) 1999-2013, Wolfgang Lux
 % See LICENSE for the full license.
@@ -723,8 +723,8 @@ constructor itself.
 >     (alpha,beta,gamma) <-
 >       tcBinary p "infix pattern" (doc $-$ text "Operator:" <+> ppOp op)
 >                tcEnv ty
->     t1' <- tcConstrArg tcEnv tyEnv p doc t1 alpha
->     t2' <- tcConstrArg tcEnv tyEnv p doc t2 beta
+>     t1' <- tcConstrArg tcEnv tyEnv p "pattern" doc alpha t1
+>     t2' <- tcConstrArg tcEnv tyEnv p "pattern" doc beta t2
 >     return (gamma,InfixPattern gamma t1' op t2')
 >   where doc = ppConstrTerm 0 t
 > tcConstrTerm tcEnv tyEnv p (ParenPattern t) =
@@ -744,12 +744,8 @@ constructor itself.
 > tcConstrTerm tcEnv tyEnv p t@(ListPattern _ ts) =
 >   do
 >     ty <- freshTypeVar
->     ts' <- mapM (tcElem (ppConstrTerm 0 t) ty) ts
+>     ts' <- mapM (tcConstrArg tcEnv tyEnv p "pattern" (ppConstrTerm 0 t) ty) ts
 >     return (listType ty,ListPattern (listType ty) ts')
->   where tcElem doc ty t =
->           tcConstrTerm tcEnv tyEnv p t >>-
->           unify p "pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t)
->                 tcEnv ty
 > tcConstrTerm tcEnv tyEnv p t@(AsPattern v t') =
 >   do
 >     ty <- inst (varType v tyEnv)
@@ -767,7 +763,7 @@ constructor itself.
 > tcConstrApp tcEnv tyEnv p doc c ty ts =
 >   do
 >     unless (length tys == n) (errorAt p (wrongArity c (length tys) n))
->     ts' <- zipWithM (tcConstrArg tcEnv tyEnv p doc) ts tys
+>     ts' <- zipWithM (tcConstrArg tcEnv tyEnv p "pattern" doc) tys ts
 >     return (ty',ConstructorPattern ty' c ts')
 >   where (tys,ty') = arrowUnapply ty
 >         n = length ts
@@ -780,15 +776,15 @@ constructor itself.
 >   do
 >     (alpha,beta) <-
 >       tcArrow p "pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t) tcEnv ty
->     t'' <- tcConstrArg tcEnv tyEnv p doc t' alpha
+>     t'' <- tcConstrArg tcEnv tyEnv p "pattern" doc alpha t'
 >     tcFunctPattern tcEnv tyEnv p doc f (ts . (t'':)) beta ts'
 >   where t = FunctionPattern ty f (ts [])
 
-> tcConstrArg :: TCEnv -> ValueEnv -> Position -> Doc -> ConstrTerm a -> Type
->             -> TcState (ConstrTerm Type)
-> tcConstrArg tcEnv tyEnv p doc t ty =
+> tcConstrArg :: TCEnv -> ValueEnv -> Position -> String -> Doc -> Type
+>             -> ConstrTerm a -> TcState (ConstrTerm Type)
+> tcConstrArg tcEnv tyEnv p what doc ty t =
 >   tcConstrTerm tcEnv tyEnv p t >>-
->   unify p "pattern" (doc $-$ text "Term:" <+> ppConstrTerm 0 t) tcEnv ty
+>   unify p what (doc $-$ text "Term:" <+> ppConstrTerm 0 t) tcEnv ty
 
 > tcPatternOp :: ValueEnv -> Position -> InfixOp a -> TcState Type
 > tcPatternOp tyEnv p (InfixConstr _ op) =
@@ -875,11 +871,8 @@ constructor itself.
 > tcExpr m tcEnv tyEnv p e@(List _ es) =
 >   do
 >     ty <- freshTypeVar
->     es' <- mapM (tcElem (ppExpr 0 e) ty) es
+>     es' <- mapM (tcArg m tcEnv tyEnv p "expression" (ppExpr 0 e) ty) es
 >     return (listType ty,List (listType ty) es')
->   where tcElem doc ty e =
->           tcExpr m tcEnv tyEnv p e >>-
->           unify p "expression" (doc $-$ text "Term:" <+> ppExpr 0 e) tcEnv ty
 > tcExpr m tcEnv tyEnv p (ListCompr e qs) =
 >   do
 >     fs <- liftM (fsEnv . flip subst tyEnv) fetchSt
@@ -889,55 +882,28 @@ constructor itself.
 >                  (listType ty) (ListCompr e' qs')
 > tcExpr m tcEnv tyEnv p e@(EnumFrom e1) =
 >   do
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "arithmetic sequence"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1) tcEnv intType
+>     e1' <- tcArg m tcEnv tyEnv p "arithmetic sequence" (ppExpr 0 e) intType e1
 >     return (listType intType,EnumFrom e1')
 > tcExpr m tcEnv tyEnv p e@(EnumFromThen e1 e2) =
 >   do
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "arithmetic sequence"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1) tcEnv intType
->     e2' <-
->       tcExpr m tcEnv tyEnv p e2 >>-
->       unify p "arithmetic sequence"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e2) tcEnv intType
+>     e1' <- tcArg m tcEnv tyEnv p "arithmetic sequence" (ppExpr 0 e) intType e1
+>     e2' <- tcArg m tcEnv tyEnv p "arithmetic sequence" (ppExpr 0 e) intType e2
 >     return (listType intType,EnumFromThen e1' e2')
 > tcExpr m tcEnv tyEnv p e@(EnumFromTo e1 e2) =
 >   do
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "arithmetic sequence"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1) tcEnv intType
->     e2' <-
->       tcExpr m tcEnv tyEnv p e2 >>-
->       unify p "arithmetic sequence"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e2) tcEnv intType
+>     e1' <- tcArg m tcEnv tyEnv p "arithmetic sequence" (ppExpr 0 e) intType e1
+>     e2' <- tcArg m tcEnv tyEnv p "arithmetic sequence" (ppExpr 0 e) intType e2
 >     return (listType intType,EnumFromTo e1' e2')
 > tcExpr m tcEnv tyEnv p e@(EnumFromThenTo e1 e2 e3) =
 >   do
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "arithmetic sequence"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1) tcEnv intType
->     e2' <-
->       tcExpr m tcEnv tyEnv p e2 >>-
->       unify p "arithmetic sequence"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e2) tcEnv intType
->     e3' <-
->       tcExpr m tcEnv tyEnv p e3 >>-
->       unify p "arithmetic sequence"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e3) tcEnv intType
+>     e1' <- tcArg m tcEnv tyEnv p "arithmetic sequence" (ppExpr 0 e) intType e1
+>     e2' <- tcArg m tcEnv tyEnv p "arithmetic sequence" (ppExpr 0 e) intType e2
+>     e3' <- tcArg m tcEnv tyEnv p "arithmetic sequence" (ppExpr 0 e) intType e3
 >     return (listType intType,EnumFromThenTo e1' e2' e3')
 > tcExpr m tcEnv tyEnv p e@(UnaryMinus op e1) =
 >   do
 >     ty <- opType op
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "unary negation" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1)
->             tcEnv ty
+>     e1' <- tcArg m tcEnv tyEnv p "unary negation" (ppExpr 0 e) ty e1
 >     return (ty,UnaryMinus op e1')
 >   where opType op
 >           | op == minusId = freshConstrained [intType,floatType]
@@ -949,10 +915,7 @@ constructor itself.
 >       tcExpr m tcEnv tyEnv p e1 >>=-
 >       tcArrow p "application" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1)
 >               tcEnv
->     e2' <-
->       tcExpr m tcEnv tyEnv p e2 >>-
->       unify p "application" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e2)
->             tcEnv alpha
+>     e2' <- tcArg m tcEnv tyEnv p "application" (ppExpr 0 e) alpha e2
 >     return (beta,Apply e1' e2')
 > tcExpr m tcEnv tyEnv p e@(InfixApply e1 op e2) =
 >   do
@@ -960,14 +923,8 @@ constructor itself.
 >       tcInfixOp tyEnv op >>=-
 >       tcBinary p "infix application"
 >                (ppExpr 0 e $-$ text "Operator:" <+> ppOp op) tcEnv
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "infix application"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1) tcEnv alpha
->     e2' <-
->       tcExpr m tcEnv tyEnv p e2 >>-
->       unify p "infix application"
->             (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e2) tcEnv beta
+>     e1' <- tcArg m tcEnv tyEnv p "infix application" (ppExpr 0 e) alpha e1
+>     e2' <- tcArg m tcEnv tyEnv p "infix application" (ppExpr 0 e) beta e2
 >     return (gamma,InfixApply e1' op' e2')
 > tcExpr m tcEnv tyEnv p e@(LeftSection e1 op) =
 >   do
@@ -975,10 +932,7 @@ constructor itself.
 >       tcInfixOp tyEnv op >>=-
 >       tcArrow p "left section" (ppExpr 0 e $-$ text "Operator:" <+> ppOp op)
 >               tcEnv
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "left section" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1)
->             tcEnv alpha
+>     e1' <- tcArg m tcEnv tyEnv p "left section" (ppExpr 0 e) alpha e1
 >     return (beta,LeftSection e1' op')
 > tcExpr m tcEnv tyEnv p e@(RightSection op e1) =
 >   do
@@ -986,10 +940,7 @@ constructor itself.
 >       tcInfixOp tyEnv op >>=-
 >       tcBinary p "right section"
 >                (ppExpr 0 e $-$ text "Operator:" <+> ppOp op) tcEnv
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "right section" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1)
->             tcEnv beta
+>     e1' <- tcArg m tcEnv tyEnv p "right section" (ppExpr 0 e) beta e1
 >     return (TypeArrow alpha gamma,RightSection op' e1')
 > tcExpr m tcEnv tyEnv _ (Lambda p ts e) =
 >   do
@@ -1015,15 +966,9 @@ constructor itself.
 >     checkSkolems p "Expression" (ppExpr 0) tcEnv tyEnv fs ty (Do sts' e')
 > tcExpr m tcEnv tyEnv p e@(IfThenElse e1 e2 e3) =
 >   do
->     e1' <-
->       tcExpr m tcEnv tyEnv p e1 >>-
->       unify p "expression" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e1)
->             tcEnv boolType
+>     e1' <- tcArg m tcEnv tyEnv p "expression" (ppExpr 0 e) boolType e1
 >     (ty,e2') <- tcExpr m tcEnv tyEnv p e2
->     e3' <-
->       tcExpr m tcEnv tyEnv p e3 >>-
->       unify p "expression" (ppExpr 0 e $-$ text "Term:" <+> ppExpr 0 e3)
->             tcEnv ty
+>     e3' <- tcArg m tcEnv tyEnv p "expression" (ppExpr 0 e) ty e3
 >     return (ty,IfThenElse e1' e2' e3')
 > tcExpr m tcEnv tyEnv p (Case e as) =
 >   do
@@ -1040,6 +985,12 @@ constructor itself.
 >     as' <- mapM (tcAlt m tcEnv tyEnv fs tyLhs tyRhs) as
 >     return (tyRhs,Fcase e' as')
 
+> tcArg :: ModuleIdent -> TCEnv -> ValueEnv -> Position -> String -> Doc -> Type
+>       -> Expression a -> TcState (Expression Type)
+> tcArg m tcEnv tyEnv p what doc ty e =
+>   tcExpr m tcEnv tyEnv p e >>-
+>   unify p what (doc $-$ text "Term:" <+> ppExpr 0 e) tcEnv ty
+
 > tcAlt :: ModuleIdent -> TCEnv -> ValueEnv -> Set Int -> Type -> Type -> Alt a
 >       -> TcState (Alt Type)
 > tcAlt m tcEnv tyEnv fs tyLhs tyRhs a@(Alt p t rhs) =
@@ -1052,10 +1003,9 @@ constructor itself.
 >   do
 >     tyEnv' <- bindLambdaVars m tyEnv t
 >     t' <-
->       tcConstrTerm tcEnv tyEnv' p t >>- unify p "case pattern" doc tcEnv tyLhs
+>       tcConstrArg tcEnv tyEnv' p "case pattern" (ppAlt (Alt p t rhs)) tyLhs t
 >     (ty',rhs') <- tcRhs m tcEnv tyEnv' rhs
 >     checkSkolems p "Alternative" ppAlt tcEnv tyEnv fs ty' (Alt p t' rhs')
->   where doc = ppAlt (Alt p t rhs) $-$ text "Term:" <+> ppConstrTerm 0 t
 
 > tcQual :: ModuleIdent -> TCEnv -> ValueEnv -> Position -> Statement a
 >        -> TcState (ValueEnv,Statement Type)
@@ -1067,15 +1017,9 @@ constructor itself.
 > tcQual m tcEnv tyEnv _ q@(StmtBind p t e) =
 >   do
 >     alpha <- freshTypeVar
->     e' <-
->       tcExpr m tcEnv tyEnv p e >>-
->       unify p "generator" (ppStmt q $-$ text "Term:" <+> ppExpr 0 e)
->             tcEnv (listType alpha)
+>     e' <- tcArg m tcEnv tyEnv p "generator" (ppStmt q) (listType alpha) e
 >     tyEnv' <- bindLambdaVars m tyEnv t
->     t' <-
->       tcConstrTerm tcEnv tyEnv' p t >>-
->       unify p "generator" (ppStmt q $-$ text "Term:" <+> ppConstrTerm 0 t)
->             tcEnv alpha
+>     t' <- tcConstrArg tcEnv tyEnv' p "generator" (ppStmt q) alpha t
 >     return (tyEnv',StmtBind p t' e')
 > tcQual m tcEnv tyEnv _ (StmtDecl ds) =
 >   do
@@ -1094,15 +1038,9 @@ constructor itself.
 > tcStmt m tcEnv tyEnv _ st@(StmtBind p t e) =
 >   do
 >     alpha <- freshTypeVar
->     e' <-
->       tcExpr m tcEnv tyEnv p e >>-
->       unify p "statement" (ppStmt st $-$ text "Term:" <+> ppExpr 0 e)
->             tcEnv (ioType alpha)
+>     e' <- tcArg m tcEnv tyEnv p "statement" (ppStmt st) (ioType alpha) e
 >     tyEnv' <- bindLambdaVars m tyEnv t
->     t' <-
->       tcConstrTerm tcEnv tyEnv' p t >>-
->       unify p "statement" (ppStmt st $-$ text "Term:" <+> ppConstrTerm 0 t)
->             tcEnv alpha
+>     t' <- tcConstrArg tcEnv tyEnv' p "statement" (ppStmt st) alpha t
 >     return (tyEnv',StmtBind p t' e')
 > tcStmt m tcEnv tyEnv _ (StmtDecl ds) =
 >   do
