@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 3126 2013-04-13 15:10:33Z wlux $
+% $Id: TypeCheck.lhs 3127 2013-04-13 15:23:16Z wlux $
 %
 % Copyright (c) 1999-2013, Wolfgang Lux
 % See LICENSE for the full license.
@@ -959,8 +959,8 @@ constructor itself.
 > tcExpr m tcEnv tyEnv p (Do sts e) =
 >   do
 >     fs <- liftM (fsEnv . flip subst tyEnv) fetchSt
->     (tyEnv',sts') <- mapAccumM (flip (tcStmt m tcEnv) p) tyEnv sts
->     ty <- liftM ioType freshTypeVar
+>     ((tyEnv',f),sts') <- mapAccumM (flip (tcStmt m tcEnv) p) (tyEnv,id) sts
+>     ty <- liftM f freshTypeVar
 >     e' <-
 >       tcExpr m tcEnv tyEnv' p e >>- unify p "statement" (ppExpr 0 e) tcEnv ty
 >     checkSkolems p "Expression" (ppExpr 0) tcEnv tyEnv fs ty (Do sts' e')
@@ -1026,26 +1026,26 @@ constructor itself.
 >     (tyEnv',ds') <- tcDecls m tcEnv tyEnv ds
 >     return (tyEnv',StmtDecl ds')
 
-> tcStmt :: ModuleIdent -> TCEnv -> ValueEnv -> Position -> Statement a
->        -> TcState (ValueEnv,Statement Type)
-> tcStmt m tcEnv tyEnv p (StmtExpr e) =
+> tcStmt :: ModuleIdent -> TCEnv -> (ValueEnv,Type -> Type) -> Position
+>        -> Statement a -> TcState ((ValueEnv,Type -> Type),Statement Type)
+> tcStmt m tcEnv (tyEnv,_) p (StmtExpr e) =
 >   do
 >     alpha <- freshTypeVar
 >     e' <-
 >       tcExpr m tcEnv tyEnv p e >>-
 >       unify p "statement" (ppExpr 0 e) tcEnv (ioType alpha)
->     return (tyEnv,StmtExpr e')
-> tcStmt m tcEnv tyEnv _ st@(StmtBind p t e) =
+>     return ((tyEnv,ioType),StmtExpr e')
+> tcStmt m tcEnv (tyEnv,_) _ st@(StmtBind p t e) =
 >   do
 >     alpha <- freshTypeVar
 >     e' <- tcArg m tcEnv tyEnv p "statement" (ppStmt st) (ioType alpha) e
 >     tyEnv' <- bindLambdaVars m tyEnv t
 >     t' <- tcConstrArg tcEnv tyEnv' p "statement" (ppStmt st) alpha t
->     return (tyEnv',StmtBind p t' e')
-> tcStmt m tcEnv tyEnv _ (StmtDecl ds) =
+>     return ((tyEnv',ioType),StmtBind p t' e')
+> tcStmt m tcEnv (tyEnv,f) _ (StmtDecl ds) =
 >   do
 >     (tyEnv',ds') <- tcDecls m tcEnv tyEnv ds
->     return (tyEnv',StmtDecl ds')
+>     return ((tyEnv',f),StmtDecl ds')
 
 > tcInfixOp :: ValueEnv -> InfixOp a -> TcState (Type,InfixOp Type)
 > tcInfixOp tyEnv (InfixOp _ op) =
