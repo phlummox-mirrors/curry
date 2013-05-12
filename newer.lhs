@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: newer.lhs 2601 2008-01-27 15:28:16Z wlux $
+% $Id: newer.lhs 3132 2013-05-12 13:20:11Z wlux $
 %
-% Copyright (c) 2002, Wolfgang Lux
+% Copyright (c) 2002-2013, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{newer.lhs}
@@ -49,13 +49,13 @@ Sect.~\ref{sec:dependencies}).
 
 > newer prog [] = badUsage prog
 > newer prog (file:deps) =
->   catch (do t <- getModificationTime file
->             allM (isNewer t) (filter (not . ("-M" `isPrefixOf`)) deps))
->         (const (return False))
+>   IO.catch (do t <- getModificationTime file
+>                allM (isNewer t) (filter (not . ("-M" `isPrefixOf`)) deps))
+>            (const (return False))
 
 > isNewer t file =
->   catch (do t' <- getModificationTime file; return (t > t'))
->         (\ioe -> do print ioe; exitWith (ExitFailure 2))
+>   IO.catch (do t' <- getModificationTime file; return (t > t'))
+>            (\ioe -> do print ioe; exitWith (ExitFailure 2))
 
 > allM :: Monad m => (a -> m Bool) -> [a] -> m Bool
 > allM f xs = andM (map f xs)

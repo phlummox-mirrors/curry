@@ -1,6 +1,6 @@
--- $Id: cycc.hs 2783 2009-04-09 19:55:21Z wlux $
+-- $Id: cycc.hs 3132 2013-05-12 13:20:11Z wlux $
 --
--- Copyright (c) 1999-2009, Wolfgang Lux
+-- Copyright (c) 1999-2013, Wolfgang Lux
 -- See LICENSE for the full license.
 
 import Modules
@@ -20,8 +20,8 @@ main =
   do
     prog <- getProgName
     args <- getArgs
-    importPath <- catch (getEnv "CURRY_IMPORT_PATH" >>= return . pathList)
-                        (const (return []))
+    importPath <- IO.catch (getEnv "CURRY_IMPORT_PATH" >>= return . pathList)
+                           (const (return []))
     cyc prog args importPath
 
 cyc :: String -> [String] -> [FilePath] -> IO ()

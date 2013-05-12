@@ -1,6 +1,6 @@
--- $Id: cymk.hs 2820 2009-05-07 16:29:45Z wlux $
+-- $Id: cymk.hs 3132 2013-05-12 13:20:11Z wlux $
 --
--- Copyright (c) 2002-2009, Wolfgang Lux
+-- Copyright (c) 2002-2013, Wolfgang Lux
 -- See LICENSE for the full license.
 
 import CurryDeps
@@ -75,8 +75,8 @@ main =
   do
     prog <- getProgName
     args <- getArgs
-    importPath <- catch (getEnv "CURRY_IMPORT_PATH" >>= return . pathList)
-                        (const (return []))
+    importPath <- IO.catch (getEnv "CURRY_IMPORT_PATH" >>= return . pathList)
+                           (const (return []))
     cymk prog args importPath
 
 cymk :: String -> [String] -> [FilePath] -> IO ()
@@ -94,7 +94,7 @@ printUsage :: String -> IO ()
 printUsage prog =
   do
     putStrLn (usageInfo (unlines header) options)
-    exitWith (ExitSuccess)
+    exitWith ExitSuccess
   where header = ["usage: " ++ prog ++ " [OPTION]... MODULE ..."]
 
 badUsage :: String -> [String] -> IO ()
