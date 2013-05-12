@@ -1,4 +1,4 @@
--- $Id: cymk.hs 3132 2013-05-12 13:20:11Z wlux $
+-- $Id: cymk.hs 3133 2013-05-12 14:04:35Z wlux $
 --
 -- Copyright (c) 2002-2013, Wolfgang Lux
 -- See LICENSE for the full license.
@@ -10,6 +10,7 @@ import Maybe
 import Monad
 import PathUtils
 import System
+import Utils
 
 data Options =
   Options{
@@ -120,7 +121,3 @@ processFiles opts prog files
 	unless (null es) (mapM putErrLn es >> exitWith (ExitFailure 2))
   where script = buildScript (mkClean opts) (debug opts) (importPaths opts)
 			     (goal opts) (output opts)
-
-putErr, putErrLn :: String -> IO ()
-putErr = hPutStr stderr
-putErrLn = hPutStr stderr . (++ "\n")

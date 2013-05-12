@@ -1,4 +1,4 @@
--- $Id: cycc.hs 3132 2013-05-12 13:20:11Z wlux $
+-- $Id: cycc.hs 3133 2013-05-12 14:04:35Z wlux $
 --
 -- Copyright (c) 1999-2013, Wolfgang Lux
 -- See LICENSE for the full license.
@@ -14,6 +14,7 @@ import IO
 import List
 import Maybe
 import System
+import Utils
 
 main :: IO ()
 main =
@@ -72,7 +73,3 @@ compile c = callErr c >>= checkOk
   where checkOk (Ok x) = return x
         checkOk (Errors msgs) =
           putErr (unlines (nub msgs)) >> exitWith (ExitFailure 1)
-
-putErr, putErrLn :: String -> IO ()
-putErr = hPutStr stderr
-putErrLn = hPutStr stderr . (++ "\n")

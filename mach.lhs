@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: mach.lhs 3132 2013-05-12 13:20:11Z wlux $
+% $Id: mach.lhs 3133 2013-05-12 14:04:35Z wlux $
 %
 % Copyright (c) 1998-2013, Wolfgang Lux
 % See LICENSE for the full license.
@@ -25,6 +25,7 @@ possibility to enter a little interactive top-level.
 > import Combined
 > import IO
 > import System
+> import Utils
 
 > data Option =
 >     Help
@@ -262,9 +263,5 @@ possibility to enter a little interactive top-level.
 >         tracer' InstrTrace = Just traceInstr
 >         tracer' AbbrevStackTrace = Just (traceStack (dumpPtr 1))
 >         tracer' FullStackTrace = Just (traceStack (dumpPtr 25))
-
-> putErr, putErrLn :: String -> IO ()
-> putErr = hPutStr stderr
-> putErrLn = hPutStr stderr . (++ "\n")
 
 \end{verbatim}

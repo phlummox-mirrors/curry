@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Goals.lhs 3044 2011-09-25 13:58:36Z wlux $
+% $Id: Goals.lhs 3133 2013-05-12 14:04:35Z wlux $
 %
-% Copyright (c) 1999-2011, Wolfgang Lux
+% Copyright (c) 1999-2013, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Goals.lhs}
@@ -18,7 +18,6 @@ This module controls the compilation of goals.
 > import CurryUtils
 > import Error
 > import Interfaces
-> import IO
 > import KindCheck
 > import List
 > import Options
@@ -241,16 +240,5 @@ showing the bindings of the goal's free variables.
 > prelUnif ty =
 >   Variable (foldr TypeArrow successType [ty,ty])
 >            (qualifyWith preludeMIdent (mkIdent "=:="))
-
-\end{verbatim}
-Auxiliary functions. Unfortunately, hbc's \texttt{IO} module lacks a
-definition of \texttt{hPutStrLn}.
-\begin{verbatim}
-
-> putErr :: String -> IO ()
-> putErr = hPutStr stderr
-
-> putErrLn :: String -> IO ()
-> putErrLn s = putErr (unlines [s])
 
 \end{verbatim}
