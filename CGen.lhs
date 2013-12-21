@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 3091 2012-08-13 09:31:41Z wlux $
+% $Id: CGen.lhs 3146 2013-12-21 15:24:32Z wlux $
 %
-% Copyright (c) 1998-2012, Wolfgang Lux
+% Copyright (c) 1998-2013, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CGen.lhs}
@@ -297,10 +297,12 @@ module, is generated.
 >   map litInstEntryDecl flexLits ++
 >   map litInstFunction flexLits ++
 >   -- (private) @ functions
->   [entryDecl Private (apName n) | n <- [2..maxApArity]] ++
+>   map appEntryDecl appArgs ++
+>   map appFunction appArgs ++
+>   [entryDecl Private f | f <- ap] ++
 >   concat [evalDef Private f (apArity f) | f <- apClos] ++
 >   concat [lazyDef Private f (apArity f) | f <- apLazy] ++
->   concat [apFunction (apName n) n | n <- [2..maxApArity]] ++
+>   concat [apFunction f (apArity f) | f <- ap] ++
 >   -- auxiliary functions for partial applications of data constructors
 >   [entryDecl Private c | (_,c,n) <- pcon', n > 0] ++
 >   concat [pappDef vb c n | (vb,c,n) <- pcon', n > 0] ++
@@ -320,7 +322,8 @@ module, is generated.
 >         (apClos,clos) = partition isAp (nub [f | Closure f _ <- ns])
 >         (apLazy,lazy) = partition isAp (nub [f | Lazy f _ <- ns])
 >         fun0 = nub ([f | Papp f [] <- ns] ++ [f | Closure f [] <- ns])
->         maxApArity = maximum (0 : map apArity (apCall ++ apClos ++ apLazy))
+>         ap = nub (apCall ++ apClos ++ apLazy)
+>         appArgs = [1 .. maximum (0 : map (pred . apArity) ap)]
 >         cs = [constr c | c <- concatMap thd3 ds]
 >         fs' = [(vb,f,length vs) | (vb,f,vs,_) <- fs]
 >         flex' = filter (used flexData) cs
@@ -350,6 +353,9 @@ module, is generated.
 
 > lazyEntryDecl :: Int -> CTopDecl
 > lazyEntryDecl n = CFuncDecl CPrivate (lazyFunc n)
+
+> appEntryDecl :: Int -> CTopDecl
+> appEntryDecl n = CFuncDecl CPrivate (appFunc n)
 
 > instEntryDecl :: Visibility -> Name -> CTopDecl
 > instEntryDecl vb c = CFuncDecl (cVis vb) (instFunc c)
@@ -450,8 +456,12 @@ the suspend node associated with the abstract machine code function.
 >   where vs = [Name ('v' : show i) | i <- [1..n]]
 
 > apFunction :: Name -> Int -> [CTopDecl]
-> apFunction f n = funcDefs Private (cpsApply f vs)
+> apFunction f n = funcDefs Private (cpsApplyFunction f vs)
 >   where vs = [Name ('v' : show i) | i <- [1..n]]
+
+> appFunction :: Int -> CTopDecl
+> appFunction n = funcDef Private (cpsApply v vs)
+>   where v:vs = [Name ('v' : show i) | i <- [0..n]]
 
 > instFunction :: Visibility -> Name -> Int -> CTopDecl
 > instFunction vb c n = funcDef vb (cpsInst v (ConstrCase c vs))
@@ -478,6 +488,7 @@ the suspend node associated with the abstract machine code function.
 >   CFuncDef (cVis vb) (contName f)
 >            (funCode (name f) (vs,CPSCont f ws CPSReturn) st)
 >   where name (CPSContFun f _) = f
+>         name (CPSApp _) = Name ""
 >         name (CPSInst _) = Name ""
 >         name (CPSApply _) = Name ""
 >         name CPSUpdate = Name ""
@@ -941,6 +952,7 @@ translation function.
 
 > contEntry :: CPSContFun -> CExpr
 > contEntry (CPSContFun f n) = CExpr (contName (CPSContFun f n))
+> contEntry (CPSApp n) = CExpr (contName (CPSApp n))
 > contEntry (CPSInst t) = CExpr (contName (CPSInst t))
 > contEntry (CPSApply v) = field v "info->apply"
 > contEntry CPSUpdate = CExpr (contName CPSUpdate)
@@ -1295,6 +1307,7 @@ used for constant constructors and functions, respectively.
 
 > contName :: CPSContFun -> String
 > contName (CPSContFun f n) = cPrivName f n
+> contName (CPSApp n) = appFunc n
 > contName (CPSInst (LitCase l)) = litInstFunc l
 > contName (CPSInst (ConstrCase c _)) = instFunc c
 > --contName (CPSApply _) = error "internal error: contName (CPSApply)"
@@ -1309,6 +1322,9 @@ used for constant constructors and functions, respectively.
 > evalFunc, lazyFunc :: Int -> String
 > evalFunc n = "eval_clos_" ++ show n
 > lazyFunc n = "eval_lazy_" ++ show n
+
+> appFunc :: Int -> String
+> appFunc n = "apply" ++ show n
 
 > instFunc :: Name -> String
 > instFunc c = cName c ++ "_unify"
@@ -1340,15 +1356,8 @@ used for constant constructors and functions, respectively.
 \end{verbatim}
 The function \texttt{apArity} returns the arity of an application
 function \texttt{@}$_n$. Note that \texttt{@}$_n$ has arity $n+1$
-since $n$ denotes the arity of its first argument. The function
-\texttt{apName} is the inverse of \texttt{apArity}, i.e., the
-following two equations hold
-\begin{eqnarray*}
-  i & = & \texttt{apArity}(\texttt{apName}(i)) \\
-  x & = & \texttt{apName}(\texttt{apArity}(x))
-\end{eqnarray*}
-provided that $x$ is the name of an application function. Note the
-special case for \texttt{@}, which is used instead of \texttt{@}$_1$.
+since $n$ denotes the arity of its first argument. Note the special
+case for \texttt{@}, which is used instead of \texttt{@}$_1$.
 \begin{verbatim}
 
 > isAp :: Name -> Bool
@@ -1361,10 +1370,7 @@ special case for \texttt{@}, which is used instead of \texttt{@}$_1$.
 >   where arity ('@':cs)
 >           | null cs = 2
 >           | all isDigit cs = read cs + 1
->         arity _ = error "internal error: applyArity"
-
-> apName :: Int -> Name
-> apName n = mangle ('@' : if n == 2 then "" else show (n - 1))
+>         arity _ = error "internal error: apArity"
 
 > constChar :: Char -> String
 > constChar c = "char_" ++ show (ord c)
