@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CurryDeps.lhs 3076 2012-06-05 12:47:30Z wlux $
+% $Id: CurryDeps.lhs 3156 2015-04-12 10:09:19Z wlux $
 %
-% Copyright (c) 2002-2012, Wolfgang Lux
+% Copyright (c) 2002-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CurryDeps.lhs}
@@ -44,12 +44,11 @@ or interface file for each module.
 > buildScript clean debug paths goal output fn =
 >   do
 >     (ms,es) <- fmap (flattenDeps . sortDeps) (deps paths emptyEnv fn)
->     when (null es) $
->       maybe putStr writeFile output (makeScript clean debug goal target ms)
+>     when (null es) (putStr (makeScript clean debug goal target ms))
 >     return es
 >   where target
 >           | extension fn `elem` moduleExts ++ [oExt] = Nothing
->           | otherwise = Just fn
+>           | otherwise = output `mplus` Just fn
 >         makeScript clean = if clean then makeCleanScript else makeBuildScript
 
 > makeDepend :: [(Bool,FilePath)] -> Maybe FilePath -> [FilePath] -> IO ()
