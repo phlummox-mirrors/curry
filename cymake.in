@@ -3,9 +3,9 @@
 #
 # Shell script for building Curry programs
 #
-# $Id: cymake.in 3076 2012-06-05 12:47:30Z wlux $
+# $Id: cymake.in 3155 2015-04-12 09:12:34Z wlux $
 #
-# Copyright (c) 2002-2012, Wolfgang Lux
+# Copyright (c) 2002-2015, Wolfgang Lux
 # See LICENSE for the full license.
 #
 
@@ -273,11 +273,12 @@ for f in "$@"; do
     g=`quote1 "$goal$typeIt"`
     test -n "$verbose" && \
       eval echo 1>&2 "$cymk" $clean "$mkopts" -e "\\\"$g\\\"" "$imports" "$f"
-    eval "$cymk" $clean "$mkopts" -e "$g" -o /tmp/cymake$$ "$imports" "$f"
+    eval "$cymk" $clean "$mkopts" -e "$g" -o /tmp/cymake$$ "$imports" "$f" || \
+      exit $?
   else
     test -n "$verbose" && \
       eval echo 1>&2 "$cymk" $clean "$mkopts" "$imports" "$f"
-    eval "$cymk" $clean "$mkopts" -o /tmp/cymake$$ "$imports" "$f"
+    eval "$cymk" $clean "$mkopts" -o /tmp/cymake$$ "$imports" "$f" || exit $?
   fi
 
   . /tmp/cymake$$
