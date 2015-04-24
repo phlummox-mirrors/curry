@@ -1,6 +1,6 @@
--- $Id: cycc.hs 3133 2013-05-12 14:04:35Z wlux $
+-- $Id: cycc.hs 3158 2015-04-24 07:22:21Z wlux $
 --
--- Copyright (c) 1999-2013, Wolfgang Lux
+-- Copyright (c) 1999-2015, Wolfgang Lux
 -- See LICENSE for the full license.
 
 import Modules
@@ -32,7 +32,9 @@ cyc prog args curryImportPath
   | otherwise = badUsage prog errs
   where (opts,files,errs) = getOpt Permute options args
         cycOpts =
-	  foldr selectOption defaultOptions{ importPath = curryImportPath } opts
+	  foldr selectOption
+                defaultOptions{ importPaths = map ((,) False) curryImportPath }
+                opts
 
 printUsage :: String -> IO ()
 printUsage prog =

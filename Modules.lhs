@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 3133 2013-05-12 14:04:35Z wlux $
+% $Id: Modules.lhs 3158 2015-04-24 07:22:21Z wlux $
 %
-% Copyright (c) 1999-2013, Wolfgang Lux
+% Copyright (c) 1999-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Modules.lhs}
@@ -70,14 +70,14 @@ declaration to the module.
 >     let (ccode,dumps) = genCodeModule split dbg tcEnv' il
 >     liftErr $ mapM_ (doDump opts) dumps >>
 >               writeCode (output opts) fn ccode
->   where paths = importPath opts
+>   where paths = importPaths opts
 >         split = splitCode opts
 >         dbg = debug opts
 >         tr = if trusted opts then Trust else Suspect
 >         cm = caseMode opts
 >         ws = warn opts
 
-> loadModule :: [FilePath] -> Bool -> CaseMode -> [Warn] -> FilePath
+> loadModule :: [(Bool,FilePath)] -> Bool -> CaseMode -> [Warn] -> FilePath
 >            -> ErrorT IO (PEnv,TCEnv,ValueEnv,Module Type)
 > loadModule paths debug caseMode warn fn =
 >   do
