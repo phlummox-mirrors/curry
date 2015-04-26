@@ -1,8 +1,8 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 3142 2013-11-24 18:53:41Z wlux $
+# $Id: Makefile.in 3159 2015-04-26 07:32:00Z wlux $
 #
-# Copyright (c) 2000-2013 Wolfgang Lux
+# Copyright (c) 2000-2015 Wolfgang Lux
 # See LICENSE for the full license.
 #
 
@@ -110,6 +110,7 @@ cycc_SRCS = \
 	Goals.lhs \
 	Common.lhs \
 	SplitModule.lhs \
+	Files.lhs \
 	Options.lhs \
 	Unlit.lhs \
 	LexComb.lhs \
@@ -145,6 +146,7 @@ cymk_SRCS = \
 	Curry.lhs \
 	CurryLexer.lhs \
 	CurryParser.lhs \
+	Files.lhs \
 	Unlit.lhs \
 	LexComb.lhs \
 	LLParseComb.lhs \
@@ -183,6 +185,7 @@ cam2c_SRCS = \
 	CElim.lhs \
 	CPS.lhs \
 	CGen.lhs \
+	Files.lhs \
 	LexComb.lhs \
 	LLParseComb.lhs \
 	Pretty.lhs \

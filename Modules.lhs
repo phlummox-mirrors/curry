@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 3158 2015-04-24 07:22:21Z wlux $
+% $Id: Modules.lhs 3159 2015-04-26 07:32:00Z wlux $
 %
 % Copyright (c) 1999-2015, Wolfgang Lux
 % See LICENSE for the full license.
@@ -19,6 +19,7 @@ This module controls the compilation of modules.
 > import Error
 > import ExportSyntaxCheck
 > import Exports
+> import Files
 > import ImportSyntaxCheck
 > import Interfaces
 > import KindCheck
@@ -77,7 +78,7 @@ declaration to the module.
 >         cm = caseMode opts
 >         ws = warn opts
 
-> loadModule :: [(Bool,FilePath)] -> Bool -> CaseMode -> [Warn] -> FilePath
+> loadModule :: [ImportPath] -> Bool -> CaseMode -> [Warn] -> FilePath
 >            -> ErrorT IO (PEnv,TCEnv,ValueEnv,Module Type)
 > loadModule paths debug caseMode warn fn =
 >   do
