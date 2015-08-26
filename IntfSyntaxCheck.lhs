@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: IntfSyntaxCheck.lhs 2893 2009-08-10 15:28:04Z wlux $
+% $Id: IntfSyntaxCheck.lhs 3169 2015-08-26 19:34:38Z wlux $
 %
-% Copyright (c) 2000-2009, Wolfgang Lux
+% Copyright (c) 2000-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{IntfSyntaxCheck.lhs}
@@ -20,6 +20,7 @@ reference to the global environments.
 \begin{verbatim}
 
 > module IntfSyntaxCheck(intfSyntaxCheck) where
+> import Applicative
 > import Base
 > import Curry
 > import CurryUtils
@@ -29,6 +30,7 @@ reference to the global environments.
 > import Monad
 > import PredefIdent
 > import TopEnv
+> import Utils
 
 \end{verbatim}
 The compiler requires information about the arity of each defined type
@@ -38,7 +40,7 @@ The latter must not occur in type expressions in interfaces.
 \begin{verbatim}
 
 > intfSyntaxCheck :: [IDecl] -> Error [IDecl]
-> intfSyntaxCheck ds = mapE (checkIDecl env) ds
+> intfSyntaxCheck ds = mapA (checkIDecl env) ds
 >   where env = foldr bindType initTEnv (concatMap tidents (map unhide ds))
 >         bindType t = qualBindTopEnv (origName t) t
 
@@ -50,79 +52,79 @@ during syntax checking of type expressions.
 > checkIDecl :: TypeEnv -> IDecl -> Error IDecl
 > checkIDecl _ (IInfixDecl p fix pr op) = return (IInfixDecl p fix pr op)
 > checkIDecl env (HidingDataDecl p tc tvs) =
->   checkTypeLhs p tvs &&>
+>   checkTypeLhs p tvs *>
 >   return (HidingDataDecl p tc tvs)
 > checkIDecl env (IDataDecl p tc tvs cs xs) =
 >   do
->     cs' <- checkTypeLhs p tvs &&> mapE (checkConstrDecl env tvs) cs
+>     cs' <- checkTypeLhs p tvs *> mapA (checkConstrDecl env tvs) cs
 >     checkHiding p tc (map constr cs ++ nub (concatMap labels cs)) xs
 >     return (IDataDecl p tc tvs cs' xs)
 > checkIDecl env (INewtypeDecl p tc tvs nc xs) =
 >   do
->     nc' <- checkTypeLhs p tvs &&> checkNewConstrDecl env tvs nc
+>     nc' <- checkTypeLhs p tvs *> checkNewConstrDecl env tvs nc
 >     checkHiding p tc (nconstr nc : nlabel nc) xs
 >     return (INewtypeDecl p tc tvs nc' xs)
 > checkIDecl env (ITypeDecl p tc tvs ty) =
->   checkTypeLhs p tvs &&>
->   liftE (ITypeDecl p tc tvs) (checkClosedType env p tvs ty)
+>   checkTypeLhs p tvs *>
+>   liftA (ITypeDecl p tc tvs) (checkClosedType env p tvs ty)
 > checkIDecl env (IFunctionDecl p f n ty) =
->   maybe (return ()) (checkArity p) n &&>
->   liftE (IFunctionDecl p f n) (checkType env p [] ty)
+>   maybe (return ()) (checkArity p) n *>
+>   liftA (IFunctionDecl p f n) (checkType env p [] ty)
 >   where checkArity p n =
 >           unless (n < toInteger (maxBound::Int)) (errorAt p (arityTooBig n))
 
 > checkTypeLhs :: Position -> [Ident] -> Error ()
-> checkTypeLhs p tvs = mapE_ (errorAt p . nonLinear . fst) (duplicates tvs)
+> checkTypeLhs p tvs = mapA_ (errorAt p . nonLinear . fst) (duplicates tvs)
 
 > checkConstrDecl :: TypeEnv -> [Ident] -> ConstrDecl -> Error ConstrDecl
 > checkConstrDecl env tvs (ConstrDecl p evs c tys) =
->   checkTypeLhs p evs &&>
->   liftE (ConstrDecl p evs c) (mapE (checkClosedType env p tvs') tys)
+>   checkTypeLhs p evs *>
+>   liftA (ConstrDecl p evs c) (mapA (checkClosedType env p tvs') tys)
 >   where tvs' = evs ++ tvs
 > checkConstrDecl env tvs (ConOpDecl p evs ty1 op ty2) =
->   checkTypeLhs p evs &&>
->   liftE2 (flip (ConOpDecl p evs) op)
+>   checkTypeLhs p evs *>
+>   liftA2 (flip (ConOpDecl p evs) op)
 >          (checkClosedType env p tvs' ty1)
 >          (checkClosedType env p tvs' ty2)
 >   where tvs' = evs ++ tvs
 > checkConstrDecl env tvs (RecordDecl p evs c fs) =
->   checkTypeLhs p evs &&>
->   liftE (RecordDecl p evs c) (mapE (checkFieldDecl env tvs') fs)
+>   checkTypeLhs p evs *>
+>   liftA (RecordDecl p evs c) (mapA (checkFieldDecl env tvs') fs)
 >   where tvs' = evs ++ tvs
 
 > checkFieldDecl :: TypeEnv -> [Ident] -> FieldDecl -> Error FieldDecl
 > checkFieldDecl env tvs (FieldDecl p ls ty) =
->   liftE (FieldDecl p ls) (checkClosedType env p tvs ty)
+>   liftA (FieldDecl p ls) (checkClosedType env p tvs ty)
 
 > checkNewConstrDecl :: TypeEnv -> [Ident] -> NewConstrDecl
 >                    -> Error NewConstrDecl
 > checkNewConstrDecl env tvs (NewConstrDecl p c ty) =
->   liftE (NewConstrDecl p c) (checkClosedType env p tvs ty)
+>   liftA (NewConstrDecl p c) (checkClosedType env p tvs ty)
 > checkNewConstrDecl env tvs (NewRecordDecl p c l ty) =
->   liftE (NewRecordDecl p c l) (checkClosedType env p tvs ty)
+>   liftA (NewRecordDecl p c l) (checkClosedType env p tvs ty)
 
 > checkClosedType :: TypeEnv -> Position -> [Ident] -> TypeExpr
 >                 -> Error TypeExpr
 > checkClosedType env p tvs ty =
 >   do
 >     ty' <- checkType env p tvs ty
->     mapE_ (errorAt p . unboundVariable)
+>     mapA_ (errorAt p . unboundVariable)
 >           (nub (filter (`notElem` tvs) (fv ty')))
 >     return ty'
 
 > checkType :: TypeEnv -> Position -> [Ident] -> TypeExpr -> Error TypeExpr
 > checkType env p tvs (ConstructorType tc tys) =
->   liftE2 ($)
+>   liftA2 ($)
 >          (checkTypeConstr env p tvs tc (null tys))
->          (mapE (checkType env p tvs) tys)
+>          (mapA (checkType env p tvs) tys)
 > checkType env p tvs (VariableType tv)
 >   | tv `elem` tvs = return (VariableType tv)
 >   | otherwise = checkType env p tvs (ConstructorType (qualify tv) [])
 > checkType env p tvs (TupleType tys) =
->   liftE TupleType (mapE (checkType env p tvs) tys)
-> checkType env p tvs (ListType ty) = liftE ListType (checkType env p tvs ty)
+>   liftA TupleType (mapA (checkType env p tvs) tys)
+> checkType env p tvs (ListType ty) = liftA ListType (checkType env p tvs ty)
 > checkType env p tvs (ArrowType ty1 ty2) =
->   liftE2 ArrowType (checkType env p tvs ty1) (checkType env p tvs ty2)
+>   liftA2 ArrowType (checkType env p tvs ty1) (checkType env p tvs ty2)
 
 > checkTypeConstr :: TypeEnv -> Position -> [Ident] -> QualIdent -> Bool
 >                 -> Error ([TypeExpr] -> TypeExpr)
@@ -146,7 +148,7 @@ during syntax checking of type expressions.
 
 > checkHiding :: Position -> QualIdent -> [Ident] -> [Ident] -> Error ()
 > checkHiding p tc xs xs' =
->   mapE_ (errorAt p . noElement tc) (nub (filter (`notElem` xs) xs'))
+>   mapA_ (errorAt p . noElement tc) (nub (filter (`notElem` xs) xs'))
 
 \end{verbatim}
 \ToDo{Much of the above code could be shared with module

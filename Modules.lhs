@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Modules.lhs 3159 2015-04-26 07:32:00Z wlux $
+% $Id: Modules.lhs 3169 2015-08-26 19:34:38Z wlux $
 %
 % Copyright (c) 1999-2015, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,6 +10,7 @@ This module controls the compilation of modules.
 \begin{verbatim}
 
 > module Modules(compileModule) where
+> import Applicative
 > import CaseCheck
 > import Combined
 > import Common
@@ -117,9 +118,9 @@ declaration to the module.
 >     return (pEnv'',tcEnv'',tyEnv'',Module m es is (qual tyEnv' ds''))
 
 > importSyntaxCheck :: ModuleEnv -> [ImportDecl] -> Error [ImportDecl]
-> importSyntaxCheck mEnv ds = mapE checkImportDecl ds
+> importSyntaxCheck mEnv ds = mapA checkImportDecl ds
 >   where checkImportDecl (ImportDecl p m q asM is) =
->           liftE (ImportDecl p m q asM)
+>           liftA (ImportDecl p m q asM)
 >                 (checkImports (moduleInterface m mEnv) is)
 
 > warnModuleSyntax :: CaseMode -> [Warn] -> ModuleEnv -> Module a -> [String]

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: KindCheck.lhs 3048 2011-10-02 14:14:03Z wlux $
+% $Id: KindCheck.lhs 3169 2015-08-26 19:34:38Z wlux $
 %
-% Copyright (c) 1999-2011, Wolfgang Lux
+% Copyright (c) 1999-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{KindCheck.lhs}
@@ -15,6 +15,7 @@ saturated.
 \begin{verbatim}
 
 > module KindCheck(kindCheck,kindCheckGoal) where
+> import Applicative
 > import Base
 > import Curry
 > import CurryPP
@@ -26,6 +27,7 @@ saturated.
 > import TopEnv
 > import TypeInfo
 > import TypeTrans
+> import Utils
 
 \end{verbatim}
 Before checking the type expressions of a module, the compiler adds
@@ -40,7 +42,7 @@ to non-termination during their expansion.
 >   do
 >     checkSynonyms m tds
 >     let tcEnv' = bindTypes m tds tcEnv
->     mapE_ (checkTopDecl tcEnv') ds
+>     mapA_ (checkTopDecl tcEnv') ds
 >     return tcEnv'
 >   where tds = filter isTypeDecl ds
 
@@ -51,7 +53,7 @@ declarations.
 
 > kindCheckGoal :: TCEnv -> Goal a -> Error ()
 > kindCheckGoal tcEnv (Goal p e ds) =
->   checkExpr tcEnv p e &&> mapE_ (checkDecl tcEnv) ds
+>   checkExpr tcEnv p e *> mapA_ (checkDecl tcEnv) ds
 
 \end{verbatim}
 When synonym types are entered into the type environment, their right
@@ -79,7 +81,7 @@ function in any particular order.
 > bindTC _ _ (BlockDecl _) = id
 
 > checkSynonyms :: ModuleIdent -> [TopDecl a] -> Error ()
-> checkSynonyms m = mapE_ (typeDecl m) . scc bound free
+> checkSynonyms m = mapA_ (typeDecl m) . scc bound free
 >   where bound (DataDecl _ tc _ _) = [tc]
 >         bound (NewtypeDecl _ tc _ _) = [tc]
 >         bound (TypeDecl _ tc _ _) = [tc]
@@ -112,7 +114,7 @@ Kind checking is applied to all type expressions in the program.
 \begin{verbatim}
 
 > checkTopDecl :: TCEnv -> TopDecl a -> Error ()
-> checkTopDecl tcEnv (DataDecl _ _ _ cs) = mapE_ (checkConstrDecl tcEnv) cs
+> checkTopDecl tcEnv (DataDecl _ _ _ cs) = mapA_ (checkConstrDecl tcEnv) cs
 > checkTopDecl tcEnv (NewtypeDecl _ _ _ nc) = checkNewConstrDecl tcEnv nc
 > checkTopDecl tcEnv (TypeDecl p _ _ ty) = checkType tcEnv p ty
 > checkTopDecl tcEnv (BlockDecl d) = checkDecl tcEnv d
@@ -120,17 +122,17 @@ Kind checking is applied to all type expressions in the program.
 > checkDecl :: TCEnv -> Decl a -> Error ()
 > checkDecl _ (InfixDecl _ _ _ _) = return ()
 > checkDecl tcEnv (TypeSig p _ ty) = checkType tcEnv p ty
-> checkDecl tcEnv (FunctionDecl _ _ _ eqs) = mapE_ (checkEquation tcEnv) eqs
+> checkDecl tcEnv (FunctionDecl _ _ _ eqs) = mapA_ (checkEquation tcEnv) eqs
 > checkDecl tcEnv (ForeignDecl p _ _ _ ty) = checkType tcEnv p ty
 > checkDecl tcEnv (PatternDecl _ _ rhs) = checkRhs tcEnv rhs
 > checkDecl _ (FreeDecl _ _) = return ()
 > checkDecl _ (TrustAnnot _ _ _) = return ()
 
 > checkConstrDecl :: TCEnv -> ConstrDecl -> Error ()
-> checkConstrDecl tcEnv (ConstrDecl p _ _ tys) = mapE_ (checkType tcEnv p) tys
+> checkConstrDecl tcEnv (ConstrDecl p _ _ tys) = mapA_ (checkType tcEnv p) tys
 > checkConstrDecl tcEnv (ConOpDecl p _ ty1 _ ty2) =
->   checkType tcEnv p ty1 &&> checkType tcEnv p ty2
-> checkConstrDecl tcEnv (RecordDecl _ _ _ fs) = mapE_ (checkFieldDecl tcEnv) fs
+>   checkType tcEnv p ty1 *> checkType tcEnv p ty2
+> checkConstrDecl tcEnv (RecordDecl _ _ _ fs) = mapA_ (checkFieldDecl tcEnv) fs
 
 > checkFieldDecl :: TCEnv -> FieldDecl -> Error ()
 > checkFieldDecl tcEnv (FieldDecl p _ ty) = checkType tcEnv p ty
@@ -144,57 +146,56 @@ Kind checking is applied to all type expressions in the program.
 
 > checkRhs :: TCEnv -> Rhs a -> Error ()
 > checkRhs tcEnv (SimpleRhs p e ds) =
->   checkExpr tcEnv p e &&> mapE_ (checkDecl tcEnv) ds
+>   checkExpr tcEnv p e *> mapA_ (checkDecl tcEnv) ds
 > checkRhs tcEnv (GuardedRhs es ds) =
->   mapE_ (checkCondExpr tcEnv) es &&> mapE_ (checkDecl tcEnv) ds
+>   mapA_ (checkCondExpr tcEnv) es *> mapA_ (checkDecl tcEnv) ds
 
 > checkCondExpr :: TCEnv -> CondExpr a -> Error ()
 > checkCondExpr tcEnv (CondExpr p g e) =
->   checkExpr tcEnv p g &&> checkExpr tcEnv p e
+>   checkExpr tcEnv p g *> checkExpr tcEnv p e
 
 > checkExpr :: TCEnv -> Position -> Expression a -> Error ()
 > checkExpr _ _ (Literal _ _) = return ()
 > checkExpr _ _ (Variable _ _) = return ()
 > checkExpr _ _ (Constructor _ _) = return ()
 > checkExpr tcEnv p (Paren e) = checkExpr tcEnv p e
-> checkExpr tcEnv p (Typed e ty) = checkExpr tcEnv p e &&> checkType tcEnv p ty
-> checkExpr tcEnv p (Record _ _ fs) = mapE_ (checkField tcEnv p) fs
+> checkExpr tcEnv p (Typed e ty) = checkExpr tcEnv p e *> checkType tcEnv p ty
+> checkExpr tcEnv p (Record _ _ fs) = mapA_ (checkField tcEnv p) fs
 > checkExpr tcEnv p (RecordUpdate e fs) =
->   checkExpr tcEnv p e &&> mapE_ (checkField tcEnv p) fs
-> checkExpr tcEnv p (Tuple es) = mapE_ (checkExpr tcEnv p) es
-> checkExpr tcEnv p (List _ es) = mapE_ (checkExpr tcEnv p) es
+>   checkExpr tcEnv p e *> mapA_ (checkField tcEnv p) fs
+> checkExpr tcEnv p (Tuple es) = mapA_ (checkExpr tcEnv p) es
+> checkExpr tcEnv p (List _ es) = mapA_ (checkExpr tcEnv p) es
 > checkExpr tcEnv p (ListCompr e qs) =
->   checkExpr tcEnv p e &&> mapE_ (checkStmt tcEnv p) qs
+>   checkExpr tcEnv p e *> mapA_ (checkStmt tcEnv p) qs
 > checkExpr tcEnv p (EnumFrom e) = checkExpr tcEnv p e
 > checkExpr tcEnv p (EnumFromThen e1 e2) =
->   checkExpr tcEnv p e1 &&> checkExpr tcEnv p e2
+>   checkExpr tcEnv p e1 *> checkExpr tcEnv p e2
 > checkExpr tcEnv p (EnumFromTo e1 e2) =
->   checkExpr tcEnv p e1 &&> checkExpr tcEnv p e2
+>   checkExpr tcEnv p e1 *> checkExpr tcEnv p e2
 > checkExpr tcEnv p (EnumFromThenTo e1 e2 e3) =
->   checkExpr tcEnv p e1 &&> checkExpr tcEnv p e2 &&> checkExpr tcEnv p e3
+>   checkExpr tcEnv p e1 *> checkExpr tcEnv p e2 *> checkExpr tcEnv p e3
 > checkExpr tcEnv p (UnaryMinus _ e) = checkExpr tcEnv p e
-> checkExpr tcEnv p (Apply e1 e2) =
->   checkExpr tcEnv p e1 &&> checkExpr tcEnv p e2
+> checkExpr tcEnv p (Apply e1 e2) = checkExpr tcEnv p e1 *> checkExpr tcEnv p e2
 > checkExpr tcEnv p (InfixApply e1 _ e2) =
->   checkExpr tcEnv p e1 &&> checkExpr tcEnv p e2
+>   checkExpr tcEnv p e1 *> checkExpr tcEnv p e2
 > checkExpr tcEnv p (LeftSection e _) = checkExpr tcEnv p e
 > checkExpr tcEnv p (RightSection _ e) = checkExpr tcEnv p e
 > checkExpr tcEnv _ (Lambda p _ e) = checkExpr tcEnv p e
 > checkExpr tcEnv p (Let ds e) =
->   mapE_ (checkDecl tcEnv) ds &&> checkExpr tcEnv p e
+>   mapA_ (checkDecl tcEnv) ds *> checkExpr tcEnv p e
 > checkExpr tcEnv p (Do sts e) =
->   mapE_ (checkStmt tcEnv p) sts &&> checkExpr tcEnv p e
+>   mapA_ (checkStmt tcEnv p) sts *> checkExpr tcEnv p e
 > checkExpr tcEnv p (IfThenElse e1 e2 e3) =
->   checkExpr tcEnv p e1 &&> checkExpr tcEnv p e2 &&> checkExpr tcEnv p e3
+>   checkExpr tcEnv p e1 *> checkExpr tcEnv p e2 *> checkExpr tcEnv p e3
 > checkExpr tcEnv p (Case e alts) =
->   checkExpr tcEnv p e &&> mapE_ (checkAlt tcEnv) alts
+>   checkExpr tcEnv p e *> mapA_ (checkAlt tcEnv) alts
 > checkExpr tcEnv p (Fcase e alts) =
->   checkExpr tcEnv p e &&> mapE_ (checkAlt tcEnv) alts
+>   checkExpr tcEnv p e *> mapA_ (checkAlt tcEnv) alts
 
 > checkStmt :: TCEnv -> Position -> Statement a -> Error ()
 > checkStmt tcEnv p (StmtExpr e) = checkExpr tcEnv p e
 > checkStmt tcEnv _ (StmtBind p _ e) = checkExpr tcEnv p e
-> checkStmt tcEnv _ (StmtDecl ds) = mapE_ (checkDecl tcEnv) ds
+> checkStmt tcEnv _ (StmtDecl ds) = mapA_ (checkDecl tcEnv) ds
 
 > checkAlt :: TCEnv -> Alt a -> Error ()
 > checkAlt tcEnv (Alt _ _ rhs) = checkRhs tcEnv rhs
@@ -204,15 +205,15 @@ Kind checking is applied to all type expressions in the program.
 
 > checkType :: TCEnv -> Position -> TypeExpr -> Error ()
 > checkType tcEnv p (ConstructorType tc tys) =
->   unless (n == n') (errorAt p (wrongArity tc n n')) &&>
->   mapE_ (checkType tcEnv p) tys
+>   unless (n == n') (errorAt p (wrongArity tc n n')) *>
+>   mapA_ (checkType tcEnv p) tys
 >   where n = constrKind tc tcEnv
 >         n' = length tys
 > checkType _ _ (VariableType _) = return ()
-> checkType tcEnv p (TupleType tys) = mapE_ (checkType tcEnv p) tys
+> checkType tcEnv p (TupleType tys) = mapA_ (checkType tcEnv p) tys
 > checkType tcEnv p (ListType ty) = checkType tcEnv p ty
 > checkType tcEnv p (ArrowType ty1 ty2) =
->   checkType tcEnv p ty1 &&> checkType tcEnv p ty2
+>   checkType tcEnv p ty1 *> checkType tcEnv p ty2
 
 \end{verbatim}
 Auxiliary functions.
