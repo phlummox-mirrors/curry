@@ -1,12 +1,12 @@
 # Specific rules for building with ghc --make
-# $Id: ghc-make.mk 2633 2008-03-12 17:04:09Z wlux $
+# $Id: ghc-make.mk 3167 2015-08-26 12:54:14Z wlux $
 #
-# Copyright (c) 2002-2008, Wolfgang Lux
+# Copyright (c) 2002-2015, Wolfgang Lux
 # See LICENSE for the full license.
 #
 
 # specific definitions for ghc
-GHC_HFLAGS = -H12m -i$(HC_PATH_STYLE)
+GHC_HFLAGS = -H12m -i$(HASKELL) -i$(HC_PATH_STYLE)
 
 # programs
 # NB The seemingly contrived $(MAKEFLAGS:M-s:S/=/=/) substitution is used in

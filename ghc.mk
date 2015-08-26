@@ -1,12 +1,12 @@
 # Specific rules for building with ghc
-# $Id: ghc.mk 2604 2008-02-03 17:05:49Z wlux $
+# $Id: ghc.mk 3167 2015-08-26 12:54:14Z wlux $
 #
-# Copyright (c) 2002-2008, Wolfgang Lux
+# Copyright (c) 2002-2015, Wolfgang Lux
 # See LICENSE for the full license.
 #
 
 # specific definitions for ghc
-GHC_HFLAGS = -H12m -i$(HC_PATH_STYLE)
+GHC_HFLAGS = -H12m -i$(HASKELL) -i$(HC_PATH_STYLE)
 
 # additional suffix rules
 .SUFFIXES: .hs .lhs .hi .o
