@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Utils.lhs 3169 2015-08-26 19:34:38Z wlux $
+% $Id: Utils.lhs 3173 2015-08-27 11:11:37Z wlux $
 %
 % Copyright (c) 2001-2015, Wolfgang Lux
 % See LICENSE for the full license.
@@ -112,11 +112,8 @@ The function \texttt{mapAccumM} is a generalization of
 \end{verbatim}
 \paragraph{Applicative variants of mapM and related functions}
 We also introduce \texttt{Applicative} variants of the standard
-\texttt{sequence}, \texttt{mapM}, and \texttt{zipWithM} functions.
+\texttt{sequence_}, \texttt{mapM}, and \texttt{zipWithM} functions.
 \begin{verbatim}
-
-> sequenceA :: Applicative f => [f a] -> f [a]
-> sequenceA = foldr (liftA2 (:)) (pure [])
 
 > sequenceA_ :: Applicative f => [f a] -> f ()
 > sequenceA_ = foldr (*>) (pure ())
@@ -135,7 +132,6 @@ We also introduce \texttt{Applicative} variants of the standard
 
 \end{verbatim}
 \paragraph{IO functions}
-\begin{verbatim}
 The IO actions \texttt{putErr} and \texttt{putErrLn} are variants of
 \texttt{putStr} and \texttt{putStrLn} that write their argument string
 to the standard error output. Unfortunately, hbc's \texttt{IO} module
