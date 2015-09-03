@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Records.lhs 3048 2011-10-02 14:14:03Z wlux $
+% $Id: Records.lhs 3176 2015-09-03 16:35:33Z wlux $
 %
-% Copyright (c) 2001-2011, Wolfgang Lux
+% Copyright (c) 2001-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Records.lhs}
@@ -188,9 +188,13 @@ solution.
 >   do
 >     tcEnv <- liftRt envRt
 >     (ls,tys) <- liftM (argumentTypes tcEnv ty c) envRt
->     let es = zipWith argument tys (orderFields fs ls)
+>     es <- zipWithM argument tys (orderFields fs ls)
 >     unlabelExpr p (applyConstr ty c tys es)
->   where argument ty = maybe (prelFailed ty) id
+>   where argument ty = maybe (fresh ty) return
+>         fresh ty =
+>           do
+>             v <- freshVar "_#rec" ty
+>             return (Let [FreeDecl p [uncurry FreeVar v]] (uncurry mkVar v))
 > unlabelExpr p (RecordUpdate e fs) =
 >   do
 >     tyEnv <- envRt
@@ -247,13 +251,6 @@ Generation of fresh names.
 >     v <- liftM (mkName prefix) (liftRt (liftRt (updateSt (1 +))))
 >     return (ty,v)
 >   where mkName pre n = renameIdent (mkIdent (pre ++ show n)) n
-
-\end{verbatim}
-Prelude entities.
-\begin{verbatim}
-
-> prelFailed :: a -> Expression a
-> prelFailed a = Variable a (qualifyWith preludeMIdent (mkIdent "failed"))
 
 \end{verbatim}
 Auxiliary definitions.
