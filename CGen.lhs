@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 3147 2013-12-27 15:52:09Z wlux $
+% $Id: CGen.lhs 3175 2015-09-03 08:34:16Z wlux $
 %
-% Copyright (c) 1998-2013, Wolfgang Lux
+% Copyright (c) 1998-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CGen.lhs}
@@ -1262,10 +1262,10 @@ first loads this address into a temporary variable and then boxes it.
 As a convenience to the user, we strip the decoration of auxiliary
 function names introduced by the debugging transformation when the
 name of a function is printed. In particular, the debugger adds the
-prefix \texttt{\_debug\#} and a suffix \texttt{\#}$n$ to the name of
-the transformed function. Note that the prefix is added to the
-unqualified name. In addition, we also drop the renaming keys that are
-appended to the names of local variables and functions.
+prefix \texttt{\_debug\#} to the name of the transformed function.
+Note that the prefix is added to the unqualified name. In addition, we
+also drop the renaming keys that are appended to the names of local
+variables and functions.
 \begin{verbatim}
 
 > undecorate :: String -> String
@@ -1276,11 +1276,8 @@ appended to the names of local variables and functions.
 >       | "debug#" `isPrefixOf` cs'' -> cs' ++ undecorate (drop 6 cs'')
 >       | otherwise -> cs' ++ '_' : undecorate cs''
 >   where dropSuffix cs =
->           case break (`elem` ".#") cs of
+>           case break ('.' ==) cs of
 >             (cs',"") -> cs'
->             (cs','#':cs'')
->               | all isDigit cs'' -> cs'
->               | otherwise -> cs' ++ '#' : dropSuffix cs''
 >             (cs','.':cs'')
 >               | not (null cs'') && all isDigit cs'' -> cs'
 >               | otherwise -> cs' ++ '.' : dropSuffix cs''
