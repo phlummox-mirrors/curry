@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 3169 2015-08-26 19:34:38Z wlux $
+% $Id: TypeCheck.lhs 3177 2015-10-04 08:04:49Z wlux $
 %
 % Copyright (c) 1999-2015, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1218,7 +1218,7 @@ We use negative offsets for fresh type variables.
 > inst (ForAll n ty) =
 >   do
 >     tys <- replicateM n freshTypeVar
->     return (expandAliasType tys ty)
+>     return (instTypeScheme tys ty)
 
 \end{verbatim}
 The function \texttt{skol} instantiates the type of data and newtype
@@ -1232,7 +1232,7 @@ quantified type variables are instantiated with fresh skolem types.
 >   do
 >     tys <- replicateM m freshTypeVar
 >     tys' <- replicateM (n - m) freshSkolem
->     return (expandAliasType (tys ++ tys') ty)
+>     return (instTypeScheme (tys ++ tys') ty)
 >   where m = arity (arrowBase ty)
 >         arity (TypeConstructor _ tys) = length tys
 

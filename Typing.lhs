@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Typing.lhs 2965 2010-06-17 17:15:35Z wlux $
+% $Id: Typing.lhs 3177 2015-10-04 08:04:49Z wlux $
 %
-% Copyright (c) 2003-2010, Wolfgang Lux
+% Copyright (c) 2003-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Typing.lhs}
@@ -115,10 +115,7 @@ newtype constructor \texttt{ST} and its type must be changed from
 > etaType tcEnv n (TypeArrow ty1 ty2) =
 >   TypeArrow ty1 (etaType tcEnv (n - 1) ty2)
 > etaType tcEnv n (TypeConstructor tc tys) =
->   case qualLookupTopEnv tc tcEnv of
->     [AliasType _ _ ty] -> etaType tcEnv n (expandAliasType tys ty)
->     [_] -> TypeConstructor tc tys
->     _ -> internalError "etaType"
+>   maybe (TypeConstructor tc tys) (etaType tcEnv n) (expandType tcEnv tc tys)
 > etaType _ _ ty = ty
 
 \end{verbatim}
@@ -169,11 +166,7 @@ removed newtypes.
 >   matchType tcEnv ty1 ty2 . matchTypes tcEnv tys1 tys2
 
 > expandType :: TCEnv -> QualIdent -> [Type] -> Maybe Type
-> expandType tcEnv tc tys =
->   case qualLookupTopEnv tc tcEnv of
->     [AliasType _ _ ty] -> Just (expandAliasType tys ty)
->     [_] -> Nothing
->     _ -> internalError "expandType"
+> expandType tcEnv tc tys = fmap (instTypeScheme tys) (typeAlias tc tcEnv)
 
 \end{verbatim}
 The function \texttt{argumentTypes} returns the labels and the

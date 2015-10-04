@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeTrans.lhs 2719 2008-06-12 15:15:07Z wlux $
+% $Id: TypeTrans.lhs 3177 2015-10-04 08:04:49Z wlux $
 %
-% Copyright (c) 1999-2008, Wolfgang Lux
+% Copyright (c) 1999-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeTrans.lhs}
@@ -105,7 +105,7 @@ expanded types refer to the original names.
 >   case qualLookupTopEnv tc tcEnv of
 >     [DataType tc' _ _] -> TypeConstructor tc' tys'
 >     [RenamingType tc' _ _] -> TypeConstructor tc' tys'
->     [AliasType _ _ ty] -> expandAliasType tys' ty
+>     [AliasType _ _ ty] -> instTypeScheme tys' ty
 >     _ -> internalError ("expandType " ++ show tc)
 >   where tys' = map (expandType tcEnv) tys
 > expandType _ (TypeVariable tv) = TypeVariable tv

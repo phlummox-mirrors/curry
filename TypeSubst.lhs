@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeSubst.lhs 2525 2007-10-22 11:33:10Z wlux $
+% $Id: TypeSubst.lhs 3177 2015-10-04 08:04:49Z wlux $
 %
-% Copyright (c) 2003-2007, Wolfgang Lux
+% Copyright (c) 2003-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeSubst.lhs}
@@ -53,30 +53,31 @@ This module implements substitutions on types.
 >   subst = fmap . subst
 
 \end{verbatim}
-The function \texttt{expandAliasType} expands all occurrences of a
-type synonym in a type. After the expansion we have to reassign the
-type indices for all type variables. Otherwise, expanding a type
-synonym like \verb|type Pair' a b = (b,a)| could break the invariant
-that the universally quantified type variables are assigned indices in
-the order of their occurrence. This is handled by function
-\texttt{normalize}. The function has a threshold parameter that allows
-preserving the indices of type variables bound on the left hand side
-of a type declaration.
+The function \texttt{instTypeScheme} instantiates a type scheme by
+substituting the given types for the universally quantified type
+variables in a type (scheme). After a substitution the compiler must
+recompute the type indices for all type variables. Otherwise,
+expanding a type synonym like \verb|type Pair' a b = (b,a)| could
+break the invariant that the universally quantified type variables are
+assigned indices in the order of their occurrence. This is handled by
+function \texttt{normalize}. The function has a threshold parameter
+that allows preserving the indices of type variables bound on the left
+hand side of a type declaration.
 \begin{verbatim}
 
-> expandAliasType :: [Type] -> Type -> Type
-> expandAliasType tys (TypeConstructor tc tys') =
->   TypeConstructor tc (map (expandAliasType tys) tys')
-> expandAliasType tys (TypeVariable n)
+> instTypeScheme :: [Type] -> Type -> Type
+> instTypeScheme tys (TypeConstructor tc tys') =
+>   TypeConstructor tc (map (instTypeScheme tys) tys')
+> instTypeScheme tys (TypeVariable n)
 >   | n >= 0 = tys !! n
 >   | otherwise = TypeVariable n
-> expandAliasType _ (TypeConstrained tys n) = TypeConstrained tys n
-> expandAliasType tys (TypeArrow ty1 ty2) =
->   TypeArrow (expandAliasType tys ty1) (expandAliasType tys ty2)
-> expandAliasType _ (TypeSkolem k) = TypeSkolem k
+> instTypeScheme _ (TypeConstrained tys n) = TypeConstrained tys n
+> instTypeScheme tys (TypeArrow ty1 ty2) =
+>   TypeArrow (instTypeScheme tys ty1) (instTypeScheme tys ty2)
+> instTypeScheme _ (TypeSkolem k) = TypeSkolem k
 
 > normalize :: Int -> Type -> Type
-> normalize n ty = expandAliasType [TypeVariable (occur tv) | tv <- [0..]] ty
+> normalize n ty = instTypeScheme [TypeVariable (occur tv) | tv <- [0..]] ty
 >   where tvs' = zip (nub (filter (>= n) (typeVars ty))) [n..]
 >         occur tv = fromMaybe tv (lookup tv tvs')
 

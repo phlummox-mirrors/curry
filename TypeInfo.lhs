@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeInfo.lhs 3010 2010-10-04 09:54:49Z wlux $
+% $Id: TypeInfo.lhs 3177 2015-10-04 08:04:49Z wlux $
 %
-% Copyright (c) 1999-2010, Wolfgang Lux
+% Copyright (c) 1999-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeInfo.lhs}
@@ -66,9 +66,11 @@ The initial type constructor environment \texttt{initTCEnv} is empty.
 The function \texttt{constrKind} returns the arity of a type
 constructor from the type constructor environment and the function
 \texttt{constructors} returns the names of the data and newtype
-constructors of a type. Both functions are supposed to be used only
-after checking for undefined and ambiguous type identifiers and
-therefore should not fail.
+constructors of a type. The function \texttt{typeAlias} returns the
+right hand side type from the definition of a type synonym and
+\texttt{Nothing} for all other types. All these functions
+are supposed to be used only after checking for undefined and
+ambiguous type identifiers and therefore should not fail.
 \begin{verbatim}
 
 > constrKind :: QualIdent -> TCEnv -> Int
@@ -86,5 +88,13 @@ therefore should not fail.
 >     [RenamingType _ _ c] -> [c]
 >     [AliasType _ _ _] -> []
 >     _ -> internalError ("constructors " ++ show tc)
+
+> typeAlias :: QualIdent -> TCEnv -> Maybe Type
+> typeAlias tc tcEnv =
+>   case qualLookupTopEnv tc tcEnv of
+>     [DataType _ _ _] -> Nothing
+>     [RenamingType _ _ _] -> Nothing
+>     [AliasType _ _ ty] -> Just ty
+>     _ -> internalError ("typeAlias " ++ show tc)
 
 \end{verbatim}
