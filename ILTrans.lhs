@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: ILTrans.lhs 3049 2011-10-02 15:07:27Z wlux $
+% $Id: ILTrans.lhs 3178 2015-10-04 08:56:55Z wlux $
 %
-% Copyright (c) 1999-2011, Wolfgang Lux
+% Copyright (c) 1999-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{ILTrans.lhs}
@@ -22,10 +22,12 @@ module.
 > import qualified IL
 > import List
 > import Maybe
+> import PredefIdent
 > import Set
 > import TopEnv
 > import Types
 > import TypeInfo
+> import TypeSubst
 > import ValueInfo
 
 \end{verbatim}
@@ -51,13 +53,14 @@ not include any alias types.
 > translTopDecl m _ tyEnv (DataDecl _ tc tvs cs) =
 >   [translData m tyEnv tc tvs cs]
 > translTopDecl m tcEnv _ (TypeDecl _ tc _ _) = [translAlias m tcEnv tc]
-> translTopDecl m _ tyEnv (BlockDecl d) = translDecl m tyEnv d
+> translTopDecl m tcEnv tyEnv (BlockDecl d) = translDecl m tcEnv tyEnv d
 
-> translDecl :: ModuleIdent -> ValueEnv -> Decl Type -> [IL.Decl]
-> translDecl m tyEnv (FunctionDecl _ ty _ eqs) =
+> translDecl :: ModuleIdent -> TCEnv -> ValueEnv -> Decl Type -> [IL.Decl]
+> translDecl m _ tyEnv (FunctionDecl _ ty _ eqs) =
 >   map (translFunction m tyEnv ty) eqs
-> translDecl m _ (ForeignDecl _ fi ty f _) = [translForeign m f fi ty]
-> translDecl _ _ _ = []
+> translDecl m tcEnv _ (ForeignDecl _ fi ty f _) =
+>   [translForeign m f fi (expandForeignFunctionType tcEnv ty)]
+> translDecl _ _ _ _ = []
 
 > translData :: ModuleIdent -> ValueEnv -> Ident -> [Ident] -> [ConstrDecl]
 >            -> IL.Decl
@@ -98,6 +101,38 @@ the latter are replaced by fresh type constructors.
 >   IL.TypeArrow (translType ty1) (translType ty2)
 > translType (TypeSkolem k) =
 >   IL.TypeConstructor (qualify (mkIdent ("_" ++ show k))) []
+
+\end{verbatim}
+\paragraph{Foreign Functions}
+To facilitate proper marshaling of foreign function arguments and
+results with the \texttt{ccall} calling convention, the compiler must
+expand all renaming types in their types. However, due to its special
+semantics the compiler must be careful to not expand an \texttt{IO}
+type, even though it is considered a type synonym internally to allow
+$\eta$-expansion of primitive IO actions. Note that while the
+arguments and results of foreign functions using the \texttt{ccall}
+convention must ultimately expand to a basic foreign type, this
+restriction is not enforced for other calling conventions.
+\begin{verbatim}
+
+> expandForeignFunctionType :: TCEnv -> Type -> Type
+> expandForeignFunctionType tcEnv (TypeArrow ty1 ty2) =
+>   TypeArrow (expandForeignType tcEnv ty1)
+>             (expandForeignFunctionType tcEnv ty2)
+> expandForeignFunctionType tcEnv ty = expandResultType tcEnv ty
+
+> expandForeignType :: TCEnv -> Type -> Type
+> expandForeignType tcEnv ty = last (typeExpansions (renamedType tcEnv) ty)
+
+> expandResultType :: TCEnv -> Type -> Type
+> expandResultType tcEnv ty =
+>   case expandForeignType tcEnv ty of
+>     TypeConstructor tc [ty] | tc == qIOId ->
+>       TypeConstructor tc [expandForeignType tcEnv ty]
+>     ty -> ty
+
+> renamedType :: TCEnv -> QualIdent -> Maybe Type
+> renamedType tcEnv tc = if tc /= qIOId then typeAlias tc tcEnv else Nothing
 
 \end{verbatim}
 \paragraph{Functions}

@@ -1,11 +1,11 @@
 % -*- LaTeX -*-
-% $Id: Newtype.lhs 3048 2011-10-02 14:14:03Z wlux $
+% $Id: Newtype.lhs 3178 2015-10-04 08:56:55Z wlux $
 %
-% Copyright (c) 2009-2011, Wolfgang Lux
+% Copyright (c) 2009-2015, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Newtype.lhs}
-\section{Removing Newtype Constructors}
+\section{Removing Newtype Constructors}\label{sec:newtype}
 A newtype declaration \texttt{newtype} $T\;x_1\dots x_n$ \texttt{=}
 $N\;\tau$ introduces a new, distinct type whose representation is the
 same as that of type $\tau$. In contrast to a data type declaration,

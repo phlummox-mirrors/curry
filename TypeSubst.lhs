@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeSubst.lhs 3177 2015-10-04 08:04:49Z wlux $
+% $Id: TypeSubst.lhs 3178 2015-10-04 08:56:55Z wlux $
 %
 % Copyright (c) 2003-2015, Wolfgang Lux
 % See LICENSE for the full license.
@@ -10,6 +10,7 @@ This module implements substitutions on types.
 \begin{verbatim}
 
 > module TypeSubst(module TypeSubst, idSubst,bindSubst,compose) where
+> import Ident
 > import List
 > import Maybe
 > import Subst
@@ -80,5 +81,27 @@ hand side of a type declaration.
 > normalize n ty = instTypeScheme [TypeVariable (occur tv) | tv <- [0..]] ty
 >   where tvs' = zip (nub (filter (>= n) (typeVars ty))) [n..]
 >         occur tv = fromMaybe tv (lookup tv tvs')
+
+\end{verbatim}
+The function \texttt{typeExpansions} recursively expands a type
+$T\,t_1\,\dots\,t_n$ as long as the type constructor $T$ denotes a
+type synonym. While the right hand side type of a type synonym
+declaration is already fully expanded when it is saved in the type
+environment, a recursive expansion may be necessary to resolve renamed
+types after making newtype constructors transparent during desugaring
+(see Sect.~\ref{sec:newtype}).  Since renaming types can be (mutually)
+recursive, the expansion may not terminate. Therefore,
+\texttt{typeExpansions} stops expansion after 50 iterations even the
+resulting type still is a synonym.
+
+\ToDo{Make the limit configurable.}
+\begin{verbatim}
+
+> typeExpansions :: (QualIdent -> Maybe Type) -> Type -> [Type]
+> typeExpansions typeAlias ty = take 50 (ty : unfoldr expandType ty)
+>   where expandType (TypeConstructor tc tys) =
+>           fmap (dup . instTypeScheme tys) (typeAlias tc)
+>         expandType _ = Nothing
+>         dup x = (x,x)
 
 \end{verbatim}
