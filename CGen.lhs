@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 3175 2015-09-03 08:34:16Z wlux $
+% $Id: CGen.lhs 3179 2015-12-04 11:08:53Z wlux $
 %
 % Copyright (c) 1998-2015, Wolfgang Lux
 % See LICENSE for the full license.
@@ -507,8 +507,8 @@ beginning of a function, stack and heap checks are performed if
 necessary. After the heap check, the function's arguments and local
 variables are loaded from the argument registers and the stack. The
 code for an alternative of a \texttt{switch} statement is similar
-except that we avoid loading the matched variable again -- unless a
-heap check is performed.
+except that we avoid loading the matched variable again unless a heap
+check is performed.
 \begin{verbatim}
 
 > funCode :: Name -> ([Name],CPSCont) -> CPSStmt -> [CStmt]
@@ -522,8 +522,8 @@ heap check is performed.
 
 > caseCode :: Name -> ([Name],CPSCont) -> Name -> CPSTag -> CPSStmt -> [CStmt]
 > caseCode f vs v t st =
->   concatMap prepAlloc ds' ++ stackCheck vs st ++ heapCheck vs n ++
->   skip (n == CInt 0) v (loadVars vs) ++ fetchArgs v t ++
+>   checkConstrArity v t ++ concatMap prepAlloc ds' ++ stackCheck vs st ++
+>   heapCheck vs n ++ skip (n == CInt 0) v (loadVars vs) ++ fetchArgs v t ++
 >   constDefs consts ds ++ cCode f consts vs st
 >   where ds = concat dss
 >         (tys,ds',dss) = allocs st
@@ -620,11 +620,16 @@ continuation.
 >           zipWith (loadVar stk) ws [0..] ++
 >           [loadRet (CCast labelType (stk (length ws)))]
 
+> checkConstrArity :: Name -> CPSTag -> [CStmt]
+> checkConstrArity _ (CPSLitCase _) = []
+> checkConstrArity v (CPSConstrCase _ vs) =
+>   [assertRel (CFunCall "closure_argc" [var v]) "==" (int (length vs))]
+> checkConstrArity _ CPSFreeCase = []
+> checkConstrArity _ CPSDefaultCase = []
+
 > fetchArgs :: Name -> CPSTag -> [CStmt]
 > fetchArgs _ (CPSLitCase _) = []
-> fetchArgs v (CPSConstrCase _ vs) =
->   assertRel (CFunCall "closure_argc" [var v]) "==" (int (length vs)) :
->   zipWith fetchArg vs [0..]
+> fetchArgs v (CPSConstrCase _ vs) = zipWith fetchArg vs [0..]
 >   where arg = element (field v "c.args")
 >         fetchArg v i = localVar v (Just (arg i))
 > fetchArgs _ CPSFreeCase = []
