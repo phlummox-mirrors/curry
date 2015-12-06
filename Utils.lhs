@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: Utils.lhs 3173 2015-08-27 11:11:37Z wlux $
+% $Id: Utils.lhs 3181 2015-12-06 14:35:28Z wlux $
 %
 % Copyright (c) 2001-2015, Wolfgang Lux
 % See LICENSE for the full license.
@@ -112,7 +112,7 @@ The function \texttt{mapAccumM} is a generalization of
 \end{verbatim}
 \paragraph{Applicative variants of mapM and related functions}
 We also introduce \texttt{Applicative} variants of the standard
-\texttt{sequence_}, \texttt{mapM}, and \texttt{zipWithM} functions.
+\texttt{sequence\_}, \texttt{mapM}, and \texttt{zipWithM} functions.
 \begin{verbatim}
 
 > sequenceA_ :: Applicative f => [f a] -> f ()
