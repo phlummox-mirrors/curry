@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 3179 2015-12-04 11:08:53Z wlux $
+% $Id: CGen.lhs 3182 2015-12-07 08:54:20Z wlux $
 %
 % Copyright (c) 1998-2015, Wolfgang Lux
 % See LICENSE for the full license.
@@ -625,6 +625,7 @@ continuation.
 > checkConstrArity v (CPSConstrCase _ vs) =
 >   [assertRel (CFunCall "closure_argc" [var v]) "==" (int (length vs))]
 > checkConstrArity _ CPSFreeCase = []
+> checkConstrArity _ CPSGlobalCase = []
 > checkConstrArity _ CPSDefaultCase = []
 
 > fetchArgs :: Name -> CPSTag -> [CStmt]
@@ -633,6 +634,7 @@ continuation.
 >   where arg = element (field v "c.args")
 >         fetchArg v i = localVar v (Just (arg i))
 > fetchArgs _ CPSFreeCase = []
+> fetchArgs _ CPSGlobalCase = []
 > fetchArgs _ CPSDefaultCase = []
 
 > saveVars :: ([Name],CPSCont) -> ([Name],CPSCont) -> [CStmt]
@@ -741,7 +743,6 @@ check.
 > stackDepth (CPSLetPapp _ st) = stackDepth st
 > stackDepth (CPSLetCont _ st) = stackDepth st
 > stackDepth (CPSSwitch _ _ _) = 0
-> stackDepth (CPSSwitchVar _ _ _) = 0
 > stackDepth (CPSSwitchArity _ _) = 0
 > stackDepth (CPSChoice _ ks) = 1 + stackDepthCont (head ks)
 
@@ -908,9 +909,6 @@ translation function.
 > cCode f _ vs0 (CPSSwitch tagged v cases) =
 >   switchOnTerm f tagged vs0 v
 >                [(t,caseCode f vs0 v t st) | CaseBlock t st <- cases]
-> cCode f _ vs0 (CPSSwitchVar v st1 st2) = switchOnVar v sts1' sts2'
->   where sts1' = caseCode f vs0 v CPSFreeCase st1
->         sts2' = caseCode f vs0 v CPSFreeCase st2
 > cCode f _ vs0 (CPSSwitchArity v sts) =
 >   switchOnArity vs0 v (map (caseCode f vs0 v CPSDefaultCase) sts)
 > cCode _ _ vs0 (CPSChoice v ks) = choice vs0 v ks
@@ -945,6 +943,7 @@ translation function.
 > entry (CPSEval _ v) = field v "info->eval"
 > entry CPSUnify = CExpr "bind_var"
 > entry CPSDelay = CExpr "sync_var"
+> entry CPSReadGlobal = CExpr "sync_global"
 
 > contFrame :: ([Name],CPSCont) -> CPSCont -> [CExpr]
 > contFrame _ CPSReturn = []
@@ -1028,15 +1027,18 @@ literals when set to a non-zero value.
 > switchOnTerm :: Name -> Bool -> ([Name],CPSCont) -> Name -> [(CPSTag,[CStmt])]
 >              -> [CStmt]
 > switchOnTerm f tagged vs0 v cases =
->   tagSwitch vs0 v taggedSwitch (varCase ++ litCases ++ constrCases) :
+>   tagSwitch vs0 v taggedSwitch
+>             (globalCase ++ varCase ++ litCases ++ constrCases) :
 >   head (dflts ++ [failAndBacktrack (undecorate (demangle f) ++ ": no match")])
->   where (lits,constrs,vars,dflts) = foldr partition ([],[],[],[]) cases
+>   where (lits,constrs,vars,globals,dflts) =
+>           foldr partition ([],[],[],[],[]) cases
 >         (chars,ints,floats) = foldr litPartition ([],[],[]) lits
 >         taggedSwitch v switch
 >           | tagged && null chars && null ints =
 >               CIf (isTaggedPtr v) [switch] []
 >           | otherwise =
 >               taggedCharSwitch v chars (taggedIntSwitch v ints switch)
+>         globalCase = map (cCase "GVAR_TAG") globals
 >         varCase = map (cCase "LVAR_TAG") vars
 >         litCases = map cCaseDefault $
 >           [charCase | not (null chars)] ++
@@ -1058,12 +1060,14 @@ literals when set to a non-zero value.
 >           floatSwitch v floats ++
 >           [CBreak]
 >         constrCases = [cCase (dataTag c) stmts | (c,stmts) <- constrs]
->         partition (t,stmts) ~(lits,constrs,vars,dflts) =
+>         partition (t,stmts) ~(lits,constrs,vars,globals,dflts) =
 >           case t of
->              CPSLitCase l -> ((l,stmts) : lits,constrs,vars,dflts)
->              CPSConstrCase c _ -> (lits,(c,stmts) : constrs,vars,dflts)
->              CPSFreeCase -> (lits,constrs,stmts : vars,dflts)
->              CPSDefaultCase -> (lits,constrs,vars,stmts : dflts)
+>              CPSLitCase l -> ((l,stmts) : lits,constrs,vars,globals,dflts)
+>              CPSConstrCase c _ ->
+>                (lits,(c,stmts) : constrs,vars,globals,dflts)
+>              CPSFreeCase -> (lits,constrs,stmts : vars,globals,dflts)
+>              CPSGlobalCase -> (lits,constrs,vars,stmts : globals,dflts)
+>              CPSDefaultCase -> (lits,constrs,vars,globals,stmts : dflts)
 >         litPartition (Char c,stmts) ~(chars,ints,floats) =
 >           ((c,stmts):chars,ints,floats)
 >         litPartition (Int i,stmts) ~(chars,ints,floats) =
@@ -1114,32 +1118,19 @@ literals when set to a non-zero value.
 >   where match v (f,stmts) rest = [CIf (CRel v "==" (CFloat f)) stmts rest]
 
 \end{verbatim}
-The idiosyncratic \texttt{CPSSwitchVar} statement is used for
-distinguishing global and local free variable nodes. We assume that
-neither the code for the global variable case (first alternative) nor
-that for the local variable case (second alternative) falls through.
-\begin{verbatim}
-
-> switchOnVar :: Name -> [CStmt] -> [CStmt] -> [CStmt]
-> switchOnVar v sts1 sts2 =
->   CIf (CRel (nodeKind v) "==" (CExpr "GVAR_KIND"))
->       (CProcCall "assert" [CFunCall "!is_local_space" [field v "g.spc"]] :
->        sts1)
->       [] :
->   sts2
-
-\end{verbatim}
 The \texttt{CPSSwitchArity} statement dispatches on the arity of a
-partial application node. Recall that the first alternative,
-corresponding to arity 0, applies to an unbound logical variable node
-and that the last alternative acts as default case that is selected if
-too few arguments are supplied.
+partial application node. Recall that the first two alternatives apply
+to a global variable node and an unbound logical variable node,
+respectively, and that the last alternative acts as default case that
+is selected if too few arguments are supplied.
 \begin{verbatim}
 
 > switchOnArity :: ([Name],CPSCont) -> Name -> [[CStmt]] -> [CStmt]
-> switchOnArity vs0 v (sts0:stss) =
+> switchOnArity vs0 v (stsG:stsL:stss) =
 >   tagSwitch vs0 v taggedSwitch cases : last stss
->   where cases = cCase "LVAR_TAG" sts0 : zipWith cCaseInt [1..] (init stss)
+>   where cases =
+>           cCase "GVAR_TAG" stsG : cCase "LVAR_TAG" stsL :
+>           zipWith cCaseInt [1..] (init stss)
 >         taggedSwitch _ = id
 
 \end{verbatim}

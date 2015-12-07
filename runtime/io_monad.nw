@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: io_monad.nw 3089 2012-08-13 08:47:09Z wlux $
+% $Id: io_monad.nw 3182 2015-12-07 08:54:20Z wlux $
 %
-% Copyright (c) 2001-2012, Wolfgang Lux
+% Copyright (c) 2001-2015, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Monadic Code}\label{sec:io-monad}
@@ -63,6 +63,7 @@ DECLARE_LABEL(extern, __ioError);
 #include "heap.h"
 #include "stack.h"
 #include "threads.h"
+#include "search.h"
 #include "spaces.h"
 #include "eval.h"
 #include "io_monad.h"
