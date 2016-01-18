@@ -1,6 +1,6 @@
--- $Id: cycc.hs 3159 2015-04-26 07:32:00Z wlux $
+-- $Id: cycc.hs 3191 2016-01-18 20:47:45Z wlux $
 --
--- Copyright (c) 1999-2015, Wolfgang Lux
+-- Copyright (c) 1999-2016, Wolfgang Lux
 -- See LICENSE for the full license.
 
 import Combined
@@ -51,23 +51,22 @@ badUsage prog errs =
   where mkErrorLine err = prog ++ ": " ++ err
 
 processFiles :: Options -> String -> [String] -> IO ()
-processFiles opts prog files =
-  case typeIt opts of
-    Just g
-      | isJust (goal opts) ->
-          badUsage prog ["only one of -e and -t must be specified\n"]
-      | otherwise -> compile (typeGoal opts g files)
-    Nothing ->
-      case goal opts of
+processFiles opts prog files
+  | link opts =
+      case typeIt opts of
         Just g
+          | isJust (goal opts) ->
+              badUsage prog ["only one of -e and -t must be specified\n"]
+          | otherwise -> compile (typeGoal opts g files)
+        Nothing
           | isNothing (output opts) ->
-              badUsage prog ["must specify -e with an output file\n"]
-          | otherwise -> compile (compileGoal opts g files)
-	Nothing
-          | null files -> badUsage prog ["no input files\n"]
-          | isJust (output opts) && length files > 1 ->
-              badUsage prog ["cannot specify -o with multiple input files\n"]
-          | otherwise -> mapM_ (compile . compileModule opts) files
+              let o = maybe "--main" (const "-e") (goal opts) in
+              badUsage prog ["must specify " ++ o ++ " with an output file\n"]
+          | otherwise -> compile (compileGoal opts (goal opts) files)
+  | null files = badUsage prog ["no input files\n"]
+  | isJust (output opts) && length files > 1 =
+      badUsage prog ["cannot specify -o with multiple input files\n"]
+  | otherwise = mapM_ (compile . compileModule opts) files
 
 compile :: ErrorT IO a -> IO a
 compile c = callErr c >>= checkOk

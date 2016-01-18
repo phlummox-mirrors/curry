@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Options.lhs 3159 2015-04-26 07:32:00Z wlux $
+% $Id: Options.lhs 3191 2016-01-18 20:47:45Z wlux $
 %
-% Copyright (c) 2001-2015, Wolfgang Lux
+% Copyright (c) 2001-2016, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Options.lhs}
@@ -21,7 +21,8 @@ all compiler options.
 >   Options {
 >     importPaths :: [ImportPath],      -- directories for searching imports
 >     output :: Maybe FilePath,         -- name of output file
->     goal :: Maybe (Maybe String),     -- goal to be evaluated
+>     link :: Bool,                     -- compile main function or goal
+>     goal :: Maybe String,             -- goal to be evaluated
 >     typeIt :: Maybe String,           -- goal to be typed
 >     noInterface :: Bool,              -- do not create an interface file
 >     splitCode :: Bool,                -- split object code
@@ -37,6 +38,7 @@ all compiler options.
 >   Options{
 >     importPaths = [],
 >     output = Nothing,
+>     link = False,
 >     goal = Nothing,
 >     typeIt = Nothing,
 >     noInterface = False,
@@ -90,7 +92,7 @@ library.
 > data Option =
 >     Help
 >   | ImportPath FilePath | LibPath FilePath | Output FilePath
->   | Eval (Maybe String) | Type String
+>   | Link | Eval String | Type String
 >   | SplitCode | NoInterface | Debug | Trusted
 >   | CaseMode CaseMode | Warn [Warn] | Dump [Dump]
 >   deriving (Eq,Show)
@@ -103,12 +105,14 @@ recognized by the compiler.
 > options = [
 >     Option "i" ["import-dir"] (ReqArg ImportPath "DIR")
 >            "search for imports in DIR",
->     Option "e" ["eval"] (OptArg Eval "GOAL")
+>     Option "P" ["lib-dir"] (ReqArg LibPath "DIR")
+>            "search for library interfaces in DIR",
+>     Option "" ["main"] (NoArg Link)
+>            "generate code for main function or goal",
+>     Option "e" ["eval"] (ReqArg Eval "GOAL")
 >            "generate code to evaluate GOAL",
 >     Option "t" ["type"] (ReqArg Type "GOAL")
 >            "compute type of GOAL",
->     Option "P" ["lib-dir"] (ReqArg LibPath "DIR")
->            "search for library interfaces in DIR",
 >     Option "o" ["output"] (ReqArg Output "FILE")
 >            "write code or type to FILE",
 >     Option "" ["no-icurry"] (NoArg NoInterface)
@@ -186,8 +190,9 @@ print its usage message and terminate.
 > selectOption (LibPath dir) opts =
 >   opts{ importPaths = LibDir dir : importPaths opts }
 > selectOption (Output file) opts = opts{ output = Just file }
-> selectOption (Eval goal) opts = opts{ goal = Just goal }
-> selectOption (Type goal) opts = opts{ typeIt = Just goal }
+> selectOption Link opts = opts{ link = True }
+> selectOption (Eval goal) opts = opts{ link = True, goal = Just goal }
+> selectOption (Type goal) opts = opts{ link = True, typeIt = Just goal }
 > selectOption NoInterface opts = opts{ noInterface = True }
 > selectOption SplitCode opts = opts{ splitCode = True }
 > selectOption Debug opts = opts{ debug = True }
