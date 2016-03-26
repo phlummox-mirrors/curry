@@ -1,6 +1,6 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 3193 2016-03-26 09:44:11Z wlux $
+# $Id: Makefile.in 3194 2016-03-26 09:49:45Z wlux $
 #
 # Copyright (c) 2000-2016 Wolfgang Lux
 # See LICENSE for the full license.
@@ -263,7 +263,8 @@ DISTFILES = README LICENSE NEWS curry.tex curry.bib \
 	Makefile.in ghc.mk ghc-make.mk hbc.mk nhc.mk makedoc.in in-place-config \
 	configure-bin.in Makefile-bin.in in-place-config-bin \
 	$(SCRIPTS:=.in) $(man_MANS:=.in) $(SRCS) \
-	$(PATHUTILS_SRCS) $(IOEXTS_SRCS) $(HS2010_SRCS)
+	$(PATHUTILS_SRCS) $(IOEXTS_SRCS) $(HS2010_SRCS) \
+	$(APPLICATIVE_SRCS)
 
 # default target, build all programs and the library
 all: scripts programs runtime curry mans
@@ -424,7 +425,7 @@ distdir:
 	mkdir $(distdir)
 	mkdir $(distdir)/unix $(distdir)/windows
 	mkdir $(distdir)/ghc $(distdir)/hbc $(distdir)/nhc
-	mkdir $(distdir)/hs2010
+	mkdir $(distdir)/hs98 $(distdir)/hs2010
 	for f in $(DISTFILES); do cp $(srcdir)/$$f $(distdir)/$$f; done
 	for d in $(SUBDIRS); do \
 		mkdir $(distdir)/$$d && \
