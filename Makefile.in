@@ -1,8 +1,8 @@
 # Makefile for the Curry compiler
 #
-# $Id: Makefile.in 3180 2015-12-05 09:41:37Z wlux $
+# $Id: Makefile.in 3193 2016-03-26 09:44:11Z wlux $
 #
-# Copyright (c) 2000-2015 Wolfgang Lux
+# Copyright (c) 2000-2016 Wolfgang Lux
 # See LICENSE for the full license.
 #
 
@@ -318,7 +318,7 @@ curry.pdf: newer makedoc tex
 tex: FORCE
 	cd runtime && $(MAKE) tex
 
-makedoc: Makefile $(srcdir)/makedoc.in
+makedoc: $(srcdir)/makedoc.in config.status
 	./config.status $@
 
 # Use TeXShop.app for typesetting the documentation. This may be convenient
@@ -474,7 +474,7 @@ $(srcdir)/configure: $(srcdir)/configure.in $(srcdir)/aclocal.m4
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in config.status
 	./config.status $@
-	$(MAKE) depend
+	$(MAKE) depend-dir
 
 cyc: $(srcdir)/cyc.in $(srcdir)/in-place-config config.status
 	./config.status $@
@@ -488,12 +488,13 @@ cyi: $(srcdir)/cyi.in $(srcdir)/in-place-config config.status
 .PRECIOUS: config.status
 config.status: $(srcdir)/configure
 	./config.status --recheck
+	./config.status
 
 # clean up
 mostlyclean: mostlyclean-subdirs mostlyclean-dir
 mostlyclean-dir::
-	rm -f $(INTF) $(OBJS) 
-	rm -f cycc cymk newer cam2c mach 
+	rm -f $(INTF) $(OBJS)
+	rm -f cycc cymk newer cam2c mach
 	rm -f $(man_MANS) core *.core
 
 clean: clean-subdirs clean-dir
