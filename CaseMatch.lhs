@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseMatch.lhs 3198 2016-03-30 11:25:15Z wlux $
+% $Id: CaseMatch.lhs 3199 2016-04-02 18:42:27Z wlux $
 %
 % Copyright (c) 2001-2016, Wolfgang Lux
 % See LICENSE for the full license.
@@ -247,24 +247,26 @@ bound to a (head) normal form.
 >         ensure e = Apply (prelEnsure (typeOf e)) e
 
 \end{verbatim}
-When injected into a guarded equation or alternative the additional
-constraints are evaluated before the existing guards. This is achieved
-by transforming the existing guards into a right hand side expression.
-As a consequence case alternatives with boolean guards will no longer
-fall through into the remaining alternatives if all guards fail. E.g.,
+When the additional constraints are injected into a guarded equation
+or alternative, the additional constraints are inserted into the first
+guard such that they are evaluated before the existing guard is
+checked. Effectively, a guarded right hand side of the form
+\texttt{|} $g_1\;\texttt{=}\;e_1$ $\dots$ \texttt{|}
+$g_n\;\texttt{=}\;e_n$ is transformed into the equivalent of
+\begin{quote}
+  \texttt{|} $c\:\texttt{\&>}\:g_1\;\texttt{=}\;e_1$ $\dots$
+  \texttt{|} $g_n\;\texttt{=}\;e_n$
+\end{quote}
+where $c$ are the additional function pattern constraints. In
+particular, this transformation ensures that for a case alternative
+with boolean guards the remaining alternatives of the case expression
+are tested if all guards reduce to \verb|False|. E.g.,
 \begin{verbatim}
   case [-1] of
     xs ++ [x] | x > 0 -> x
     _ -> 0
 \end{verbatim}
-fails instead of reducing to 0. However, this behavior is at least
-consistent, since the default case is also not reached when the
-function pattern does not match at all, e.g., when the scrutinized
-expression was \texttt{[]}.
-
-\ToDo{This semantics of function patterns in case expressions looks
-  dubious. Eventually drop support for them. If so, remember that list
-  comprehensions may expand into case expressions, too.}
+reduces to 0.
 \begin{verbatim}
 
 > liftFP :: ConstrTerm Type
@@ -286,22 +288,18 @@ expression was \texttt{[]}.
 
 > inject :: (Expression Type -> Expression Type) -> Position
 >        -> [((Type,Ident),ConstrTerm Type)] -> Rhs Type -> Rhs Type
-> inject f p fps rhs
->   | null fps = rhs
->   | otherwise = injectRhs cs ds rhs
+> inject f p fps
+>   | null fps = id
+>   | otherwise = injectRhs (foldr1 (Apply . Apply prelConj) cs) ds
 >   where cs = [apply (unify ty) [toExpr t,f (mkVar ty v)] | ((ty,v),t) <- fps]
 >         ds = concatMap (decls p . snd) fps
 
-> injectRhs :: [Expression Type] -> [Decl Type] -> Rhs Type -> Rhs Type
-> injectRhs cs ds (SimpleRhs p e ds') = injectCond p cs e ds ds'
-> injectRhs cs ds (GuardedRhs es@(CondExpr p _ _ : _) ds')
->   | booleanGuards es = injectCond p cs (expandBooleanGuards es Nothing) ds ds'
->   | otherwise = injectCond p cs (expandConstraintGuard es) ds ds'
-
-> injectCond :: Position -> [Expression Type] -> Expression Type -> [Decl Type]
->            -> [Decl Type] -> Rhs Type
-> injectCond p cs e ds ds' =
->   GuardedRhs [CondExpr p (foldr1 (Apply . Apply prelConj) cs) e] (ds ++ ds')
+> injectRhs :: Expression Type -> [Decl Type] -> Rhs Type -> Rhs Type
+> injectRhs c ds (SimpleRhs p e ds') =
+>   GuardedRhs [CondExpr p c e] (ds ++ ds')
+> injectRhs c ds (GuardedRhs (CondExpr p g e : es) ds') =
+>   GuardedRhs (CondExpr p (expandConstraintGuard [CondExpr p c g]) e : es)
+>              (ds ++ ds')
 
 > toExpr :: ConstrTerm Type -> Expression Type
 > toExpr (LiteralPattern ty l) = Literal ty l
