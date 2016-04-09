@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: CaseMatch.lhs 3199 2016-04-02 18:42:27Z wlux $
+% $Id: CaseMatch.lhs 3200 2016-04-09 16:54:20Z wlux $
 %
 % Copyright (c) 2001-2016, Wolfgang Lux
 % See LICENSE for the full license.
@@ -230,7 +230,7 @@ bound to a (head) normal form.
 >   where elimFP (p,ts,rhs) =
 >           do
 >             (ts',fpss) <- mapAndUnzipM liftFP ts
->             return (p,ts',inject id p (concat fpss) rhs)
+>             return (p,ts',inject p unify (concat fpss) rhs)
 
 > matchRigid :: ModuleIdent -> [Match Type]
 >            -> CaseMatchState ([(Type,Ident)],Expression Type)
@@ -243,8 +243,7 @@ bound to a (head) normal form.
 >   where elimFP (p,ts,rhs) =
 >           do
 >             (ts',fpss) <- mapAndUnzipM liftFP ts
->             return (p,id,ts',inject ensure p (concat fpss) rhs)
->         ensure e = Apply (prelEnsure (typeOf e)) e
+>             return (p,id,ts',inject p unifyRigid (concat fpss) rhs)
 
 \end{verbatim}
 When the additional constraints are injected into a guarded equation
@@ -286,12 +285,12 @@ reduces to 0.
 >     (t',fps) <- liftFP t
 >     return (AsPattern v t',fps)
 
-> inject :: (Expression Type -> Expression Type) -> Position
+> inject :: Position -> (Type -> Expression Type)
 >        -> [((Type,Ident),ConstrTerm Type)] -> Rhs Type -> Rhs Type
-> inject f p fps
+> inject p unify fps
 >   | null fps = id
 >   | otherwise = injectRhs (foldr1 (Apply . Apply prelConj) cs) ds
->   where cs = [apply (unify ty) [toExpr t,f (mkVar ty v)] | ((ty,v),t) <- fps]
+>   where cs = [apply (unify ty) [toExpr t,mkVar ty v] | ((ty,v),t) <- fps]
 >         ds = concatMap (decls p . snd) fps
 
 > injectRhs :: Expression Type -> [Decl Type] -> Rhs Type -> Rhs Type
@@ -673,9 +672,9 @@ Prelude entities
 > prelConj :: Expression Type
 > prelConj = preludeFun [successType,successType] successType "&"
 
-> unify, prelEnsure, prelUnknown :: Type -> Expression Type
+> unify, unifyRigid, prelUnknown :: Type -> Expression Type
 > unify ty = preludeFun [ty,ty] successType "=:<="
-> prelEnsure ty = preludeFun [ty] ty "ensureNotFree"
+> unifyRigid ty = preludeFun [ty,ty] successType "==<="
 > prelUnknown ty = preludeFun [] ty "unknown"
 
 > preludeFun :: [Type] -> Type -> String -> Expression Type

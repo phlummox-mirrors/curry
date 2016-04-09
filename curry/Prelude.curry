@@ -1,6 +1,6 @@
--- $Id: Prelude.curry 3120 2013-01-03 16:58:08Z wlux $
+-- $Id: Prelude.curry 3200 2016-04-09 16:54:20Z wlux $
 --
--- Copyright (c) 1999-2013, Wolfgang Lux
+-- Copyright (c) 1999-2016, Wolfgang Lux
 -- See ../LICENSE for the full license.
 
 module Prelude((.), id, const, curry, uncurry, flip, until,
@@ -25,7 +25,7 @@ module Prelude((.), id, const, curry, uncurry, flip, until,
                negateFloat, absFloat, signumFloat, subtractFloat, (^.), (^^.),
                floatFromInt, truncateFloat, roundFloat,
                enumFrom, enumFromThen, enumFromTo, enumFromThenTo,
-               Success(), (=:=), (=/=), (=:<=), success, (&), (&>),
+               Success(), (=:=), (=/=), (=:<=), (==<=), success, (&), (&>),
                Maybe(..), maybe,
                Either(..), either,
                IO(), done, return, (>>), (>>=), fail,
@@ -48,7 +48,7 @@ infixl 8 ^, ^., ^^.
 infixl 7 *, `quot`, `rem`, `div`, `mod`, *., /.
 infixl 6 +, -, +., -.
 infixr 5 :, ++
-infix  4 =:=, =/=, =:<=, ==, /=, <, >, <=, >=
+infix  4 =:=, =/=, =:<=, ==<=, ==, /=, <, >, <=, >=
 infix  4 `elem`, `notElem`
 infixr 3 &&
 infixr 2 ||
@@ -667,6 +667,10 @@ foreign import primitive (=/=) :: a -> a -> Success
 --- Lazy unification (for function patterns only)
 -- To do: This should not be exported from the Prelude, but from module Unsafe
 foreign import primitive (=:<=) :: a -> a -> Success
+
+--- Lazy unification (for function patterns only)
+-- To do: This should not be exported from the Prelude, but from module Unsafe
+foreign import primitive (==<=) :: a -> a -> Success
 
 --- Always satisfiable constraint
 success :: Success
