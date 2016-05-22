@@ -1,4 +1,4 @@
-dnl $Id: configure.in 3192 2016-02-08 08:31:34Z wlux $
+dnl $Id: configure.in 3203 2016-05-22 11:58:45Z wlux $
 dnl
 dnl Copyright (c) 2002-2016, Wolfgang Lux
 dnl See LICENSE for the full license.
@@ -417,6 +417,7 @@ AC_CONFIG_FILES([runtime/Makefile],
 	        [test -f runtime/.depend || touch runtime/.depend])
 AC_CONFIG_FILES([curry/Makefile],
 		[test -f curry/.depend || touch curry/.depend])
+AC_CONFIG_FILES([test/Makefile])
 AC_CONFIG_FILES([cyc], [chmod +x cyc])
 AC_CONFIG_FILES([cymake], [chmod +x cymake])
 AC_CONFIG_FILES([cyi], [chmod +x cyi])
