@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 3178 2015-10-04 08:56:55Z wlux $
+% $Id: TypeCheck.lhs 3202 2016-05-22 11:48:30Z wlux $
 %
-% Copyright (c) 1999-2015, Wolfgang Lux
+% Copyright (c) 1999-2016, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{TypeCheck.lhs}
@@ -57,7 +57,7 @@ variable is used.
 > infixl 1 >>-, >>=-
 
 > ($-$) :: Doc -> Doc -> Doc
-> x $-$ y = x $$ space $$ y
+> x $-$ y = x $$ text "" $$ y
 
 > (>>-) :: Monad m => m (a,b) -> (a -> m ()) -> m b
 > m >>- f =
