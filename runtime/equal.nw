@@ -1,7 +1,7 @@
 % -*- noweb-code-mode: c-mode -*-
-% $Id: equal.nw 3182 2015-12-07 08:54:20Z wlux $
+% $Id: equal.nw 3207 2016-06-07 20:55:03Z wlux $
 %
-% Copyright (c) 2001-2015, Wolfgang Lux
+% Copyright (c) 2001-2016, Wolfgang Lux
 % See ../LICENSE for the full license.
 %
 \subsection{Strict Equality}
@@ -73,9 +73,9 @@ FUNCTION(___61__61__2)
     n	 = eq_root(arg1, arg2);
 
     if ( n < 0 )
-	RETURN(CONST(__Prelude__False), 1);
+	RETURN(Prelude_False, 1);
     else if ( n == 0 )
-	RETURN(CONST(__Prelude__True), 1);
+	RETURN(Prelude_True, 1);
     else if ( n == 1 )
     {
 	is_vect = is_vector_node(arg1);
@@ -111,7 +111,7 @@ FUNCTION(___61__61__3)
     Node *eq, *arg1, *arg2, *arglist;
  ENTRY_LABEL(static, ___61__61__3)
     eq = regs.r[0];
-    if ( eq != CONST(__Prelude__True) )
+    if ( eq != Prelude_True )
 	RETURN(eq, 1);
 
     ASSERT(regs.sp[0]->info == INFO(pair_cons));
