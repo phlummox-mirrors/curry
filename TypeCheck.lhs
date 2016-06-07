@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 3202 2016-05-22 11:48:30Z wlux $
+% $Id: TypeCheck.lhs 3206 2016-06-07 07:17:22Z wlux $
 %
 % Copyright (c) 1999-2016, Wolfgang Lux
 % See LICENSE for the full license.
@@ -879,19 +879,16 @@ constructor itself.
 > tcRhs m tcEnv tyEnv (GuardedRhs es ds) =
 >   do
 >     (tyEnv',ds') <- tcDecls m tcEnv tyEnv ds
->     gty <- guardType es
 >     ty <- freshTypeVar
->     es' <- mapM (tcCondExpr m tcEnv tyEnv' gty ty) es
+>     es' <- mapM (tcCondExpr m tcEnv tyEnv' ty) es
 >     return (ty,GuardedRhs es' ds')
->   where guardType es
->           | length es > 1 = return boolType
->           | otherwise = freshConstrained [successType,boolType]
 
-> tcCondExpr :: ModuleIdent -> TCEnv -> ValueEnv -> Type -> Type -> CondExpr a
+> tcCondExpr :: ModuleIdent -> TCEnv -> ValueEnv -> Type -> CondExpr a
 >            -> TcState (CondExpr Type)
-> tcCondExpr m tcEnv tyEnv gty ty (CondExpr p g e) =
+> tcCondExpr m tcEnv tyEnv ty (CondExpr p g e) =
 >   do
->     g' <- tcExpr m tcEnv tyEnv p g >>- unify p "guard" (ppExpr 0 g) tcEnv gty
+>     g' <-
+>       tcExpr m tcEnv tyEnv p g >>- unify p "guard" (ppExpr 0 g) tcEnv boolType
 >     e' <-
 >       tcExpr m tcEnv tyEnv p e >>- unify p "expression" (ppExpr 0 e) tcEnv ty
 >     return (CondExpr p g' e')

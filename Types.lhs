@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Types.lhs 2462 2007-09-07 09:38:13Z wlux $
+% $Id: Types.lhs 3206 2016-06-07 07:17:22Z wlux $
 %
-% Copyright (c) 2002-2007, Wolfgang Lux
+% Copyright (c) 2002-2016, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Types.lhs}
@@ -17,14 +17,12 @@ of types in the compiler.
 A type is either a type variable, an application of a type constructor
 to a list of arguments, or an arrow type. The \texttt{TypeConstrained}
 case is used for representing type variables that are restricted to a
-particular set of types. At present, this is used for typing guard
-expressions, which are restricted to be either of type \texttt{Bool}
-or of type \texttt{Success}, and integer literals, which are
-restricted to types \texttt{Int} and \texttt{Float}. If the type is
-not restricted, it defaults to the first type from the constraint
-list. The case \texttt{TypeSkolem} is used for handling skolem types,
-which result from matching data constructors with existentially
-quantified types.
+particular set of types. At present, this is used for integer
+literals, which are restricted to types \texttt{Int} and
+\texttt{Float}. If the type is not restricted, it defaults to the
+first type from the constraint list. The case \texttt{TypeSkolem} is
+used for handling skolem types, which result from matching data
+constructors with existentially quantified types.
 
 Type variables are represented with deBruijn style indices. Universally
 quantified type variables are assigned indices in the order of their

@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: PredefIdent.lhs 2794 2009-04-24 15:10:18Z wlux $
+% $Id: PredefIdent.lhs 3206 2016-06-07 07:17:22Z wlux $
 %
-% Copyright (c) 1999-2009, Wolfgang Lux
+% Copyright (c) 1999-2016, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{PredefIdent.lhs}
@@ -49,13 +49,12 @@ abstraction, which is based on its position in the source code.
 >   | otherwise = error "internal error: tupleArity"
 >   where n = length (name x) - 1
 
-> boolId, charId, intId, floatId, ioId, successId :: Ident
+> boolId, charId, intId, floatId, ioId :: Ident
 > boolId    = mkIdent "Bool"
 > charId    = mkIdent "Char"
 > intId     = mkIdent "Int"
 > floatId   = mkIdent "Float"
 > ioId      = mkIdent "IO"
-> successId = mkIdent "Success"
 
 > ptrId, funPtrId, stablePtrId :: Ident
 > ptrId       = mkIdent "Ptr"
@@ -86,12 +85,11 @@ abstraction, which is based on its position in the source code.
 > qTupleArity :: QualIdent -> Int
 > qTupleArity = tupleArity . unqualify
 
-> qBoolId, qCharId, qIntId, qFloatId, qSuccessId, qIOId :: QualIdent
+> qBoolId, qCharId, qIntId, qFloatId, qIOId :: QualIdent
 > qBoolId = qualifyWith preludeMIdent boolId
 > qCharId = qualifyWith preludeMIdent charId
 > qIntId = qualifyWith preludeMIdent intId
 > qFloatId = qualifyWith preludeMIdent floatId
-> qSuccessId = qualifyWith preludeMIdent successId
 > qIOId = qualifyWith preludeMIdent ioId
 
 > qPtrId, qFunPtrId, qStablePtrId :: QualIdent

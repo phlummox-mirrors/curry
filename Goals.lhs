@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: Goals.lhs 3159 2015-04-26 07:32:00Z wlux $
+% $Id: Goals.lhs 3206 2016-06-07 07:17:22Z wlux $
 %
-% Copyright (c) 1999-2015, Wolfgang Lux
+% Copyright (c) 1999-2016, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{Goals.lhs}
@@ -225,7 +225,7 @@ showing the bindings of the goal's free variables.
 >         v = anonId
 >         (vs,e') = liftGoalVars debug (mkLet ds e)
 >         vs' = vs ++ [FreeVar ty v]
->         ty' = foldr TypeArrow successType [ty | FreeVar ty _ <- vs']
+>         ty' = foldr TypeArrow boolType [ty | FreeVar ty _ <- vs']
 >         n = length vs'
 >         isIO (TypeConstructor tc [_]) = tc == qIOId
 >         isIO _ = False
@@ -245,7 +245,7 @@ showing the bindings of the goal's free variables.
 
 > prelUnif :: Type -> Expression Type
 > prelUnif ty =
->   Variable (foldr TypeArrow successType [ty,ty])
+>   Variable (foldr TypeArrow boolType [ty,ty])
 >            (qualifyWith preludeMIdent (mkIdent "=:="))
 
 \end{verbatim}

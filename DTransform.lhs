@@ -1,8 +1,8 @@
 % -*- LaTeX -*-
-% $Id: DTransform.lhs 3048 2011-10-02 14:14:03Z wlux $
+% $Id: DTransform.lhs 3206 2016-06-07 07:17:22Z wlux $
 %
 % Copyright (c) 2001-2002, Rafael Caballero
-% Copyright (c) 2003-2011, Wolfgang Lux
+% Copyright (c) 2003-2016, Wolfgang Lux
 %
 % 2002/04/10 19:00:00 Added emptyNode as constructor in type cTree
 \nwfilename{DTransform.lhs}
@@ -149,11 +149,6 @@ constructing expressions of the form (a,b) and the name of function
 > debugTypeLCTree  = debugTypeList debugTypeCTree
 > debugTypeCleanTree = debugTypePair debugTypeString debugTypeCTree
 > debugTypeLCleanTree = debugTypeList debugTypeCleanTree
-
-> debugTypeMainAux :: Type
-> debugTypeMainAux = TypeArrow (debugTypePair (TypeVariable 0) debugTypeCTree)
->                              (TypeConstructor qSuccessId [])
-
 
 
 > qPairId :: QualIdent
