@@ -1,5 +1,5 @@
 % -*- LaTeX -*-
-% $Id: TypeCheck.lhs 3206 2016-06-07 07:17:22Z wlux $
+% $Id: TypeCheck.lhs 3278 2016-07-16 16:02:49Z wlux $
 %
 % Copyright (c) 1999-2016, Wolfgang Lux
 % See LICENSE for the full license.
@@ -1200,17 +1200,17 @@ of~\cite{PeytonJones87:Book}).
 >   | tv1 == tv2 = Right idSubst
 >   | otherwise = Right (bindSubst tv1 (TypeVariable tv2) idSubst)
 > unifyTypes tcEnv (TypeVariable tv) ty
->   | tv `elem` typeVars ty = Left (recursiveType tcEnv tv ty)
->   | otherwise = Right (bindSubst tv ty idSubst)
+>   | tv `notElem` typeVars ty = Right (bindSubst tv ty idSubst)
+>   | otherwise = Left (incompatibleTypes tcEnv (TypeVariable tv) ty)
 > unifyTypes tcEnv ty (TypeVariable tv)
->   | tv `elem` typeVars ty = Left (recursiveType tcEnv tv ty)
->   | otherwise = Right (bindSubst tv ty idSubst)
+>   | tv `notElem` typeVars ty = Right (bindSubst tv ty idSubst)
+>   | otherwise = Left (incompatibleTypes tcEnv ty (TypeVariable tv))
 > unifyTypes _ (TypeConstrained tys1 tv1) (TypeConstrained tys2 tv2)
 >   | tv1 == tv2 = Right idSubst
 >   | tys1 == tys2 = Right (bindSubst tv1 (TypeConstrained tys2 tv2) idSubst)
 > unifyTypes tcEnv (TypeConstrained tys tv) ty =
 >   foldr (choose . unifyTypes tcEnv ty)
->         (Left (incompatibleTypes tcEnv ty (head tys)))
+>         (Left (incompatibleTypes tcEnv (head tys) ty))
 >         tys
 >   where choose (Left _) theta' = theta'
 >         choose (Right theta) _ = Right (bindSubst tv ty theta)
@@ -1394,6 +1394,12 @@ Error functions.
 >         text "Expected type:" <+> ppType tcEnv ty1,
 >         reason]
 
+> incompatibleTypes :: TCEnv -> Type -> Type -> Doc
+> incompatibleTypes tcEnv ty1 ty2 =
+>   sep [text "Types" <+> ppType tcEnv ty2,
+>        nest 2 (text "and" <+> ppType tcEnv ty1),
+>        text "are incompatible"]
+
 > skolemFieldLabel :: Ident -> String
 > skolemFieldLabel l =
 >   "Existential type escapes with type of record selector " ++ name l
@@ -1408,14 +1414,5 @@ Error functions.
 > invalidCType what tcEnv ty = show $
 >   vcat [text ("Invalid " ++ what ++ " type in foreign declaration:"),
 >         ppType tcEnv ty]
-
-> recursiveType :: TCEnv -> Int -> Type -> Doc
-> recursiveType tcEnv tv ty = incompatibleTypes tcEnv (TypeVariable tv) ty
-
-> incompatibleTypes :: TCEnv -> Type -> Type -> Doc
-> incompatibleTypes tcEnv ty1 ty2 =
->   sep [text "Types" <+> ppType tcEnv ty1,
->        nest 2 (text "and" <+> ppType tcEnv ty2),
->        text "are incompatible"]
 
 \end{verbatim}
