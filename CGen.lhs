@@ -1,7 +1,7 @@
 % -*- LaTeX -*-
-% $Id: CGen.lhs 3182 2015-12-07 08:54:20Z wlux $
+% $Id: CGen.lhs 3287 2016-07-30 11:57:58Z wlux $
 %
-% Copyright (c) 1998-2015, Wolfgang Lux
+% Copyright (c) 1998-2016, Wolfgang Lux
 % See LICENSE for the full license.
 %
 \nwfilename{CGen.lhs}
@@ -1267,16 +1267,10 @@ variables and functions.
 > undecorate :: String -> String
 > undecorate cs =
 >   case break ('_' ==) cs of
->     (cs', "") -> dropSuffix cs'
+>     (cs', "") -> cs'
 >     (cs', ('_':cs''))
 >       | "debug#" `isPrefixOf` cs'' -> cs' ++ undecorate (drop 6 cs'')
 >       | otherwise -> cs' ++ '_' : undecorate cs''
->   where dropSuffix cs =
->           case break ('.' ==) cs of
->             (cs',"") -> cs'
->             (cs','.':cs'')
->               | not (null cs'') && all isDigit cs'' -> cs'
->               | otherwise -> cs' ++ '.' : dropSuffix cs''
 
 \end{verbatim}
 In order to avoid some trivial name conflicts with the standard C
